@@ -94,7 +94,7 @@ Disclose pre-existing code in the README. The starter kit’s README already doe
 prompts/          00-kickoff … 07-design-pass (paste-ready prompts for Kiro)
 docs/             PROJECT.md (the full write-up), KIRO_LOG.md, CRITERIA_MAP.md, HUMAN_NOTES.md
 drafts/           human-written drafts (blog, social post, video script, Devpost text)
-data/             README, sample/, labels/, SNAPSHOT.md (raw and processed data live outside the repo in $DATA_DIR)
+data/             README, sample/, labels/, SNAPSHOT.md (raw and processed data live outside git tracking: $DATA_DIR outside the repo on local or Azure runs; the gitignored .local-data/ folder in Kiro Web)
 docs/PREFLIGHT.md the bulletproofing checklist: finish section A before the build
 .kiroignore       keeps secrets and large files out of agent context (IDE)
 .gitignore, README.md

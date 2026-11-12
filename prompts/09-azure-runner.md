@@ -25,7 +25,7 @@ Everything else happens as `kiro` (`sudo -iu kiro`). Agents running as `kiro` ca
 
 ## 3. Set up the `kiro` user
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh && uv python install 3.12
+curl -LsSf https://astral.sh/uv/install.sh | sh && uv python install 3.11
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash   # Node 20+ (Ubuntu's own package is older)
 source ~/.nvm/nvm.sh && nvm install --lts
 curl -fsSL https://cli.kiro.dev/install | bash

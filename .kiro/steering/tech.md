@@ -33,7 +33,8 @@ inclusion: always
 - No secrets in the repo. No paid runtime APIs.
 
 ## Data location, snapshots, and freezes
-- Raw and processed data live OUTSIDE the tracked repo in `$DATA_DIR` (default `~/undead311-data/` on a local machine). Code reads paths from `DATA_DIR`. Only `data/sample/` and `data/labels/` are in the repo.
+- Raw and processed data live outside git tracking: $DATA_DIR outside the repo on local or Azure runs; the gitignored .local-data/ folder in Kiro Web (default `~/undead311-data/` on a local machine). Code reads paths from `DATA_DIR`.
+- **Self-correcting fallback (required):** whenever `DATA_DIR` is unset, missing, or not writable, code must fall back to `<repo root>/.local-data/data`, and the uv cache (`UV_CACHE_DIR`) to `<repo root>/.local-data/uv-cache`. Resolve `<repo root>` with `pwd -P` (or `git rev-parse --show-toplevel`) at run time, never a hard-coded mount path, so a different mount path in a future session cannot break anything. Create the folder there if needed. Only `data/sample/` and `data/labels/` are in the repo.
 - **Kiro Web:** the sandbox home is read-only and `/tmp` does not persist between commands, so `DATA_DIR` points into the gitignored in-repo folder `.local-data/` (`DATA_DIR=/projects/sandbox/undead-311/.local-data/data`, `UV_CACHE_DIR=/projects/sandbox/undead-311/.local-data/uv-cache`). Agents never read raw files directly; they query through DuckDB. Nothing in `.local-data/` is ever committed.
 - A dated **judging snapshot** (data through a fixed date) drives the video, README numbers, and validation. The site always shows "Data as of <date>".
 - Pin versions: `.python-version`, `uv.lock`, `.nvmrc`, `package-lock.json`. Pin GitHub Actions to tagged versions.
