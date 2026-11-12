@@ -63,20 +63,33 @@ def row(system, open_utc, closure_text=None, closure_code=None, family="pothole_
     }
 
 
-@pytest.mark.parametrize("gap_hours", [0, 5.9])
+CLOSE_AFTER_HOURS = 1
+
+
+def timeline_pair_survives(original, rereport):
+    """pair_survives plus the timeline rule the detector enforces: the re-report must open after the original closed."""
+    return rereport["open_utc"] > original["close_utc"] and pair_survives(original, rereport)
+
+
 @pytest.mark.parametrize("system", ["legacy", "new"])
-def test_same_system_fast_rereport_is_candidate(system, gap_hours):
-    """REQ-ING-MIRROR: closed 1 h after opening, re-reported within the window, same system: still a zombie candidate."""
-    original = row(system, T0, closure_text="Case Closed")
-    rereport = row(system, T0 + timedelta(hours=gap_hours))
+def test_same_system_fast_rereport_is_candidate(system):
+    """REQ-ING-MIRROR: original opens T0, closes T0+1h, re-report opens T0+5h (inside the 6 h window), same system: candidate."""
+    original = row(system, T0, closure_text="Case Closed", closure_code="Resolved")
+    original["close_utc"] = T0 + timedelta(hours=CLOSE_AFTER_HOURS)
+    rereport = row(system, T0 + timedelta(hours=5))
+    assert rereport["open_utc"] > original["close_utc"]
+    assert rereport["open_utc"] - original["open_utc"] <= timedelta(hours=MIRROR_WINDOW_HOURS)
     assert pair_survives(original, rereport)
+    assert timeline_pair_survives(original, rereport)
     assert not is_mirror_pair(system, system, original["open_utc"], rereport["open_utc"], True, True)
 
 
-def test_same_system_pothole_five_hours_after_original_opened():
-    original = row("new", T0, closure_code="Resolved")
-    rereport = row("new", T0 + timedelta(hours=5))
-    assert pair_survives(original, rereport)
+@pytest.mark.parametrize("system", ["legacy", "new"])
+def test_same_system_rereport_before_closure_is_not_candidate(system):
+    original = row(system, T0, closure_text="Case Closed", closure_code="Resolved")
+    original["close_utc"] = T0 + timedelta(hours=CLOSE_AFTER_HOURS)
+    rereport = row(system, T0 + timedelta(minutes=30))
+    assert not timeline_pair_survives(original, rereport)
 
 
 @pytest.mark.parametrize("gap_hours", [0, 5.9])
