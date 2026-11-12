@@ -1,0 +1,11 @@
+{
+  "name": "undead311-web",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Placeholder; the Vite + React app is added by the web-app spec.",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "echo \"no web tests yet\"",
+    "build": "echo \"no web build yet\""
+  }
+}
