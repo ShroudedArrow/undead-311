@@ -36,6 +36,6 @@ Dataset: 311 Service Requests (`311-service-requests`), https://data.boston.gov/
 | 311 SERVICE REQUESTS - 2011 | CSV | https://data.boston.gov/dataset/8048697b-ad64-4bfc-b090-ee00169f2323/resource/94b499d9-712a-4d2a-b790-7ceec5c9c4b1/download/lagan_311_open_data_2011_rvsd3.csv | 2026-09-18T01:21:10 |
 
 Notes:
-- Yearly legacy-system files are named `311 Service Requests - YYYY` (2011-2026). The 2026 file is still growing (about 190k rows through Nov 10, 2026), so legacy-system cases continue after the Oct 2025 switch.
-- The NEW SYSTEM file starts at 2025-08-01 (not Oct 2025), is much smaller (87,951 rows) and grows quickly from mid-2026.
+- Yearly legacy-system files are named `311 Service Requests - YYYY` (2011-2026). The 2026 file is still growing (about 190k rows through Nov 10, 2026), so legacy-system cases continue after the 2025 system change (new system from August 2025; most in-scope types moved by mid-2026).
+- The NEW SYSTEM file starts at 2025-08-01, is much smaller (87,951 rows) and grows quickly from mid-2026.
 - The kickoff downloader (`pipeline/scripts/download.py`) fetches 2015 onward plus the new-system file into `$DATA_DIR/raw/`; hashes are in `SNAPSHOT.md`.
