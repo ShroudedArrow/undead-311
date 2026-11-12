@@ -71,11 +71,11 @@ We found **no tool that systematically detects “closed, then re-reported” ca
 | **Boston Open311 API** (optional) | Live feed of new requests | Requires an API key on request |
 
 **Known data issues**
-- **System switch:** Boston’s 311 system changed in **October 2025** (moving onto Creatio, a cloud-based CRM), and the open data uses different field names before and after. Map both formats into one schema in week 1, with a case-type crosswalk so a closure in the old system can match a re-report in the new one. This also becomes a natural experiment (section 7.8).
+- **System switch:** Boston’s 311 system changed with **the 2025 system change (new system from August 2025; most in-scope types moved by mid-2026)** (moving onto Creatio, a cloud-based CRM), and the open data uses different field names before and after. Map both formats into one schema in week 1, with a case-type crosswalk so a closure in the old system can match a re-report in the new one. This also becomes a natural experiment (section 7.8).
 - **City-originated cases:** the source field includes values such as Employee Generated, City Worker App, and Maximo Integration. Planned follow-up work (a temporary “made safe” repair, then a permanent one) can look like a zombie, so it gets its own category, and results are shown with and without city-originated re-reports.
 - **Placeholder coordinates:** some cases carry a default location (such as City Hall). Detect and exclude high-frequency default points.
 - **Value meanings:** use the dataset’s CRM Value Codex to interpret codes.
-- **New-system field names** include `open_date`, `close_date`, `service_name`, and `assigned_department`. **Day-1 go/no-go:** confirm the October 2025+ data still has coordinates (or addresses that match the city’s address registry) and closure text. Field validation of recent zombies depends on it.
+- **New-system field names** include `open_date`, `close_date`, `service_name`, and `assigned_department`. **Day-1 go/no-go:** confirm the data from the 2025 system change (new system from August 2025; most in-scope types moved by mid-2026) still has coordinates (or addresses that match the city’s address registry) and closure text. Field validation of recent zombies depends on it.
 - **Photos:** the photo fields are mostly empty, so don’t plan around them.
 - **Closure-reason text** is messy and partly templated. That’s what the Coroner agent handles.
 - **Free text may contain personal information** (names, phone numbers, emails). Scrub it before anything is displayed.
@@ -518,7 +518,7 @@ See `START_HERE.md` in the repo: the solo, minimum-hours checklist, exactly what
 - **CityScore targets:** https://Www.Boston.gov/sites/default/files/embed/file/2016-10/06_data_analytics.pdf · https://www.boston.gov/departments/analytics-team/cityscore
 - **Creatio migration:** https://www.boston.gov/node/16481251 · https://hoodline.com/2026/02/boston-s-311-hotline-gets-quiet-heart-transplant-in-tech-shakeup/
 - **Open311:** https://311.boston.gov/open311 · https://wiki.open311.org/GeoReport_v2/Servers
-- **Data details:** source field values: https://sunli-lisun.github.io/ac221/data-sources.html · October 2025 system change and field renames: https://cdn.jsdelivr.net/gh/sgarcese/Civic-Analytics-Agent-Workflow-Claude-Skill@main/SKILL.md · CRM Value Codex (dataset page): https://data.boston.gov/dataset/311-service-requests · placeholder coordinates example: https://course.ccs.neu.edu/ds2500sp23/proposals/27.html
+- **Data details:** source field values: https://sunli-lisun.github.io/ac221/data-sources.html · The 2025 system change (new system from August 2025; most in-scope types moved by mid-2026) and field renames: https://cdn.jsdelivr.net/gh/sgarcese/Civic-Analytics-Agent-Workflow-Claude-Skill@main/SKILL.md · CRM Value Codex (dataset page): https://data.boston.gov/dataset/311-service-requests · placeholder coordinates example: https://course.ccs.neu.edu/ds2500sp23/proposals/27.html
 - **Street segments and addresses:** https://data.boston.gov/dataset/boston-street-segments-sam-system · https://data.boston.gov/dataset/fc9562ca-02df-40bf-b4db-a36effb52ccc
 - **Neighbor:** Boston Globe pothole tracker: https://apps.bostonglobe.com/metro/2024/02/boston-potholes-tracker
 - **CityScore dataset:** https://data.boston.gov/dataset/cityscore
