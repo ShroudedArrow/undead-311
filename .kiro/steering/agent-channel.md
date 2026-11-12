@@ -1,7 +1,7 @@
 ---
 inclusion: always
 ---
-# Agent channel (GitHub Issues in the PRIVATE repo `OWNER/undead-311-ops`)
+# Agent channel (GitHub Issues in the PRIVATE repo `ShroudedArrow/undead-311-ops`)
 
 Agents and humans coordinate in one auditable place. **Files stay the control plane** (workflow stop conditions, review JSON, tasks.md). The channel is for communication and the audit trail. If GitHub is unreachable, keep working and post later; never block on it.
 

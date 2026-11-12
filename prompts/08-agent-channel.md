@@ -29,7 +29,7 @@ echo 'export GITHUB_CHANNEL_TOKEN="github_pat_..."' >> ~/.zshrc && source ~/.zsh
 - `.kiro/settings/mcp.json` already has the `github-channel` server pointing at GitHub's hosted MCP server. If the hosted server won't connect with your account, swap in the local Docker version: `ghcr.io/github/github-mcp-server` with `GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_CHANNEL_TOKEN}` and `GITHUB_TOOLSETS=issues,labels`.
 
 ## 4. Smoke test (paste into Kiro)
-"Using the github-channel MCP server and agent-channel.md: open a run-log issue titled 'Run smoke-1: channel test' in OWNER/undead-311-ops, post one status comment in the required format, open a test finding issue labeled to:engine and type:finding, then list open issues labeled to:engine. Close both issues when done."
+"Using the github-channel MCP server and agent-channel.md: open a run-log issue titled 'Run smoke-1: channel test' in ShroudedArrow/undead-311-ops, post one status comment in the required format, open a test finding issue labeled to:engine and type:finding, then list open issues labeled to:engine. Close both issues when done."
 
 ## 5. Optional: a mission-control board (5 minutes)
 Create a GitHub Project (board view) linked to `undead-311-ops`. Turn on its built-in **auto-add** workflow for issues in that repo, and group columns by the `type:` label (or a Status field). Agents' findings, handoffs, and questions then appear on one board automatically. It also makes good B-roll for the video.

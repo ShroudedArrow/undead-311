@@ -27,7 +27,7 @@ Each task gets a fresh sandbox, so downloaded data doesn't carry over.
 
 ## 5. Test it (15 min) before relying on it
 Start a session on `undead-311` and send:
-"List the MCP servers you can use. Download the most recent Boston 311 CSV from data.boston.gov into $DATA_DIR/raw and report its row count. Post one status comment to a run-log issue titled 'Run web-smoke-1' in OWNER/undead-311-ops following agent-channel.md, then close it."
+"List the MCP servers you can use. Download the most recent Boston 311 CSV from data.boston.gov into $DATA_DIR/raw and report its row count. Post one status comment to a run-log issue titled 'Run web-smoke-1' in ShroudedArrow/undead-311-ops following agent-channel.md, then close it."
 If all three work, you're set.
 
 ## 6. Then use Web for everything

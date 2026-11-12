@@ -73,5 +73,5 @@ Check each item, and ask me for evidence where files can't show it:
    - my confirmations (who and when),
    - open risks,
    - a one-line verdict: **GO for the full run**, or **NO-GO** plus the blockers.
-2. Post the same summary as a new issue in `OWNER/undead-311-ops` titled `Readiness check <date>`, with labels `type:decision` and `to:human`.
+2. Post the same summary as a new issue in `ShroudedArrow/undead-311-ops` titled `Readiness check <date>`, with labels `type:decision` and `to:human`.
 3. **Then stop.** The full run starts in a *new* session, and only after I reply "GO" on that issue.
