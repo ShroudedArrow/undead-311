@@ -9,9 +9,9 @@ inclusion: always
 /pipeline/tests/     pytest + hypothesis (unit/ and property/)
 /web/                Vite + React app; web/public/data/ holds generated static data; ALL user-facing text lives in web/src/copy/en.json and es.json
 /mcp/                Undead 311 MCP server (zombie queries over the processed data)
-$DATA_DIR/raw/       downloaded CSVs (OUTSIDE the repo; default ~/undead311-data)
+$DATA_DIR/raw/       downloaded CSVs (OUTSIDE the tracked repo; default ~/undead311-data; in Kiro Web the gitignored .local-data/ folder)
 /data/sample/        small committed sample for tests and judge mode
-$DATA_DIR/processed/ Parquet + DuckDB file (OUTSIDE the repo)
+$DATA_DIR/processed/ Parquet + DuckDB file (OUTSIDE the tracked repo; see tech.md)
 /data/labels/        coroner_labels.csv (closure-text template -> label), validation sample
 /schemas/            JSON Schemas for every exported data file (pipeline ↔ web contract)
 /docs/               PROJECT.md, METHODS.md, VALIDATION.md, KIRO_LOG.md, CRITERIA_MAP.md, HUMAN_NOTES.md, DECISIONS.md, EXPERIMENTS.md, CORRECTIONS.md

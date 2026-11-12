@@ -10,9 +10,10 @@ Connect GitHub and grant access to **only** the five project repos. Kiro's docs 
   - `data.boston.gov` and the host its file downloads redirect to (check the first download's URL)
   - the Context7 MCP domain, if you keep that server
   - Do NOT choose Open internet.
-- **Environment variable (not secret):** `DATA_DIR=/tmp/undead311-data`
+- **Environment variable (not secret):** `DATA_DIR=/projects/sandbox/undead-311/.local-data/data` (the gitignored in-repo folder; `/tmp` does not persist between commands)
+- **Environment variable (not secret):** `UV_CACHE_DIR=/projects/sandbox/undead-311/.local-data/uv-cache` (the sandbox home is read-only)
 - **Secret:** `GITHUB_CHANNEL_TOKEN` only (the token limited to `undead-311-ops` issues). Add `GITHUB_AUDIT_TOKEN` only in sessions that run the audit. Secrets can leak through code or logs, so give each task only what it needs.
-- **Environment configuration / setup commands:** `pip install uv && uv python install 3.12`, plus `npm ci` once `web/` exists.
+- **Environment configuration / setup commands:** `pip install uv` (only if `uv` is missing; no Python install needed, Python 3.11 is preinstalled), plus `npm ci` once `web/` exists.
 
 ## 3. MCP differences in the cloud
 - **Playwright and a headless Chrome are already built into every sandbox.** Our `playwright` entry isn't needed there.

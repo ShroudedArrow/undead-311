@@ -43,7 +43,7 @@ The one-shot itself is also a strong story for the Kiro write-up: “we wrote th
 2. **Student credits.** Verify at **kiro.dev/students** with your university email for 1,000 credits/month.
 3. **Prerequisites:**
    - git and a GitHub account,
-   - Python 3.12 and **uv**,
+   - Python 3.11 and **uv**,
    - Node.js 20+ (for `npx`-based MCP servers and the web app),
    - Docker (optional; useful for running Kiro Crew 24/7).
 

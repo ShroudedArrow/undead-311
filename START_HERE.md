@@ -23,9 +23,9 @@
    - **Connect GitHub** with access to the five repos only.
    - **Settings → Sandbox:**
      - **Internet access:** Common dependencies, plus the allow-list entry `data.boston.gov`. (The checker later prints the exact download hosts to add.)
-     - **Environment variable:** `DATA_DIR=/tmp/undead311-data`
+     - **Environment variable:** `DATA_DIR=/projects/sandbox/undead-311/.local-data/data`, `UV_CACHE_DIR=/projects/sandbox/undead-311/.local-data/uv-cache`
      - **Secrets:** `GITHUB_CHANNEL_TOKEN`, `GITHUB_AUDIT_TOKEN`
-     - **Setup command:** `pip install uv && uv python install 3.12`
+     - **Setup command:** `pip install uv` (only if `uv` is missing; Python 3.11 is preinstalled)
 
 ## 2. What to give Kiro, in order
 

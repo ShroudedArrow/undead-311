@@ -28,7 +28,7 @@ Go through these in order, skipping anything already PASS:
 4. **Channel labels:** create any missing ones with the channel token, after asking. Use Python's standard library against the GitHub REST API if `gh` isn't installed. If the `github-channel` MCP server won't connect in Kiro Web, walk me through adding it under Settings → Sandbox → Powers and MCP, using the channel token secret; the hooks don't depend on it either way. Then run the channel smoke test in `prompts/08-agent-channel.md` (section 4).
 5. **Branch protection on `main`:** walk me through Settings → Branches → "Require a pull request before merging."
 6. **Sandbox network:** confirm that `data.boston.gov` and every download host the checker printed are allowed. Open internet stays off.
-7. **Environment:** `DATA_DIR` is set; uv and Python 3.12 are available (`pip install uv && uv python install 3.12` if not). Note whether Node 20+ is present (needed later for the web app).
+7. **Environment:** `DATA_DIR` is set; uv and Python 3.11 are available (`pip install uv` if not). Note whether Node 20+ is present (needed later for the web app).
 8. **Team and rules:** ask me each question, then record the answers in `docs/DECISIONS.md`:
    - I'm 18+ and a current student (solo entry);
    - neither I nor anyone in my household works or interns at AWS/Amazon, Devpost, or a judge's employer;

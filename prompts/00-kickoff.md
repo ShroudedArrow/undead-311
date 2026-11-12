@@ -8,6 +8,6 @@ Read docs/PROJECT.md and every file in .kiro/steering/. Then:
 5. List all distinct case types and propose the in-scope list for zombie-definition.md (public right-of-way only; exclude types about people and private residences). Do not change the definition's rules.
 6. Update .kiro/steering/data-dictionary.md with the VERIFIED fields, differences between formats, a first draft of type families, and the 30 most common closure-text templates.
 7. Create data/sample/ (about 20,000 rows across several years and types, including known re-report patterns) for tests.
-8. Create the Makefile, `.python-version`, `.nvmrc`, and lock files with the targets listed in structure.md (stubs are fine where code doesn't exist yet). Write `.python-version` at the repo root containing exactly `3.12` and commit it, so `uv run` fetches Python 3.12 automatically in future sessions even if the sandbox setup command doesn't run.
+8. Create the Makefile, `.python-version`, `.nvmrc`, and lock files with the targets listed in structure.md (stubs are fine where code doesn't exist yet). Write `.python-version` at the repo root containing exactly `3.11` and commit it, so `uv run` picks the sandbox's Python 3.11 in future sessions.
 9. Append a line to docs/KIRO_LOG.md.
 Do not start feature work yet.

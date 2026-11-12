@@ -4,7 +4,7 @@ inclusion: always
 # Tech stack and decisions
 
 ## Pipeline (Python)
-- Python 3.12, managed with `uv`. Lint/format with `ruff`. Tests with `pytest` + `hypothesis` (property-based tests are required, see `testing.md`).
+- Python 3.11 (the sandbox default), managed with `uv`. Lint/format with `ruff`. Tests with `pytest` + `hypothesis` (property-based tests are required, see `testing.md`).
 - Data engine: **DuckDB** (SQL-first) with Parquet files under `$DATA_DIR/processed/`. Prefer SQL in DuckDB over pandas loops.
 - Spatial: haversine distance in SQL plus a coarse grid bucket for candidate pairs (avoid O(n^2) joins). Optional: DuckDB `spatial` extension.
 - Statistics: `statsmodels` / `scipy`; survival curves with `lifelines` (Kaplan-Meier).
@@ -33,7 +33,8 @@ inclusion: always
 - No secrets in the repo. No paid runtime APIs.
 
 ## Data location, snapshots, and freezes
-- Raw and processed data live OUTSIDE the repo in `$DATA_DIR` (default `~/undead311-data/`). Code reads paths from `DATA_DIR`. Only `data/sample/` and `data/labels/` are in the repo.
+- Raw and processed data live OUTSIDE the tracked repo in `$DATA_DIR` (default `~/undead311-data/` on a local machine). Code reads paths from `DATA_DIR`. Only `data/sample/` and `data/labels/` are in the repo.
+- **Kiro Web:** the sandbox home is read-only and `/tmp` does not persist between commands, so `DATA_DIR` points into the gitignored in-repo folder `.local-data/` (`DATA_DIR=/projects/sandbox/undead-311/.local-data/data`, `UV_CACHE_DIR=/projects/sandbox/undead-311/.local-data/uv-cache`). Agents never read raw files directly; they query through DuckDB. Nothing in `.local-data/` is ever committed.
 - A dated **judging snapshot** (data through a fixed date) drives the video, README numbers, and validation. The site always shows "Data as of <date>".
 - Pin versions: `.python-version`, `uv.lock`, `.nvmrc`, `package-lock.json`. Pin GitHub Actions to tagged versions.
 - After the Dec 4 deadline the judged repo's code does not change. The nightly refresh runs from a separate `undead-311-data` repo that publishes data files the static site loads.
