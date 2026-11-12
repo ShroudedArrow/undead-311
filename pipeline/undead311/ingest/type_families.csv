@@ -1,56 +1,56 @@
-system,type_raw,type_family,scope_tier
-legacy,Abandoned Vehicles,abandoned_vehicle,core
-legacy,BWSC Pothole,pothole_roadway,core
-legacy,Catchbasin,street_fixture,core
-legacy,Empty Litter Basket,street_litter,secondary
-legacy,General Lighting Request,streetlight,core
-legacy,Graffiti Removal,graffiti,core
-legacy,Highway Maintenance,pothole_roadway,core
-legacy,Illegal Dumping,street_litter,secondary
-legacy,Knockdown Replacement,streetlight,core
-legacy,Litter Basket Maintenance,street_litter,secondary
-legacy,Missed Trash/Recycling/Yard Waste/Bulk Item,missed_trash,core
-legacy,Missing Sign,sign,core
-legacy,PWD Graffiti,graffiti,core
-legacy,Pavement Marking Inspection,pavement_marking,core
-legacy,Pavement Marking Maintenance,pavement_marking,core
-legacy,Pothole Repair (Internal),pothole_roadway,core
-legacy,Request for Pothole Repair,pothole_roadway,core
-legacy,Requests for Street Cleaning,street_litter,secondary
-legacy,Roadway Repair,pothole_roadway,core
-legacy,Sidewalk Cover / Manhole,street_fixture,core
-legacy,Sidewalk Repair,sidewalk,core
-legacy,Sidewalk Repair (Internal),sidewalk,core
-legacy,Sidewalk Repair (Make Safe),sidewalk,core
-legacy,Sign Repair,sign,core
-legacy,Street Light Knock Downs,streetlight,core
-legacy,Street Light Longterm Repair,streetlight,core
-legacy,Street Light Outages,streetlight,core
-legacy,StreetLight Pole WO,streetlight,core
-legacy,Traffic Signal Inspection,traffic_signal,core
-legacy,Traffic Signal Repair,traffic_signal,core
-legacy,Utility Casting Repair,street_fixture,core
-new,Abandoned Vehicles,abandoned_vehicle,core
-new,Broken Public Waste Receptacle,street_litter,secondary
-new,Crosswalk Maintenance,pavement_marking,core
-new,Damaged/Faded Sign,sign,core
-new,Fences/Guardrails/Bollards,street_fixture,core
-new,Illegal Dumping or Disposal,street_litter,secondary
-new,Illegal Graffiti,graffiti,core
-new,Knocked Down Sign,sign,core
-new,Lane Divider,pavement_marking,core
-new,Litter & Debris,street_litter,secondary
-new,Missed Waste Pick-up,missed_trash,core
-new,Missing / Knocked Down Sign,sign,core
-new,Missing Manhole Cover,street_fixture,core
-new,Overflowing Trash,street_litter,secondary
-new,Pothole,pothole_roadway,core
-new,Road Marking Maintenance,pavement_marking,core
-new,Sidewalk Repair,sidewalk,core
-new,Street Light Electrical Safety,streetlight,core
-new,Street Light Knockdown,streetlight,core
-new,Street Light Other,streetlight,core
-new,Street Light Outage,streetlight,core
-new,Traffic Signal Knockdown,traffic_signal,core
-new,Traffic Signal Request,traffic_signal,core
-new,Utility Casting Repair,street_fixture,core
+system,type_raw,type_family,scope_tier,city_originated_type
+legacy,Abandoned Vehicles,abandoned_vehicle,excluded,false
+legacy,BWSC Pothole,pothole_roadway,core,false
+legacy,Catchbasin,street_fixture,excluded,false
+legacy,Empty Litter Basket,street_litter,excluded,false
+legacy,General Lighting Request,streetlight,excluded,false
+legacy,Graffiti Removal,graffiti,excluded,false
+legacy,Highway Maintenance,pothole_roadway,core,false
+legacy,Illegal Dumping,street_litter,excluded,false
+legacy,Knockdown Replacement,streetlight,core,false
+legacy,Litter Basket Maintenance,street_litter,excluded,false
+legacy,Missed Trash/Recycling/Yard Waste/Bulk Item,missed_trash,excluded,false
+legacy,Missing Sign,sign,core,false
+legacy,PWD Graffiti,graffiti,excluded,false
+legacy,Pavement Marking Inspection,pavement_marking,excluded,false
+legacy,Pavement Marking Maintenance,pavement_marking,core,false
+legacy,Pothole Repair (Internal),pothole_roadway,core,true
+legacy,Request for Pothole Repair,pothole_roadway,core,false
+legacy,Requests for Street Cleaning,street_litter,excluded,false
+legacy,Roadway Repair,pothole_roadway,core,false
+legacy,Sidewalk Cover / Manhole,street_fixture,core,false
+legacy,Sidewalk Repair,sidewalk,core,false
+legacy,Sidewalk Repair (Internal),sidewalk,core,true
+legacy,Sidewalk Repair (Make Safe),sidewalk,core,false
+legacy,Sign Repair,sign,core,false
+legacy,Street Light Knock Downs,streetlight,core,false
+legacy,Street Light Longterm Repair,streetlight,core,false
+legacy,Street Light Outages,streetlight,core,false
+legacy,StreetLight Pole WO,streetlight,core,true
+legacy,Traffic Signal Inspection,traffic_signal,excluded,false
+legacy,Traffic Signal Repair,traffic_signal,core,false
+legacy,Utility Casting Repair,street_fixture,core,false
+new,Abandoned Vehicles,abandoned_vehicle,excluded,false
+new,Broken Public Waste Receptacle,street_litter,excluded,false
+new,Crosswalk Maintenance,pavement_marking,core,false
+new,Damaged/Faded Sign,sign,core,false
+new,Fences/Guardrails/Bollards,street_fixture,core,false
+new,Illegal Dumping or Disposal,street_litter,excluded,false
+new,Illegal Graffiti,graffiti,excluded,false
+new,Knocked Down Sign,sign,core,false
+new,Lane Divider,pavement_marking,core,false
+new,Litter & Debris,street_litter,excluded,false
+new,Missed Waste Pick-up,missed_trash,excluded,false
+new,Missing / Knocked Down Sign,sign,core,false
+new,Missing Manhole Cover,street_fixture,core,false
+new,Overflowing Trash,street_litter,excluded,false
+new,Pothole,pothole_roadway,core,false
+new,Road Marking Maintenance,pavement_marking,core,false
+new,Sidewalk Repair,sidewalk,core,false
+new,Street Light Electrical Safety,streetlight,core,false
+new,Street Light Knockdown,streetlight,core,false
+new,Street Light Other,streetlight,core,false
+new,Street Light Outage,streetlight,core,false
+new,Traffic Signal Knockdown,traffic_signal,core,false
+new,Traffic Signal Request,traffic_signal,core,false
+new,Utility Casting Repair,street_fixture,core,false
