@@ -1,0 +1,15 @@
+# Enforced in the Kiro IDE only (not CLI/Web yet). Enable: Settings > Agent Ignore Files
+# (kiroAgent.agentIgnoreFiles) > add ".kiroignore".
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+# Large/generated files that waste context
+data/processed/
+web/public/data/*.json
+web/dist/
+node_modules/
+.hypothesis/
+docs/screenshots/
