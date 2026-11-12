@@ -1,0 +1,16 @@
+# data (raw and processed data live outside the repo in $DATA_DIR)
+data/raw/
+data/processed/
+# python
+.venv/
+__pycache__/
+.pytest_cache/
+.hypothesis/
+.ruff_cache/
+# node
+node_modules/
+web/dist/
+# env
+.env
+.env.*
+# DO NOT add .kiro/ here
