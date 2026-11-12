@@ -79,3 +79,15 @@ def test_traffic_signal_request_and_closure_code(rows):
         a = {**r, "open_utc": utc(r["open_time_utc"])}
         b = {**r, "open_utc": utc(r["open_time_utc"]), "system": "new"}
         assert not pair_survives(a, b)
+
+
+def test_street_light_other_only_when_linked_to_core(rows):
+    """REQ-ING-MIRROR: catch-all rows are in the sample only with an inherited family from a linked predecessor."""
+    assert "predecessor_ids" in rows[0]
+    slo = [r for r in rows if r["type_raw"] == "Street Light Other"]
+    assert slo
+    for r in slo:
+        assert r["scope_tier"] == "core"
+        assert r["predecessor_ids"]
+        assert r["type_family"] != "streetlight"
+    assert all(r["predecessor_ids"] == "" for r in rows if r["type_raw"] != "Street Light Other")

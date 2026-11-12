@@ -9,7 +9,7 @@ The mirror rule is cross-system only: same-system pairs follow the normal rules.
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any
 
@@ -21,6 +21,7 @@ TRANSFER_CLOSURE_RE = re.compile(
     re.IGNORECASE,
 )
 
+LINKED_CASE_RE = re.compile(r"BCS-(\d+)", re.IGNORECASE)
 
 NEW_SYSTEM_CLOSURE_LABELS = {
     "Resolved": "resolved",
@@ -36,6 +37,34 @@ def new_system_closure_label(code: str | None) -> str | None:
 
 def is_transfer_closure(text: str | None) -> bool:
     return bool(text) and TRANSFER_CLOSURE_RE.search(text) is not None
+
+
+def extract_linked_case_id(text: str | None) -> str | None:
+    """First 'BCS-<digits>' in a legacy transfer closure text, upper-cased; None if not a transfer closure."""
+    if not is_transfer_closure(text):
+        return None
+    m = LINKED_CASE_RE.search(text)
+    return f"BCS-{m.group(1)}" if m else None
+
+
+def resolve_catch_all(
+    default_family: str,
+    predecessors: Sequence[tuple[str, str]],
+    families: Mapping[str, tuple[str, str]],
+) -> tuple[str, str, list[str]]:
+    """Family and tier for a catch-all new-system case (REQ-ING-MIRROR).
+
+    predecessors: (legacy case id, legacy type_raw) for each legacy case whose closure text links here.
+    families: legacy type_raw -> (type_family, scope_tier). If every predecessor type is listed and all agree,
+    the case inherits that family and tier. Otherwise (no link, unlisted type, disagreement) it stays
+    sensitivity-only with the catch-all's default family. Returns (type_family, scope_tier, predecessor_ids).
+    """
+    ids = sorted(pid for pid, _ in predecessors)
+    outcomes = {families.get(t) for _, t in predecessors}
+    if predecessors and None not in outcomes and len(outcomes) == 1:
+        family, tier = next(iter(outcomes))
+        return family, tier, ids
+    return default_family, "sensitivity", ids
 
 
 def is_transferred_original(row: Mapping[str, Any]) -> bool:
@@ -65,10 +94,13 @@ def is_mirror_pair(
 def pair_survives(original: Mapping[str, Any], rereport: Mapping[str, Any], same_location: bool = True) -> bool:
     """True if (original, rereport) is a real candidate pair.
 
-    Rows need keys system, open_utc (aware datetime), type_family, closure_text, optional closure_code. Location equality is
+    Rows need keys system, open_utc (aware datetime), type_family, closure_text, optional closure_code, id, predecessor_ids. Location equality is
     the caller's matching rule (default True: the pair was matched on location already).
     """
     if is_transferred_original(original):
+        return False
+    # a linked catch-all case continues its legacy predecessor; it is never a re-report of it
+    if original.get("id") is not None and original["id"] in (rereport.get("predecessor_ids") or ()):
         return False
     return not is_mirror_pair(
         original["system"],

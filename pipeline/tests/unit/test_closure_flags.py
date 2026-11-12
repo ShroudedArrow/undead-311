@@ -8,10 +8,12 @@ from hypothesis import strategies as st
 
 from undead311.ingest.closure_flags import (
     MIRROR_WINDOW_HOURS,
+    extract_linked_case_id,
     is_mirror_pair,
     is_transfer_closure,
     new_system_closure_label,
     pair_survives,
+    resolve_catch_all,
 )
 
 T0 = datetime(2026, 1, 1, 12, tzinfo=UTC)
@@ -126,3 +128,85 @@ def test_new_system_closure_label_mapping():
 def test_same_system_never_mirror(system, gap_seconds, same_family, same_location):
     b = T0 + timedelta(seconds=gap_seconds)
     assert not is_mirror_pair(system, system, T0, b, same_family, same_location)
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("Resubmitted as BCS-00044034", "BCS-00044034"),
+        ("Resubmitted as case BCS-00044024", "BCS-00044024"),
+        ("See new case BCS-00264059", "BCS-00264059"),
+        ("Please refer to case BCS-00042106 for future inquiries", "BCS-00042106"),
+        ("resubmitted as bcs-00044034", "BCS-00044034"),
+        ("Closed. Resolved by BCS Contracting", None),
+        ("Case closed, work done", None),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_extract_linked_case_id(text, expected):
+    """REQ-ING-MIRROR: only transfer closure text yields a link."""
+    assert extract_linked_case_id(text) == expected
+
+
+FAMS = {
+    "Request for Pothole Repair": ("pothole_roadway", "core"),
+    "Sidewalk Repair (Make Safe)": ("sidewalk", "core"),
+    "Traffic Signal Repair": ("traffic_signal", "core"),
+    "Graffiti Removal": ("graffiti", "excluded"),
+}
+
+
+def test_resolve_single_core_predecessor_inherits():
+    assert resolve_catch_all("streetlight", [("L1", "Request for Pothole Repair")], FAMS) == (
+        "pothole_roadway",
+        "core",
+        ["L1"],
+    )
+
+
+def test_resolve_sidewalk_predecessor():
+    assert resolve_catch_all("streetlight", [("L1", "Sidewalk Repair (Make Safe)")], FAMS)[:2] == ("sidewalk", "core")
+
+
+def test_resolve_excluded_predecessor_stays_excluded():
+    assert resolve_catch_all("streetlight", [("L1", "Graffiti Removal")], FAMS)[:2] == ("graffiti", "excluded")
+
+
+def test_resolve_agreeing_predecessors_inherit():
+    preds = [("L2", "Request for Pothole Repair"), ("L1", "Request for Pothole Repair")]
+    assert resolve_catch_all("streetlight", preds, FAMS) == ("pothole_roadway", "core", ["L1", "L2"])
+
+
+def test_resolve_disagreeing_predecessors_sensitivity():
+    preds = [("L1", "Graffiti Removal"), ("L2", "Traffic Signal Repair")]
+    assert resolve_catch_all("streetlight", preds, FAMS) == ("streetlight", "sensitivity", ["L1", "L2"])
+
+
+def test_resolve_unlisted_predecessor_type_sensitivity():
+    preds = [("L1", "Request for Pothole Repair"), ("L2", "Not A Listed Type")]
+    assert resolve_catch_all("streetlight", preds, FAMS)[:2] == ("streetlight", "sensitivity")
+
+
+def test_resolve_no_link_sensitivity():
+    assert resolve_catch_all("streetlight", [], FAMS) == ("streetlight", "sensitivity", [])
+
+
+def test_linked_successor_is_not_a_rereport_of_its_predecessor():
+    """The legacy closure text has no transfer wording here, so only predecessor_ids can reject the pair."""
+    orig = {**row("legacy", T0, closure_text="Case Closed"), "id": "L1"}
+    succ = {**row("new", T0 + timedelta(days=3), family="pothole_roadway"), "predecessor_ids": ["L1"]}
+    assert not pair_survives(orig, succ)
+
+
+def test_linked_successor_is_candidate_for_a_different_original():
+    orig = {**row("legacy", T0, closure_text="Case Closed"), "id": "L9"}
+    succ = {**row("new", T0 + timedelta(days=3), family="pothole_roadway"), "predecessor_ids": ["L1"]}
+    assert pair_survives(orig, succ)
+
+
+def test_linked_catch_all_as_original_of_later_rereport():
+    orig = {**row("new", T0, closure_text="Done", closure_code="Resolved", family="pothole_roadway"), "id": "N1"}
+    orig["predecessor_ids"] = ["L1"]
+    later = row("new", T0 + timedelta(days=10), family="pothole_roadway")
+    assert pair_survives(orig, later)
