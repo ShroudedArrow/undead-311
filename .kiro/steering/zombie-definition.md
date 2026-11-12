@@ -6,8 +6,9 @@ inclusion: always
 All code, agents, and docs must apply these rules exactly. Change parameters only here.
 
 ## Scope (in-scope case types)
-Only **public right-of-way infrastructure**: potholes and street defects, sidewalks, streetlights, traffic signals and signs, graffiti on public property, missed trash/recycling, abandoned vehicles (final list confirmed from real `type` values during kickoff).
+Only **persistent physical defects** in the public right-of-way: potholes and roadway defects, sidewalks, streetlights, traffic signals, signs, pavement markings, and street fixtures (manholes, utility castings, guardrails, bollards). Recurring-event services produce new events, not resurrections, so they are out.
 **Out of scope:** case types about people (encampments, needle pickups, welfare checks and similar) and complaints about private residences or businesses. They're excluded from detection and display.
+Also out of scope: event-type families (missed trash, graffiti, abandoned vehicles, catch basins, street cleaning, litter, dumping) and inspection or general-request types (Traffic Signal Inspection, Pavement Marking Inspection, General Lighting Request). Types labeled `(Internal)` and work-order types are city-originated and are kept (see step 6).
 
 ## Pre-registration
 These rules and parameters were fixed on the date of the first commit of this file, BEFORE running on full data. Any later change is logged at the bottom with the date and reason.
@@ -15,6 +16,7 @@ These rules and parameters were fixed on the date of the first commit of this fi
 ## Parameters (defaults)
 - Matching: **same street segment** (Boston SAM street segments) when both cases snap to a segment within 15 m AND are within `MAX_SEGMENT_DIST = 75` m of each other (long segments must not match opposite ends); otherwise **radius** `RADIUS_M = 30`.
 - `WINDOW_DAYS = 60`; maximum incident span `INCIDENT_MAX_SPAN_DAYS = 7`.
+- `MIRROR_WINDOW_HOURS = 6`: a cross-system pair whose open times are within this many hours is a mirror copy, not a resurrection (step 9).
 - Sensitivity grid (precomputed for the methods page): matching in {segment, radius}, RADIUS_M in {15, 30, 50}, WINDOW_DAYS in {30, 60, 90}.
 
 ## Algorithm
@@ -24,16 +26,20 @@ These rules and parameters were fixed on the date of the first commit of this fi
 4. **Attribution:** process cases R in time order (ties by case ID). Each R attaches to the **most recent** eligible incident (ties by incident ID). Each R counts once.
 5. **Resurrection:** an incident's first attached R is its resurrection; `reports_after` counts every attached R (more reports = stronger evidence). The incident is a **possible zombie** unless step 6 applies.
 6. **Planned follow-up (not a zombie):** R is city-originated (`source` in Employee Generated, City Worker App, Maximo Integration, or equivalents in the new system) AND the incident's Coroner label is `made_safe_temporary`, `referred`, or `planned_followup`. A RESIDENT re-report after a "made safe" closure is still a possible zombie, tagged `after_temporary_fix`, so the site can report how often temporary fixes come back.
+   - **Legacy R** is city-originated if `source` is Employee Generated, City Worker App, or Maximo Integration, OR its `type_raw` is an internal or work-order type (`city_originated_type` column in `type_families.csv`: Pothole Repair (Internal), Sidewalk Repair (Internal), StreetLight Pole WO).
+   - **New-system R:** no field shows who opened a case (`report_source` is only BOS311, Call, Email; no service name is Internal or a work order; closure codes and comments describe how a case ended). So a new-system R after an original labeled `made_safe_temporary`, `referred`, or `planned_followup` is counted as a possible zombie tagged `source_unknown` and reported separately. The headline count excludes `source_unknown` zombies; they are never silently added to or dropped from it. A new-system R after any other closure label is not affected by this step.
 7. **Chains:** when a resurrection R is later closed, it starts a new incident; if that one resurrects too, the chain grows. `times_risen` counts resurrections at a location chain. Locations with `times_risen >= 3` are **repeat offenders**.
 8. **Separate tracking:** incidents labeled `invalid` or `duplicate` are reported separately ("a different kind of death"), not as zombies.
-9. **Across systems:** legacy (to Oct 2025) and new-system records match via location, time, and the type crosswalk in `type_families.csv`.
+9. **Across systems:** legacy (to Oct 2025) and new-system records match via location, time, and the type crosswalk in `type_families.csv`. Migration mirror rules:
+   - A legacy closure labeled transferred or migrated (`TRANSFER_CLOSURE_RE` in `pipeline/undead311/ingest/closure_flags.py`) is never an original: the case continued in the new system.
+   - A cross-system pair whose open times are within `MIRROR_WINDOW_HOURS = 6` at the same location and family is a mirror copy of one report, not a resurrection.
 
 ## Confidence score (0 to 1)
 Combine: match quality (segment > radius; closer = higher), time gap (shorter = higher), type specificity, Coroner label, local baseline probability (lower chance of coincidence = higher), and surviving Skeptic objections. Document the exact formula in `docs/METHODS.md`.
 
 ## Output tables
 - `incidents`: `incident_id, member_ids, type_family, department, neighborhood, district, segment_id, close_time, coroner_label`
-- `zombies`: `incident_id, resurrection_id, reports_after, gap_days, match_mode, distance_m, baseline_p, confidence, is_planned_followup, after_temporary_fix, chain_id, times_risen, skeptic_notes`
+- `zombies`: `incident_id, resurrection_id, reports_after, gap_days, match_mode, distance_m, baseline_p, confidence, is_planned_followup, after_temporary_fix, source_unknown, chain_id, times_risen, skeptic_notes`
 
 ## Language
 Always "possible zombie". Measured counts are a floor (a zombie only appears if someone reports again). Never claim the city lied. See `language.md`.
@@ -41,3 +47,6 @@ Always "possible zombie". Measured counts are a floor (a zombie only appears if 
 ## Change log
 | Date | Change | Reason |
 |---|---|---|
+| 2026-11-12 | Scope narrowed to persistent physical defects before any zombie counts were computed; recurring-event services produce new events, not resurrections. | Owner decision |
+| 2026-11-12 | Added migration mirror rules (step 9) and `MIRROR_WINDOW_HOURS = 6`: transferred or migrated legacy closures are never originals; cross-system pairs opened within 6 h are mirror copies. | Owner decision; evidence in docs/DECISIONS.md |
+| 2026-11-12 | Step 6 detection text added; new-system re-reports after made-safe, referred or planned-follow-up closures are tagged `source_unknown` and reported outside the headline; `source_unknown` column added to `zombies`. | Owner decision; new system has no origin field |
