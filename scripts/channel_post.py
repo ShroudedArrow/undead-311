@@ -26,11 +26,13 @@ def task_summary(payload: dict) -> tuple[str, str]:
     return str(tid), f"{title} ({status})".strip()
 
 
-def body_for(run_id: str, line: str) -> str:
+def body_for(run_id: str, line: str, manual: bool = False) -> str:
+    sender = "workflow-step" if manual else "hook:channel-status"
+    how = "posted by a workflow step via scripts/channel_post.py --message" if manual else "posted automatically by the PostTaskExec hook"
     return (
-        "```yaml\nfrom: hook:channel-status\nto: human\ntype: status\n"
+        f"```yaml\nfrom: {sender}\nto: human\ntype: status\n"
         f"run: {run_id}\nrefs: [.kiro/workflow-runs/{run_id}/]\n```\n"
-        f"**Summary** {line[:400]}\n\n**Evidence** posted automatically by the PostTaskExec hook.\n\n**Requested action** none."
+        f"**Summary** {line[:400]}\n\n**Evidence** {how}.\n\n**Requested action** none."
     )
 
 
@@ -51,7 +53,7 @@ def main() -> int:
             tid, summary = task_summary(payload)
             line = f"task {tid}: {summary}"
         hooklib.gh_request(
-            "POST", f"/repos/{hooklib.CHANNEL_REPO}/issues/{issue}/comments", {"body": body_for(run_dir.name, line)}
+            "POST", f"/repos/{hooklib.CHANNEL_REPO}/issues/{issue}/comments", {"body": body_for(run_dir.name, line, "--message" in args)}
         )
     except Exception as e:  # never fail the task  # noqa: BLE001
         hooklib.log_stderr(f"channel-status: not posted ({type(e).__name__})")

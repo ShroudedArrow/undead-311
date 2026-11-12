@@ -1,0 +1,2 @@
+OK  39af6d37c Kiro-Agent=engine Kiro-Run=smoke-2026-11-12a | chore(make): add hello target (smoke test)
+1/1 commits carry both trailers
