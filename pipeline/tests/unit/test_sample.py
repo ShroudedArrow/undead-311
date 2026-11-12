@@ -65,3 +65,17 @@ def test_cross_system_pairs_survive(rows):
                 assert not is_transfer_closure(a["closure_text"])
                 assert not is_mirror_pair("legacy", "new", ra["open_utc"], rb["open_utc"], True, True)
     assert survivors >= 250
+
+
+def test_traffic_signal_request_and_closure_code(rows):
+    """REQ-ING-MIRROR / scope: sensitivity-tier types stay out of the core sample; Transitioned is never an original."""
+    assert "closure_code" in rows[0]
+    assert "Traffic Signal Request" not in {r["type_raw"] for r in rows}
+    assert {r["scope_tier"] for r in rows} == {"core"}
+    assert all(r["closure_code"] == "" for r in rows if r["system"] == "legacy")
+    transitioned = [r for r in rows if r["closure_code"] == "Transitioned"]
+    assert transitioned
+    for r in transitioned:
+        a = {**r, "open_utc": utc(r["open_time_utc"])}
+        b = {**r, "open_utc": utc(r["open_time_utc"]), "system": "new"}
+        assert not pair_survives(a, b)

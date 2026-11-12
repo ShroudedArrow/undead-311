@@ -31,12 +31,15 @@ legacy,Traffic Signal Inspection,traffic_signal,excluded,false
 legacy,Traffic Signal Repair,traffic_signal,core,false
 legacy,Utility Casting Repair,street_fixture,core,false
 new,Abandoned Vehicles,abandoned_vehicle,excluded,false
+new,Broken Park Equipment,parks_trees,excluded,false
 new,Broken Public Waste Receptacle,street_litter,excluded,false
 new,Crosswalk Maintenance,pavement_marking,core,false
 new,Damaged/Faded Sign,sign,core,false
+new,Fallen Tree or Branches,parks_trees,excluded,false
 new,Fences/Guardrails/Bollards,street_fixture,core,false
 new,Illegal Dumping or Disposal,street_litter,excluded,false
 new,Illegal Graffiti,graffiti,excluded,false
+new,Illegally Blocked Sidewalk,sidewalk_obstruction,excluded,false
 new,Knocked Down Sign,sign,core,false
 new,Lane Divider,pavement_marking,core,false
 new,Litter & Debris,street_litter,excluded,false
@@ -44,7 +47,13 @@ new,Missed Waste Pick-up,missed_trash,excluded,false
 new,Missing / Knocked Down Sign,sign,core,false
 new,Missing Manhole Cover,street_fixture,core,false
 new,Overflowing Trash,street_litter,excluded,false
+new,Park Graffiti,parks_trees,excluded,false
+new,Park Groundskeeping,parks_trees,excluded,false
+new,Park Suggestions,parks_trees,excluded,false
+new,Parks General Request,parks_trees,excluded,false
+new,Planting Request,parks_trees,excluded,false
 new,Pothole,pothole_roadway,core,false
+new,Pruning Request,parks_trees,excluded,false
 new,Road Marking Maintenance,pavement_marking,core,false
 new,Sidewalk Repair,sidewalk,core,false
 new,Street Light Electrical Safety,streetlight,core,false
@@ -52,5 +61,8 @@ new,Street Light Knockdown,streetlight,core,false
 new,Street Light Other,streetlight,core,false
 new,Street Light Outage,streetlight,core,false
 new,Traffic Signal Knockdown,traffic_signal,core,false
-new,Traffic Signal Request,traffic_signal,core,false
+new,Traffic Signal Request,traffic_signal,sensitivity,false
+new,Tree or Stump Removal,parks_trees,excluded,false
+new,Unauthorized Signage,signage_enforcement,excluded,false
 new,Utility Casting Repair,street_fixture,core,false
+new,Utility Contractor Complaints,contractor_complaint,excluded,false
