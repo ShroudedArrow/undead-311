@@ -32,7 +32,7 @@ COLUMNS = [
     "local_ambiguous", "status", "closure_text", "closure_code", "type_raw", "type_family", "scope_tier",
     "city_originated_type", "department", "neighborhood", "street", "lat", "lon", "source",
 ]  # fmt: skip
-PLACEHOLDERS = [(42.3603, -71.0583), (42.3595, -71.0588), (42.3594, -71.0587)]
+PLACEHOLDERS = [(42.3603, -71.0583), (42.3595, -71.0588)]
 
 
 def scrub(col: str) -> str:

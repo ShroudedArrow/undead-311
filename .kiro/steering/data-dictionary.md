@@ -5,7 +5,9 @@ description: Boston 311 dataset fields, case-type families, closure-reason patte
 ---
 # Boston 311 data dictionary
 
-**Status: VERIFIED against the Nov 12, 2026 snapshot (kickoff session; see `data/SNAPSHOT.md`).** Counts below come from DuckDB tables `raw_legacy` and `raw_new`. Re-verify when the schema changes.
+Status: VERIFIED by the kickoff on 2026-11-12
+
+Counts below come from DuckDB tables `raw_legacy` and `raw_new` (snapshot in `data/SNAPSHOT.md`). Re-verify when the schema changes.
 
 ## Source
 Analyze Boston dataset "311 Service Requests" (yearly CSV resources, updated daily). License: Open Data Commons PDDL. Use the dataset's **CRM Value Codex** PDF to interpret codes.
@@ -74,21 +76,22 @@ Legacy: Closed 2,725,534; Open 315,013. New: Closed 76,828; In progress 11,106; 
 - Boston Street Segments (SAM system): segment matching.
 - Live Street Address Management (SAM) Addresses: "Check my street" search (build a compact client-side index).
 
-## Expected fields (legacy format; verify)
+## Expected fields (legacy format) (SUPERSEDED)
+SUPERSEDED: this was the pre-kickoff guess; use the verified inventory in the Source and field mapping sections above.
 `case_enquiry_id, open_dt, target_dt, closed_dt, ontime, case_status, closure_reason, case_title, subject, reason, type, queue, department, submitted_photo, closed_photo, location, fire_district, pwd_district, city_council_district, police_district, neighborhood, neighborhood_services_district, ward, precinct, location_street_name, location_zipcode, latitude, longitude, source`
 
 ## Normalized schema (what the pipeline produces)
 `id, open_time_utc, open_time_local, target_time, close_time_utc, close_time_local, on_time (bool|null), status, closure_text, type_raw, type_family, queue, department, neighborhood, district, lat, lon, street, source, system ('legacy'|'new')`
 
 ## Type families (first draft; machine-readable copy in `pipeline/undead311/ingest/type_families.csv`)
-Columns: `system, type_raw, type_family, scope_tier, city_originated_type`. `scope_tier` is `core` (in scope: persistent physical defects) or `excluded` (kept in the file for audit only: event-type families graffiti, missed_trash, abandoned_vehicle, street_litter, plus Catchbasin, Traffic Signal Inspection, Pavement Marking Inspection, General Lighting Request). The `secondary` tier no longer exists. `city_originated_type` is true for Pothole Repair (Internal), Sidewalk Repair (Internal) and StreetLight Pole WO (step 6 of zombie-definition.md). Every type not listed is out of scope. Rows in scope after narrowing (valid coordinates): legacy 374,730; new 13,591 (13,632 before coordinate cleaning). Open question for the owner: new-system Traffic Signal Request (475 in-scope rows) and Street Light Other (1,081) have general-request-like names but are kept; see docs/DECISIONS.md.
-Families below are marked **core** or **excluded**.
+Columns: `system, type_raw, type_family, scope_tier, city_originated_type`. `scope_tier` is `core` (in scope: persistent physical defects), `sensitivity` (outside the headline, reported as a sensitivity check; the only such type is new-system Traffic Signal Request) or `excluded` (kept in the file for audit only: event-type families graffiti, missed_trash, abandoned_vehicle, street_litter, plus Catchbasin, Traffic Signal Inspection, Pavement Marking Inspection, General Lighting Request). The `secondary` tier no longer exists. `city_originated_type` is true for Pothole Repair (Internal), Sidewalk Repair (Internal) and StreetLight Pole WO (step 6 of zombie-definition.md). Every type not listed is out of scope. Rows in scope after narrowing (valid coordinates): legacy 374,730; new 13,116 (13,157 before coordinate cleaning). Decision: new-system Traffic Signal Request (475 rows, all with valid coordinates) is sensitivity-only because it has 0 links and 11 of 50 sampled closure comments describe a physical defect; Street Light Other (1,081) stays in the headline because it is the successor of five in-scope legacy defect types (176 links), flagged as a migration catch-all; see docs/DECISIONS.md. Twelve successor types that were not listed before are now explicit `excluded` rows.
+Families below are marked **core**, **sensitivity** or **excluded**.
 | type_family | legacy `type` values | new-system `service_name` values |
 |---|---|---|
 | pothole_roadway | Request for Pothole Repair (133,981), Pothole Repair (Internal), Roadway Repair, BWSC Pothole, Highway Maintenance | Pothole (2,553) |
 | sidewalk | Sidewalk Repair (Make Safe) (62,053), Sidewalk Repair, Sidewalk Repair (Internal) | Sidewalk Repair (3,096) |
-| streetlight | Street Light Outages (57,809), ~~General Lighting Request~~ (excluded), Street Light Knock Downs, Knockdown Replacement, StreetLight Pole WO, Street Light Longterm Repair | Street Light Outage (4,849), Street Light Other, Street Light Knockdown, Street Light Electrical Safety |
-| traffic_signal | ~~Traffic Signal Inspection~~ (56,145; excluded), Traffic Signal Repair | Traffic Signal Request, Traffic Signal Knockdown |
+| streetlight | Street Light Outages (57,809), ~~General Lighting Request~~ (excluded), Street Light Knock Downs, Knockdown Replacement, StreetLight Pole WO, Street Light Longterm Repair | Street Light Outage (4,849), Street Light Other (catch-all for migrated cases), Street Light Knockdown, Street Light Electrical Safety |
+| traffic_signal | ~~Traffic Signal Inspection~~ (56,145; excluded), Traffic Signal Repair | Traffic Signal Request (sensitivity only), Traffic Signal Knockdown |
 | sign | Sign Repair (70,855), Missing Sign | Missing / Knocked Down Sign, Damaged/Faded Sign, Knocked Down Sign |
 | pavement_marking | Pavement Marking Maintenance, ~~Pavement Marking Inspection~~ (excluded) | Crosswalk Maintenance, Road Marking Maintenance, Lane Divider |
 | street_fixture | ~~Catchbasin~~ (excluded), Sidewalk Cover / Manhole, Utility Casting Repair | Utility Casting Repair, Missing Manhole Cover, Fences/Guardrails/Bollards |
@@ -104,12 +107,26 @@ Not covered by the draft: new-system types that have no legacy twin (e.g. Domest
 - All legacy rows, any type: 7,538 match (by close year: 2015 33; 2016 901; 2017 787; 2018 1,436; 2019 1,033; 2020 317; 2021 181; 2022 125; 2023 403; 2024 356; 2025 409; 2026 1,553; no close date 4). Literal "transferred"/"migrated": 97.
 - In-scope legacy: 707 match (335 contain a BCS-id; 131 "Resubmitted as ..."; 225 "new case #/ref/created/number/entered"; 16 literal transferred/migrated/transition-to); 341 closed on/after 2025-08-01.
 - Of the 335 in-scope legacy cases with a BCS-id, 263 point to a case that exists in the new file; 193 of those successors are in scope, but only 3 are the same type_family (190 were re-filed under a different service). Successor open minus legacy close: median -0.05 h; successor location median 1.1 m from the original. Transfers are mostly cross-family, so the rule matters for the 3 same-family ones and for text-only transfers.
+- New-system closure codes map to Coroner labels: Resolved and Resolved successfully to resolved, Noted to noted, Transitioned to referred. A Transitioned closure (a transfer) is never an original; Noted closures stay originals (closed without a repair). In-scope new closures: Transitioned 772, Noted 880.
 - Not matched, reported only: 4,190 in-scope legacy closures "Referred to External Agency" / reallocated / sent to PWD (a hand-off to another agency, not a copy).
 - Mirrors: cross-system, same family, within 30 m, open times within W hours: W=3: 1 pair; W=6: 1 pair; W=12: 1 pair; W=24: 3 pairs. `MIRROR_WINDOW_HOURS = 6`.
-- Sample check: of the 300 cross-system pairs in the kickoff sample, 212 fall out of scope (traffic_signal 83, missed_trash 63, abandoned_vehicle 39, graffiti 22, pavement_marking 5); of the 88 in scope, 4 have a transferred original and 0 are mirrors, leaving 83 survivors. The rebuilt sample has 274 candidate pairs: 265 survive, 9 transferred originals, 0 mirrors.
+- Sample check: of the 300 cross-system pairs in the kickoff sample, 212 fall out of scope (traffic_signal 83, missed_trash 63, abandoned_vehicle 39, graffiti 22, pavement_marking 5); of the 88 in scope, 4 have a transferred original and 0 are mirrors, leaving 83 survivors. The rebuilt sample (15,221 rows, 5.11 MB, with `closure_code` for new-system rows) has 274 candidate pairs: 265 survive, 9 transferred originals, 0 mirrors.
+
+### Type crosswalk from the 263 linked pairs
+Successor types in the new system for the 263 in-scope legacy cases whose closure text names a BCS-id that exists in the new file (by legacy in-scope type):
+
+| Legacy in-scope type | Linked | Successors in the new system |
+|---|---|---|
+| Request for Pothole Repair | 116 | Street Light Other 108, Pothole 3, Parks General Request 3, Tree or Stump Removal 1, Park Groundskeeping 1 |
+| Sidewalk Repair (Make Safe) | 71 | Street Light Other 27, Pruning Request 15, Park Groundskeeping 11, Tree or Stump Removal 6, Park Suggestions 3, Planting Request 3, Fallen Tree or Branches 2, Parks General Request 2, Broken Park Equipment 2 |
+| Sign Repair | 43 | Street Light Other 11, Street Light Knockdown 9, Utility Contractor Complaints 6, Park Groundskeeping 3, Parks General Request 3, Street Light Outage 2, Pruning Request 2, and 1 each Illegal Graffiti, Pothole, Fences/Guardrails/Bollards, Illegally Blocked Sidewalk, Broken Park Equipment, Litter & Debris, Unauthorized Signage |
+| Traffic Signal Repair | 32 | Street Light Other 29, Street Light Knockdown 1, Park Graffiti 1, Illegal Graffiti 1 |
+| Sidewalk Cover / Manhole | 1 | Street Light Other 1 |
+
+Street Light Other is the migration catch-all: 176 of 263 links (67%). Traffic Signal Request has 0 links. By tier: 193 successors in core types, 3 in excluded types, 67 in types not in `type_families.csv` (12 distinct types, now listed explicitly as excluded rows). No existing mapping is contradicted by the links.
 
 ## New-system closure codes and top 30 closure_comments for in-scope types
-In-scope (narrowed) new-system rows, n = 13,632. The 4 `closure_reason` codes: Resolved 5,642 (plus 39 not closed); Noted 880; Transitioned 772; Resolved successfully 678; null 5,660 (4,660 In progress; 1,000 Closed with no code). Closed in-scope rows: 8,904, of which 5,141 have no `closure_comments`; 2,335 distinct comments.
+In-scope (narrowed, before the Traffic Signal Request change) new-system rows, n = 13,632. The 4 `closure_reason` codes: Resolved 5,642 (plus 39 not closed); Noted 880; Transitioned 772; Resolved successfully 678; null 5,660 (4,660 In progress; 1,000 Closed with no code). Closed in-scope rows: 8,904, of which 5,141 have no `closure_comments`; 2,335 distinct comments.
 Top 30 `closure_comments` (lower-cased): completed by task (466) · violation issued. (199) · reallocated to non-city of boston stakeholder (199) · duplicate request (106) · request completed (90) · violation issued. - we have notified bwsc, and they are scheduling repairs. (77) · no issue found at location (65) · roadway has been repaired. (59) · request resolved (43) · duplicate case (41) · duplicate case - this report is a duplicate of another open case. case has been closed. (33) · unable to locate (28) · sidewalk has been repaired (27) · completed by task - replace photo cell light on (26) · light is on no trouble found (25) · private property (25) · completed by task - replace photo cell light is on (24) · area maintained by private owner - property owners responsibility. (24) · respliced wires in pull box (24) · see notes, area has been inspected (24) · light is on (24) · no trouble found light is on (22) · completed by task - installed new 40watt fixture and photo cell light is on (22) · we have notified bwsc, and they are scheduling repairs. (20) · pothole has been filled. (20) · potholes repaired (19) · pothole has been filled. - potholes repaired (17) · we have notified the utility responsible, and they are scheduling repairs. (17) · see notes, area has been inspected - engineer has been notified of your concern (17) · violation issued. - we have notified national grid, and they are scheduling repairs. (16)
 Code x comment pairs: Resolved/"completed by task" 466; Resolved/"violation issued." 199; Transitioned/"reallocated to non-city of boston stakeholder" 199; Noted/"duplicate request" 105; Noted/"no issue found at location" 65; Noted/"duplicate case" 41; Noted/"unable to locate" 28; Transitioned/"area maintained by private owner..." 24; Resolved successfully/"we have notified bwsc, and they are scheduling repairs." 20. Keyword counts: "schedul" 287, "inspect" 314, "duplicate" 322, "reallocat" 234, "temporar" 11, "safe" 79, "work order|wo " 78, "crew" 23.
 Origin fields: in-scope `report_source` is BOS311 9,170 and Call 4,462 (no staff channel); `assigned_department` PWD 12,223, BTD 1,279, Parks & Recreation 85, null 45; `assigned_team` has 24 values (e.g. PWD Highway (BEAM) 5,337; PWD Street Lighting 4,184) and is not an origin field; none of the 17 in-scope service names contains "Internal" or "WO"; only 0.1 to 0.8% of in-scope new rows close within 5 minutes (legacy City Worker App: 29.2%), so fast closure is not an origin signal. Conclusion: the new system cannot show whether a case was staff-entered, hence `source_unknown` in zombie-definition.md step 6. For contrast, 44.5% of in-scope legacy cases opened since 2025-10-01 (n = 23,087) are city-originated by `source`.
@@ -157,6 +174,6 @@ citation issued. (4,044) · request completed (1,674) · no violation found by c
 New-system `closure_reason` codes (closed rows): Resolved 55,999; Noted 14,193; Transitioned 3,117; Resolved successfully 1,938; null 1,581.
 
 ## Data quality rules
-- Drop or flag coordinates outside Boston bounds. Detect placeholder coordinates automatically (points shared by an unusually high number of unrelated cases; real top placeholder points: 42.3603, -71.0583 (4,808 rows) and 42.3595, -71.0588 (1,610), both dropped; City Hall 42.3594, -71.0587 is only an example).
+- Drop or flag coordinates outside Boston bounds. Detect placeholder coordinates automatically (points shared by an unusually high number of unrelated cases; real top placeholder points: 42.3603, -71.0583 (4,808 rows) and 42.3595, -71.0588 (1,610), both dropped; 42.3594, -71.0587 has 0 rows in either system and is not a placeholder).
 - Times in both systems are America/New_York wall-clock (the new system's `+00` is a mislabel); store UTC + local via `times.py`.
 - Scrub personal info (names, phone numbers, emails) from any free text before export.
