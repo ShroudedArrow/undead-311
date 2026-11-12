@@ -9,3 +9,13 @@
 | 2026-11-12 | Kiro Web data folder: in-repo gitignored `.local-data/` (DATA_DIR=.local-data/data, UV_CACHE_DIR=.local-data/uv-cache); agents query through DuckDB, never read raw files; nothing in it is committed | Persistence test: `.local-data/` and repo files survive between commands, `/tmp` does not | `/tmp/undead311-data` (discarded between commands) |
 | 2026-11-12 | Gate 1 item 8b: owner confirmed neither they nor anyone in their household works or interns at AWS/Amazon, Devpost, or a judge's employer. | Satisfies the affiliation eligibility rule | None |
 | 2026-11-12 | Self-correcting data path: when DATA_DIR is unset, missing, or not writable, code falls back to `<repo root>/.local-data/data` (uv cache to `<repo root>/.local-data/uv-cache`); root resolved at run time via `pwd -P`; kickoff checks `pwd -P` and creates the folder there. | A different mount path in a future Kiro Web session cannot break anything | Hard-coded `/projects/sandbox/...` paths; failing loudly when DATA_DIR is wrong |
+| 2026-11-12 | Gate 1 item 8c: credits redeemed; balance 5000 (as reported by owner) | Confirms budget for the build | None |
+| 2026-11-12 | Gate 1 item 8d: Devpost draft not yet created; owner will create it today (OPEN ITEM) | Submission draft needed before freeze | None |
+| 2026-11-12 | Gate 1 item 8e: clarification email sent per owner; no reply yet (send date not given) | Awaiting answer; proceed on current reading of the rules | None |
+| 2026-11-12 | Gate 1 item 8f: owner did not register for Kiroween 2025 | Records eligibility/entry status as reported | None |
+| 2026-11-12 | Gate 1 item 8g: second rater not yet lined up (OPEN ITEM); intended rater recorded only as 'a friend (name withheld)' | Repo will be public; no names or personal details of others | Record the rater's name |
+| 2026-11-12 | DATA_DIR and UV_CACHE_DIR saved in Settings -> Sandbox for future sessions (owner-reported; effective from the next session) | Future sessions start with correct env vars; the self-correcting fallback still applies | Rely on fallback only |
+| 2026-11-12 | Standing answer: owner is the only approver for specs, the readiness verdict, and every merge | Single accountable approver for a solo project | Agent self-approval |
+| 2026-11-12 | Standing answer: owner will hand-write the test-town answer key and will say when done (NOT yet done) | Keeps ground truth independent of agents | Agent-generated answer key |
+| 2026-11-12 | Standing answer: owner checks the channel and pull requests each morning | Sets review cadence for overnight work | None |
+| 2026-11-12 | Standing answer: owner checks credit balance before every overnight run | Prevents runs stalling on exhausted credits | None |
