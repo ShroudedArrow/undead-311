@@ -19,8 +19,8 @@ Work through section A before launching the build workflow. B and C can follow d
 |---|---|---|
 | A7 | You have requested **and received** your 4,000 hackathon credits, plus student credits. Solo means one account’s credits, so budget runs accordingly | |
 | A8 | Kiro IDE and CLI installed and signed in; workflows enabled for the workspace | |
-| A9 | `.kiroignore` added to Settings → Agent Ignore Files (IDE). It’s enforced in the IDE only, which is why raw data lives outside the repo | |
-| A10 | MCP servers connected (Context7, DuckDB at an absolute path outside the repo, CKAN, Playwright) | |
+| A9 | `.kiroignore` added to Settings → Agent Ignore Files (IDE). It isn’t enforced in Kiro Web; the rule lives in `tech.md` (data lives outside git tracking: $DATA_DIR outside the repo on local or Azure runs; the gitignored .local-data/ folder in Kiro Web) | |
+| A10 | MCP servers connected (Context7, DuckDB at an absolute path in the data folder (see A18), CKAN, Playwright) | |
 | A11 | Permissions: tests and builds allowed without prompts; destructive commands blocked; guard hook in place | |
 | A12 | Smoke-test workflow ran end to end (`prompts/04-workflow.md`) | |
 | A13 | Someone is reachable during the run, since workflows pause when a step needs input | |
@@ -32,7 +32,7 @@ Work through section A before launching the build workflow. B and C can follow d
 | A15 | License file added and detected (shown in the About section) | |
 | A16 | Branch protection on `main`: merges via pull request, CI required. Workflow runs work in worktrees | |
 | A17 | Secret scanning and push protection on; `.env` gitignored; no tokens anywhere in the repo | |
-| A18 | Data downloaded to `$DATA_DIR` (outside the repo); `data/SNAPSHOT.md` records hashes and date | |
+| A18 | Data downloaded and stored outside git tracking: $DATA_DIR outside the repo on local or Azure runs; the gitignored .local-data/ folder in Kiro Web; `data/SNAPSHOT.md` records hashes and date | |
 
 ### Method credibility (do before seeing results)
 | # | Check | Done |

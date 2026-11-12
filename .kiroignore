@@ -1,5 +1,7 @@
 # Enforced in the Kiro IDE only (not CLI/Web yet). Enable: Settings > Agent Ignore Files
 # (kiroAgent.agentIgnoreFiles) > add ".kiroignore".
+# Kiro Web data and caches (agents query through DuckDB, never read raw files)
+.local-data/
 # Secrets
 .env
 .env.*

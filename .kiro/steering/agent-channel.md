@@ -1,7 +1,7 @@
 ---
 inclusion: always
 ---
-# Agent channel (GitHub Issues in the PRIVATE repo `OWNER/undead-311-ops`)
+# Agent channel (GitHub Issues in the PRIVATE repo `ShroudedArrow/undead-311-ops`)
 
 Agents and humans coordinate in one auditable place. **Files stay the control plane** (workflow stop conditions, review JSON, tasks.md). The channel is for communication and the audit trail. If GitHub is unreachable, keep working and post later; never block on it.
 
@@ -26,5 +26,6 @@ Then: **Summary** (at most 3 sentences), **Evidence**, **Requested action**. Und
 3. Agents propose; humans decide.
 4. Never post secrets, tokens, personal data, or long logs. Link to files instead.
 5. At most one comment per step, plus one issue per distinct finding.
+6. **Listing lag:** the list endpoint can lag a few seconds after an issue is created, so an empty list does not mean nothing is waiting. Re-check at the end of the step. Remember the workflow's files decide go/stop, not the channel.
 
 Roles for `to:` labels: coroner, skeptic, cartographer, herald, data-steward, reviewer-stats, reviewer-ux, engine, web, human.

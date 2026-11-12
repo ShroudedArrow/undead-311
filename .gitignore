@@ -1,4 +1,6 @@
-# data (raw and processed data live outside the repo in $DATA_DIR)
+# data (locally and in Azure, raw and processed data live outside the repo in $DATA_DIR)
+# Kiro Web: data and caches live in this gitignored in-repo folder; never commit it
+.local-data/
 data/raw/
 data/processed/
 # python

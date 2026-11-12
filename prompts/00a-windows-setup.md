@@ -6,7 +6,7 @@ Before pasting: install the Kiro IDE (kiro.dev/downloads), sign in, extract this
 
 You're setting up our hackathon project on Windows (native, no WSL). Use PowerShell. Ask before installing each tool, and STOP at every PAUSE so I can do that step myself.
 
-1. **Tools.** Check for and install, with winget: Git (`Git.Git`), GitHub CLI (`GitHub.cli`), Node.js LTS (`OpenJS.NodeJS.LTS`), uv (`astral-sh.uv`), and GNU Make (search winget for a maintained make package). Then run `uv python install 3.12`. Install the Kiro CLI with `irm 'https://cli.kiro.dev/install.ps1' | iex`. Print the version of every tool.
+1. **Tools.** Check for and install, with winget: Git (`Git.Git`), GitHub CLI (`GitHub.cli`), Node.js LTS (`OpenJS.NodeJS.LTS`), uv (`astral-sh.uv`), and GNU Make (search winget for a maintained make package). Then run `uv python install 3.11`. Install the Kiro CLI with `irm 'https://cli.kiro.dev/install.ps1' | iex`. Print the version of every tool.
 2. **PAUSE:** tell me to run `gh auth login` (GitHub.com, HTTPS, browser) and `kiro-cli` to sign in, in the terminal.
 3. **Windows adaptations** (part of the first commit):
    - Add `.gitattributes` with `* text=auto eol=lf`, so line endings don't break scripts or CI.
