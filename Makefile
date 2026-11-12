@@ -15,9 +15,9 @@ setup:
 data-download:
 	$(UV) run python pipeline/scripts/download.py
 
-# data/sample/sample_311.csv was built during kickoff; a reproducible builder comes with the ingest spec
+# Rebuilds data/sample/sample_311.csv (core scope, UTC + local columns) from $(DATA_DIR)/processed/undead311.duckdb
 data-sample:
-	$(STUB)
+	$(UV) run python pipeline/scripts/build_sample.py
 
 pipeline:
 	$(STUB)
