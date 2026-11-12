@@ -1,4 +1,4 @@
-# The Undead 311 🧟
+# The Undead 311
 
 Boston marks 311 problems "closed." Some of them don't stay dead.
 
