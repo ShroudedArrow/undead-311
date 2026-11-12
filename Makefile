@@ -6,7 +6,7 @@ export UV_CACHE_DIR ?= $(REPO_ROOT)/.local-data/uv-cache
 UV ?= uv
 STUB = @echo "[stub] $@: not implemented yet"
 
-.PHONY: setup data-download data-sample pipeline test test-fast web build e2e copy-lint validate coroner-eval snapshot channel-export trace kiro-stats capture lint
+.PHONY: test-town setup data-download data-sample pipeline test test-fast web build e2e copy-lint validate coroner-eval snapshot channel-export trace kiro-stats capture lint
 
 setup:
 	$(UV) sync
@@ -18,6 +18,10 @@ data-download:
 # Rebuilds data/sample/sample_311.csv (core scope, UTC + local columns) from $(DATA_DIR)/processed/undead311.duckdb
 data-sample:
 	$(UV) run python pipeline/scripts/build_sample.py
+
+# Regenerates the test-town CASES (never the hand-written expected_zombies.json)
+test-town:
+	$(UV) run python pipeline/scripts/build_test_town.py
 
 pipeline:
 	$(STUB)
@@ -42,7 +46,7 @@ e2e:
 	$(STUB)
 
 copy-lint:
-	$(STUB)
+	python3 scripts/copy_lint.py
 
 validate:
 	$(STUB)

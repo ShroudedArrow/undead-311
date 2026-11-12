@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "kiro-log",
+      "description": "Append date, surface and a changed-files summary to docs/KIRO_LOG.md (command, no credits).",
+      "trigger": "Stop",
+      "action": {
+        "type": "command",
+        "command": "python3 \"$(git rev-parse --show-toplevel)\"/scripts/kiro_log_hook.py"
+      },
+      "timeout": 30
+    }
+  ]
+}
