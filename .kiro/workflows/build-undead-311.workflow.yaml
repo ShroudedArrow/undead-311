@@ -1,0 +1,699 @@
+# Build The Undead 311 from the approved specs in .kiro/specs/ (prompts/04-workflow.md).
+# Layer order (docs/PROJECT.md cut lines): ALL demo-critical tasks first (by Nov 17), then credibility (by Nov 22), then delight.
+# Each layer runs the engine branch (zombie-engine -> durability-stats -> nightly-and-deploy) and the web branch (haunted-web)
+# in parallel, in separate worktrees with disjoint file ownership, then integrates. Every spec loop: implement (faster model)
+# -> deterministic validate gate (scripts/validate_gate.py) -> reviewer on a DIFFERENT, stronger model -> loop file
+# (scripts/loop_status.py). Stop conditions are files; the channel (ShroudedArrow/undead-311-ops) is the audit trail.
+# Prerequisites: specs approved; pipeline/tests/fixtures/expected_zombies.json hand-written by the owner; docs/PREFLIGHT.md A done.
+# Launch inputs: run_id (e.g. build-2026-11-14a), worktree_path (e.g. .local-data/worktrees/<run_id>).
+# Model IDs are set here only; change them in one place if the account lists different IDs.
+name: build-undead-311
+description: Implement the approved specs layer by layer (demo-critical, credibility, delight) with test gates, cross-model reviews, a design gate, a preview, a retro and a report.
+inputs:
+  run_id: string
+  worktree_path: string
+modelId: claude-sonnet-5.5
+steps:
+  - type: step
+    id: channel
+    agent: engine
+    modelId: claude-sonnet-5.5
+    prompt: |
+      Run {{run_id}}, step "channel". Follow docs/RUN_PROTOCOL.md.
+      Create .kiro/workflow-runs/{{run_id}}/ in the main checkout with a RUNNING marker file. Open the run-log issue
+      "Run {{run_id}}: build-undead-311" (label type:status) in ShroudedArrow/undead-311-ops through the github-channel MCP server
+      and save {"issue": <number>, "url": "<html_url>"} to .kiro/workflow-runs/{{run_id}}/channel.json
+      (fallback: `python3 scripts/channel_open.py --run-id {{run_id}} --recipe build-undead-311`).
+      Every later step starts by reading open issues labeled to:<its role> and ends with one status comment there.
+  - type: step
+    id: setup
+    agent: engine
+    modelId: claude-sonnet-5.5
+    prompt: |
+      Run {{run_id}}, step "setup". Follow docs/RUN_PROTOCOL.md.
+      1. Abort unless pipeline/tests/fixtures/expected_zombies.json exists and is committed (a person writes it before the run; agents
+         never edit it). If it is missing: write .kiro/workflow-runs/{{run_id}}/setup.json with {"ok": false, "reason": "..."},
+         post to the run log, and call send_message with severity error.
+      2. Create the run worktree: `git worktree add -b build/{{run_id}} {{worktree_path}} HEAD`.
+      3. In it, scaffold ALL shared files first, so the parallel branches never collide: pyproject.toml dependencies named by the
+         specs' designs, web/package.json (Vite + React + TS, vitest, fast-check, Playwright) and package-lock.json, Makefile targets
+         from structure.md (stubs allowed), /schemas/ with every JSON Schema the designs list, web/src/copy/en.json with TODO-COPY
+         placeholders, and confirm the test-town CASES (pipeline/tests/fixtures/test_town.csv) are present and unchanged.
+         Commit with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
+      4. Create the two branch worktrees from that commit:
+         `git worktree add -b build/{{run_id}}-engine {{worktree_path}}-engine build/{{run_id}}` and
+         `git worktree add -b build/{{run_id}}-web {{worktree_path}}-web build/{{run_id}}`.
+      5. Write .kiro/workflow-runs/{{run_id}}/setup.json: {"ok": true, "base": "<sha>", "worktrees": {...},
+         "ownership": {"engine": ["pipeline/", "schemas/", "data/sample/", ".github/", ".devcontainer/", "Makefile", "pyproject.toml",
+         "uv.lock", "docs/METHODS.md", "docs/VALIDATION.md"], "web": ["web/", "docs/screenshots/"]}}.
+         Edits outside a branch's ownership list are forbidden; reviewers treat them as findings.
+  # ---------- Layer 1: demo-critical (by Tue Nov 17) ----------
+  - type: parallel
+    id: demo-critical-parallel
+    joinPolicy: all
+    branches:
+      - type: sequence
+        id: demo-critical-engine-branch
+        steps:
+          - type: repeat
+            id: zombie-engine-demo-critical-loop
+            maxIterations: 3
+            onMaxIterations: abort
+            stopCondition:
+              fileCheck:
+                path: .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-loop.json
+                jsonPath: $.done
+                value: true
+            steps:
+              - type: step
+                id: zombie-engine-demo-critical-implement
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec zombie-engine, layer demo-critical, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in {{worktree_path}}-engine (branch build/{{run_id}}-engine).
+                  First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Then implement the next unchecked tasks in .kiro/specs/zombie-engine/tasks.md tagged [demo-critical], in order, citing requirement IDs
+                  in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
+                  Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
+              - type: step
+                id: zombie-engine-demo-critical-validate
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec zombie-engine, layer demo-critical, step "validate". Follow docs/RUN_PROTOCOL.md. Do not edit code in this step.
+                  Run `python3 scripts/validate_gate.py --cwd {{worktree_path}}-engine --out .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-gate.json --target test --target lint` and report the status.
+              - type: step
+                id: zombie-engine-demo-critical-review
+                agent: reviewer-stats
+                modelId: claude-opus-5.5
+                effortLevel: high
+                prompt: |
+                  Run {{run_id}}, spec zombie-engine, layer demo-critical, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/zombie-engine/requirements.md and design.md,
+                  for the [demo-critical] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
+                  Run `python3 scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
+                  If .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
+                  Write .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  to:engine and type:finding, then run
+                  `python3 scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-gate.json --review .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-review.json --out .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-loop.json`.
+          - type: repeat
+            id: durability-stats-demo-critical-loop
+            maxIterations: 3
+            onMaxIterations: abort
+            stopCondition:
+              fileCheck:
+                path: .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-loop.json
+                jsonPath: $.done
+                value: true
+            steps:
+              - type: step
+                id: durability-stats-demo-critical-implement
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec durability-stats, layer demo-critical, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in {{worktree_path}}-engine (branch build/{{run_id}}-engine).
+                  First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Then implement the next unchecked tasks in .kiro/specs/durability-stats/tasks.md tagged [demo-critical], in order, citing requirement IDs
+                  in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
+                  Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
+              - type: step
+                id: durability-stats-demo-critical-validate
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec durability-stats, layer demo-critical, step "validate". Follow docs/RUN_PROTOCOL.md. Do not edit code in this step.
+                  Run `python3 scripts/validate_gate.py --cwd {{worktree_path}}-engine --out .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-gate.json --target test --target lint` and report the status.
+              - type: step
+                id: durability-stats-demo-critical-review
+                agent: reviewer-stats
+                modelId: claude-opus-5.5
+                effortLevel: high
+                prompt: |
+                  Run {{run_id}}, spec durability-stats, layer demo-critical, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/durability-stats/requirements.md and design.md,
+                  for the [demo-critical] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
+                  Run `python3 scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
+                  If .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
+                  Write .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  to:engine and type:finding, then run
+                  `python3 scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-gate.json --review .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-review.json --out .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-loop.json`.
+          - type: repeat
+            id: nightly-and-deploy-demo-critical-loop
+            maxIterations: 3
+            onMaxIterations: abort
+            stopCondition:
+              fileCheck:
+                path: .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-demo-critical-loop.json
+                jsonPath: $.done
+                value: true
+            steps:
+              - type: step
+                id: nightly-and-deploy-demo-critical-implement
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec nightly-and-deploy, layer demo-critical, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in {{worktree_path}}-engine (branch build/{{run_id}}-engine).
+                  First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-demo-critical-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Then implement the next unchecked tasks in .kiro/specs/nightly-and-deploy/tasks.md tagged [demo-critical], in order, citing requirement IDs
+                  in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
+                  Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
+              - type: step
+                id: nightly-and-deploy-demo-critical-validate
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec nightly-and-deploy, layer demo-critical, step "validate". Follow docs/RUN_PROTOCOL.md. Do not edit code in this step.
+                  Run `python3 scripts/validate_gate.py --cwd {{worktree_path}}-engine --out .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-demo-critical-gate.json --target test --target lint` and report the status.
+              - type: step
+                id: nightly-and-deploy-demo-critical-review
+                agent: reviewer-stats
+                modelId: claude-opus-5.5
+                effortLevel: high
+                prompt: |
+                  Run {{run_id}}, spec nightly-and-deploy, layer demo-critical, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/nightly-and-deploy/requirements.md and design.md,
+                  for the [demo-critical] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
+                  Run `python3 scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
+                  If .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-demo-critical-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
+                  Write .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-demo-critical-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  to:engine and type:finding, then run
+                  `python3 scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-demo-critical-gate.json --review .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-demo-critical-review.json --out .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-demo-critical-loop.json`.
+      - type: sequence
+        id: demo-critical-web-branch
+        steps:
+          - type: repeat
+            id: haunted-web-demo-critical-loop
+            maxIterations: 3
+            onMaxIterations: abort
+            stopCondition:
+              fileCheck:
+                path: .kiro/workflow-runs/{{run_id}}/haunted-web-demo-critical-loop.json
+                jsonPath: $.done
+                value: true
+            steps:
+              - type: step
+                id: haunted-web-demo-critical-implement
+                agent: web
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec haunted-web, layer demo-critical, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in {{worktree_path}}-web (branch build/{{run_id}}-web).
+                  First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
+                  Read open to:web findings and .kiro/workflow-runs/{{run_id}}/haunted-web-demo-critical-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Then implement the next unchecked tasks in .kiro/specs/haunted-web/tasks.md tagged [demo-critical], in order, citing requirement IDs
+                  in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
+                  Commit after each task with the Kiro-Agent: web and Kiro-Run: {{run_id}} trailers.
+              - type: step
+                id: haunted-web-demo-critical-validate
+                agent: web
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec haunted-web, layer demo-critical, step "validate". Follow docs/RUN_PROTOCOL.md. Do not edit code in this step.
+                  Run `python3 scripts/validate_gate.py --cwd {{worktree_path}}-web --out .kiro/workflow-runs/{{run_id}}/haunted-web-demo-critical-gate.json --target test --target build` and report the status.
+              - type: step
+                id: haunted-web-demo-critical-review
+                agent: reviewer-ux
+                modelId: claude-opus-5.5
+                effortLevel: high
+                prompt: |
+                  Run {{run_id}}, spec haunted-web, layer demo-critical, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Review the commits on build/{{run_id}}-web since the last review (`git log`, `git diff`) against .kiro/specs/haunted-web/requirements.md and design.md,
+                  for the [demo-critical] tasks. Build the site (`make build`) and use Playwright to screenshot the pages this layer touched into docs/screenshots/{{run_id}}/. Check design-system.md (every Banned default), voice.md (TODO-COPY placeholders are allowed), accessibility basics, and answer 'If the name were removed, could this be any generic dashboard?' (yes = CHANGES_REQUESTED).
+                  Run `python3 scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-web --require-run {{run_id}}`; missing trailers are a finding.
+                  If .kiro/workflow-runs/{{run_id}}/haunted-web-demo-critical-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
+                  Write .kiro/workflow-runs/{{run_id}}/haunted-web-demo-critical-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  to:web and type:finding, then run
+                  `python3 scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/haunted-web-demo-critical-gate.json --review .kiro/workflow-runs/{{run_id}}/haunted-web-demo-critical-review.json --out .kiro/workflow-runs/{{run_id}}/haunted-web-demo-critical-loop.json`.
+  - type: step
+    id: integrate-demo-critical
+    agent: engine
+    modelId: claude-sonnet-5.5
+    prompt: |
+      Run {{run_id}}, step "integrate-demo-critical". Follow docs/RUN_PROTOCOL.md. Work in {{worktree_path}} (branch build/{{run_id}}).
+      Merge build/{{run_id}}-engine and build/{{run_id}}-web into build/{{run_id}} with `git merge --no-edit` (file ownership keeps them
+      disjoint; if a conflict appears anyway, stop and post a needs-human proposal). Then run `make pipeline` on data/sample and `make build`.
+      Write {"layer": "demo-critical", "merged": [...], "pipeline": "PASS|FAIL", "build": "PASS|FAIL"} to .kiro/workflow-runs/{{run_id}}/integrate-demo-critical.json
+      and post the result to the run log. A merge is not a commit of yours; any fix-up commit carries the trailers.
+  # ---------- Layer 2: credibility (by Sun Nov 22) ----------
+  - type: parallel
+    id: credibility-parallel
+    joinPolicy: all
+    branches:
+      - type: sequence
+        id: credibility-engine-branch
+        steps:
+          - type: repeat
+            id: zombie-engine-credibility-loop
+            maxIterations: 3
+            onMaxIterations: abort
+            stopCondition:
+              fileCheck:
+                path: .kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-loop.json
+                jsonPath: $.done
+                value: true
+            steps:
+              - type: step
+                id: zombie-engine-credibility-implement
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec zombie-engine, layer credibility, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in {{worktree_path}}-engine (branch build/{{run_id}}-engine).
+                  First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Then implement the next unchecked tasks in .kiro/specs/zombie-engine/tasks.md tagged [credibility] (and any unchecked [demo-critical] task), in order, citing requirement IDs
+                  in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
+                  Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
+              - type: step
+                id: zombie-engine-credibility-validate
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec zombie-engine, layer credibility, step "validate". Follow docs/RUN_PROTOCOL.md. Do not edit code in this step.
+                  Run `python3 scripts/validate_gate.py --cwd {{worktree_path}}-engine --out .kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-gate.json --target test --target lint` and report the status.
+              - type: step
+                id: zombie-engine-credibility-review
+                agent: reviewer-stats
+                modelId: claude-opus-5.5
+                effortLevel: high
+                prompt: |
+                  Run {{run_id}}, spec zombie-engine, layer credibility, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/zombie-engine/requirements.md and design.md,
+                  for the [credibility] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
+                  Run `python3 scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
+                  If .kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
+                  Write .kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  to:engine and type:finding, then run
+                  `python3 scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-gate.json --review .kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-review.json --out .kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-loop.json`.
+          - type: repeat
+            id: durability-stats-credibility-loop
+            maxIterations: 3
+            onMaxIterations: abort
+            stopCondition:
+              fileCheck:
+                path: .kiro/workflow-runs/{{run_id}}/durability-stats-credibility-loop.json
+                jsonPath: $.done
+                value: true
+            steps:
+              - type: step
+                id: durability-stats-credibility-implement
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec durability-stats, layer credibility, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in {{worktree_path}}-engine (branch build/{{run_id}}-engine).
+                  First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/durability-stats-credibility-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Then implement the next unchecked tasks in .kiro/specs/durability-stats/tasks.md tagged [credibility] (and any unchecked [demo-critical] task), in order, citing requirement IDs
+                  in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
+                  Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
+              - type: step
+                id: durability-stats-credibility-validate
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec durability-stats, layer credibility, step "validate". Follow docs/RUN_PROTOCOL.md. Do not edit code in this step.
+                  Run `python3 scripts/validate_gate.py --cwd {{worktree_path}}-engine --out .kiro/workflow-runs/{{run_id}}/durability-stats-credibility-gate.json --target test --target lint` and report the status.
+              - type: step
+                id: durability-stats-credibility-review
+                agent: reviewer-stats
+                modelId: claude-opus-5.5
+                effortLevel: high
+                prompt: |
+                  Run {{run_id}}, spec durability-stats, layer credibility, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/durability-stats/requirements.md and design.md,
+                  for the [credibility] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
+                  Run `python3 scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
+                  If .kiro/workflow-runs/{{run_id}}/durability-stats-credibility-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
+                  Write .kiro/workflow-runs/{{run_id}}/durability-stats-credibility-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  to:engine and type:finding, then run
+                  `python3 scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/durability-stats-credibility-gate.json --review .kiro/workflow-runs/{{run_id}}/durability-stats-credibility-review.json --out .kiro/workflow-runs/{{run_id}}/durability-stats-credibility-loop.json`.
+          - type: repeat
+            id: nightly-and-deploy-credibility-loop
+            maxIterations: 3
+            onMaxIterations: abort
+            stopCondition:
+              fileCheck:
+                path: .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-credibility-loop.json
+                jsonPath: $.done
+                value: true
+            steps:
+              - type: step
+                id: nightly-and-deploy-credibility-implement
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec nightly-and-deploy, layer credibility, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in {{worktree_path}}-engine (branch build/{{run_id}}-engine).
+                  First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-credibility-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Then implement the next unchecked tasks in .kiro/specs/nightly-and-deploy/tasks.md tagged [credibility] (and any unchecked [demo-critical] task), in order, citing requirement IDs
+                  in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
+                  Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
+              - type: step
+                id: nightly-and-deploy-credibility-validate
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec nightly-and-deploy, layer credibility, step "validate". Follow docs/RUN_PROTOCOL.md. Do not edit code in this step.
+                  Run `python3 scripts/validate_gate.py --cwd {{worktree_path}}-engine --out .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-credibility-gate.json --target test --target lint` and report the status.
+              - type: step
+                id: nightly-and-deploy-credibility-review
+                agent: reviewer-stats
+                modelId: claude-opus-5.5
+                effortLevel: high
+                prompt: |
+                  Run {{run_id}}, spec nightly-and-deploy, layer credibility, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/nightly-and-deploy/requirements.md and design.md,
+                  for the [credibility] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
+                  Run `python3 scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
+                  If .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-credibility-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
+                  Write .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-credibility-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  to:engine and type:finding, then run
+                  `python3 scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-credibility-gate.json --review .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-credibility-review.json --out .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-credibility-loop.json`.
+      - type: sequence
+        id: credibility-web-branch
+        steps:
+          - type: repeat
+            id: haunted-web-credibility-loop
+            maxIterations: 3
+            onMaxIterations: abort
+            stopCondition:
+              fileCheck:
+                path: .kiro/workflow-runs/{{run_id}}/haunted-web-credibility-loop.json
+                jsonPath: $.done
+                value: true
+            steps:
+              - type: step
+                id: haunted-web-credibility-implement
+                agent: web
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec haunted-web, layer credibility, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in {{worktree_path}}-web (branch build/{{run_id}}-web).
+                  First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
+                  Read open to:web findings and .kiro/workflow-runs/{{run_id}}/haunted-web-credibility-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Then implement the next unchecked tasks in .kiro/specs/haunted-web/tasks.md tagged [credibility] (and any unchecked [demo-critical] task), in order, citing requirement IDs
+                  in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
+                  Commit after each task with the Kiro-Agent: web and Kiro-Run: {{run_id}} trailers.
+              - type: step
+                id: haunted-web-credibility-validate
+                agent: web
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec haunted-web, layer credibility, step "validate". Follow docs/RUN_PROTOCOL.md. Do not edit code in this step.
+                  Run `python3 scripts/validate_gate.py --cwd {{worktree_path}}-web --out .kiro/workflow-runs/{{run_id}}/haunted-web-credibility-gate.json --target test --target build` and report the status.
+              - type: step
+                id: haunted-web-credibility-review
+                agent: reviewer-ux
+                modelId: claude-opus-5.5
+                effortLevel: high
+                prompt: |
+                  Run {{run_id}}, spec haunted-web, layer credibility, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Review the commits on build/{{run_id}}-web since the last review (`git log`, `git diff`) against .kiro/specs/haunted-web/requirements.md and design.md,
+                  for the [credibility] tasks. Build the site (`make build`) and use Playwright to screenshot the pages this layer touched into docs/screenshots/{{run_id}}/. Check design-system.md (every Banned default), voice.md (TODO-COPY placeholders are allowed), accessibility basics, and answer 'If the name were removed, could this be any generic dashboard?' (yes = CHANGES_REQUESTED).
+                  Run `python3 scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-web --require-run {{run_id}}`; missing trailers are a finding.
+                  If .kiro/workflow-runs/{{run_id}}/haunted-web-credibility-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
+                  Write .kiro/workflow-runs/{{run_id}}/haunted-web-credibility-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  to:web and type:finding, then run
+                  `python3 scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/haunted-web-credibility-gate.json --review .kiro/workflow-runs/{{run_id}}/haunted-web-credibility-review.json --out .kiro/workflow-runs/{{run_id}}/haunted-web-credibility-loop.json`.
+  - type: step
+    id: integrate-credibility
+    agent: engine
+    modelId: claude-sonnet-5.5
+    prompt: |
+      Run {{run_id}}, step "integrate-credibility". Follow docs/RUN_PROTOCOL.md. Work in {{worktree_path}} (branch build/{{run_id}}).
+      Merge build/{{run_id}}-engine and build/{{run_id}}-web into build/{{run_id}} with `git merge --no-edit` (file ownership keeps them
+      disjoint; if a conflict appears anyway, stop and post a needs-human proposal). Then run `make pipeline` on data/sample and `make build`.
+      Write {"layer": "credibility", "merged": [...], "pipeline": "PASS|FAIL", "build": "PASS|FAIL"} to .kiro/workflow-runs/{{run_id}}/integrate-credibility.json
+      and post the result to the run log. A merge is not a commit of yours; any fix-up commit carries the trailers.
+  # ---------- Layer 3: delight ----------
+  - type: parallel
+    id: delight-parallel
+    joinPolicy: all
+    branches:
+      - type: sequence
+        id: delight-engine-branch
+        steps:
+          - type: repeat
+            id: zombie-engine-delight-loop
+            maxIterations: 3
+            onMaxIterations: abort
+            stopCondition:
+              fileCheck:
+                path: .kiro/workflow-runs/{{run_id}}/zombie-engine-delight-loop.json
+                jsonPath: $.done
+                value: true
+            steps:
+              - type: step
+                id: zombie-engine-delight-implement
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec zombie-engine, layer delight, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in {{worktree_path}}-engine (branch build/{{run_id}}-engine).
+                  First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/zombie-engine-delight-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Then implement the next unchecked tasks in .kiro/specs/zombie-engine/tasks.md tagged [delight] (and any unchecked [demo-critical] or [credibility] task), in order, citing requirement IDs
+                  in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
+                  Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
+              - type: step
+                id: zombie-engine-delight-validate
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec zombie-engine, layer delight, step "validate". Follow docs/RUN_PROTOCOL.md. Do not edit code in this step.
+                  Run `python3 scripts/validate_gate.py --cwd {{worktree_path}}-engine --out .kiro/workflow-runs/{{run_id}}/zombie-engine-delight-gate.json --target test --target lint` and report the status.
+              - type: step
+                id: zombie-engine-delight-review
+                agent: reviewer-stats
+                modelId: claude-opus-5.5
+                effortLevel: high
+                prompt: |
+                  Run {{run_id}}, spec zombie-engine, layer delight, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/zombie-engine/requirements.md and design.md,
+                  for the [delight] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
+                  Run `python3 scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
+                  If .kiro/workflow-runs/{{run_id}}/zombie-engine-delight-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
+                  Write .kiro/workflow-runs/{{run_id}}/zombie-engine-delight-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  to:engine and type:finding, then run
+                  `python3 scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/zombie-engine-delight-gate.json --review .kiro/workflow-runs/{{run_id}}/zombie-engine-delight-review.json --out .kiro/workflow-runs/{{run_id}}/zombie-engine-delight-loop.json`.
+          - type: repeat
+            id: durability-stats-delight-loop
+            maxIterations: 3
+            onMaxIterations: abort
+            stopCondition:
+              fileCheck:
+                path: .kiro/workflow-runs/{{run_id}}/durability-stats-delight-loop.json
+                jsonPath: $.done
+                value: true
+            steps:
+              - type: step
+                id: durability-stats-delight-implement
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec durability-stats, layer delight, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in {{worktree_path}}-engine (branch build/{{run_id}}-engine).
+                  First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/durability-stats-delight-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Then implement the next unchecked tasks in .kiro/specs/durability-stats/tasks.md tagged [delight] (and any unchecked [demo-critical] or [credibility] task), in order, citing requirement IDs
+                  in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
+                  Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
+              - type: step
+                id: durability-stats-delight-validate
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec durability-stats, layer delight, step "validate". Follow docs/RUN_PROTOCOL.md. Do not edit code in this step.
+                  Run `python3 scripts/validate_gate.py --cwd {{worktree_path}}-engine --out .kiro/workflow-runs/{{run_id}}/durability-stats-delight-gate.json --target test --target lint` and report the status.
+              - type: step
+                id: durability-stats-delight-review
+                agent: reviewer-stats
+                modelId: claude-opus-5.5
+                effortLevel: high
+                prompt: |
+                  Run {{run_id}}, spec durability-stats, layer delight, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/durability-stats/requirements.md and design.md,
+                  for the [delight] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
+                  Run `python3 scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
+                  If .kiro/workflow-runs/{{run_id}}/durability-stats-delight-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
+                  Write .kiro/workflow-runs/{{run_id}}/durability-stats-delight-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  to:engine and type:finding, then run
+                  `python3 scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/durability-stats-delight-gate.json --review .kiro/workflow-runs/{{run_id}}/durability-stats-delight-review.json --out .kiro/workflow-runs/{{run_id}}/durability-stats-delight-loop.json`.
+          - type: repeat
+            id: nightly-and-deploy-delight-loop
+            maxIterations: 3
+            onMaxIterations: abort
+            stopCondition:
+              fileCheck:
+                path: .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-delight-loop.json
+                jsonPath: $.done
+                value: true
+            steps:
+              - type: step
+                id: nightly-and-deploy-delight-implement
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec nightly-and-deploy, layer delight, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in {{worktree_path}}-engine (branch build/{{run_id}}-engine).
+                  First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-delight-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Then implement the next unchecked tasks in .kiro/specs/nightly-and-deploy/tasks.md tagged [delight] (and any unchecked [demo-critical] or [credibility] task), in order, citing requirement IDs
+                  in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
+                  Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
+              - type: step
+                id: nightly-and-deploy-delight-validate
+                agent: engine
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec nightly-and-deploy, layer delight, step "validate". Follow docs/RUN_PROTOCOL.md. Do not edit code in this step.
+                  Run `python3 scripts/validate_gate.py --cwd {{worktree_path}}-engine --out .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-delight-gate.json --target test --target lint` and report the status.
+              - type: step
+                id: nightly-and-deploy-delight-review
+                agent: reviewer-stats
+                modelId: claude-opus-5.5
+                effortLevel: high
+                prompt: |
+                  Run {{run_id}}, spec nightly-and-deploy, layer delight, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/nightly-and-deploy/requirements.md and design.md,
+                  for the [delight] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
+                  Run `python3 scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
+                  If .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-delight-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
+                  Write .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-delight-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  to:engine and type:finding, then run
+                  `python3 scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-delight-gate.json --review .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-delight-review.json --out .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-delight-loop.json`.
+      - type: sequence
+        id: delight-web-branch
+        steps:
+          - type: repeat
+            id: haunted-web-delight-loop
+            maxIterations: 3
+            onMaxIterations: abort
+            stopCondition:
+              fileCheck:
+                path: .kiro/workflow-runs/{{run_id}}/haunted-web-delight-loop.json
+                jsonPath: $.done
+                value: true
+            steps:
+              - type: step
+                id: haunted-web-delight-implement
+                agent: web
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec haunted-web, layer delight, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in {{worktree_path}}-web (branch build/{{run_id}}-web).
+                  First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
+                  Read open to:web findings and .kiro/workflow-runs/{{run_id}}/haunted-web-delight-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Then implement the next unchecked tasks in .kiro/specs/haunted-web/tasks.md tagged [delight] (and any unchecked [demo-critical] or [credibility] task), in order, citing requirement IDs
+                  in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
+                  Commit after each task with the Kiro-Agent: web and Kiro-Run: {{run_id}} trailers.
+              - type: step
+                id: haunted-web-delight-validate
+                agent: web
+                modelId: claude-sonnet-5.5
+                prompt: |
+                  Run {{run_id}}, spec haunted-web, layer delight, step "validate". Follow docs/RUN_PROTOCOL.md. Do not edit code in this step.
+                  Run `python3 scripts/validate_gate.py --cwd {{worktree_path}}-web --out .kiro/workflow-runs/{{run_id}}/haunted-web-delight-gate.json --target test --target build` and report the status.
+              - type: step
+                id: haunted-web-delight-review
+                agent: reviewer-ux
+                modelId: claude-opus-5.5
+                effortLevel: high
+                prompt: |
+                  Run {{run_id}}, spec haunted-web, layer delight, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Review the commits on build/{{run_id}}-web since the last review (`git log`, `git diff`) against .kiro/specs/haunted-web/requirements.md and design.md,
+                  for the [delight] tasks. Build the site (`make build`) and use Playwright to screenshot the pages this layer touched into docs/screenshots/{{run_id}}/. Check design-system.md (every Banned default), voice.md (TODO-COPY placeholders are allowed), accessibility basics, and answer 'If the name were removed, could this be any generic dashboard?' (yes = CHANGES_REQUESTED).
+                  Run `python3 scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-web --require-run {{run_id}}`; missing trailers are a finding.
+                  If .kiro/workflow-runs/{{run_id}}/haunted-web-delight-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
+                  Write .kiro/workflow-runs/{{run_id}}/haunted-web-delight-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  to:web and type:finding, then run
+                  `python3 scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/haunted-web-delight-gate.json --review .kiro/workflow-runs/{{run_id}}/haunted-web-delight-review.json --out .kiro/workflow-runs/{{run_id}}/haunted-web-delight-loop.json`.
+  - type: step
+    id: integrate
+    agent: engine
+    modelId: claude-sonnet-5.5
+    prompt: |
+      Run {{run_id}}, step "integrate". Follow docs/RUN_PROTOCOL.md. Work in {{worktree_path}} (branch build/{{run_id}}).
+      Merge build/{{run_id}}-engine and build/{{run_id}}-web into build/{{run_id}} with `git merge --no-edit` (file ownership keeps them
+      disjoint; if a conflict appears anyway, stop and post a needs-human proposal). Then run `make pipeline` on data/sample and `make build`, then `make e2e` (Playwright judge-mode path) and `make test`.
+      Write {"layer": "delight", "merged": [...], "pipeline": "PASS|FAIL", "build": "PASS|FAIL"} to .kiro/workflow-runs/{{run_id}}/integrate.json
+      and post the result to the run log. A merge is not a commit of yours; any fix-up commit carries the trailers.
+  # ---------- Design gate ----------
+  - type: repeat
+    id: design-gate
+    maxIterations: 3
+    onMaxIterations: abort
+    stopCondition:
+      fileCheck:
+        path: .kiro/workflow-runs/{{run_id}}/design-loop.json
+        jsonPath: $.done
+        value: true
+    steps:
+      - type: step
+        id: design-fix
+        agent: web
+        modelId: claude-sonnet-5.5
+        prompt: |
+          Run {{run_id}}, step "design-fix". Follow docs/RUN_PROTOCOL.md. Work in {{worktree_path}} (branch build/{{run_id}}), web/ only.
+          Fix every open to:web finding and every finding in .kiro/workflow-runs/{{run_id}}/design-review.json (if it exists).
+          Never write human copy: leave TODO-COPY placeholders. Commit with the Kiro-Agent: web and Kiro-Run: {{run_id}} trailers.
+      - type: step
+        id: design-validate
+        agent: web
+        modelId: claude-sonnet-5.5
+        prompt: |
+          Run {{run_id}}, step "design-validate". Follow docs/RUN_PROTOCOL.md. Do not edit code.
+          Run `python3 scripts/validate_gate.py --cwd {{worktree_path}} --out .kiro/workflow-runs/{{run_id}}/design-gate.json --target copy-lint --target build --target e2e`.
+          copy-lint must report 0 banned items; TODO-COPY markers are allowed until the human copy pass.
+      - type: step
+        id: design-review
+        agent: reviewer-ux
+        modelId: claude-opus-5.5
+        effortLevel: high
+        prompt: |
+          Run {{run_id}}, step "design-review". Follow docs/RUN_PROTOCOL.md. Read-only except your review file and docs/screenshots/.
+          Serve the build from {{worktree_path}} (`npm run preview` in web/) and use Playwright to screenshot EVERY page into
+          docs/screenshots/{{run_id}}/: map, autopsy card, scorecard, survival and funnel charts, methods page, judge mode, table view,
+          on desktop and phone widths. Check every item in design-system.md "Banned defaults", palette meaning, type, layout, motion and
+          reduced motion, voice.md, and accessibility basics. Answer "If the name were removed, could this be any generic dashboard?"
+          (yes = CHANGES_REQUESTED). If design-gate.json is not PASS the verdict is CHANGES_REQUESTED.
+          Write .kiro/workflow-runs/{{run_id}}/design-review.json ({"verdict", "generic_dashboard", "findings"}), file findings as to:web
+          type:finding issues, then run `python3 scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/design-gate.json --review .kiro/workflow-runs/{{run_id}}/design-review.json --out .kiro/workflow-runs/{{run_id}}/design-loop.json`.
+  # ---------- Preview ----------
+  - type: step
+    id: preview
+    agent: wf-pr-submitter
+    modelId: claude-sonnet-5.5
+    prompt: |
+      Run {{run_id}}, step "preview". Follow docs/RUN_PROTOCOL.md.
+      Push branch build/{{run_id}} (normal push, never force) and open a pull request into main titled
+      "Build {{run_id}}: demo-critical, credibility, delight layers" using the REST API (`gh api repos/ShroudedArrow/undead-311/pulls ...`),
+      body = the run log link from .kiro/workflow-runs/{{run_id}}/channel.json plus the per-layer loop results. The PR's deploy preview
+      (static host from the nightly-and-deploy spec) is the preview URL; wait up to 10 minutes for it. If no hosted preview exists,
+      record that and use `npm run preview` in {{worktree_path}}/web as the local preview. Write {"pr": "<url>", "preview": "<url or local>"}
+      to .kiro/workflow-runs/{{run_id}}/preview.json and post the preview link to the run-log issue. Never merge.
+  - type: step
+    id: preview-review
+    agent: reviewer-ux
+    modelId: claude-opus-5.5
+    effortLevel: high
+    prompt: |
+      Run {{run_id}}, step "preview-review". Follow docs/RUN_PROTOCOL.md. Read-only except your review file.
+      Run your Playwright review against the URL in .kiro/workflow-runs/{{run_id}}/preview.json (judge-mode tour end to end, no login,
+      "Data as of" visible, footer text, no third-party requests at runtime). Write .kiro/workflow-runs/{{run_id}}/preview-review.json
+      and file findings as to:web type:finding issues (they are fixed in the next run; this step does not loop).
+  - type: step
+    id: retro
+    agent: engine
+    modelId: claude-sonnet-5.5
+    prompt: |
+      Run {{run_id}}, step "retro". Follow docs/RUN_PROTOCOL.md.
+      Read the run-log issue and every file in .kiro/workflow-runs/{{run_id}}/. Add at most three one-line entries to docs/LEARNINGS.md
+      (gotchas only: data quirks, library traps, failed approaches), and draft one candidate line for the Kiro write-up in
+      .kiro/workflow-runs/{{run_id}}/writeup-candidate.md. Commit on build/{{run_id}} with the trailers.
+  - type: step
+    id: report
+    agent: engine
+    modelId: claude-sonnet-5.5
+    prompt: |
+      Run {{run_id}}, step "report". Follow docs/RUN_PROTOCOL.md.
+      Write .kiro/workflow-runs/{{run_id}}/report.md: what was built per spec and layer (tasks checked vs. total), loop iterations,
+      failing items, open findings, the preview link, the trailer check over build/{{run_id}}, and next steps. Append one line to
+      docs/KIRO_LOG.md (kiro-log.md format). Post the summary as the final run-log comment, close the run-log issue, delete the
+      RUNNING marker, and leave the PR for the human to review and merge.
