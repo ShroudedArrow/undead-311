@@ -163,3 +163,32 @@ def test_req_exp_1_web_contract_shard_names_resurrection_date_and_card_partial_f
     assert card["resurrection_date"] == "2024-03-26" and card["confidence_partial"] is True
     idx = p["points.json"]["id"].index("101099001001:101099001002")
     assert p["points.json"]["year"][idx] == 2024
+
+
+def test_req_exp_1_1_card_original_is_the_closing_member_that_the_label_and_gap_come_from(tmp_path):
+    """REQ-EXP-1.1, ZD step 2 (ops#32): a two-member incident shows the latest-closing member as the original, so the
+    closure text, the close time and the gap on the card agree."""
+    cs = [
+        mk("A", 0, 1, text="Closed early", label="resolved"),
+        mk("B", 0.5, 3, text="Closed last", label="made_safe_temporary"),
+        mk("R", 10),
+    ]
+    result = detect(cs)
+    (z,) = result.zombies
+    assert z.member_ids == ("A", "B") and z.coroner_label == "made_safe_temporary"
+    ctx = ExportContext(data_version="v", run_time="t")
+    card = next(v for k, v in build_payloads(result, {c.id: c for c in cs}, ctx).items() if k.startswith("cards/"))["cards"][0]
+    assert card["original"]["id"] == "B" and card["original"]["closure_text"] == "Closed last"
+    assert card["original"]["close_time"].startswith("2024-03-07")  # day 3 after 2024-03-04
+    assert abs(card["gap_days"] - 7.0) < 1e-6  # R opens on day 10, the incident closes on day 3
+
+
+def test_req_det_pf_planned_followups_are_counted_in_status(tmp_path):
+    """REQ-DET-PF, ZD output `is_planned_followup` (ops#33): follow-ups are not zombies; status.json counts them."""
+    cs = [mk("A", 0, 1, label="made_safe_temporary"), mk("R", 5, source="Employee Generated")]
+    result = detect(cs)
+    assert not result.zombies and len(result.planned_followups) == 1
+    export_all(result, {c.id: c for c in cs}, tmp_path, ExportContext(data_version="v", run_time="t"))
+    status = json.loads((tmp_path / "status.json").read_text())
+    assert status["planned_followup_count"] == 1 and status["headline_count"] == 0
+    assert all(not z["is_planned_followup"] for z in json.loads((tmp_path / "zombies.json").read_text())["zombies"])

@@ -75,3 +75,14 @@ def test_req_ing_sample_1_sample_run_needs_no_raw_data_and_writes_valid_files(tm
     assert (out / "status.json").is_file() and (out / "zombies.json").is_file()
     assert rep.excluded_pairs["transferred_original"] > 0 and rep.file_sizes["status.json"] > 0
     assert "sample" in rep.summary()
+    # ops#29: the city-originated share and the under-1-h count are reported, with the planned follow-ups kept out
+    co = rep.city_origin
+    assert co["headline"] == rep.tier_counts["headline"] and 0 < co["city_originated"] <= co["headline"]
+    assert co["city_originated_under_1h"] <= co["city_originated"]
+    assert "city-originated headline resurrections" in rep.summary()
+    status = json.loads((out / "status.json").read_text())
+    assert status["headline_city_originated_count"] == co["city_originated"]
+    assert status["headline_city_originated_under_1h_count"] == co["city_originated_under_1h"]
+    assert status["planned_followup_count"] == rep.planned_followups
+    if co["city_originated_share"] >= 0.5:
+        assert any("city-originated" in a for a in status["anomalies"])

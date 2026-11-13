@@ -79,6 +79,24 @@ class _Inc:
         return min(self.members, key=lambda m: (-m.close_utc.timestamp(), m.id))  # type: ignore[union-attr]
 
 
+def is_city_originated(c: Case) -> bool:
+    """A legacy case opened by the city (ZD step 6): city source or an internal or work-order type. A new-system case is
+    never known to be city-originated (REQ-DET-PF.2)."""
+    return c.system == "legacy" and (c.source in CITY_SOURCES or c.city_originated_type)
+
+
+def city_origin_summary(result: DetectionResult, cases: dict[str, Case]) -> dict[str, float | int]:
+    """How many headline resurrections are legacy city-originated, and how many of those opened under 1 h after the
+    closure (REQ-DET-PF, methods.md: results with and without city-originated re-reports). Reported, never filtered."""
+    headline = [z for z in result.zombies if z.tier == "headline"]
+    city = [z for z in headline if is_city_originated(cases[z.resurrection_id])]
+    quick = [z for z in city if z.gap_days < 1 / 24]
+    return {
+        "headline": len(headline), "city_originated": len(city), "city_originated_under_1h": len(quick),
+        "city_originated_share": len(city) / len(headline) if headline else 0.0,
+    }  # fmt: skip
+
+
 def _adjacency(edges: Edges) -> dict[str, list[tuple[str, Match]]]:
     adj: dict[str, list[tuple[str, Match]]] = defaultdict(list)
     for (a, b), m in sorted(edges.items()):
@@ -238,7 +256,7 @@ def detect(cases: list[Case], p: Params = DEFAULT, edges: Edges | None = None) -
         after_temp = source_unknown = False
         if inc.coroner_label in PF_LABELS:
             if res.system == "legacy":
-                if res.source in CITY_SOURCES or res.city_originated_type:
+                if is_city_originated(res):
                     result.planned_followups.append(PlannedFollowup(iid, res.id))
                     continue
                 after_temp = inc.coroner_label == "made_safe_temporary"
@@ -324,4 +342,4 @@ def detect(cases: list[Case], p: Params = DEFAULT, edges: Edges | None = None) -
     return result
 
 
-__all__ = ["build_incidents", "candidate_pairs", "detect", "mirror_ids"]
+__all__ = ["build_incidents", "candidate_pairs", "city_origin_summary", "detect", "is_city_originated", "mirror_ids"]

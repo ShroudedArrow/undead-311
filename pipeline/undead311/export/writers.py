@@ -93,6 +93,7 @@ class ExportContext:
     bulk_closures: list[dict] = field(default_factory=list)
     stats_status: Mapping[str, Any] | None = None
     data_end: str | None = None
+    city_origin: Mapping[str, Any] | None = None
     ok: bool = True
 
 
@@ -122,6 +123,12 @@ def case_record(c: Case) -> dict:
 
 def _representative(z: Zombie, cases: Mapping[str, Case]) -> Case:
     return min((cases[m] for m in z.member_ids), key=lambda c: (c.open_utc, c.id))
+
+
+def _closer(z: Zombie, cases: Mapping[str, Case]) -> Case:
+    """The latest-closing member, ties by smallest ID: the closure that ended the incident (ZD step 2). It is the source of
+    the Coroner label and of `gap_days`, so the card's `original` shows this case (REQ-EXP-1.1)."""
+    return min((cases[m] for m in z.member_ids), key=lambda c: (-c.close_utc.timestamp(), c.id))  # type: ignore[union-attr]
 
 
 def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: ExportContext) -> dict[str, Any]:
@@ -160,7 +167,7 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
         res = cases[z.resurrection_id]
         shards[f"{slug(z.neighborhood)}-{z.resurrection_date[:4]}"].append(
             {
-                "zombie_id": z.zombie_id, "original": case_record(reps[z.zombie_id]), "rereport": case_record(res),
+                "zombie_id": z.zombie_id, "original": case_record(_closer(z, cases)), "rereport": case_record(res),
                 "cause_of_death": z.coroner_label, "gap_days": round(z.gap_days, 6),
                 "resurrection_date": z.resurrection_date, "confidence": round(z.confidence, 6),
                 "confidence_partial": z.confidence_partial,
@@ -211,6 +218,10 @@ def build_status(result: DetectionResult, ctx: ExportContext) -> dict:
         "headline_count": result.headline_count, "source_unknown_count": result.count("source_unknown"),
         "sensitivity_count": result.count("sensitivity"),
     }  # fmt: skip
+    status["planned_followup_count"] = len(result.planned_followups)
+    if ctx.city_origin:
+        status["headline_city_originated_count"] = int(ctx.city_origin["city_originated"])
+        status["headline_city_originated_under_1h_count"] = int(ctx.city_origin["city_originated_under_1h"])
     if ctx.data_end:
         status["data_end"] = ctx.data_end
     return status

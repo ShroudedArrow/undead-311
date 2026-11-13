@@ -57,6 +57,21 @@
     },
     "data_end": {
       "type": "string"
+    },
+    "planned_followup_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Re-reports kept out of zombies as planned city follow-ups (ZD step 6); REQ-DET-PF"
+    },
+    "headline_city_originated_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Headline resurrections that are legacy city-originated cases; REQ-DET-PF"
+    },
+    "headline_city_originated_under_1h_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Of those, opened under 1 h after the closure; REQ-DET-PF"
     }
   },
   "required": [
