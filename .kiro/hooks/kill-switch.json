@@ -12,10 +12,9 @@
       "timeout": 20
     },
     {
-      "name": "kill-switch-shell",
-      "description": "Same check before every shell command (PreTaskExec does not fire in Kiro Web).",
+      "name": "kill-switch-tool",
+      "description": "Runs on every PreToolUse event (no matcher; PreTaskExec does not fire in Kiro Web). The script halts shell tools and file-writing tools while a stop signal exists, and allows reads and unknown tools.",
       "trigger": "PreToolUse",
-      "matcher": "shell",
       "action": {
         "type": "command",
         "command": "python3 \"$(git rev-parse --show-toplevel)\"/scripts/kill_switch.py"

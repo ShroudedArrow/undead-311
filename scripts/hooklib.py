@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.error
@@ -62,6 +63,25 @@ def tool_input(payload: dict[str, Any]) -> dict[str, Any]:
         except Exception:  # noqa: BLE001
             ti = {"command": ti}
     return ti if isinstance(ti, dict) else {}
+
+
+# Tool classification. Hooks run on EVERY PreToolUse event (no matcher in the hook files), so the scripts decide
+# from the tool name and arguments themselves. Anything that is neither a shell tool nor a file-writing tool is
+# "other" and is always allowed (reads, searches, web fetches, messages, workflow tools, unknown tools).
+_READ_ONLY_RE = re.compile(r"(^|[^a-z])(read|list|ls|grep|search|find|get|fetch|view|inspect|load|query)([^a-z]|$)", re.I)
+_SHELL_RE = re.compile(r"(shell|bash|terminal|powershell|zsh|(^|[^a-z])(sh|cmd|exec|execute|run_command|run_shell)([^a-z]|$))", re.I)
+_WRITE_RE = re.compile(r"(write|edit|replace|append|create|delete|remove|patch|save|rename|move|insert|overwrite)", re.I)
+
+
+def tool_kind(name: str) -> str:
+    """'shell', 'write' or 'other' from the tool name alone. Unknown names are 'other' (allowed)."""
+    if not name:
+        return "other"
+    if _SHELL_RE.search(name):
+        return "shell"
+    if _WRITE_RE.search(name) and not _READ_ONLY_RE.search(name):
+        return "write"
+    return "other"
 
 
 def token() -> str | None:

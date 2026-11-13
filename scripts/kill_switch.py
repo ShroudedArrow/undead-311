@@ -1,4 +1,8 @@
-"""Kill switch hook (PreTaskExec, and PreToolUse for shell). Standard library only.
+"""Kill switch hook (PreTaskExec, and PreToolUse on EVERY tool call; no matcher). Standard library only.
+
+On PreToolUse the script classifies the call itself (hooklib.tool_kind): shell tools and file-writing tools are
+halted when a stop signal exists; reads, searches and every other or unknown tool are always allowed (so a stopped
+session can still be inspected). With no tool payload (PreTaskExec, or `--check`) the check always applies.
 
 Blocks (exit 2) when:
   * `.kiro/STOP` exists in the working tree, or
@@ -55,9 +59,16 @@ def decide(root: Path) -> tuple[bool, str]:
     return False, "no stop signal" + (" (GitHub unreachable, fail-open)" if issues is None else "")
 
 
+def applies(payload: dict) -> bool:
+    """True when the call should be halted by a stop signal: no tool named (task hook), a shell tool or a writer."""
+    name = hooklib.tool_name(payload)
+    return not name or hooklib.tool_kind(name) in ("shell", "write")
+
+
 def main() -> int:
-    if "--check" not in sys.argv:
-        hooklib.read_payload()  # drain stdin; the decision does not depend on it
+    payload = {} if "--check" in sys.argv else hooklib.read_payload()
+    if not applies(payload):
+        return 0
     blocked, why = decide(hooklib.repo_root())
     if blocked:
         hooklib.log_stderr(f"KILL SWITCH: {why}. Halting. Close the stop issue / remove .kiro/STOP (humans only) to resume.")
