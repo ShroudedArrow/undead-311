@@ -11,11 +11,11 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
   - Generate types from `/schemas/`; ajv standalone validators (CSP-safe); per-panel error states; fixture files from `data/sample/` that follow the schemas until real exports exist.
   - [x] 2.1 Property W1: parsers accept every schema-valid generated file and reject files missing a required field. _REQ-WEB-DATA.1; testing.md #16_
   - _Requirements: REQ-WEB-DATA.1–3_
-- [ ] 3. [demo-critical] Filtering and aggregation library
+- [x] 3. [demo-critical] Filtering and aggregation library
   - `lib/filter.ts` (`applyFilters`, `aggregate`), `TierMode`.
-  - [ ] 3.1 Property W2: the filter result is a subset; empty filters with `all` return the input. _REQ-WEB-MAP.2_
-  - [ ] 3.2 Property W3: filters commute and are idempotent. _REQ-WEB-MAP.3_
-  - [ ] 3.3 Property W5: aggregate counts sum to the filtered total and are never negative. _REQ-WEB-MAP.2_
+  - [x] 3.1 Property W2: the filter result is a subset; empty filters with `all` return the input. _REQ-WEB-MAP.2_
+  - [x] 3.2 Property W3: filters commute and are idempotent. _REQ-WEB-MAP.3_
+  - [x] 3.3 Property W5: aggregate counts sum to the filtered total and are never negative. _REQ-WEB-MAP.2_
   - _Requirements: REQ-WEB-MAP.2–4_
 - [ ] 4. [demo-critical] Haunted map
   - MapLibre with a self-hosted Boston PMTiles extract restyled to the palette (no default dark style); deck.gl IconLayer with a 3–5 sprite atlas (placeholder sprites until the owner's spray-paint scans exist; record that in the PR); filters UI; count; OSM attribution.
