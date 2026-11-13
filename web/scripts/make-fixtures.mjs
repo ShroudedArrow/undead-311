@@ -36,6 +36,9 @@ const dist = (a, b) => {
   return 2 * R * Math.asin(Math.sqrt(x));
 };
 const DAY = 86400000;
+// UX-1 (ops#14): the stand-in only pairs a re-report that opens at least a day after the closure, never a crew log entry.
+const MIN_GAP_DAYS = 1;
+const CITY_SOURCES = new Set(["Employee Generated", "City Worker App", "Maximo Integration"]);
 const round = (x, n = 3) => Math.round(x * 10 ** n) / 10 ** n;
 const cleanText = (s) => (s || "").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 const scrubStreet = (s) => cleanText(s).replace(/^INTERSECTION\s+/i, "").replace(/^\d+[A-Za-z-]*\s+/, "") || null;
@@ -60,6 +63,21 @@ function wilson(k, n) {
   return { rate: round(p, 4), lo: round(Math.max(0, c - h), 4), hi: round(Math.min(1, c + h), 4), k, n };
 }
 
+/** UX-1: three headline zombies that survive the Skeptic, one per gap band and per type family where possible. */
+export function pickTour(zs) {
+  const pool = zs.filter((z) => z.tier === "headline" && z.skeptic_verdict === "survives" && !z.bulk_closure && !z.confidence_partial)
+    .sort((x, y) => y.confidence - x.confidence || (x.zombie_id < y.zombie_id ? -1 : 1));
+  const bands = [[1, 10], [10, 30], [30, 61]];
+  const picked = [];
+  for (const [lo, hi] of bands) {
+    const inBand = pool.filter((z) => z.gap_days >= lo && z.gap_days < hi && !picked.includes(z));
+    const z = inBand.find((c) => !picked.some((p) => p.type_family === c.type_family)) ?? inBand[0];
+    if (z) picked.push(z);
+  }
+  for (const z of pool) if (picked.length < 3 && !picked.includes(z)) picked.push(z);
+  return picked.map((z) => z.zombie_id);
+}
+
 export function buildFixtures(rows) {
   const cases = rows
     .map((r) => ({
@@ -67,6 +85,7 @@ export function buildFixtures(rows) {
       openIso: r.open_time_utc, closeIso: r.close_time_utc || null, status: r.status, text: cleanText(r.closure_text), code: r.closure_code,
       type_raw: r.type_raw, family: r.type_family, dept: r.department || null, hood: r.neighborhood || null, street: scrubStreet(r.street),
       lat: Number(r.lat), lon: Number(r.lon), source: r.source,
+      cityOriginated: r.system === "legacy" && (CITY_SOURCES.has(r.source) || r.city_originated_type === "true"),
     }))
     .filter((c) => Number.isFinite(c.lat) && Number.isFinite(c.lon) && Number.isFinite(c.open));
 
@@ -85,7 +104,7 @@ export function buildFixtures(rows) {
     const [f, la, lo] = [a.family, Math.floor(a.lat / 0.0005), Math.floor(a.lon / 0.0005)];
     for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
       for (const b of grid.get(`${f}|${la + i}|${lo + j}`) ?? []) {
-        if (b.id === a.id || seenRe.has(b.id) || b.open <= a.close || b.open > a.close + 60 * DAY) continue;
+        if (b.id === a.id || seenRe.has(b.id) || b.cityOriginated || b.open < a.close + MIN_GAP_DAYS * DAY || b.open > a.close + 60 * DAY) continue;
         const d = dist(a, b);
         if (d > 30) continue;
         if (!best || b.open < best.b.open || (b.open === best.b.open && b.id < best.b.id)) best = { b, d };
@@ -120,9 +139,23 @@ export function buildFixtures(rows) {
     });
   }
 
-  // keep the fixture small: the 400 highest-confidence pairs, plus any ids needed for the tour
-  zombies.sort((x, y) => y.confidence - x.confidence || (x.zombie_id < y.zombie_id ? -1 : 1));
-  const keep = new Set(zombies.slice(0, 400).map((z) => z.zombie_id));
+  // keep the fixture small: the 400 highest-confidence pairs, then make sure the kept set exercises the bulk warning and
+  // the partial note (REQ-WEB-CARD.1, .6): swap in the best flagged pairs for the lowest-confidence unflagged ones.
+  // The cut ignores the gap term of the confidence stand-in, so short and long gaps both survive it (UX-1).
+  const cut = (z) => z.confidence + z.gap_days / 150;
+  zombies.sort((x, y) => cut(y) - cut(x) || (x.zombie_id < y.zombie_id ? -1 : 1));
+  const kept = zombies.slice(0, 400);
+  const rest = zombies.slice(400);
+  for (const flag of ["bulk_closure", "confidence_partial"]) {
+    const want = 8;
+    const have = kept.filter((z) => z[flag]).length;
+    const extra = rest.filter((z) => z[flag]).slice(0, Math.max(0, want - have));
+    for (const z of extra) {
+      const victim = kept.findLastIndex((k) => !k.bulk_closure && !k.confidence_partial);
+      if (victim >= 0) kept.splice(victim, 1, z);
+    }
+  }
+  const keep = new Set(kept.map((z) => z.zombie_id));
   const zs = zombies.filter((z) => keep.has(z.zombie_id)).sort((x, y) => (x.zombie_id < y.zombie_id ? -1 : 1));
   const byId = new Map(cards.map((c) => [c.card.zombie_id, c]));
   const coords = new Map(cases.map((c) => [c.id, c]));
@@ -162,7 +195,7 @@ export function buildFixtures(rows) {
   const dataEnd = new Date(Math.max(...cases.map((c) => c.close ?? c.open))).toISOString().slice(0, 10);
   const version = `fixture-${dataEnd}`;
   points.data_version = version;
-  const top = [...zs].sort((x, y) => y.confidence - x.confidence).filter((z) => z.tier === "headline").slice(0, 3).map((z) => z.zombie_id);
+  const top = pickTour(zs);
 
   return {
     version,
@@ -171,7 +204,7 @@ export function buildFixtures(rows) {
       "points.json": points,
       "scorecard.json": { data_version: version, scorecards, counts: tally },
       "status.json": { data_version: version, last_run: `${dataEnd}T02:00:00Z`, ok: true, row_counts: { cases: rows.length, zombies: zs.length }, anomalies: [], segments: "missing", headline_count: tally.headline, source_unknown_count: tally.source_unknown, sensitivity_count: tally.sensitivity, data_end: dataEnd },
-      "judge_tour.json": { data_version: version, provisional: true, zombie_ids: top, source: "most_reports" },
+      "judge_tour.json": { data_version: version, provisional: true, zombie_ids: top, source: "override" },
       "validation.json": { data_version: version, status: "awaiting_field_labels", precision: null, cant_tell_share: null, kappa: null, confirmed: [], sample_ids: [] },
     },
     shards: Object.fromEntries([...shards.entries()].sort().map(([k, v]) => [`cards/${k}.json`, { data_version: version, shard: k, cards: v.sort((x, y) => (x.zombie_id < y.zombie_id ? -1 : 1)) }])),

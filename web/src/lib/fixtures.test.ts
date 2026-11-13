@@ -45,4 +45,32 @@ describe("fixture files follow the schemas (REQ-WEB-DATA.3)", () => {
     expect(tour.data.zombie_ids).toHaveLength(3);
     for (const id of tour.data.zombie_ids) expect(ids.has(id)).toBe(true);
   });
+
+  it("every kept pair re-reports at least a day after the closure (UX-1, REQ-WEB-DATA.3)", () => {
+    const zs = parseZombies(read("zombies.json"));
+    if (!zs.ok) throw new Error("fixture does not parse");
+    for (const z of zs.data.zombies) expect(z.gap_days).toBeGreaterThanOrEqual(1);
+    const gaps = zs.data.zombies.map((z) => z.gap_days);
+    expect(Math.max(...gaps)).toBeGreaterThan(30);
+  });
+
+  it("the kept set includes bulk-closure and partial-confidence cards, so those states render (REQ-WEB-CARD.1, .6)", () => {
+    const zs = parseZombies(read("zombies.json"));
+    if (!zs.ok) throw new Error("fixture does not parse");
+    const flagged = zs.data.zombies as unknown as { bulk_closure?: boolean; confidence_partial?: boolean }[];
+    expect(flagged.some((z) => z.bulk_closure)).toBe(true);
+    expect(flagged.some((z) => z.confidence_partial)).toBe(true);
+  });
+
+  it("the tour shows a spread of gaps and more than one case type (UX-1)", () => {
+    const tour = parseJudgeTour(read("judge_tour.json"));
+    const zs = parseZombies(read("zombies.json"));
+    if (!tour.ok || !zs.ok) throw new Error("fixture does not parse");
+    const picked = zs.data.zombies.filter((z) => tour.data.zombie_ids.includes(z.zombie_id));
+    expect(picked).toHaveLength(3);
+    expect(new Set(picked.map((z) => z.type_family)).size).toBeGreaterThan(1);
+    const gaps = picked.map((z) => z.gap_days);
+    expect(Math.max(...gaps) - Math.min(...gaps)).toBeGreaterThan(5);
+    expect(tour.data.provisional).toBe(true);
+  });
 });
