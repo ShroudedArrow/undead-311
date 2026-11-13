@@ -22,6 +22,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
+from undead311.detect.confidence import rescore
 from undead311.detect.edges import brute_edges
 from undead311.detect.match import better
 from undead311.detect.model import (
@@ -225,6 +226,7 @@ def detect(cases: list[Case], p: Params = DEFAULT, edges: Edges | None = None) -
 
     # 4. classification and tiers
     pending: list[tuple[Incident, Case, int, bool, bool, Tier, Match]] = []
+    by_id = {c.id: c for c in cases}
     for iid in sorted(attached):
         inc, rs = final[iid], attached[iid]
         res = rs[0]
@@ -291,8 +293,7 @@ def detect(cases: list[Case], p: Params = DEFAULT, edges: Edges | None = None) -
 
     for inc, res, n_after, after_temp, source_unknown, tier, m in pending:
         chain = chain_of[inc.incident_id]
-        result.zombies.append(
-            Zombie(
+        z = Zombie(
                 incident_id=inc.incident_id,
                 member_ids=inc.member_ids,
                 resurrection_id=res.id,
@@ -314,7 +315,8 @@ def detect(cases: list[Case], p: Params = DEFAULT, edges: Edges | None = None) -
                 district=inc.district,
                 segment_id=inc.segment_id,
             )
-        )
+        catch_all = res.catch_all or any(by_id[mid].catch_all for mid in inc.member_ids)
+        result.zombies.append(rescore(z, p, catch_all=catch_all))
     result.zombies.sort(key=lambda z: z.zombie_id)
     result.planned_followups.sort(key=lambda z: (z.incident_id, z.resurrection_id))
     result.separate_deaths.sort(key=lambda z: (z.incident_id, z.rereport_id))

@@ -73,9 +73,9 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
   - `fixtures.py` loads the raw fixture rows into `cases_norm` and runs the normal crosswalk, catch-all, clean and detect path; `golden_result()` builds the worksheet format; `schemas/test_town_expected.schema.json` validates the owner's file.
   - The golden test fails (never skips) when `expected_zombies.json` is missing. Never create or edit that file.
   - _Requirements: REQ-DET-GOLD.1–5_
-- [ ] 16. [demo-critical] Confidence score (partial)
+- [x] 16. [demo-critical] Confidence score (partial)
   - `detect/confidence.py` with the formula in design.md; neutral terms and `confidence_partial`; write the formula and weights into `docs/METHODS.md` (section "Confidence score") marked "pending owner approval".
-  - [ ] 16.1 Property P19: confidence is in [0, 1]; `confidence_partial` is true exactly when a term is neutral. _REQ-CONF.1–2_
+  - [x] 16.1 Property P19: confidence is in [0, 1]; `confidence_partial` is true exactly when a term is neutral. _REQ-CONF.1–2_
   - _Requirements: REQ-CONF.1–3_
 - [ ] 17. [demo-critical] Skeptic input and join
   - `detect/skeptic.py`: `skeptic_input.json` (validation sample, tour zombies, 200 headline zombies with the most re-reports; never by confidence) and the join of `data/labels/skeptic_objections.json` with `not_reviewed` default.
