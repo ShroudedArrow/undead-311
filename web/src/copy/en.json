@@ -2,10 +2,23 @@
   "_note": "All user-facing text lives here (voice.md). TODO-COPY entries are written by the team before the Dec 2 freeze.",
   "app": {
     "title": "The Undead 311",
+    "skip_to_content": "Skip to the main content",
     "hero_line": "TODO-COPY: hero line (what the map shows: Boston 311 cases closed, then reported again at the same place).",
     "hero_subtitle": "TODO-COPY: hero subtitle (one sentence on possible zombies and why measured counts are a floor).",
     "footer_independent": "Independent project. Not affiliated with the City of Boston.",
-    "footer_attribution": "Map data from OpenStreetMap contributors."
+    "footer_attribution": "Map data from OpenStreetMap contributors.",
+    "footer_osm_license": "OpenStreetMap data is available under the Open Database License.",
+    "footer_data_license": "Case data: Boston 311 service requests from Analyze Boston, used under the city's open data terms.",
+    "footer_fonts_license": "Fonts: Public Sans and Courier Prime, both under the SIL Open Font License.",
+    "data_as_of": "Data as of {date}",
+    "data_as_of_unknown": "Data date unavailable",
+    "data_as_of_stale": "Data as of {date}. The latest refresh failed, so this is the last good data."
+  },
+  "nav": {
+    "label": "Main",
+    "map": "Map",
+    "scorecard": "Scorecard",
+    "judge": "Start the 60-second tour"
   },
   "about": {
     "heading": "TODO-COPY: About heading",
@@ -16,10 +29,13 @@
   },
   "errors": {
     "panel_failed": "TODO-COPY: error voice sample: what failed to load and how to fix it.",
-    "data_stale": "TODO-COPY: error voice sample: latest refresh failed, showing the last good data."
+    "data_stale": "TODO-COPY: error voice sample: latest refresh failed, showing the last good data.",
+    "panel_detail": "File {file}: {reason}",
+    "not_found": "This page does not exist. Go back to the map."
   },
   "empty": {
-    "no_zombies_block": "TODO-COPY: empty-state voice sample: no possible zombies on this block, try widening the window to 90 days."
+    "no_zombies_block": "TODO-COPY: empty-state voice sample: no possible zombies on this block, try widening the window to 90 days.",
+    "no_matches": "No possible zombies match these filters. Clear a filter to see more."
   },
   "judge": {
     "provisional_notice": "TODO-COPY: notice shown on preview builds when the tour zombies are not yet field-confirmed."

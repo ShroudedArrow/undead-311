@@ -4,7 +4,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 
 ## Demo-critical
 
-- [ ] 1. [demo-critical] App scaffold, tokens, fonts and copy
+- [x] 1. [demo-critical] App scaffold, tokens, fonts and copy
   - Vite + React + TS in `web/` (pinned in `package-lock.json`), `npm test` = vitest, `make build`, `make e2e` wiring; `styles/tokens.css` with the six palette colors only; self-hosted Public Sans and Courier Prime; `copy/en.json` plus typed `t()`; footer text, OSM credit, data licenses; "Data as of" from `status.json`.
   - _Requirements: REQ-WEB-COPY.1–3, REQ-WEB-DESIGN.1–3, REQ-WEB-FRESH.1_
 - [x] 2. [demo-critical] Schema-derived parsers and fixtures

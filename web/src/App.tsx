@@ -1,11 +1,23 @@
+import { Route, Routes } from "react-router-dom";
+import { Shell } from "./components/Shell";
 import { t } from "./lib/t";
 
-/** Scaffold only: the haunted-web spec replaces this with the routed app. */
+function NotFound() {
+  return (
+    <div style={{ padding: "var(--space-3)" }}>
+      <p>{t("errors.not_found")}</p>
+    </div>
+  );
+}
+
+/** Routed app. Pages are added by later tasks of the haunted-web spec. */
 export default function App() {
   return (
-    <main>
-      <h1>{t("app.title")}</h1>
-      <footer>{t("app.footer_independent")}</footer>
-    </main>
+    <Routes>
+      <Route element={<Shell />}>
+        <Route index element={<h1 style={{ padding: "var(--space-3)" }}>{t("app.title")}</h1>} />
+        <Route path="*" element={<NotFound />} />
+      </Route>
+    </Routes>
   );
 }
