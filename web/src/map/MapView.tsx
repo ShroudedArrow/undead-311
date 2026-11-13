@@ -85,6 +85,8 @@ export default function MapView({ rows, selectedId, onSelect }: Props) {
           id: "zombies",
           data: rows,
           pickable: true,
+          // never let loaders.gl fetch worker scripts from a CDN (REQ-WEB-PERF.2)
+          loadOptions: { worker: false },
           iconAtlas: atlasRef.current as unknown as string,
           iconMapping: iconMapping(),
           getIcon: (d) => variantFor(d.id),

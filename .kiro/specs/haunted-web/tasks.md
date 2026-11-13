@@ -37,7 +37,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 - [x] 9. [demo-critical] Accessibility floor
   - Focus styles, keyboard paths, contrast rules (no pink or orange text), color never the only signal, reduced motion; axe scan inside `make e2e`.
   - _Requirements: REQ-WEB-A11Y.1–2_
-- [ ] 10. [demo-critical] Payload and origin checks
+- [x] 10. [demo-critical] Payload and origin checks
   - Build script that measures first-view transfer size (warning for now) and fails on any non-same-origin URL in the built output.
   - _Requirements: REQ-WEB-PERF.1–2_
 - [ ] 11. [demo-critical] End-to-end judge-mode test
