@@ -42,10 +42,10 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
   - [x] 9.3 Property P21: the matching rule over generated towns (crossing streets, a mid-block split, a dead end, an overpass); a unit test with a three-way intersection and cases 14 m and 16 m from it. _REQ-DET-MATCH.1–3, REQ-ING-SNAP.4_
   - [x] 9.4 Property P22: matching is symmetric. _REQ-DET-MATCH.4_
   - _Requirements: REQ-DET-MATCH.1–5_
-- [ ] 10. [demo-critical] Incidents
+- [x] 10. [demo-critical] Incidents
   - `detect/core.py`: the greedy incident pass in (open UTC, ID) order; span limit; close time = latest member close; label = latest-closing member's label; ID = smallest member ID.
-  - [ ] 10.1 Property P7: incidents partition the closed in-scope cases. _REQ-DET-1.1_
-  - [ ] 10.2 Property P12: a case opened at or after an incident's earliest member close is never its member. _REQ-DET-1.4_
+  - [x] 10.1 Property P7: incidents partition the closed in-scope cases. _REQ-DET-1.1_
+  - [x] 10.2 Property P12: a case opened at or after an incident's earliest member close is never its member. _REQ-DET-1.4_
   - _Requirements: REQ-DET-1.1–4_
 - [ ] 11. [demo-critical] Candidate pairs, mirrors and attribution
   - Strict `R.open > I.close`; window; family; transferred members; linked successors; mirror R dropped from attribution; exclusion counts; attribution to the most recent eligible incident (ties by ID); resurrection, `reports_after`, `gap_days`.

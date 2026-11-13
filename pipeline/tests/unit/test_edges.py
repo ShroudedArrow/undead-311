@@ -48,5 +48,7 @@ def test_req_det_match_4_time_conditions_are_exact_at_the_boundaries():
     orig = mk("o", 0, 1)
     assert not time_related(orig, mk("r", 1))  # opens exactly at the close: not a re-report ...
     assert time_related(orig, mk("r2", 1, open_hours=0.001))
-    assert time_related(orig, mk("r3", 61))  # exactly 60 days after the close
-    assert not time_related(orig, mk("r4", 61, open_hours=0.01))
+    # an edge reaches WINDOW_DAYS + INCIDENT_MAX_SPAN_DAYS (the incident may close 7 days after this member);
+    # the detector applies the exact 60-day window against the incident's close time
+    assert time_related(orig, mk("r3", 68))
+    assert not time_related(orig, mk("r4", 68, open_hours=0.01))

@@ -3,7 +3,8 @@
 An edge is an unordered pair of same-family cases that (1) match by `match()` and (2) are time-related in at least
 one way the detector needs:
   (a) member edge: both closed and opened within INCIDENT_MAX_SPAN_DAYS of each other;
-  (b) re-report edge: one is closed and the other opens after that close, within WINDOW_DAYS;
+  (b) re-report edge: one is closed and the other opens after that close, within WINDOW_DAYS plus
+      INCIDENT_MAX_SPAN_DAYS (an incident closes up to that long after one of its members, REQ-DET-1.2);
   (c) mirror edge: different systems and opened within MIRROR_WINDOW_HOURS.
 `sql_edges` finds candidates with a grid-bucket join in DuckDB (never all pairs) and classifies them with `match()`.
 `brute_edges` is the reference used by tests. Both return {(id_a, id_b): Match} with id_a < id_b.
@@ -34,7 +35,7 @@ def time_related(a: Case, b: Case, p: Params = DEFAULT) -> bool:
     oa, ob, ca, cb = a.open_us, b.open_us, a.close_us, b.close_us
     if ca is not None and cb is not None and abs(oa - ob) <= _us(p.INCIDENT_MAX_SPAN_DAYS):
         return True
-    win = _us(p.WINDOW_DAYS)
+    win = _us(p.WINDOW_DAYS + p.INCIDENT_MAX_SPAN_DAYS)
     if ca is not None and ca < ob <= ca + win:
         return True
     if cb is not None and cb < oa <= cb + win:
@@ -88,7 +89,8 @@ def sql_edges(
         f"insert into {table} values (?,?,?,?,?,?,?)",
         [(c.id, c.type_family, c.system, c.lat, c.lon, c.open_us, c.close_us) for c in cases],
     )
-    span, win, mir = _us(p.INCIDENT_MAX_SPAN_DAYS), _us(p.WINDOW_DAYS), _us(hours=p.MIRROR_WINDOW_HOURS)
+    span, mir = _us(p.INCIDENT_MAX_SPAN_DAYS), _us(hours=p.MIRROR_WINDOW_HOURS)
+    win = _us(p.WINDOW_DAYS + p.INCIDENT_MAX_SPAN_DAYS)
     maxd = p.max_match_dist_m + COARSE_MARGIN_M
     rows = con.execute(f"""
         with g as (select *, floor(lat / {cell_lat})::bigint as cy, floor(lon / {cell_lon})::bigint as cx from {table}),
