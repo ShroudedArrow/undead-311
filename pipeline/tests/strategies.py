@@ -10,7 +10,7 @@ from hypothesis import strategies as st
 LABELS = ["resolved", "noted", "invalid", "duplicate", "referred", "made_safe_temporary", "planned_followup", "other"]
 SOURCES = ["Constituent Call", "Citizens Connect App", "Employee Generated", "City Worker App", "Maximo Integration", "BOS311"]
 FAMILIES = ["pothole_roadway", "sign"]
-XS = [0.0, 8.0, 20.0, 40.0, 70.0, 140.0]
+XS = [0.0, 8.0, 21.0, 43.0, 71.0, 140.0]  # no pair of these is exactly 30 m or 75 m apart
 
 
 @st.composite

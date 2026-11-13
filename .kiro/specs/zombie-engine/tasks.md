@@ -66,8 +66,8 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
   - Link zombie incidents through closed resurrections; `chain_id`; chain-total `times_risen`; repeat-offender flag on headline count ≥ 3.
   - _Requirements: REQ-DET-CHAIN.1–3_
 - [ ] 14. [demo-critical] Metamorphic properties
-  - [ ] 14.1 Property P9: a uniform small translation or a uniform time shift leaves zombie counts per tier unchanged. _testing.md #14_
-  - [ ] 14.2 Property P10: duplicating a closed case never increases the zombie count. _testing.md #15_
+  - [x] 14.1 Property P9: a uniform small translation or a uniform time shift leaves zombie counts per tier unchanged. _testing.md #14_
+  - [x] 14.2 Property P10: duplicating a closed case never increases the zombie count. _testing.md #15_
   - [ ] 14.3 Property P4 (part 2): detection and exports are invariant to input row order. _REQ-EXP-1.3_
 - [ ] 15. [demo-critical] Test-town loader and golden test
   - `fixtures.py` loads the raw fixture rows into `cases_norm` and runs the normal crosswalk, catch-all, clean and detect path; `golden_result()` builds the worksheet format; `schemas/test_town_expected.schema.json` validates the owner's file.
