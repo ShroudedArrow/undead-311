@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import { Shell } from "./components/Shell";
 import { t } from "./lib/t";
+import HomePage from "./pages/HomePage";
 
 function NotFound() {
   return (
@@ -15,7 +16,10 @@ export default function App() {
   return (
     <Routes>
       <Route element={<Shell />}>
-        <Route index element={<h1 style={{ padding: "var(--space-3)" }}>{t("app.title")}</h1>} />
+        <Route element={<HomePage />}>
+          <Route index element={null} />
+          <Route path="zombie/:id" element={null} />
+        </Route>
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

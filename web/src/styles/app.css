@@ -113,11 +113,47 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
   border-top: 2px solid var(--asphalt);
   font-size: var(--step--1);
 }
-.site-footer p { margin: 0 0 var(--space-1); max-width: none; }
+.site-footer { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); }
+.site-footer p { margin: 0; max-width: none; }
 
 .panel-error {
   border: 2px dashed var(--asphalt);
   background: var(--crew-white);
   padding: var(--space-3);
   max-width: var(--measure);
+}
+
+/* Map page layout (REQ-WEB-MAP) */
+.home {
+  display: grid;
+  grid-template-columns: minmax(16rem, 20rem) 1fr;
+  height: 100%;
+  min-height: 0;
+  position: relative;
+}
+.filters-panel {
+  background: var(--crew-white);
+  border-right: 2px solid var(--asphalt);
+  padding: var(--space-3);
+  overflow-y: auto;
+}
+.filters-panel h2 { margin-top: var(--space-3); }
+.tagline { font-size: var(--step--1); }
+.stage { position: relative; min-width: 0; min-height: 24rem; display: flex; flex-direction: column; }
+.view-switch { display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--concrete); }
+.map-host { flex: 1; min-height: 24rem; width: 100%; }
+.shell-main { display: flex; flex-direction: column; }
+.shell-main > .home { flex: 1; }
+
+.filter-group { border: 2px solid var(--asphalt); background: var(--concrete); margin: 0 0 var(--space-2); }
+.filter-group summary { padding: var(--space-2) var(--space-3); cursor: pointer; font-weight: 600; min-height: 2.75rem; display: flex; align-items: center; }
+.filter-group ul { list-style: none; margin: 0; padding: 0 var(--space-3) var(--space-2); max-height: 14rem; overflow-y: auto; }
+.filter-group li label { display: flex; gap: var(--space-2); align-items: center; padding: var(--space-1) 0; min-height: 2rem; }
+.filter-group input[type="checkbox"] { width: 1.25rem; height: 1.25rem; accent-color: var(--asphalt); }
+.count-line { font-weight: 600; }
+.count-note { font-size: var(--step--1); }
+
+@media (max-width: 640px) {
+  .home { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .filters-panel { border-right: 0; border-bottom: 2px solid var(--asphalt); max-height: 14rem; }
 }

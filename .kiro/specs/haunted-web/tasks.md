@@ -17,7 +17,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
   - [x] 3.2 Property W3: filters commute and are idempotent. _REQ-WEB-MAP.3_
   - [x] 3.3 Property W5: aggregate counts sum to the filtered total and are never negative. _REQ-WEB-MAP.2_
   - _Requirements: REQ-WEB-MAP.2–4_
-- [ ] 4. [demo-critical] Haunted map
+- [x] 4. [demo-critical] Haunted map
   - MapLibre with a self-hosted Boston PMTiles extract restyled to the palette (no default dark style); deck.gl IconLayer with a 3–5 sprite atlas (placeholder sprites until the owner's spray-paint scans exist; record that in the PR); filters UI; count; OSM attribution.
   - _Requirements: REQ-WEB-MAP.1–5_
 - [ ] 5. [demo-critical] Table view
