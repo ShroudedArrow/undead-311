@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { formatGap } from "../lib/format";
 import { familyLabel } from "../lib/labels";
 import { sortRows, type SortDir, type SortKey, type TableRow } from "../lib/table";
 import { t } from "../lib/t";
@@ -48,7 +49,7 @@ export function ZombieTable({ rows, search }: { rows: readonly TableRow[]; searc
           {sorted.map((r) => (
             <tr key={r.id} data-id={r.id}>
               <td>{r.date}</td>
-              <td>{r.gap === null ? "" : r.gap.toFixed(1)}</td>
+              <td>{r.gap === null ? "" : formatGap(r.gap)}</td>
               <td>{r.neighborhood || t("filters.unknown")}</td>
               <td>{familyLabel(r.family)}</td>
               <td>{r.confidence === null ? "" : r.confidence.toFixed(2)}</td>

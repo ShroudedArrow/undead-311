@@ -50,6 +50,26 @@ describe("HomePage (REQ-WEB-MAP.2-4)", () => {
     expect(mapRows).toHaveBeenLastCalledWith(["b", "c"]);
   });
 
+  it("puts the filters behind a Show filters button that reports its state (UX-7)", async () => {
+    stubFetch();
+    const user = userEvent.setup();
+    render(<MemoryRouter><App /></MemoryRouter>);
+    const toggle = await screen.findByRole("button", { name: "Show filters" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    await user.click(toggle);
+    expect(screen.getByRole("button", { name: "Hide filters" }).getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("names departments in words, with the code in parentheses (UX-8)", async () => {
+    stubFetch();
+    const user = userEvent.setup();
+    render(<MemoryRouter><App /></MemoryRouter>);
+    await screen.findByText("3 possible zombies match these filters");
+    await user.click(screen.getByText("Department"));
+    expect(screen.getByText(/Public Works Department \(PWDx\)/)).toBeTruthy();
+    expect(screen.getByText(/Boston Transportation Department \(BTDT\)/)).toBeTruthy();
+  });
+
   it("shows an error state for the points panel but keeps the page (REQ-WEB-DATA.2)", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 500, json: async () => ({}) }) as Response));
     render(<MemoryRouter><App /></MemoryRouter>);

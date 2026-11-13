@@ -1,4 +1,4 @@
-import { formatDateTime, formatDay, roundDays } from "../lib/format";
+import { formatDateTime, formatDay, formatGap } from "../lib/format";
 import type { Card, CaseRecord } from "../lib/parse";
 import { t } from "../lib/t";
 
@@ -48,7 +48,6 @@ const VERDICTS = {
  * The typewriter face is applied only inside `.autopsy-form` (see app.css).
  */
 export function AutopsyCard({ card }: { card: CardWithPartial }) {
-  const days = roundDays(card.gap_days);
   return (
     <article className="autopsy" data-testid="autopsy-card" data-tier={card.tier}>
       <div className="autopsy-form">
@@ -74,7 +73,7 @@ export function AutopsyCard({ card }: { card: CardWithPartial }) {
           </div>
           <div>
             <dt>{t("card.time_in_grave")}</dt>
-            <dd>{days === 1 ? t("card.day") : t("card.days", { days })}</dd>
+            <dd>{formatGap(card.gap_days)}</dd>
           </div>
           <div>
             <dt>{t("card.resurrection_date")}</dt>

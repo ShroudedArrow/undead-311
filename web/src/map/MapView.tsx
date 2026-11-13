@@ -57,6 +57,12 @@ export default function MapView({ rows, selectedId, onSelect }: Props) {
         maxZoom: 18,
         attributionControl: { compact: false },
         cooperativeGestures: false,
+        // control labels come from en.json (REQ-WEB-COPY.1), not the library's built-in English
+        locale: {
+          "NavigationControl.ZoomIn": t("map.zoom_in"),
+          "NavigationControl.ZoomOut": t("map.zoom_out"),
+          "AttributionControl.ToggleAttribution": t("map.attribution_toggle"),
+        },
       });
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
       const overlay = new MapboxOverlay({ interleaved: false, layers: [] });

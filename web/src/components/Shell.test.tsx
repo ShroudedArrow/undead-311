@@ -35,4 +35,16 @@ describe("Shell (REQ-WEB-DESIGN.3, REQ-WEB-FRESH.1)", () => {
     expect(await screen.findByText("Data date unavailable")).toBeTruthy();
     expect(screen.getByText("Independent project. Not affiliated with the City of Boston.")).toBeTruthy();
   });
+
+  it("shows the preview-data notice next to the date only for fixture data (REQ-WEB-DATA.3, UX-4)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ ...STATUS, data_version: "fixture-2026-11-11" }) }) as Response));
+    const { unmount } = render(<MemoryRouter><App /></MemoryRouter>);
+    expect(await screen.findByTestId("fixture-notice")).toBeTruthy();
+    unmount();
+    clearDataCache();
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => STATUS }) as Response));
+    render(<MemoryRouter><App /></MemoryRouter>);
+    await screen.findByText("Data as of Nov 11, 2026");
+    expect(screen.queryByTestId("fixture-notice")).toBeNull();
+  });
 });

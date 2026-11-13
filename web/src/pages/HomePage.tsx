@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo } from "react";
+import { lazy, Suspense, useId, useMemo, useState } from "react";
 import { Outlet, useMatch, useNavigate, useSearchParams } from "react-router-dom";
 import { CountLine } from "../components/CountLine";
 import { Filters } from "../components/Filters";
@@ -27,6 +27,8 @@ export default function HomePage() {
   const zombieById = useMemo(() => (zombies.status === "ok" ? new Map(zombies.data.zombies.map((z) => [z.zombie_id, z])) : null), [zombies]);
   const visible = useMemo(() => visibleSet(rows, state.filters, state.tierMode), [rows, state]);
 
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersId = useId();
   const update = (next: PageState) => setParams(encodeState(next), { replace: true });
   const select = (id: string) => navigate({ pathname: `/zombie/${encodeURIComponent(id)}`, search: params.toString() });
 
@@ -41,7 +43,12 @@ export default function HomePage() {
         {points.status === "ok" && (
           <>
             <CountLine count={visible.headlineCount} />
-            <Filters rows={rows} filters={state.filters} onChange={(filters) => update({ ...state, filters })} />
+            <button type="button" className="filters-toggle" aria-expanded={filtersOpen} aria-controls={filtersId} onClick={() => setFiltersOpen(!filtersOpen)}>
+              {t(filtersOpen ? "filters.hide" : "filters.show")}
+            </button>
+            <div id={filtersId} className={filtersOpen ? "filters-body filters-open" : "filters-body"}>
+              <Filters rows={rows} filters={state.filters} onChange={(filters) => update({ ...state, filters })} />
+            </div>
           </>
         )}
       </aside>

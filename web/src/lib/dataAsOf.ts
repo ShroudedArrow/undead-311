@@ -13,3 +13,8 @@ export function dataAsOfLabel(status: { data_end?: string; last_run: string; ok:
   const date = formatDate(status.data_end ?? status.last_run);
   return t(status.ok ? "app.data_as_of" : "app.data_as_of_stale", { date });
 }
+
+/** True when the data is a stand-in built from the sample file, not detector output (REQ-WEB-DATA.3, UX-4). */
+export function isFixtureData(status: { data_version: string } | null | undefined): boolean {
+  return Boolean(status && status.data_version.startsWith("fixture-"));
+}

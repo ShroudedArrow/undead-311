@@ -1,6 +1,6 @@
 /**
- * Map style restyled by hand to the palette (REQ-WEB-MAP.1, design-system.md): Concrete land, Crew white water,
- * Asphalt streets. No default dark basemap, no labels (glyph files are not self-hosted yet; see the PR notes).
+ * Map style restyled by hand to the palette (REQ-WEB-MAP.1, design-system.md): Concrete land, water and buildings (Asphalt
+ * edges), Asphalt streets. Crew white stays free for the city's closed marks. No default dark basemap, no labels (glyph files are not self-hosted yet; see the PR notes).
  * Layers follow the Protomaps basemap schema of the self-hosted extract in public/tiles/boston.pmtiles.
  */
 import type { StyleSpecification } from "maplibre-gl";
@@ -36,13 +36,14 @@ export function buildStyle(tiles: string, attribution: string): StyleSpecificati
     sources: { boston: { type: "vector", url: tiles, attribution } },
     layers: [
       { id: "land", type: "background", paint: { "background-color": PALETTE.concrete } },
-      { id: "water", type: "fill", source: "boston", "source-layer": "water", paint: { "fill-color": PALETTE.crewWhite } },
+      // UX-3 (ops#16): Crew white is reserved for the city's closed marks, so water and buildings are Concrete with an Asphalt edge.
+      { id: "water", type: "fill", source: "boston", "source-layer": "water", paint: { "fill-color": PALETTE.concrete } },
       {
         id: "water-edge",
         type: "line",
         source: "boston",
         "source-layer": "water",
-        paint: { "line-color": PALETTE.asphalt, "line-width": 0.6 },
+        paint: { "line-color": PALETTE.asphalt, "line-width": 1.2 },
       },
       {
         id: "buildings",
@@ -50,7 +51,7 @@ export function buildStyle(tiles: string, attribution: string): StyleSpecificati
         source: "boston",
         "source-layer": "buildings",
         minzoom: 14,
-        paint: { "fill-color": PALETTE.crewWhite, "fill-outline-color": PALETTE.asphalt },
+        paint: { "fill-color": PALETTE.concrete, "fill-outline-color": PALETTE.asphalt },
       },
       road("roads-minor", ["minor_road", "other"], [0.1, 0.4, 1, 3], 11),
       road("roads-medium", ["medium_road"], [0.2, 0.7, 1.8, 5]),

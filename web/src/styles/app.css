@@ -105,7 +105,9 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .site-title a { text-decoration: none; }
 .site-nav { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .site-nav a[aria-current="page"] { font-weight: 700; text-decoration-thickness: 3px; }
-.site-header .data-as-of { margin-left: auto; font-size: var(--step--1); }
+.site-header .data-status { margin-left: auto; font-size: var(--step--1); max-width: 34rem; }
+.site-header .data-status p { margin: 0; max-width: none; }
+.site-header .fixture-notice { border: 2px dashed var(--crew-white); padding: var(--space-1) var(--space-2); margin-top: var(--space-1); font-weight: 600; }
 
 .site-footer {
   padding: var(--space-3);
@@ -146,7 +148,8 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .shell-main > .home { flex: 1; }
 
 .filter-group { border: 2px solid var(--asphalt); background: var(--concrete); margin: 0 0 var(--space-2); }
-.filter-group summary { padding: var(--space-2) var(--space-3); cursor: pointer; font-weight: 600; min-height: 2.75rem; display: flex; align-items: center; }
+.filter-group summary { padding: var(--space-2) var(--space-3); cursor: pointer; font-weight: 600; min-height: 2.75rem; display: flex; align-items: center; gap: var(--space-2); }
+.filter-group summary::-webkit-details-marker { display: none; }
 .filter-group ul { list-style: none; margin: 0; padding: 0 var(--space-3) var(--space-2); max-height: 14rem; overflow-y: auto; }
 .filter-group li label { display: flex; gap: var(--space-2); align-items: center; padding: var(--space-1) 0; min-height: 2rem; }
 .filter-group input[type="checkbox"] { width: 1.25rem; height: 1.25rem; accent-color: var(--asphalt); }
@@ -248,7 +251,8 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .rate-interval { fill: var(--asphalt); }
 .rate-point { fill: var(--asphalt); stroke: var(--crew-white); stroke-width: 0.4; }
 .score-detail { margin-top: var(--space-2); }
-.score-detail summary { cursor: pointer; min-height: 2.75rem; display: flex; align-items: center; }
+.score-detail summary { cursor: pointer; min-height: 2.75rem; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--crew-white); border: 2px solid var(--asphalt); border-radius: 2px; font-weight: 600; }
+.score-detail summary::-webkit-details-marker { display: none; }
 @media (max-width: 640px) { .score-pair { grid-template-columns: 1fr; } }
 
 /* Judge mode (REQ-WEB-JUDGE) */
@@ -269,3 +273,76 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
     scroll-behavior: auto !important;
   }
 }
+
+/* UX-6 (ops#19): a drawn disclosure marker in Asphalt, pointing right when closed and down when open. No icon pack. */
+.filter-group summary::before,
+.score-detail summary::before {
+  content: "";
+  flex: none;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0.4rem 0 0.4rem 0.65rem;
+  border-color: transparent transparent transparent var(--asphalt);
+}
+.filter-group[open] > summary::before,
+.score-detail[open] > summary::before {
+  border-width: 0.65rem 0.4rem 0 0.4rem;
+  border-color: var(--asphalt) transparent transparent transparent;
+}
+
+/* UX-7 (ops#20): on phones the count stays in full and the filters sit behind a button, not in a clipped scroll box. */
+.filters-toggle { display: none; margin-bottom: var(--space-3); }
+@media (max-width: 640px) {
+  .filters-panel { max-height: none; overflow-y: visible; }
+  .filters-toggle { display: inline-flex; align-items: center; }
+  .filters-body:not(.filters-open) { display: none; }
+  .filters-body.filters-open { max-height: 60vh; overflow-y: auto; }
+}
+
+/* UX-2 (ops#15): MapLibre's own controls restyled to the palette: square, no shadow, Public Sans, drawn + and - marks. */
+.map-host.maplibregl-map { font-family: var(--font-ui); font-size: var(--step--1); line-height: 1.4; }
+.map-host .maplibregl-ctrl-group:not(:empty) {
+  background: var(--crew-white);
+  border: 2px solid var(--asphalt);
+  border-radius: 0;
+  box-shadow: none;
+}
+.map-host .maplibregl-ctrl-group button {
+  width: 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--crew-white);
+  position: relative;
+}
+.map-host .maplibregl-ctrl-group button + button { border-top: 2px solid var(--asphalt); }
+.map-host .maplibregl-ctrl-group button .maplibregl-ctrl-icon { background-image: none !important; }
+.map-host .maplibregl-ctrl-group button .maplibregl-ctrl-icon::before,
+.map-host .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1.1rem;
+  height: 3px;
+  margin: -1.5px 0 0 -0.55rem;
+  background: var(--asphalt);
+}
+.map-host .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon::after {
+  width: 3px;
+  height: 1.1rem;
+  margin: -0.55rem 0 0 -1.5px;
+}
+.map-host .maplibregl-ctrl-attrib.maplibregl-compact,
+.map-host .maplibregl-ctrl.maplibregl-ctrl-attrib {
+  background: var(--crew-white);
+  border-top: 2px solid var(--asphalt);
+  border-left: 2px solid var(--asphalt);
+  box-shadow: none;
+  color: var(--asphalt);
+  font-family: var(--font-ui);
+}
+.map-host .maplibregl-ctrl-attrib a { color: var(--asphalt); }

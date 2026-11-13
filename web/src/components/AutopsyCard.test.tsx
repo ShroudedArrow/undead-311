@@ -42,6 +42,12 @@ describe("AutopsyCard content (REQ-WEB-CARD.1, .3, .6)", () => {
     expect(within(card).getByText("No closure text recorded.")).toBeTruthy();
     expect(within(card).getByText("Not closed")).toBeTruthy();
   });
+  it("shows hours, not 0 days, for a re-report within a day (UX-9)", () => {
+    render(<AutopsyCard card={{ ...CARD, gap_days: 4 / 24 }} />);
+    const card = screen.getByTestId("autopsy-card");
+    expect(within(card).getByText("4 hours")).toBeTruthy();
+    expect(within(card).queryByText(/^0 days?$/)).toBeNull();
+  });
   it("links both case IDs to the city's public pages", () => {
     render(<AutopsyCard card={CARD} />);
     const link = screen.getByRole("link", { name: "View case 101001 on the city's site" });

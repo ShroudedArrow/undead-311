@@ -11,6 +11,7 @@
     "footer_data_license": "Case data: Boston 311 service requests from Analyze Boston, used under the city's open data terms.",
     "footer_fonts_license": "Fonts: Public Sans and Courier Prime, both under the SIL Open Font License.",
     "data_as_of": "Data as of {date}",
+    "fixture_notice": "Preview data: these numbers come from a rough stand-in built from the sample file, not from the detector. Do not quote them.",
     "data_as_of_unknown": "Data date unavailable",
     "data_as_of_stale": "Data as of {date}. The latest refresh failed, so this is the last good data."
   },
@@ -66,10 +67,15 @@
     "marker_hint": "Each pink circle is one possible zombie: a case the city closed, reported again at the same place.",
     "show_table": "Show these as a table",
     "show_map": "Show these on the map",
-    "view_switch": "View"
+    "view_switch": "View",
+    "zoom_in": "Zoom in",
+    "zoom_out": "Zoom out",
+    "attribution_toggle": "Show map credits"
   },
   "filters": {
     "heading": "Filters",
+    "show": "Show filters",
+    "hide": "Hide filters",
     "neighborhood": "Neighborhood",
     "department": "Department",
     "family": "Case type",
@@ -82,6 +88,14 @@
     "count_headline_one": "1 possible zombie matches these filters",
     "count_floor": "Counts are a floor: a possible zombie appears only if someone reported the problem again.",
     "loading": "Loading possible zombies"
+  },
+  "departments": {
+    "PWDx": "Public Works Department (PWDx)",
+    "BTDT": "Boston Transportation Department (BTDT)",
+    "BWSC": "Boston Water and Sewer Commission (BWSC)",
+    "ISD": "Inspectional Services Department (ISD)",
+    "PARK": "Parks and Recreation Department (PARK)",
+    "PROP": "Property Management Department (PROP)"
   },
   "families": {
     "pothole_roadway": "Potholes and roadway defects",
@@ -96,7 +110,7 @@
   "table": {
     "caption": "Possible zombies matching the current filters",
     "col_date": "Reported again",
-    "col_gap": "Days in the grave",
+    "col_gap": "Time in the grave",
     "col_neighborhood": "Neighborhood",
     "col_family": "Case type",
     "col_confidence": "Confidence",
@@ -132,6 +146,11 @@
     "time_in_grave": "Time in the grave",
     "days": "{days} days",
     "day": "1 day",
+    "hours": "{n} hours",
+    "hour": "1 hour",
+    "minutes": "{n} minutes",
+    "minute": "1 minute",
+    "under_minute": "Less than a minute",
     "resurrection_date": "Resurrection date",
     "confidence": "Confidence",
     "confidence_value": "{percent} of 100",
