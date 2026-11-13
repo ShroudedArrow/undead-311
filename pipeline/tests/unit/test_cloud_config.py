@@ -157,3 +157,90 @@ def test_file_ownership_lists_stay_repo_relative(recipe):
     for block in re.findall(r'"ownership": \{.*?\}\}', recipe.read_text(), re.DOTALL):
         for item in re.findall(r'"([^"]+)"', block)[1:]:
             assert not item.startswith("/") and "projects" not in item, item
+
+
+# ---- repeat loops: each stop file is written inside its own loop ---------------------------------------------
+# No spec requirement covers the workflow recipes; these tests cite the smoke-2 finding (run wf_7e2703967ec25e5b):
+# the engine warned that no step inside `hello-loop` wrote its stop file, because the prompts named it by a relative
+# path while the stopCondition uses the absolute one, so a loop could never stop on its own.
+
+LOOP_CALL = re.compile(
+    rf"python3 {ABS_REPO}/scripts/loop_status\.py --gate (\S+) --review (\S+) --out (\S+?)`"
+)
+GATE_CALL = re.compile(r"validate_gate\.py .*?--out (\S+)")
+REVIEW_WRITE = re.compile(r"Write (\.kiro/workflow-runs/\{\{run_id\}\}/\S+\.json)")
+
+
+def repeats_of(recipe: Path):
+    return [n for n in walk(yaml.safe_load(recipe.read_text())) if n.get("type") == "repeat"]
+
+
+def run_file(path: str) -> str:
+    """The absolute main-checkout path of a run file named either way."""
+    return path if path.startswith("/") else f"{ABS_REPO}/{path}"
+
+
+def fs_write_allows(agent: str, rel: str) -> bool:
+    from fnmatch import fnmatch
+
+    rules = json.loads((REPO / ".kiro" / "agents" / f"{agent}.json").read_text())["permissions"]["rules"]
+    allowed = denied = False
+    for rule in rules:
+        if rule["capability"] != "fs_write":
+            continue
+        hit = any(fnmatch(p, m) for m in rule["match"] for p in (rel, run_file(rel)))
+        if hit and not any(fnmatch(p, x) for x in rule.get("exclude", []) for p in (rel, run_file(rel))):
+            allowed |= rule["effect"] == "allow"
+            denied |= rule["effect"] == "deny"
+    return allowed and not denied
+
+
+@pytest.mark.parametrize("recipe", RECIPES, ids=lambda p: p.name)
+def test_every_repeat_stop_file_is_written_by_its_own_review_step(recipe):
+    """smoke-2 finding: each repeat's stop file is the --out of loop_status.py in that loop's last (review) step."""
+    repeats = repeats_of(recipe)
+    assert repeats, f"{recipe.name} has no repeat node"
+    all_steps = steps_of(recipe)
+    for r in repeats:
+        check = r["stopCondition"]["fileCheck"]
+        stop = check["path"]
+        assert (check["jsonPath"], check["value"]) == ("$.done", True), r["id"]
+        inner = [s for s in walk(r["steps"]) if s.get("type") == "step"]
+        writers = [s for s in inner if any(m[2] == stop for m in LOOP_CALL.findall(s["prompt"]))]
+        assert len(writers) == 1, f"{r['id']}: {len(writers)} steps inside the loop write {stop}"
+        writer = writers[0]
+        assert writer is inner[-1], f"{r['id']}: the stop file must be written by the loop's last step"
+        assert writer["agent"].startswith("reviewer-"), f"{r['id']}: the review step writes the stop file"
+        assert writer["prompt"].count(stop) >= 2, f"{r['id']}: the prompt names the stop file by its absolute path"
+        # its inputs: a gate written earlier in the same loop, and the review file this step writes
+        gate, review, _ = next(m for m in LOOP_CALL.findall(writer["prompt"]) if m[2] == stop)
+        assert gate.startswith("/") and review.startswith("/"), f"{r['id']}: loop_status.py paths must be absolute"
+        gates = {run_file(g) for s in inner[:-1] for g in GATE_CALL.findall(s["prompt"])}
+        assert gate in gates, f"{r['id']}: gate {gate} is not written by an earlier step of the loop"
+        writes = {run_file(w) for w in REVIEW_WRITE.findall(writer["prompt"])}
+        assert review in writes, f"{r['id']}: review file {review} is not the one the review step writes"
+        # the reviewer agent is allowed to write that review file
+        rel = review[len(ABS_REPO) + 1:].replace("{{run_id}}", "run-x")
+        assert fs_write_allows(writer["agent"], rel), f"{r['id']}: {writer['agent']} may not write {rel}"
+        # nothing outside the loop names the stop file
+        inner_ids = {s["id"] for s in inner}
+        for s in all_steps:
+            if s["id"] not in inner_ids:
+                assert stop not in s["prompt"] and stop.split("/")[-1] not in s["prompt"], (
+                    f"step {s['id']} outside {r['id']} names its stop file"
+                )
+
+
+def test_stop_file_check_catches_a_loop_without_a_writer(tmp_path):
+    """smoke-2 finding: the check fails on the pre-fix shape (relative --out, absolute stopCondition)."""
+    bad = tmp_path / "bad.workflow.yaml"
+    bad.write_text(yaml.safe_dump({"steps": [{
+        "type": "repeat", "id": "l",
+        "stopCondition": {"fileCheck": {"path": f"{ABS_REPO}/.kiro/workflow-runs/{{{{run_id}}}}/l.json",
+                                        "jsonPath": "$.done", "value": True}},
+        "steps": [{"type": "step", "id": "review", "agent": "reviewer-stats", "prompt":
+                   f"`python3 {ABS_REPO}/scripts/loop_status.py --gate .kiro/workflow-runs/{{{{run_id}}}}/g.json "
+                   f"--review .kiro/workflow-runs/{{{{run_id}}}}/review-stats.json --out .kiro/workflow-runs/{{{{run_id}}}}/l.json`"}],
+    }]}))
+    with pytest.raises(AssertionError, match="0 steps inside the loop"):
+        test_every_repeat_stop_file_is_written_by_its_own_review_step(bad)

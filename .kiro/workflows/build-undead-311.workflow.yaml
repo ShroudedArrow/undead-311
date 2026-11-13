@@ -68,7 +68,7 @@ steps:
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
                   Run {{run_id}}, spec zombie-engine, layer demo-critical, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in /projects/sandbox/worktrees/{{run_id}}-engine (branch build/{{run_id}}-engine).
                   First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
-                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/review-stats-zombie-engine-demo-critical.json if it exists; fix every finding first and close its issue with a commit link.
                   Then implement the next unchecked tasks in .kiro/specs/zombie-engine/tasks.md tagged [demo-critical], in order, citing requirement IDs
                   in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
                   Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
@@ -87,14 +87,14 @@ steps:
                 effortLevel: high
                 prompt: |
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
-                  Run {{run_id}}, spec zombie-engine, layer demo-critical, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Run {{run_id}}, spec zombie-engine, layer demo-critical, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file and the loop's stop file.
                   Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/zombie-engine/requirements.md and design.md,
                   for the [demo-critical] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
                   Run `python3 /projects/sandbox/undead-311/scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
                   If .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
-                  Write .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  Write .kiro/workflow-runs/{{run_id}}/review-stats-zombie-engine-demo-critical.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
                   to:engine and type:finding, then run
-                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-gate.json --review .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-review.json --out .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-loop.json`.
+                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-gate.json --review /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/review-stats-zombie-engine-demo-critical.json --out /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-loop.json`. This step owns the loop's stop file /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-loop.json: loop_status.py writes done: true only when the gate file says PASS and your verdict is APPROVED, otherwise done: false. Always run it, even when the verdict is CHANGES_REQUESTED.
           - type: step
             id: coroner-label
             agent: coroner
@@ -125,7 +125,7 @@ steps:
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
                   Run {{run_id}}, spec durability-stats, layer demo-critical, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in /projects/sandbox/worktrees/{{run_id}}-engine (branch build/{{run_id}}-engine).
                   First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
-                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/review-stats-durability-stats-demo-critical.json if it exists; fix every finding first and close its issue with a commit link.
                   Then implement the next unchecked tasks in .kiro/specs/durability-stats/tasks.md tagged [demo-critical], in order, citing requirement IDs
                   in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
                   Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
@@ -144,14 +144,14 @@ steps:
                 effortLevel: high
                 prompt: |
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
-                  Run {{run_id}}, spec durability-stats, layer demo-critical, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Run {{run_id}}, spec durability-stats, layer demo-critical, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file and the loop's stop file.
                   Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/durability-stats/requirements.md and design.md,
                   for the [demo-critical] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
                   Run `python3 /projects/sandbox/undead-311/scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
                   If .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
-                  Write .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  Write .kiro/workflow-runs/{{run_id}}/review-stats-durability-stats-demo-critical.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
                   to:engine and type:finding, then run
-                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-gate.json --review .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-review.json --out .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-loop.json`.
+                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-gate.json --review /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/review-stats-durability-stats-demo-critical.json --out /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-loop.json`. This step owns the loop's stop file /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-loop.json: loop_status.py writes done: true only when the gate file says PASS and your verdict is APPROVED, otherwise done: false. Always run it, even when the verdict is CHANGES_REQUESTED.
           - type: step
             id: skeptic-review
             agent: skeptic
@@ -183,7 +183,7 @@ steps:
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
                   Run {{run_id}}, spec nightly-and-deploy, layer demo-critical, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in /projects/sandbox/worktrees/{{run_id}}-engine (branch build/{{run_id}}-engine).
                   First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
-                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-demo-critical-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/review-stats-nightly-and-deploy-demo-critical.json if it exists; fix every finding first and close its issue with a commit link.
                   Then implement the next unchecked tasks in .kiro/specs/nightly-and-deploy/tasks.md tagged [demo-critical], in order, citing requirement IDs
                   in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
                   Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
@@ -202,14 +202,14 @@ steps:
                 effortLevel: high
                 prompt: |
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
-                  Run {{run_id}}, spec nightly-and-deploy, layer demo-critical, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Run {{run_id}}, spec nightly-and-deploy, layer demo-critical, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file and the loop's stop file.
                   Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/nightly-and-deploy/requirements.md and design.md,
                   for the [demo-critical] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
                   Run `python3 /projects/sandbox/undead-311/scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
                   If .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-demo-critical-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
-                  Write .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-demo-critical-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  Write .kiro/workflow-runs/{{run_id}}/review-stats-nightly-and-deploy-demo-critical.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
                   to:engine and type:finding, then run
-                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-demo-critical-gate.json --review .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-demo-critical-review.json --out .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-demo-critical-loop.json`.
+                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/nightly-and-deploy-demo-critical-gate.json --review /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/review-stats-nightly-and-deploy-demo-critical.json --out /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/nightly-and-deploy-demo-critical-loop.json`. This step owns the loop's stop file /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/nightly-and-deploy-demo-critical-loop.json: loop_status.py writes done: true only when the gate file says PASS and your verdict is APPROVED, otherwise done: false. Always run it, even when the verdict is CHANGES_REQUESTED.
       - type: sequence
         id: demo-critical-web-branch
         steps:
@@ -231,7 +231,7 @@ steps:
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
                   Run {{run_id}}, spec haunted-web, layer demo-critical, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in /projects/sandbox/worktrees/{{run_id}}-web (branch build/{{run_id}}-web).
                   First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
-                  Read open to:web findings and .kiro/workflow-runs/{{run_id}}/haunted-web-demo-critical-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Read open to:web findings and .kiro/workflow-runs/{{run_id}}/review-ux-haunted-web-demo-critical.json if it exists; fix every finding first and close its issue with a commit link.
                   Then implement the next unchecked tasks in .kiro/specs/haunted-web/tasks.md tagged [demo-critical], in order, citing requirement IDs
                   in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
                   Commit after each task with the Kiro-Agent: web and Kiro-Run: {{run_id}} trailers.
@@ -250,14 +250,14 @@ steps:
                 effortLevel: high
                 prompt: |
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
-                  Run {{run_id}}, spec haunted-web, layer demo-critical, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Run {{run_id}}, spec haunted-web, layer demo-critical, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file and the loop's stop file.
                   Review the commits on build/{{run_id}}-web since the last review (`git log`, `git diff`) against .kiro/specs/haunted-web/requirements.md and design.md,
                   for the [demo-critical] tasks. Build the site (`make build`) and use Playwright to screenshot the pages this layer touched into docs/screenshots/{{run_id}}/. Check design-system.md (every Banned default), voice.md (TODO-COPY placeholders are allowed), accessibility basics, and answer 'If the name were removed, could this be any generic dashboard?' (yes = CHANGES_REQUESTED).
                   Run `python3 /projects/sandbox/undead-311/scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-web --require-run {{run_id}}`; missing trailers are a finding.
                   If .kiro/workflow-runs/{{run_id}}/haunted-web-demo-critical-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
-                  Write .kiro/workflow-runs/{{run_id}}/haunted-web-demo-critical-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  Write .kiro/workflow-runs/{{run_id}}/review-ux-haunted-web-demo-critical.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
                   to:web and type:finding, then run
-                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/haunted-web-demo-critical-gate.json --review .kiro/workflow-runs/{{run_id}}/haunted-web-demo-critical-review.json --out .kiro/workflow-runs/{{run_id}}/haunted-web-demo-critical-loop.json`.
+                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/haunted-web-demo-critical-gate.json --review /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/review-ux-haunted-web-demo-critical.json --out /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/haunted-web-demo-critical-loop.json`. This step owns the loop's stop file /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/haunted-web-demo-critical-loop.json: loop_status.py writes done: true only when the gate file says PASS and your verdict is APPROVED, otherwise done: false. Always run it, even when the verdict is CHANGES_REQUESTED.
   - type: step
     id: integrate-demo-critical
     agent: engine
@@ -295,7 +295,7 @@ steps:
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
                   Run {{run_id}}, spec zombie-engine, layer credibility, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in /projects/sandbox/worktrees/{{run_id}}-engine (branch build/{{run_id}}-engine).
                   First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
-                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/review-stats-zombie-engine-credibility.json if it exists; fix every finding first and close its issue with a commit link.
                   Then implement the next unchecked tasks in .kiro/specs/zombie-engine/tasks.md tagged [credibility] (and any unchecked [demo-critical] task), in order, citing requirement IDs
                   in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
                   Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
@@ -314,14 +314,14 @@ steps:
                 effortLevel: high
                 prompt: |
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
-                  Run {{run_id}}, spec zombie-engine, layer credibility, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Run {{run_id}}, spec zombie-engine, layer credibility, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file and the loop's stop file.
                   Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/zombie-engine/requirements.md and design.md,
                   for the [credibility] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
                   Run `python3 /projects/sandbox/undead-311/scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
                   If .kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
-                  Write .kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  Write .kiro/workflow-runs/{{run_id}}/review-stats-zombie-engine-credibility.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
                   to:engine and type:finding, then run
-                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-gate.json --review .kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-review.json --out .kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-loop.json`.
+                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-gate.json --review /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/review-stats-zombie-engine-credibility.json --out /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-loop.json`. This step owns the loop's stop file /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-loop.json: loop_status.py writes done: true only when the gate file says PASS and your verdict is APPROVED, otherwise done: false. Always run it, even when the verdict is CHANGES_REQUESTED.
           - type: repeat
             id: durability-stats-credibility-loop
             maxIterations: 3
@@ -340,7 +340,7 @@ steps:
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
                   Run {{run_id}}, spec durability-stats, layer credibility, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in /projects/sandbox/worktrees/{{run_id}}-engine (branch build/{{run_id}}-engine).
                   First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
-                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/durability-stats-credibility-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/review-stats-durability-stats-credibility.json if it exists; fix every finding first and close its issue with a commit link.
                   Then implement the next unchecked tasks in .kiro/specs/durability-stats/tasks.md tagged [credibility] (and any unchecked [demo-critical] task), in order, citing requirement IDs
                   in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
                   Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
@@ -359,14 +359,14 @@ steps:
                 effortLevel: high
                 prompt: |
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
-                  Run {{run_id}}, spec durability-stats, layer credibility, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Run {{run_id}}, spec durability-stats, layer credibility, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file and the loop's stop file.
                   Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/durability-stats/requirements.md and design.md,
                   for the [credibility] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
                   Run `python3 /projects/sandbox/undead-311/scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
                   If .kiro/workflow-runs/{{run_id}}/durability-stats-credibility-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
-                  Write .kiro/workflow-runs/{{run_id}}/durability-stats-credibility-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  Write .kiro/workflow-runs/{{run_id}}/review-stats-durability-stats-credibility.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
                   to:engine and type:finding, then run
-                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/durability-stats-credibility-gate.json --review .kiro/workflow-runs/{{run_id}}/durability-stats-credibility-review.json --out .kiro/workflow-runs/{{run_id}}/durability-stats-credibility-loop.json`.
+                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/durability-stats-credibility-gate.json --review /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/review-stats-durability-stats-credibility.json --out /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/durability-stats-credibility-loop.json`. This step owns the loop's stop file /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/durability-stats-credibility-loop.json: loop_status.py writes done: true only when the gate file says PASS and your verdict is APPROVED, otherwise done: false. Always run it, even when the verdict is CHANGES_REQUESTED.
           - type: repeat
             id: nightly-and-deploy-credibility-loop
             maxIterations: 3
@@ -385,7 +385,7 @@ steps:
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
                   Run {{run_id}}, spec nightly-and-deploy, layer credibility, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in /projects/sandbox/worktrees/{{run_id}}-engine (branch build/{{run_id}}-engine).
                   First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
-                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-credibility-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/review-stats-nightly-and-deploy-credibility.json if it exists; fix every finding first and close its issue with a commit link.
                   Then implement the next unchecked tasks in .kiro/specs/nightly-and-deploy/tasks.md tagged [credibility] (and any unchecked [demo-critical] task), in order, citing requirement IDs
                   in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
                   Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
@@ -404,14 +404,14 @@ steps:
                 effortLevel: high
                 prompt: |
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
-                  Run {{run_id}}, spec nightly-and-deploy, layer credibility, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Run {{run_id}}, spec nightly-and-deploy, layer credibility, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file and the loop's stop file.
                   Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/nightly-and-deploy/requirements.md and design.md,
                   for the [credibility] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
                   Run `python3 /projects/sandbox/undead-311/scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
                   If .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-credibility-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
-                  Write .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-credibility-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  Write .kiro/workflow-runs/{{run_id}}/review-stats-nightly-and-deploy-credibility.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
                   to:engine and type:finding, then run
-                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-credibility-gate.json --review .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-credibility-review.json --out .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-credibility-loop.json`.
+                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/nightly-and-deploy-credibility-gate.json --review /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/review-stats-nightly-and-deploy-credibility.json --out /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/nightly-and-deploy-credibility-loop.json`. This step owns the loop's stop file /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/nightly-and-deploy-credibility-loop.json: loop_status.py writes done: true only when the gate file says PASS and your verdict is APPROVED, otherwise done: false. Always run it, even when the verdict is CHANGES_REQUESTED.
       - type: sequence
         id: credibility-web-branch
         steps:
@@ -433,7 +433,7 @@ steps:
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
                   Run {{run_id}}, spec haunted-web, layer credibility, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in /projects/sandbox/worktrees/{{run_id}}-web (branch build/{{run_id}}-web).
                   First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
-                  Read open to:web findings and .kiro/workflow-runs/{{run_id}}/haunted-web-credibility-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Read open to:web findings and .kiro/workflow-runs/{{run_id}}/review-ux-haunted-web-credibility.json if it exists; fix every finding first and close its issue with a commit link.
                   Then implement the next unchecked tasks in .kiro/specs/haunted-web/tasks.md tagged [credibility] (and any unchecked [demo-critical] task), in order, citing requirement IDs
                   in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
                   Commit after each task with the Kiro-Agent: web and Kiro-Run: {{run_id}} trailers.
@@ -452,14 +452,14 @@ steps:
                 effortLevel: high
                 prompt: |
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
-                  Run {{run_id}}, spec haunted-web, layer credibility, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Run {{run_id}}, spec haunted-web, layer credibility, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file and the loop's stop file.
                   Review the commits on build/{{run_id}}-web since the last review (`git log`, `git diff`) against .kiro/specs/haunted-web/requirements.md and design.md,
                   for the [credibility] tasks. Build the site (`make build`) and use Playwright to screenshot the pages this layer touched into docs/screenshots/{{run_id}}/. Check design-system.md (every Banned default), voice.md (TODO-COPY placeholders are allowed), accessibility basics, and answer 'If the name were removed, could this be any generic dashboard?' (yes = CHANGES_REQUESTED).
                   Run `python3 /projects/sandbox/undead-311/scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-web --require-run {{run_id}}`; missing trailers are a finding.
                   If .kiro/workflow-runs/{{run_id}}/haunted-web-credibility-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
-                  Write .kiro/workflow-runs/{{run_id}}/haunted-web-credibility-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  Write .kiro/workflow-runs/{{run_id}}/review-ux-haunted-web-credibility.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
                   to:web and type:finding, then run
-                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/haunted-web-credibility-gate.json --review .kiro/workflow-runs/{{run_id}}/haunted-web-credibility-review.json --out .kiro/workflow-runs/{{run_id}}/haunted-web-credibility-loop.json`.
+                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/haunted-web-credibility-gate.json --review /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/review-ux-haunted-web-credibility.json --out /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/haunted-web-credibility-loop.json`. This step owns the loop's stop file /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/haunted-web-credibility-loop.json: loop_status.py writes done: true only when the gate file says PASS and your verdict is APPROVED, otherwise done: false. Always run it, even when the verdict is CHANGES_REQUESTED.
   - type: step
     id: integrate-credibility
     agent: engine
@@ -497,7 +497,7 @@ steps:
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
                   Run {{run_id}}, spec zombie-engine, layer delight, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in /projects/sandbox/worktrees/{{run_id}}-engine (branch build/{{run_id}}-engine).
                   First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
-                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/zombie-engine-delight-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/review-stats-zombie-engine-delight.json if it exists; fix every finding first and close its issue with a commit link.
                   Then implement the next unchecked tasks in .kiro/specs/zombie-engine/tasks.md tagged [delight] (and any unchecked [demo-critical] or [credibility] task), in order, citing requirement IDs
                   in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
                   Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
@@ -516,14 +516,14 @@ steps:
                 effortLevel: high
                 prompt: |
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
-                  Run {{run_id}}, spec zombie-engine, layer delight, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Run {{run_id}}, spec zombie-engine, layer delight, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file and the loop's stop file.
                   Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/zombie-engine/requirements.md and design.md,
                   for the [delight] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
                   Run `python3 /projects/sandbox/undead-311/scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
                   If .kiro/workflow-runs/{{run_id}}/zombie-engine-delight-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
-                  Write .kiro/workflow-runs/{{run_id}}/zombie-engine-delight-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  Write .kiro/workflow-runs/{{run_id}}/review-stats-zombie-engine-delight.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
                   to:engine and type:finding, then run
-                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/zombie-engine-delight-gate.json --review .kiro/workflow-runs/{{run_id}}/zombie-engine-delight-review.json --out .kiro/workflow-runs/{{run_id}}/zombie-engine-delight-loop.json`.
+                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/zombie-engine-delight-gate.json --review /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/review-stats-zombie-engine-delight.json --out /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/zombie-engine-delight-loop.json`. This step owns the loop's stop file /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/zombie-engine-delight-loop.json: loop_status.py writes done: true only when the gate file says PASS and your verdict is APPROVED, otherwise done: false. Always run it, even when the verdict is CHANGES_REQUESTED.
           - type: repeat
             id: durability-stats-delight-loop
             maxIterations: 3
@@ -542,7 +542,7 @@ steps:
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
                   Run {{run_id}}, spec durability-stats, layer delight, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in /projects/sandbox/worktrees/{{run_id}}-engine (branch build/{{run_id}}-engine).
                   First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
-                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/durability-stats-delight-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/review-stats-durability-stats-delight.json if it exists; fix every finding first and close its issue with a commit link.
                   Then implement the next unchecked tasks in .kiro/specs/durability-stats/tasks.md tagged [delight] (and any unchecked [demo-critical] or [credibility] task), in order, citing requirement IDs
                   in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
                   Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
@@ -561,14 +561,14 @@ steps:
                 effortLevel: high
                 prompt: |
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
-                  Run {{run_id}}, spec durability-stats, layer delight, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Run {{run_id}}, spec durability-stats, layer delight, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file and the loop's stop file.
                   Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/durability-stats/requirements.md and design.md,
                   for the [delight] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
                   Run `python3 /projects/sandbox/undead-311/scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
                   If .kiro/workflow-runs/{{run_id}}/durability-stats-delight-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
-                  Write .kiro/workflow-runs/{{run_id}}/durability-stats-delight-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  Write .kiro/workflow-runs/{{run_id}}/review-stats-durability-stats-delight.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
                   to:engine and type:finding, then run
-                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/durability-stats-delight-gate.json --review .kiro/workflow-runs/{{run_id}}/durability-stats-delight-review.json --out .kiro/workflow-runs/{{run_id}}/durability-stats-delight-loop.json`.
+                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/durability-stats-delight-gate.json --review /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/review-stats-durability-stats-delight.json --out /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/durability-stats-delight-loop.json`. This step owns the loop's stop file /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/durability-stats-delight-loop.json: loop_status.py writes done: true only when the gate file says PASS and your verdict is APPROVED, otherwise done: false. Always run it, even when the verdict is CHANGES_REQUESTED.
           - type: repeat
             id: nightly-and-deploy-delight-loop
             maxIterations: 3
@@ -587,7 +587,7 @@ steps:
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
                   Run {{run_id}}, spec nightly-and-deploy, layer delight, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in /projects/sandbox/worktrees/{{run_id}}-engine (branch build/{{run_id}}-engine).
                   First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
-                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-delight-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/review-stats-nightly-and-deploy-delight.json if it exists; fix every finding first and close its issue with a commit link.
                   Then implement the next unchecked tasks in .kiro/specs/nightly-and-deploy/tasks.md tagged [delight] (and any unchecked [demo-critical] or [credibility] task), in order, citing requirement IDs
                   in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
                   Commit after each task with the Kiro-Agent: engine and Kiro-Run: {{run_id}} trailers.
@@ -606,14 +606,14 @@ steps:
                 effortLevel: high
                 prompt: |
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
-                  Run {{run_id}}, spec nightly-and-deploy, layer delight, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Run {{run_id}}, spec nightly-and-deploy, layer delight, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file and the loop's stop file.
                   Review the commits on build/{{run_id}}-engine since the last review (`git log`, `git diff`) against .kiro/specs/nightly-and-deploy/requirements.md and design.md,
                   for the [delight] tasks. Check formulas and edge cases against methods.md and zombie-definition.md, that every requirement in this layer has a test citing its ID, and that the property tests named in the spec's design (testing.md numbers) exist and are not weakened.
                   Run `python3 /projects/sandbox/undead-311/scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-engine --require-run {{run_id}}`; missing trailers are a finding.
                   If .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-delight-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
-                  Write .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-delight-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  Write .kiro/workflow-runs/{{run_id}}/review-stats-nightly-and-deploy-delight.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
                   to:engine and type:finding, then run
-                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-delight-gate.json --review .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-delight-review.json --out .kiro/workflow-runs/{{run_id}}/nightly-and-deploy-delight-loop.json`.
+                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/nightly-and-deploy-delight-gate.json --review /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/review-stats-nightly-and-deploy-delight.json --out /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/nightly-and-deploy-delight-loop.json`. This step owns the loop's stop file /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/nightly-and-deploy-delight-loop.json: loop_status.py writes done: true only when the gate file says PASS and your verdict is APPROVED, otherwise done: false. Always run it, even when the verdict is CHANGES_REQUESTED.
       - type: sequence
         id: delight-web-branch
         steps:
@@ -635,7 +635,7 @@ steps:
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
                   Run {{run_id}}, spec haunted-web, layer delight, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in /projects/sandbox/worktrees/{{run_id}}-web (branch build/{{run_id}}-web).
                   First `git merge --no-edit build/{{run_id}}` to pick up the latest integrated work.
-                  Read open to:web findings and .kiro/workflow-runs/{{run_id}}/haunted-web-delight-review.json if it exists; fix every finding first and close its issue with a commit link.
+                  Read open to:web findings and .kiro/workflow-runs/{{run_id}}/review-ux-haunted-web-delight.json if it exists; fix every finding first and close its issue with a commit link.
                   Then implement the next unchecked tasks in .kiro/specs/haunted-web/tasks.md tagged [delight] (and any unchecked [demo-critical] or [credibility] task), in order, citing requirement IDs
                   in docstrings and test names. Tick each task's checkbox when its tests pass. If this layer has no tasks, say so and change nothing.
                   Commit after each task with the Kiro-Agent: web and Kiro-Run: {{run_id}} trailers.
@@ -654,14 +654,14 @@ steps:
                 effortLevel: high
                 prompt: |
                   FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
-                  Run {{run_id}}, spec haunted-web, layer delight, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file.
+                  Run {{run_id}}, spec haunted-web, layer delight, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file and the loop's stop file.
                   Review the commits on build/{{run_id}}-web since the last review (`git log`, `git diff`) against .kiro/specs/haunted-web/requirements.md and design.md,
                   for the [delight] tasks. Build the site (`make build`) and use Playwright to screenshot the pages this layer touched into docs/screenshots/{{run_id}}/. Check design-system.md (every Banned default), voice.md (TODO-COPY placeholders are allowed), accessibility basics, and answer 'If the name were removed, could this be any generic dashboard?' (yes = CHANGES_REQUESTED).
                   Run `python3 /projects/sandbox/undead-311/scripts/check_trailers.py build/{{run_id}}..build/{{run_id}}-web --require-run {{run_id}}`; missing trailers are a finding.
                   If .kiro/workflow-runs/{{run_id}}/haunted-web-delight-gate.json is not PASS, the verdict must be CHANGES_REQUESTED.
-                  Write .kiro/workflow-runs/{{run_id}}/haunted-web-delight-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
+                  Write .kiro/workflow-runs/{{run_id}}/review-ux-haunted-web-delight.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
                   to:web and type:finding, then run
-                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/haunted-web-delight-gate.json --review .kiro/workflow-runs/{{run_id}}/haunted-web-delight-review.json --out .kiro/workflow-runs/{{run_id}}/haunted-web-delight-loop.json`.
+                  `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/haunted-web-delight-gate.json --review /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/review-ux-haunted-web-delight.json --out /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/haunted-web-delight-loop.json`. This step owns the loop's stop file /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/haunted-web-delight-loop.json: loop_status.py writes done: true only when the gate file says PASS and your verdict is APPROVED, otherwise done: false. Always run it, even when the verdict is CHANGES_REQUESTED.
   - type: step
     id: integrate
     agent: engine
@@ -691,7 +691,7 @@ steps:
         prompt: |
           FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
           Run {{run_id}}, step "design-fix". Follow docs/RUN_PROTOCOL.md. Work in /projects/sandbox/worktrees/{{run_id}} (branch build/{{run_id}}), web/ only.
-          Fix every open to:web finding and every finding in .kiro/workflow-runs/{{run_id}}/design-review.json (if it exists).
+          Fix every open to:web finding and every finding in .kiro/workflow-runs/{{run_id}}/review-ux-design.json (if it exists).
           Never write human copy: leave TODO-COPY placeholders. Commit with the Kiro-Agent: web and Kiro-Run: {{run_id}} trailers.
       - type: step
         id: design-validate
@@ -709,14 +709,14 @@ steps:
         effortLevel: high
         prompt: |
           FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
-          Run {{run_id}}, step "design-review". Follow docs/RUN_PROTOCOL.md. Read-only except your review file and docs/screenshots/.
+          Run {{run_id}}, step "design-review". Follow docs/RUN_PROTOCOL.md. Read-only except your review file, the loop's stop file and docs/screenshots/.
           Serve the build from /projects/sandbox/worktrees/{{run_id}} (`npm run preview` in web/) and use Playwright to screenshot EVERY page into
           docs/screenshots/{{run_id}}/: map, autopsy card, scorecard, survival and funnel charts, methods page, judge mode, table view,
           on desktop and phone widths. Check every item in design-system.md "Banned defaults", palette meaning, type, layout, motion and
           reduced motion, voice.md, and accessibility basics. Answer "If the name were removed, could this be any generic dashboard?"
           (yes = CHANGES_REQUESTED). If design-gate.json is not PASS the verdict is CHANGES_REQUESTED.
-          Write .kiro/workflow-runs/{{run_id}}/design-review.json ({"verdict", "generic_dashboard", "findings"}), file findings as to:web
-          type:finding issues, then run `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/design-gate.json --review .kiro/workflow-runs/{{run_id}}/design-review.json --out .kiro/workflow-runs/{{run_id}}/design-loop.json`.
+          Write .kiro/workflow-runs/{{run_id}}/review-ux-design.json ({"verdict", "generic_dashboard", "findings"}), file findings as to:web
+          type:finding issues, then run `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/design-gate.json --review /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/review-ux-design.json --out /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/design-loop.json`. This step owns the loop's stop file /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/design-loop.json: loop_status.py writes done: true only when the gate file says PASS and your verdict is APPROVED, otherwise done: false. Always run it, even when the verdict is CHANGES_REQUESTED.
   # ---------- Preview ----------
   - type: step
     id: preview
@@ -740,7 +740,7 @@ steps:
       FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
       Run {{run_id}}, step "preview-review". Follow docs/RUN_PROTOCOL.md. Read-only except your review file.
       Run your Playwright review against the URL in .kiro/workflow-runs/{{run_id}}/preview.json (judge-mode tour end to end, no login,
-      "Data as of" visible, footer text, no third-party requests at runtime). Write .kiro/workflow-runs/{{run_id}}/preview-review.json
+      "Data as of" visible, footer text, no third-party requests at runtime). Write .kiro/workflow-runs/{{run_id}}/review-ux-preview.json
       and file findings as to:web type:finding issues (they are fixed in the next run; this step does not loop).
   - type: step
     id: retro
