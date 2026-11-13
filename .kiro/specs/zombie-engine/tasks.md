@@ -77,7 +77,7 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
   - `detect/confidence.py` with the formula in design.md; neutral terms and `confidence_partial`; write the formula and weights into `docs/METHODS.md` (section "Confidence score") marked "pending owner approval".
   - [x] 16.1 Property P19: confidence is in [0, 1]; `confidence_partial` is true exactly when a term is neutral. _REQ-CONF.1–2_
   - _Requirements: REQ-CONF.1–3_
-- [ ] 17. [demo-critical] Skeptic input and join
+- [x] 17. [demo-critical] Skeptic input and join
   - `detect/skeptic.py`: `skeptic_input.json` (validation sample, tour zombies, 200 headline zombies with the most re-reports; never by confidence) and the join of `data/labels/skeptic_objections.json` with `not_reviewed` default.
   - _Requirements: REQ-SKEP.1–2_
 - [ ] 18. [demo-critical] Exports and contracts

@@ -114,6 +114,7 @@ class Zombie:
     skeptic_verdict: Literal["survives", "weakened", "explained_away", "not_reviewed"] = "not_reviewed"
     skeptic_notes: str = ""
     is_planned_followup: bool = False
+    catch_all: bool = False
 
     @property
     def zombie_id(self) -> str:

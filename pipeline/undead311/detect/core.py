@@ -314,9 +314,9 @@ def detect(cases: list[Case], p: Params = DEFAULT, edges: Edges | None = None) -
                 neighborhood=inc.neighborhood,
                 district=inc.district,
                 segment_id=inc.segment_id,
+                catch_all=res.catch_all or any(by_id[mid].catch_all for mid in inc.member_ids),
             )
-        catch_all = res.catch_all or any(by_id[mid].catch_all for mid in inc.member_ids)
-        result.zombies.append(rescore(z, p, catch_all=catch_all))
+        result.zombies.append(rescore(z, p))
     result.zombies.sort(key=lambda z: z.zombie_id)
     result.planned_followups.sort(key=lambda z: (z.incident_id, z.resurrection_id))
     result.separate_deaths.sort(key=lambda z: (z.incident_id, z.rereport_id))

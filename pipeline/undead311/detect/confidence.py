@@ -78,7 +78,6 @@ def rescore(
     z: Zombie,
     p: Params = DEFAULT,
     *,
-    catch_all: bool = False,
     baseline_p: float | None = None,
     skeptic_verdict: str | None = None,
     skeptic_notes: str | None = None,
@@ -87,7 +86,7 @@ def rescore(
     baseline = z.baseline_p if baseline_p is None else baseline_p
     verdict = z.skeptic_verdict if skeptic_verdict is None else skeptic_verdict
     score, partial = confidence(
-        ConfidenceInputs(z.match_mode, z.distance_m, z.gap_days, z.coroner_label, z.bulk_closure, catch_all, baseline, verdict),
+        ConfidenceInputs(z.match_mode, z.distance_m, z.gap_days, z.coroner_label, z.bulk_closure, z.catch_all, baseline, verdict),
         p,
     )
     return replace(
