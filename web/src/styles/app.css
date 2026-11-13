@@ -346,3 +346,22 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
   font-family: var(--font-ui);
 }
 .map-host .maplibregl-ctrl-attrib a { color: var(--asphalt); }
+
+/*
+ * UX-12 (ops#25): on phones the map is the hero. The filters panel stops being a box (display: contents) so its parts
+ * and the map share one column: title, count, Show filters, the filters when open, the map, then the two hero lines.
+ */
+@media (max-width: 640px) {
+  .home { display: flex; flex-direction: column; height: auto; }
+  .filters-panel { display: contents; }
+  .filters-panel > * { margin-inline: var(--space-3); }
+  .filters-panel > h1 { order: 0; margin-block: var(--space-3) var(--space-1); }
+  .filters-panel > div:not(.hero-text):not(.filters-body) { order: 1; }
+  .filters-panel > .filters-toggle { order: 2; align-self: flex-start; }
+  .filters-panel > .filters-body { order: 3; }
+  .stage { order: 4; flex: 0 0 auto; border-top: 2px solid var(--asphalt); }
+  .filters-panel > .hero-text { order: 5; margin-block: var(--space-3); }
+}
+
+/* UX-13 (ops#26): the card repeats a short preview notice, because the phone sheet can cover the header notice. */
+.card-fixture-notice { border: 2px dashed var(--asphalt); padding: var(--space-1) var(--space-2); margin: 0 0 var(--space-3); font-weight: 600; max-width: none; }

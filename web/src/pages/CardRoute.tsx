@@ -3,7 +3,8 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AutopsyCard, type CardWithPartial } from "../components/AutopsyCard";
 import { PanelError } from "../components/PanelError";
 import { useData } from "../lib/data";
-import { parseCardShard, parsePoints } from "../lib/parse";
+import { isFixtureData } from "../lib/dataAsOf";
+import { parseCardShard, parsePoints, parseStatus } from "../lib/parse";
 import { shardFile } from "../lib/shard";
 import { t } from "../lib/t";
 
@@ -20,6 +21,8 @@ export default function CardRoute() {
   const index = points.status === "ok" ? points.data.id.indexOf(id) : -1;
   const file = points.status === "ok" && index >= 0 ? shardFile(points.data.neighborhood[index], points.data.year[index]) : null;
   const shard = useData(file, parseCardShard);
+  const status = useData("status.json", parseStatus);
+  const fixture = status.status === "ok" && isFixtureData(status.data);
   const card = shard.status === "ok" ? (shard.data.cards.find((c) => c.zombie_id === id) as CardWithPartial | undefined) : undefined;
 
   const heading = useRef<HTMLHeadingElement>(null);
@@ -50,6 +53,11 @@ export default function CardRoute() {
           {t("card.close")}
         </button>
       </div>
+      {fixture && (
+        <p className="card-fixture-notice" data-testid="card-fixture-notice" role="note">
+          {t("card.fixture_notice")}
+        </p>
+      )}
       {(points.status === "loading" || shard.status === "loading") && !missing && <p>{t("card.loading")}</p>}
       {points.status === "error" && <PanelError file={points.file} error={points.error} />}
       {shard.status === "error" && <PanelError file={shard.file} error={shard.error} />}

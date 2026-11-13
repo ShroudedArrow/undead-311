@@ -48,3 +48,13 @@ describe("keyboard and motion (REQ-WEB-A11Y.1)", () => {
     expect(rules.find((r) => r.sel === "button")?.body).toMatch(/min-height:\s*2\.75rem/);
   });
 });
+
+describe("phone layout: the map comes before the hero text (REQ-WEB-MAP.1, design-system.md map is the hero, UX-12)", () => {
+  it("orders the stage ahead of the hero lines under 640 px", () => {
+    const phone = css.slice(css.lastIndexOf("UX-12"));
+    const order = (sel: string) => Number(new RegExp(`${sel.replace(/[.>\s]/g, (c) => `\\${c}`)}\\s*\\{[^}]*order:\\s*(\\d+)`).exec(phone)?.[1]);
+    expect(order(".stage")).toBeLessThan(order(".filters-panel > .hero-text"));
+    expect(order(".filters-panel > h1")).toBeLessThan(order(".stage"));
+    expect(order(".filters-panel > .filters-toggle")).toBeLessThan(order(".stage"));
+  });
+});

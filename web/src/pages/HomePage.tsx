@@ -36,8 +36,10 @@ export default function HomePage() {
     <div className="home">
       <aside className="filters-panel">
         <h1>{t("app.title")}</h1>
-        <p className="tagline">{t("app.hero_line")}</p>
-        <p className="tagline">{t("app.hero_subtitle")}</p>
+        <div className="hero-text">
+          <p className="tagline">{t("app.hero_line")}</p>
+          <p className="tagline">{t("app.hero_subtitle")}</p>
+        </div>
         {points.status === "error" && <PanelError file={points.file} error={points.error} />}
         {points.status === "loading" && <p>{t("filters.loading")}</p>}
         {points.status === "ok" && (

@@ -143,6 +143,7 @@
   },
   "card": {
     "title": "Autopsy report",
+    "fixture_notice": "Preview data, not detector output. Do not quote these numbers.",
     "close": "Close this report",
     "intro": "A possible zombie: a case the city closed, then reported again at the same place.",
     "stamp_closed": "CLOSED",
