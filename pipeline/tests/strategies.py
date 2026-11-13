@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from helpers import mk
 from hypothesis import strategies as st
 
@@ -50,4 +52,10 @@ def town(draw, min_size=2, max_size=22, families=FAMILIES):
                 city_type=draw(st.integers(0, 9)) == 0,
             )
         )
-    return cases
+    legacy_ids = [c.id for c in cases if c.system == "legacy"]
+    out = []
+    for c in cases:
+        if c.system == "new" and legacy_ids and draw(st.integers(0, 4)) == 0:
+            c = replace(c, predecessor_ids=(draw(st.sampled_from(legacy_ids)),), catch_all=True)
+        out.append(c)
+    return out

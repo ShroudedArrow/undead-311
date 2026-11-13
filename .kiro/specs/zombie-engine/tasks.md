@@ -47,14 +47,14 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
   - [x] 10.1 Property P7: incidents partition the closed in-scope cases. _REQ-DET-1.1_
   - [x] 10.2 Property P12: a case opened at or after an incident's earliest member close is never its member. _REQ-DET-1.4_
   - _Requirements: REQ-DET-1.1–4_
-- [ ] 11. [demo-critical] Candidate pairs, mirrors and attribution
+- [x] 11. [demo-critical] Candidate pairs, mirrors and attribution
   - Strict `R.open > I.close`; window; family; transferred members; linked successors; mirror R dropped from attribution; exclusion counts; attribution to the most recent eligible incident (ties by ID); resurrection, `reports_after`, `gap_days`.
-  - [ ] 11.1 Property P1: a case is never its own zombie. _REQ-DET-2.1_
-  - [ ] 11.2 Property P2: every attached R opens strictly after its incident's close. _REQ-DET-2.1_
-  - [ ] 11.3 Property P3: raising RADIUS_M or WINDOW_DAYS never removes a case-level candidate pair. _REQ-DET-MATCH, REQ-DET-2_
-  - [ ] 11.4 Property P8: each R attaches to at most one incident; attribution is deterministic. _REQ-DET-3_
-  - [ ] 11.5 Property P14: mirror and transfer pairs never survive; same-system pairs are never mirrors; Transitioned originals never yield zombies. _REQ-DET-2.2, 2.4_
-  - [ ] 11.6 Property P15: a linked successor is never a re-report of its own predecessor's incident. _REQ-DET-2.3, REQ-ING-CATCH.5_
+  - [x] 11.1 Property P1: a case is never its own zombie. _REQ-DET-2.1_
+  - [x] 11.2 Property P2: every attached R opens strictly after its incident's close. _REQ-DET-2.1_
+  - [x] 11.3 Property P3: raising RADIUS_M or WINDOW_DAYS never removes a case-level candidate pair. _REQ-DET-MATCH, REQ-DET-2_
+  - [x] 11.4 Property P8: each R attaches to at most one incident; attribution is deterministic. _REQ-DET-3_
+  - [x] 11.5 Property P14: mirror and transfer pairs never survive; same-system pairs are never mirrors; Transitioned originals never yield zombies. _REQ-DET-2.2, 2.4_
+  - [x] 11.6 Property P15: a linked successor is never a re-report of its own predecessor's incident. _REQ-DET-2.3, REQ-ING-CATCH.5_
   - _Requirements: REQ-DET-2.1–5, REQ-DET-3.1–3_
 - [ ] 12. [demo-critical] Classification and tiers
   - Planned follow-ups (legacy city-originated resurrection), `after_temporary_fix`, `source_unknown`, separate deaths, tier precedence, headline count.
