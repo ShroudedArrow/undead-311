@@ -31,6 +31,7 @@ from undead311.export.writers import (
     canonical_json,
     data_version,
     export_all,
+    exported_case_ids,
     snapshot_date,
     write_duckdb_atomic,
     write_text_atomic,
@@ -196,7 +197,7 @@ def run_pipeline(
                 f"are legacy city-originated cases; {co['city_originated_under_1h']} opened under 1 h after the closure"
             )
         for z in result.zombies:  # PII counts over the free text that the cards export
-            for cid in (*z.member_ids[:1], z.resurrection_id):
+            for cid in exported_case_ids(z, by_id):
                 pii.scrub(by_id[cid].closure_text)
                 pii.scrub(by_id[cid].street)
         report.pii_counts = dict(sorted(pii.counts.items()))

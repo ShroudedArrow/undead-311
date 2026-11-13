@@ -19,6 +19,7 @@ from undead311.export.writers import (
     canonical_json,
     data_version,
     export_all,
+    exported_case_ids,
     snapshot_date,
     validate,
     write_duckdb_atomic,
@@ -192,3 +193,17 @@ def test_req_det_pf_planned_followups_are_counted_in_status(tmp_path):
     status = json.loads((tmp_path / "status.json").read_text())
     assert status["planned_followup_count"] == 1 and status["headline_count"] == 0
     assert all(not z["is_planned_followup"] for z in json.loads((tmp_path / "zombies.json").read_text())["zombies"])
+
+
+def test_req_ing_pii_3_points_and_pii_counts_use_the_card_original(tmp_path):
+    """REQ-ING-PII.3, REQ-EXP-1.1 (ops#40): in a two-member incident the map point and the PII-counted case are the
+    closing member shown on the card, not the smallest ID or the earliest-opened member."""
+    cs = [mk("A", 0, 1, x=0.0), mk("B", 0.5, 3, x=10.0), mk("R", 10)]
+    result = detect(cs)
+    (z,) = result.zombies
+    by_id = {c.id: c for c in cs}
+    assert exported_case_ids(z, by_id) == ("B", "R")
+    p = build_payloads(result, by_id, ExportContext(data_version="v", run_time="t"))
+    card = next(v for k, v in p.items() if k.startswith("cards/"))["cards"][0]
+    assert card["original"]["id"] == "B"
+    assert p["points.json"]["lat"][0] == card["original"]["lat"] and p["points.json"]["lon"][0] == card["original"]["lon"]

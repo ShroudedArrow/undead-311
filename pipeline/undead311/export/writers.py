@@ -121,14 +121,16 @@ def case_record(c: Case) -> dict:
     }  # fmt: skip
 
 
-def _representative(z: Zombie, cases: Mapping[str, Case]) -> Case:
-    return min((cases[m] for m in z.member_ids), key=lambda c: (c.open_utc, c.id))
-
-
-def _closer(z: Zombie, cases: Mapping[str, Case]) -> Case:
+def closing_member(z: Zombie, cases: Mapping[str, Case]) -> Case:
     """The latest-closing member, ties by smallest ID: the closure that ended the incident (ZD step 2). It is the source of
     the Coroner label and of `gap_days`, so the card's `original` shows this case (REQ-EXP-1.1)."""
     return min((cases[m] for m in z.member_ids), key=lambda c: (-c.close_utc.timestamp(), c.id))  # type: ignore[union-attr]
+
+
+def exported_case_ids(z: Zombie, cases: Mapping[str, Case]) -> tuple[str, str]:
+    """IDs of the two cases whose free text a zombie's card exports: the closing member (the card's original) and the
+    re-report. The run report's PII counts cover exactly these (REQ-ING-PII.3, ops#40)."""
+    return closing_member(z, cases).id, z.resurrection_id
 
 
 def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: ExportContext) -> dict[str, Any]:
@@ -152,7 +154,7 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
             if i.incident_id in with_reports
         ],
     }  # fmt: skip
-    reps = {z.zombie_id: _representative(z, cases) for z in zombies}
+    reps = {z.zombie_id: closing_member(z, cases) for z in zombies}  # the card's original (ops#40)
     out["points.json"] = {
         "data_version": dv, "n": len(zombies),
         "id": [z.zombie_id for z in zombies],
@@ -167,7 +169,7 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
         res = cases[z.resurrection_id]
         shards[f"{slug(z.neighborhood)}-{z.resurrection_date[:4]}"].append(
             {
-                "zombie_id": z.zombie_id, "original": case_record(_closer(z, cases)), "rereport": case_record(res),
+                "zombie_id": z.zombie_id, "original": case_record(closing_member(z, cases)), "rereport": case_record(res),
                 "cause_of_death": z.coroner_label, "gap_days": round(z.gap_days, 6),
                 "resurrection_date": z.resurrection_date, "confidence": round(z.confidence, 6),
                 "confidence_partial": z.confidence_partial,
