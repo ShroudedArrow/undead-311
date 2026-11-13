@@ -20,9 +20,9 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 - [x] 4. [demo-critical] Haunted map
   - MapLibre with a self-hosted Boston PMTiles extract restyled to the palette (no default dark style); deck.gl IconLayer with a 3–5 sprite atlas (placeholder sprites until the owner's spray-paint scans exist; record that in the PR); filters UI; count; OSM attribution.
   - _Requirements: REQ-WEB-MAP.1–5_
-- [ ] 5. [demo-critical] Table view
+- [x] 5. [demo-critical] Table view
   - Sortable table with the same set as the map; each row opens the card.
-  - [ ] 5.1 Property W4: map set = table set = counted set for any filters and tier mode. _REQ-WEB-MAP.3, REQ-WEB-TABLE.1_
+  - [x] 5.1 Property W4: map set = table set = counted set for any filters and tier mode. _REQ-WEB-MAP.3, REQ-WEB-TABLE.1_
   - _Requirements: REQ-WEB-TABLE.1_
 - [ ] 6. [demo-critical] Autopsy card
   - Triplicate form, stamps, typewriter face inside the form only, both case records, Skeptic section, `partial` confidence note, bulk-closure warning, phone bottom sheet, lazy shard loading.

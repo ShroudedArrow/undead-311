@@ -3,10 +3,12 @@ import { Outlet, useMatch, useNavigate, useSearchParams } from "react-router-dom
 import { CountLine } from "../components/CountLine";
 import { Filters } from "../components/Filters";
 import { PanelError } from "../components/PanelError";
+import { ZombieTable } from "../components/ZombieTable";
 import { visibleSet } from "../lib/filter";
 import { useData } from "../lib/data";
-import { parsePoints } from "../lib/parse";
+import { parsePoints, parseZombies } from "../lib/parse";
 import { pointsToRows } from "../lib/points";
+import { buildTableRows } from "../lib/table";
 import { t } from "../lib/t";
 import { decodeState, encodeState, type PageState } from "../lib/url";
 
@@ -21,6 +23,8 @@ export default function HomePage() {
   const state = useMemo(() => decodeState(params.toString()), [params]);
   const points = useData("points.json", parsePoints);
   const rows = useMemo(() => (points.status === "ok" ? pointsToRows(points.data) : []), [points]);
+  const zombies = useData(state.view === "table" ? "zombies.json" : null, parseZombies);
+  const zombieById = useMemo(() => (zombies.status === "ok" ? new Map(zombies.data.zombies.map((z) => [z.zombie_id, z])) : null), [zombies]);
   const visible = useMemo(() => visibleSet(rows, state.filters, state.tierMode), [rows, state]);
 
   const update = (next: PageState) => setParams(encodeState(next), { replace: true });
@@ -41,10 +45,25 @@ export default function HomePage() {
           </>
         )}
       </aside>
-      <section className="stage" aria-label={t("map.region_label")}>
-        <Suspense fallback={<p>{t("map.loading")}</p>}>
-          <MapView rows={visible.items} selectedId={selectedId} onSelect={select} />
-        </Suspense>
+      <section className="stage">
+        <div className="view-switch" role="group" aria-label={t("map.view_switch")}>
+          <button type="button" aria-pressed={state.view === "map"} onClick={() => update({ ...state, view: "map" })}>
+            {t("nav.map_view")}
+          </button>
+          <button type="button" aria-pressed={state.view === "table"} onClick={() => update({ ...state, view: "table" })}>
+            {t("nav.table")}
+          </button>
+        </div>
+        {state.view === "map" ? (
+          <Suspense fallback={<p>{t("map.loading")}</p>}>
+            <MapView rows={visible.items} selectedId={selectedId} onSelect={select} />
+          </Suspense>
+        ) : (
+          <>
+            {zombies.status === "error" && <PanelError file={zombies.file} error={zombies.error} />}
+            <ZombieTable rows={buildTableRows(visible.items, zombieById)} search={params.toString()} />
+          </>
+        )}
       </section>
       <Outlet />
     </div>

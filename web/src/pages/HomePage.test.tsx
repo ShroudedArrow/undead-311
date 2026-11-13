@@ -57,3 +57,26 @@ describe("HomePage (REQ-WEB-MAP.2-4)", () => {
     expect(screen.getByText("Independent project. Not affiliated with the City of Boston.")).toBeTruthy();
   });
 });
+
+describe("Table view mirrors the map (REQ-WEB-TABLE.1)", () => {
+  it("lists the same zombies the map got, and each row links to its card", async () => {
+    stubFetch();
+    render(<MemoryRouter initialEntries={["/?view=table&n=Roxbury"]}><App /></MemoryRouter>);
+    await screen.findByText("2 possible zombies match these filters");
+    const table = await screen.findByTestId("zombie-table");
+    const ids = within(table).getAllByRole("row").slice(1).map((r) => r.getAttribute("data-id"));
+    expect(ids.sort()).toEqual(["b", "c"]);
+    expect(within(table).getByRole("link", { name: "Open card b" }).getAttribute("href")).toBe("/zombie/b?view=table&n=Roxbury");
+  });
+  it("sorts when a header is pressed and marks aria-sort", async () => {
+    stubFetch();
+    const user = userEvent.setup();
+    render(<MemoryRouter initialEntries={["/?view=table"]}><App /></MemoryRouter>);
+    const table = await screen.findByTestId("zombie-table");
+    const header = within(table).getByRole("columnheader", { name: /Neighborhood/ });
+    await user.click(within(header).getByRole("button"));
+    expect(header.getAttribute("aria-sort")).toBe("ascending");
+    await user.click(within(header).getByRole("button"));
+    expect(header.getAttribute("aria-sort")).toBe("descending");
+  });
+});
