@@ -1,0 +1,65 @@
+{
+  "fixture": "pipeline/tests/fixtures/test_town.csv",
+  "written_by": "Claude (claude.ai, outside Kiro), derived from zombie-definition.md and cross-checked by an independent second derivation; reviewed and committed by Kealoha Comcowich, 2026-11-13",
+  "zombies": [
+    {"incident_id": "101099001001", "member_ids": ["101099001001"], "resurrection_id": "101099001002", "reports_after": 1,
+     "match_mode": "segment", "tier": "headline", "after_temporary_fix": false, "chain_id": "101099001001", "times_risen": 1},
+    {"incident_id": "101099003001", "member_ids": ["101099003001", "101099003002", "101099003003"], "resurrection_id": "101099003004", "reports_after": 1,
+     "match_mode": "segment", "tier": "headline", "after_temporary_fix": false, "chain_id": "101099003001", "times_risen": 1},
+    {"incident_id": "101099005001", "member_ids": ["101099005001"], "resurrection_id": "101099005002", "reports_after": 1,
+     "match_mode": "segment", "tier": "headline", "after_temporary_fix": false, "chain_id": "101099005001", "times_risen": 3},
+    {"incident_id": "101099005002", "member_ids": ["101099005002"], "resurrection_id": "101099005003", "reports_after": 1,
+     "match_mode": "segment", "tier": "headline", "after_temporary_fix": false, "chain_id": "101099005001", "times_risen": 3},
+    {"incident_id": "101099005003", "member_ids": ["101099005003"], "resurrection_id": "101099005004", "reports_after": 1,
+     "match_mode": "segment", "tier": "headline", "after_temporary_fix": false, "chain_id": "101099005001", "times_risen": 3},
+    {"incident_id": "101099008001", "member_ids": ["101099008001"], "resurrection_id": "BCS-00908002", "reports_after": 1,
+     "match_mode": "segment", "tier": "headline", "after_temporary_fix": false, "chain_id": "101099008001", "times_risen": 1},
+    {"incident_id": "101099008003", "member_ids": ["101099008003"], "resurrection_id": "BCS-00908004", "reports_after": 1,
+     "match_mode": "segment", "tier": "headline", "after_temporary_fix": false, "chain_id": "101099008003", "times_risen": 1},
+    {"incident_id": "101099009001", "member_ids": ["101099009001"], "resurrection_id": "101099009002", "reports_after": 1,
+     "match_mode": "segment", "tier": "headline", "after_temporary_fix": false, "chain_id": "101099009001", "times_risen": 1},
+    {"incident_id": "101099010003", "member_ids": ["101099010003"], "resurrection_id": "101099010004", "reports_after": 1,
+     "match_mode": "segment", "tier": "headline", "after_temporary_fix": false, "chain_id": "101099010003", "times_risen": 1},
+    {"incident_id": "101099011001", "member_ids": ["101099011001"], "resurrection_id": "101099011002", "reports_after": 1,
+     "match_mode": "segment", "tier": "headline", "after_temporary_fix": true, "chain_id": "101099011001", "times_risen": 1},
+    {"incident_id": "101099011003", "member_ids": ["101099011003"], "resurrection_id": "101099011004", "reports_after": 1,
+     "match_mode": "segment", "tier": "headline", "after_temporary_fix": true, "chain_id": "101099011003", "times_risen": 1},
+    {"incident_id": "101099015001", "member_ids": ["101099015001"], "resurrection_id": "101099015002", "reports_after": 1,
+     "match_mode": "segment", "tier": "headline", "after_temporary_fix": false, "chain_id": "101099015001", "times_risen": 1},
+    {"incident_id": "BCS-00901003", "member_ids": ["BCS-00901003"], "resurrection_id": "BCS-00901004", "reports_after": 1,
+     "match_mode": "segment", "tier": "headline", "after_temporary_fix": false, "chain_id": "BCS-00901003", "times_risen": 1},
+    {"incident_id": "BCS-00913001", "member_ids": ["BCS-00913001"], "resurrection_id": "BCS-00913002", "reports_after": 1,
+     "match_mode": "segment", "tier": "source_unknown", "after_temporary_fix": false, "chain_id": "BCS-00913001", "times_risen": 1},
+    {"incident_id": "BCS-00913003", "member_ids": ["BCS-00913003"], "resurrection_id": "BCS-00913004", "reports_after": 1,
+     "match_mode": "segment", "tier": "source_unknown", "after_temporary_fix": false, "chain_id": "BCS-00913003", "times_risen": 1},
+    {"incident_id": "BCS-00915003", "member_ids": ["BCS-00915003"], "resurrection_id": "BCS-00915004", "reports_after": 1,
+     "match_mode": "segment", "tier": "headline", "after_temporary_fix": false, "chain_id": "BCS-00915003", "times_risen": 1},
+    {"incident_id": "BCS-00916003", "member_ids": ["BCS-00916003"], "resurrection_id": "BCS-00916004", "reports_after": 1,
+     "match_mode": "segment", "tier": "headline", "after_temporary_fix": false, "chain_id": "BCS-00916003", "times_risen": 1},
+    {"incident_id": "BCS-00917002", "member_ids": ["BCS-00917002"], "resurrection_id": "BCS-00917003", "reports_after": 1,
+     "match_mode": "segment", "tier": "headline", "after_temporary_fix": false, "chain_id": "BCS-00917002", "times_risen": 1},
+    {"incident_id": "BCS-00918001", "member_ids": ["BCS-00918001"], "resurrection_id": "BCS-00918002", "reports_after": 1,
+     "match_mode": "segment", "tier": "sensitivity", "after_temporary_fix": false, "chain_id": "BCS-00918001", "times_risen": 1},
+    {"incident_id": "BCS-00918003", "member_ids": ["BCS-00918003"], "resurrection_id": "BCS-00918004", "reports_after": 1,
+     "match_mode": "segment", "tier": "sensitivity", "after_temporary_fix": false, "chain_id": "BCS-00918003", "times_risen": 1}
+  ],
+  "planned_followups": [
+    {"incident_id": "101099004001", "resurrection_id": "101099004002"},
+    {"incident_id": "101099004003", "resurrection_id": "101099004004"}
+  ],
+  "separate_deaths": [
+    {"incident_id": "101099019001", "label": "invalid", "rereport_id": "101099019002"},
+    {"incident_id": "101099019003", "label": "duplicate", "rereport_id": "101099019004"}
+  ],
+  "repeat_offenders": [
+    {"chain_id": "101099005001", "times_risen": 3}
+  ],
+  "excluded_ids": {
+    "placeholder_or_invalid_coords": ["101099006001", "101099006002", "101099006004", "BCS-00906003"],
+    "out_of_scope_type": ["101099007001", "101099007002", "101099007003", "101099007004"]
+  },
+  "incidents_with_several_members": [
+    {"incident_id": "101099003001", "member_ids": ["101099003001", "101099003002", "101099003003"]},
+    {"incident_id": "101099009003", "member_ids": ["101099009003", "101099009004"]}
+  ]
+}
