@@ -35,12 +35,12 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
   - `coroner/templates.py` (masking, deduplication, `coroner_templates.csv`); `coroner/join.py` (precedence: Transitioned → referred, template label, then `NEW_SYSTEM_CLOSURE_LABELS`; `unlabeled` share; reject labels outside the set).
   - [x] 8.1 Property P5: every joined label is in the allowed set; an unknown label raises. _REQ-COR-1.4_
   - _Requirements: REQ-COR-1.1–4_
-- [ ] 9. [demo-critical] Location matching and candidate edges
+- [x] 9. [demo-critical] Location matching and candidate edges
   - `detect/match.py` (haversine, the segment, then intersection, then radius rule exactly as written in zombie-definition.md (radius only when a case is unsnapped), `radius` mode for the grid); `detect/edges.py` (DuckDB grid-bucket join for member and re-report edges); brute-force generator for tests.
-  - [ ] 9.1 Property P6: distance is symmetric, non-negative, zero on identical points. _REQ-DET-MATCH.4_
-  - [ ] 9.2 Equivalence test: the SQL edges equal the brute-force edges on `data/sample`. _REQ-DET-MATCH.4_
-  - [ ] 9.3 Property P21: the matching rule over generated towns (crossing streets, a mid-block split, a dead end, an overpass); a unit test with a three-way intersection and cases 14 m and 16 m from it. _REQ-DET-MATCH.1–3, REQ-ING-SNAP.4_
-  - [ ] 9.4 Property P22: matching is symmetric. _REQ-DET-MATCH.4_
+  - [x] 9.1 Property P6: distance is symmetric, non-negative, zero on identical points. _REQ-DET-MATCH.4_
+  - [x] 9.2 Equivalence test: the SQL edges equal the brute-force edges on `data/sample`. _REQ-DET-MATCH.4_
+  - [x] 9.3 Property P21: the matching rule over generated towns (crossing streets, a mid-block split, a dead end, an overpass); a unit test with a three-way intersection and cases 14 m and 16 m from it. _REQ-DET-MATCH.1–3, REQ-ING-SNAP.4_
+  - [x] 9.4 Property P22: matching is symmetric. _REQ-DET-MATCH.4_
   - _Requirements: REQ-DET-MATCH.1–5_
 - [ ] 10. [demo-critical] Incidents
   - `detect/core.py`: the greedy incident pass in (open UTC, ID) order; span limit; close time = latest member close; label = latest-closing member's label; ID = smallest member ID.

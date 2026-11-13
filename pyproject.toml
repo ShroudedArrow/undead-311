@@ -30,6 +30,6 @@ src = ["pipeline"]
 
 [tool.pytest.ini_options]
 testpaths = ["pipeline/tests"]
-pythonpath = ["pipeline"]
+pythonpath = ["pipeline", "pipeline/tests"]
 # A test module that cannot be imported is an error (pytest exit code 2), and an uncollectable Test* class is too.
 filterwarnings = ["error::pytest.PytestCollectionWarning"]
