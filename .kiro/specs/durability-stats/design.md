@@ -39,7 +39,7 @@ Run order inside `make pipeline`: engine detect, then `stats.baseline` (writes `
 - **Adjusted stayed-fixed:** `adj = min(on_time, raw + E_on_time / n)`, where `E_on_time` = Σ `p_spot` over on-time eligible originals that are headline zombies, capped at the number of those zombies. The min() is the clamp in methods.md.
 - **Shrinkage:** prior Beta(μ·κ, (1−μ)·κ) with μ = the citywide rate (fixed) and κ fitted. The posterior mean is `(k + μκ)/(n + κ)` = w·raw + (1−w)·μ with w = n/(n+κ) ∈ [0, 1], so the shrunk rate always lies between raw and citywide (property 8).
 - **Funnel limits:** exact binomial quantiles of Bin(n, p0) / n at 0.025/0.975 and 0.001/0.999.
-- **KM:** the event is the first re-report that would be a possible zombie under ZD steps 2–9 with the window set to SURVIVAL_HORIZON_DAYS (365). The engine's `detect()` is called with that one parameter changed, so the rules are not duplicated. This is longer than WINDOW_DAYS so that the 90-day share exists, and is recorded as a departure in the PR B digest.
+- **KM:** the event is the first re-report that would be a possible zombie under ZD steps 2–9 with the window set to SURVIVAL_HORIZON_DAYS (365). The engine's `detect()` is called with that one parameter changed, so the rules are not duplicated. This is longer than WINDOW_DAYS so that the 90-day share exists, and is recorded as a departure in docs/DECISIONS.md.
 - **Kappa:** Cohen's kappa over the four labels, plus a 2×2 version (still broken vs. not) for the headline.
 
 ## Data models

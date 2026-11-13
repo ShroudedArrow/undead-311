@@ -36,10 +36,12 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
   - [ ] 8.1 Property P5: every joined label is in the allowed set; an unknown label raises. _REQ-COR-1.4_
   - _Requirements: REQ-COR-1.1–4_
 - [ ] 9. [demo-critical] Location matching and candidate edges
-  - `detect/match.py` (haversine, the segment-then-radius rule exactly as written in zombie-definition.md, `radius` mode for the grid); `detect/edges.py` (DuckDB grid-bucket join for member and re-report edges); brute-force generator for tests.
-  - [ ] 9.1 Property P6: distance is symmetric, non-negative, zero on identical points. _REQ-DET-MATCH.3_
-  - [ ] 9.2 Equivalence test: the SQL edges equal the brute-force edges on `data/sample`. _REQ-DET-MATCH.3_
-  - _Requirements: REQ-DET-MATCH.1–4_
+  - `detect/match.py` (haversine, the segment, then intersection, then radius rule exactly as written in zombie-definition.md (radius only when a case is unsnapped), `radius` mode for the grid); `detect/edges.py` (DuckDB grid-bucket join for member and re-report edges); brute-force generator for tests.
+  - [ ] 9.1 Property P6: distance is symmetric, non-negative, zero on identical points. _REQ-DET-MATCH.4_
+  - [ ] 9.2 Equivalence test: the SQL edges equal the brute-force edges on `data/sample`. _REQ-DET-MATCH.4_
+  - [ ] 9.3 Property P21: the matching rule over generated towns (crossing streets, a mid-block split, a dead end, an overpass); a unit test with a three-way intersection and cases 14 m and 16 m from it. _REQ-DET-MATCH.1–3, REQ-ING-SNAP.4_
+  - [ ] 9.4 Property P22: matching is symmetric. _REQ-DET-MATCH.4_
+  - _Requirements: REQ-DET-MATCH.1–5_
 - [ ] 10. [demo-critical] Incidents
   - `detect/core.py`: the greedy incident pass in (open UTC, ID) order; span limit; close time = latest member close; label = latest-closing member's label; ID = smallest member ID.
   - [ ] 10.1 Property P7: incidents partition the closed in-scope cases. _REQ-DET-1.1_
@@ -92,10 +94,10 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
 ## Credibility
 
 - [ ] 21. [credibility] SAM segments and snapping
-  - Extend `pipeline/scripts/download.py` to fetch Boston Street Segments and neighborhood boundaries into `$DATA_DIR/raw/` and record them in `data/SNAPSHOT.md`; `ingest/snap.py` (DuckDB spatial, or shapely fallback); `segments: unavailable` status when missing.
-  - _Requirements: REQ-ING-SNAP.1–3_
+  - Extend `pipeline/scripts/download.py` to fetch Boston Street Segments and neighborhood boundaries into `$DATA_DIR/raw/` and record them in `data/SNAPSHOT.md`; `ingest/snap.py` (DuckDB spatial, or shapely fallback); the `intersections` table and `near_node_ids` (REQ-ING-SNAP.4); `segments: unavailable` status when missing; a test that checks the intersection count against the downloaded file.
+  - _Requirements: REQ-ING-SNAP.1–6_
 - [ ] 22. [credibility] Bulk-closure detector
-  - `detect/bulk.py`: groups by department, close date and template; the separate `bulk_closure` flag (the label is never overwritten); `bulk_closures.json` and schema; parameters marked pending owner approval.
+  - `detect/bulk.py`: groups by department, close date and template; the separate `bulk_closure` flag (the label is never overwritten); `bulk_closures.json` and schema; BULK_MIN_CASES = 50 and BULK_RATIO = 10 come from `detect/params.py` (zombie-definition.md step 10).
   - _Requirements: REQ-BULK.1–2_
 - [ ] 23. [credibility] Coroner evaluation
   - `make coroner-eval`: accuracy, Wilson interval and top confusions into `docs/VALIDATION.md`; exits 0 with a message when the hand labels are missing.
