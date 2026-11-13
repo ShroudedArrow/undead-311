@@ -1,4 +1,5 @@
 import type { FilterableZombie } from "./filter";
+import { canonicalDepartment } from "./labels";
 import type { PointsFile } from "./parse";
 
 /** One map point: the filterable fields plus where to draw it. */
@@ -18,7 +19,7 @@ export function pointsToRows(p: PointsFile): PointRow[] {
       lon: p.lon[i],
       tier: p.tier[i],
       family: p.family[i],
-      department: p.department[i],
+      department: canonicalDepartment(p.department[i]),
       neighborhood: p.neighborhood[i],
       year: p.year[i],
     });

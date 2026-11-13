@@ -95,7 +95,12 @@
     "BWSC": "Boston Water and Sewer Commission (BWSC)",
     "ISD": "Inspectional Services Department (ISD)",
     "PARK": "Parks and Recreation Department (PARK)",
-    "PROP": "Property Management Department (PROP)"
+    "PROP": "Property Management Department (PROP)",
+    "INFO": "Department code INFO (the city does not publish its name)"
+  },
+  "department_aliases": {
+    "Public Works Department (PWD)": "PWDx",
+    "Boston Transportation Department (BTD)": "BTDT"
   },
   "families": {
     "pothole_roadway": "Potholes and roadway defects",
