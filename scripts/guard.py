@@ -1,4 +1,7 @@
-"""guard hook (PreToolUse on shell and file-write tools). Standard library only.
+"""guard hook (PreToolUse on EVERY tool call; no matcher). Standard library only.
+
+The script classifies the call itself (hooklib.tool_kind): shell tools get the command checks, file-writing tools
+get the protected-path checks, and every other or unknown tool is allowed.
 
 Blocks (exit 2, reason on stderr) regardless of trust settings:
   * `rm -rf` (any recursive+force spelling) whose target is inside the repo or $DATA_DIR
@@ -197,12 +200,18 @@ def check_shell(cmd: str, root: Path) -> str | None:
 
 
 def decide(payload: dict, root: Path) -> str | None:
+    """The hook has no matcher, so it sees every tool call and decides from the tool name and arguments.
+
+    shell tools (shell, execute_bash, ...) -> forbidden commands; file-writing tools -> protected paths;
+    every other tool, including tools it has never seen -> allowed.
+    """
     name = hooklib.tool_name(payload)
     ti = hooklib.tool_input(payload)
-    cmd = hooklib.first(ti, "command", "cmd", "script")
-    if isinstance(cmd, str):
-        return check_shell(cmd, root)
-    if any(k in ti for k in WRITE_KEYS):
+    kind = hooklib.tool_kind(name)
+    if kind == "shell":
+        cmd = hooklib.first(ti, "command", "cmd", "script")
+        return check_shell(cmd, root) if isinstance(cmd, str) else None
+    if kind == "write":
         return check_write(ti, name, root)
     return None
 

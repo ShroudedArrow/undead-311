@@ -94,7 +94,7 @@ IDs use the prefix `REQ-WEB-`. Layers follow docs/PROJECT.md: **demo-critical** 
 
 ### REQ-WEB-METHODS: Methods page
 **Layer:** credibility
-1. THE app SHALL have a methods page with the definitions (from zombie-definition.md), the baselines, the excess with the shift-test distribution, the placebo result, validation precision with its interval and kappa, limitations ("counts are a floor"), and the Methods introduction as a TODO-COPY placeholder.
+1. THE app SHALL have a methods page with the definitions (from zombie-definition.md), the baselines, the excess with the shift-test distribution, the placebo result, validation precision with its interval and kappa, limitations ("counts are a floor"; and the intersection-matching note of REQ-ING-SNAP.6: a shared segment endpoint is a segment break, not always a cross street), and the Methods introduction as a TODO-COPY placeholder.
 
 ### REQ-WEB-DEATHS: What the headline leaves out
 **Layer:** credibility
@@ -111,7 +111,7 @@ IDs use the prefix `REQ-WEB-`. Layers follow docs/PROJECT.md: **demo-critical** 
 
 ### REQ-WEB-REPEAT: Repeat offenders view
 **Layer:** delight
-1. THE app SHALL list chains with `times_risen >= 3`, shown at the location the engine exports (block level for residential chains driven by resident reports, REQ-EXP-PRIV).
+1. THE app SHALL list the chains the engine exports in `repeat_offenders` (at least 3 headline zombies in the chain; `times_risen` counts the chain's possible zombies in all tiers and can be higher), shown at the location the engine exports (block level for residential chains driven by resident reports, REQ-EXP-PRIV).
 
 ### REQ-WEB-LINKS: Permalinks and share images
 **Layer:** delight

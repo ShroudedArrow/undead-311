@@ -72,10 +72,13 @@ Legacy ID: code written before these specs cites `REQ-ING-MIRROR`. It is covered
 
 ### REQ-ING-SNAP: Street-segment snapping
 **Layer:** credibility
-**User story:** As the detector, I want cases on Boston SAM street segments, so matches don't cross intersections or parallel streets.
+**User story:** As the detector, I want cases on Boston SAM street segments, so matches don't jump to parallel streets, and cases at one intersection still match.
 1. THE engine SHALL snap every in-scope case to the nearest Boston Street Segments (SAM) line and store `segment_id` and `segment_snap_m`. A case is "snapped" only when `segment_snap_m <= 15`.
 2. IF the segments file is missing, THEN THE engine SHALL leave every case unsnapped (radius matching only) and record `segments: unavailable` in `status.json`.
 3. THE engine SHALL accept pre-snapped `segment_id` / `segment_snap_m` columns when present (the test town) and skip snapping for those rows.
+4. WHEN the segments file is present, THE engine SHALL derive an `intersections` table from the segment geometry: an intersection is a segment endpoint (first or last vertex, matched at 6 decimal places of latitude and longitude and at the same z-level, `F_ZLEV` / `T_ZLEV`) shared by two or more segments. SAM has no node IDs, so endpoints are matched on coordinates. THE engine SHALL store, for each snapped case, the intersections within INTERSECTION_M of it (`near_node_ids`).
+5. WHEN a case is pre-snapped without segment geometry (the test town), THE engine SHALL leave `near_node_ids` empty, so the intersection mode never applies to the fixture. Intersection matching is covered by unit and property tests that build their own small segment grids (REQ-DET-MATCH.2).
+6. THE methods page SHALL state the known limitation: a shared endpoint is a segment break, and not every break is a cross street (a street can be split mid-block). The rule can therefore also join two cases on consecutive segments of one street that are both near such a break. Dead-end endpoints (about 15% of the distinct endpoints in the current SAM file) are not intersections.
 
 ### REQ-ING-PII: Personal-information scrubbing
 **Layer:** demo-critical
@@ -87,7 +90,7 @@ Legacy ID: code written before these specs cites `REQ-ING-MIRROR`. It is covered
 ### REQ-DET-PARAM: Parameters
 **Layer:** demo-critical
 **User story:** As the owner, I want parameters in one module that mirrors the steering, so the rules are changed only in zombie-definition.md.
-1. THE engine SHALL define RADIUS_M = 30, WINDOW_DAYS = 60, INCIDENT_MAX_SPAN_DAYS = 7, MAX_SEGMENT_DIST = 75, SEGMENT_SNAP_M = 15 and MIRROR_WINDOW_HOURS = 6 in one module (`detect/params.py`; MIRROR_WINDOW_HOURS is imported from `closure_flags.py`).
+1. THE engine SHALL define RADIUS_M = 30, WINDOW_DAYS = 60, INCIDENT_MAX_SPAN_DAYS = 7, MAX_SEGMENT_DIST = 75, SEGMENT_SNAP_M = 15, INTERSECTION_M = 15, BULK_MIN_CASES = 50, BULK_RATIO = 10 and MIRROR_WINDOW_HOURS = 6 in one module (`detect/params.py`; MIRROR_WINDOW_HOURS is imported from `closure_flags.py`).
 2. THE engine SHALL accept parameter overrides only through an explicit argument (for the sensitivity grid), never through environment variables.
 3. A unit test SHALL fail if any default differs from the value written in zombie-definition.md.
 
@@ -95,9 +98,10 @@ Legacy ID: code written before these specs cites `REQ-ING-MIRROR`. It is covered
 **Layer:** demo-critical
 **User story:** As the detector, I want one location rule, so incidents and re-reports use the same notion of "same place".
 1. WHEN both cases are snapped to the same `segment_id` and are at most MAX_SEGMENT_DIST apart, THE engine SHALL match them with `match_mode = segment`.
-2. OTHERWISE (either case is unsnapped, they are on different segments, or they are on one segment but more than MAX_SEGMENT_DIST apart), THE engine SHALL match them only if they are at most RADIUS_M apart (`match_mode = radius`). This follows the literal "otherwise radius" in zombie-definition.md. Whether two snapped cases on different segments should match at all is an open question for the owner (PR B digest).
-3. THE engine SHALL compute distance with haversine, and find candidates through a grid bucket join, not an all-pairs join.
-4. WHEN the matching mode parameter is `radius`, THE engine SHALL ignore segments entirely (sensitivity grid).
+2. WHEN the two cases are not a segment match, are both snapped, and are on different segments, AND both are within INTERSECTION_M of the same intersection (REQ-ING-SNAP.4), THE engine SHALL match them with `match_mode = intersection`. The distance recorded is the sum of the two distances to that intersection.
+3. OTHERWISE, THE engine SHALL match them only if at least one of them is unsnapped AND they are at most RADIUS_M apart (`match_mode = radius`). Two snapped cases that are not a segment or intersection match NEVER match: not on different segments (owner decision, zombie-definition.md change log 2026-11-13), and not on one segment more than MAX_SEGMENT_DIST apart.
+4. THE engine SHALL compute distance with haversine, and find candidates through a grid bucket join, not an all-pairs join. The grid cell is large enough for the largest of RADIUS_M, MAX_SEGMENT_DIST and 2 × INTERSECTION_M.
+5. WHEN the matching mode parameter is `radius`, THE engine SHALL ignore segments and intersections entirely and apply RADIUS_M to every pair (sensitivity grid). WHEN it is `segment`, requirements 1 to 3 apply and RADIUS_M only affects pairs with an unsnapped case.
 
 ### REQ-DET-1: Incidents
 **Layer:** demo-critical
@@ -146,7 +150,7 @@ In this requirement, R is the incident's resurrection (its earliest attached re-
 **User story:** As a reader, I want places that keep coming back counted, so repeat offenders stand out.
 1. WHEN a possible zombie's resurrection R is closed, R's incident SHALL continue the chain. `chain_id` is the incident ID at the start of the chain. Planned follow-ups and separate deaths end a chain; their R's incident starts a new one.
 2. THE engine SHALL set `times_risen` to the chain total: the number of possible zombies (all tiers) in the chain. Every zombie in the chain carries the same total.
-3. THE engine SHALL mark a chain as a repeat offender when its count of headline-tier zombies is at least 3, and export both counts. The counting rule is an open question for the owner (PR B digest).
+3. THE engine SHALL mark a chain as a repeat offender when its count of headline-tier zombies is at least 3, and export both counts. The rule is the owner's decision (zombie-definition.md step 7).
 
 ### REQ-DET-SEP: A different kind of death
 **Layer:** demo-critical
@@ -186,7 +190,7 @@ In this requirement, R is the incident's resurrection (its earliest attached re-
 ### REQ-BULK: Bulk-closure detector
 **Layer:** credibility
 **User story:** As a reader, I want mass "closed" days flagged, so backlog purges aren't mistaken for repairs.
-1. THE engine SHALL flag a (department, close date, template) group as a bulk closure when it has at least BULK_MIN_CASES cases and at least BULK_RATIO times that template's median daily count for the department. Proposed defaults are 50 and 10. Until the owner adds them to zombie-definition.md, the flag is computed and shown but feeds no headline number (open question in PR B).
+1. THE engine SHALL flag a (department, close date, template) group as a bulk closure when it has at least BULK_MIN_CASES (50) cases and at least BULK_RATIO (10) times the department's usual daily count for that template, for the same department, day and template. The usual daily count is the median daily closure count of that department and template over the days that have closures. The parameters are in zombie-definition.md (step 10).
 2. THE engine SHALL store the flag in a separate field, `bulk_closure`. It SHALL never overwrite the Coroner label, which ZD step 6 reads. THE engine SHALL export `bulk_closures.json` (groups with counts, department, date and template).
 
 ### REQ-CONF: Confidence score

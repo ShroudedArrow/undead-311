@@ -9,7 +9,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
   - [ ] 1.1 Check O1: a pytest that parses every workflow YAML and fails on an unpinned `uses:` or a job without `permissions:`. _REQ-OPS-CI.4_
   - _Requirements: REQ-OPS-CI.1, .4_
 - [ ] 2. [demo-critical] Hosting and previews
-  - `netlify.toml` (build `make build`, publish `web/dist`, deploy previews on, headers from the web build); `docs/DEPLOY.md` with the click-by-click human steps (link the site to the repo, production branch `main`, no paid plan) and the GitHub Pages fallback if the owner chooses it.
+  - `netlify.toml` (build `make build`, publish `web/dist`, deploy previews on, headers from the web build); `docs/DEPLOY.md` with the click-by-click human steps from design.md (Netlify account, site import, production branch `main`, previews, the token and Site ID, the three GitHub secrets with `CHANNEL_TOKEN` mapped to `GITHUB_CHANNEL_TOKEN`), no paid plan. GitHub Pages is not used.
   - _Requirements: REQ-OPS-HOST.1–4_
 
 ## Credibility

@@ -19,7 +19,7 @@ Fixture conventions (also in the zombie-engine design):
   "written_by": "<your name>, by hand, <date>",
   "zombies": [
     {"incident_id": "<smallest member id>", "member_ids": ["..."], "resurrection_id": "...", "reports_after": 1,
-     "match_mode": "segment | radius", "tier": "headline | source_unknown | sensitivity",
+     "match_mode": "segment | intersection | radius", "tier": "headline | source_unknown | sensitivity",
      "after_temporary_fix": false, "chain_id": "<incident_id of the chain start>", "times_risen": 1}
   ],
   "planned_followups": [{"incident_id": "...", "resurrection_id": "..."}],
