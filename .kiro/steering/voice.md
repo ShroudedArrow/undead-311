@@ -1,6 +1,6 @@
 ---
 inclusion: fileMatch
-fileMatchPattern: ["web/src/copy/**", "web/src/**/*.tsx", "docs/**", "README.md", "drafts/**"]
+fileMatchPattern: ["**/web/src/copy/**", "**/web/src/**/*.tsx", "**/docs/**", "**/README.md", "**/drafts/**"]
 ---
 # Voice and copy rules
 

@@ -229,7 +229,6 @@ def test_kill_switch_allows_when_no_signal_and_github_unreachable(root):
 # ---- hook commands: absolute paths, run from the repo folder, allow when the script is missing -----------------
 
 import json
-import shutil
 import subprocess
 
 REPO = Path(__file__).resolve().parents[3]
@@ -259,7 +258,7 @@ HOOK_CMDS = list(_hook_commands())
 
 
 def run_hook(cmd: str, payload: dict, cwd: str):
-    return subprocess.run(["sh", "-c", cmd], input=json.dumps(payload), capture_output=True, text=True, cwd=cwd, timeout=30)
+    return subprocess.run(["sh", "-c", cmd], input=json.dumps(payload), capture_output=True, text=True, cwd=cwd, timeout=30, check=False)
 
 
 def _script_hook_commands():
@@ -278,9 +277,9 @@ def test_hook_allows_when_script_is_missing(tmp_path, fname, name, cmd):
     assert r.returncode == 0, r.stderr
 
 
-@pytest.mark.skipif(not Path(ABS_REPO, "scripts", "guard.py").is_file(), reason="repo is not at /projects/sandbox/undead-311")
 def test_guard_hook_runs_from_sandbox_cwd_and_blocks(tmp_path):
     cmd = json.loads((HOOKS_DIR / "guard.json").read_text())["hooks"][0]["action"]["command"]
+    cmd = cmd.replace(ABS_REPO, str(REPO))     # run against this checkout wherever it lives, never skip
     for payload in (shell("execute_bash", "git push --force"),
                     writer("fs_write", "/projects/sandbox/.kiro/hooks/x.json"),
                     writer("fs_write", ".kiro/steering/x.md")):

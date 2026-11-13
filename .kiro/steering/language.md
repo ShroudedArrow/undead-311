@@ -1,6 +1,6 @@
 ---
 inclusion: fileMatch
-fileMatchPattern: ["web/src/**", "docs/**", "README.md"]
+fileMatchPattern: ["**/web/src/**", "**/docs/**", "**/README.md"]
 ---
 # Language, tone, and design rules
 
