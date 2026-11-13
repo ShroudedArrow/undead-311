@@ -88,7 +88,7 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
 - [x] 19. [demo-critical] Pipeline orchestration
   - `make pipeline` and `make pipeline-sample` run load → normalize → crosswalk → clean → Coroner join → detect → (stats, when present) → export, with a run report (row counts, exclusions, excluded pairs, label coverage, PII counts, file sizes).
   - _Requirements: REQ-ING-1, REQ-ING-NIGHTLY.2, REQ-ING-SAMPLE.1_
-- [ ] 20. [demo-critical] Checkpoint
+- [x] 20. [demo-critical] Checkpoint
   - `make test` passes including the golden test (it fails until the owner's answer key exists; that is expected and reported, not worked around). Ask nothing; post status to the channel.
 
 ## Credibility
