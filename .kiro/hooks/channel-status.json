@@ -9,7 +9,8 @@
         "type": "command",
         "command": "S=/projects/sandbox/undead-311/scripts/channel_post.py; [ -f \"$S\" ] || exit 0; cd /projects/sandbox/undead-311 || exit 0; exec python3 \"$S\""
       },
-      "timeout": 30
+      "timeout": 30,
+      "enabled": false
     }
   ]
 }
