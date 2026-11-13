@@ -1,13 +1,14 @@
 // REQ-WEB-DATA.3: build FIXTURE files for the web app from data/sample/sample_311.csv until the engine's real exports exist.
 // These are NOT detector output. A crude pairing (same family, within 30 m, re-report 1 to 60 days after a closure) stands in
 // so every panel has realistic data. Files carry data_version "fixture-..." and follow /schemas. Deterministic: no clock, no RNG.
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const csvPath = join(here, "..", "..", "data", "sample", "sample_311.csv");
 const outDir = join(here, "..", "public", "data");
+const overridePath = join(here, "..", "..", "data", "labels", "judge_tour_override.json");
 
 export function parseCsv(text) {
   const rows = [];
@@ -42,6 +43,10 @@ const CITY_SOURCES = new Set(["Employee Generated", "City Worker App", "Maximo I
 const round = (x, n = 3) => Math.round(x * 10 ** n) / 10 ** n;
 const cleanText = (s) => (s || "").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 const scrubStreet = (s) => cleanText(s).replace(/^INTERSECTION\s+/i, "").replace(/^\d+[A-Za-z-]*\s+/, "") || null;
+// UX-11 (ops#24): the two systems spell a few neighborhoods differently; the fixture groups the split ones.
+// The engine should normalize this in the export (handoff to:engine); the web app does not guess neighborhood names.
+const HOOD_ALIASES = { Allston: "Allston / Brighton", Brighton: "Allston / Brighton" };
+const canonicalHood = (h) => (h ? (HOOD_ALIASES[h] ?? h) : null);
 const slug = (s) => (s || "unknown").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 function coronerLabel(text, code) {
@@ -63,27 +68,34 @@ function wilson(k, n) {
   return { rate: round(p, 4), lo: round(Math.max(0, c - h), 4), hi: round(Math.min(1, c + h), 4), k, n };
 }
 
-/** UX-1: three headline zombies that survive the Skeptic, one per gap band and per type family where possible. */
-export function pickTour(zs) {
-  const pool = zs.filter((z) => z.tier === "headline" && z.skeptic_verdict === "survives" && !z.bulk_closure && !z.confidence_partial)
-    .sort((x, y) => y.confidence - x.confidence || (x.zombie_id < y.zombie_id ? -1 : 1));
-  const bands = [[1, 10], [10, 30], [30, 61]];
-  const picked = [];
-  for (const [lo, hi] of bands) {
-    const inBand = pool.filter((z) => z.gap_days >= lo && z.gap_days < hi && !picked.includes(z));
-    const z = inBand.find((c) => !picked.some((p) => p.type_family === c.type_family)) ?? inBand[0];
-    if (z) picked.push(z);
-  }
-  for (const z of pool) if (picked.length < 3 && !picked.includes(z)) picked.push(z);
-  return picked.map((z) => z.zombie_id);
+/**
+ * REQ-STAT-TOUR.1 (UX-10, ops#23): the provisional tour lists the zombies named in data/labels/judge_tour_override.json when that
+ * file exists and every ID is in the fixture set (source "override"); otherwise the three headline zombies with the most
+ * re-reports, ties by zombie ID (source "most_reports"). Never by confidence score.
+ */
+export function pickTour(zs, override = null) {
+  const ids = new Set(zs.map((z) => z.zombie_id));
+  if (Array.isArray(override) && override.length === 3 && override.every((id) => ids.has(id))) return { ids: [...override], source: "override" };
+  const pool = zs.filter((z) => z.tier === "headline")
+    .sort((x, y) => y.reports_after - x.reports_after || (x.zombie_id < y.zombie_id ? -1 : x.zombie_id > y.zombie_id ? 1 : 0));
+  return { ids: pool.slice(0, 3).map((z) => z.zombie_id), source: "most_reports" };
 }
 
-export function buildFixtures(rows) {
+/** The owner's override file, or null when it does not exist or is not a list of IDs. Accepts a list or {zombie_ids: [...]}. */
+export function readOverride(path = overridePath) {
+  try {
+    const j = JSON.parse(readFileSync(path, "utf8"));
+    const ids = Array.isArray(j) ? j : j?.zombie_ids;
+    return Array.isArray(ids) && ids.every((x) => typeof x === "string") ? ids : null;
+  } catch { return null; }
+}
+
+export function buildFixtures(rows, override = null) {
   const cases = rows
     .map((r) => ({
       id: r.id, system: r.system, open: Date.parse(r.open_time_utc), close: r.close_time_utc ? Date.parse(r.close_time_utc) : null,
       openIso: r.open_time_utc, closeIso: r.close_time_utc || null, status: r.status, text: cleanText(r.closure_text), code: r.closure_code,
-      type_raw: r.type_raw, family: r.type_family, dept: r.department || null, hood: r.neighborhood || null, street: scrubStreet(r.street),
+      type_raw: r.type_raw, family: r.type_family, dept: r.department || null, hood: canonicalHood(r.neighborhood), street: scrubStreet(r.street),
       lat: Number(r.lat), lon: Number(r.lon), source: r.source,
       cityOriginated: r.system === "legacy" && (CITY_SOURCES.has(r.source) || r.city_originated_type === "true"),
     }))
@@ -195,7 +207,7 @@ export function buildFixtures(rows) {
   const dataEnd = new Date(Math.max(...cases.map((c) => c.close ?? c.open))).toISOString().slice(0, 10);
   const version = `fixture-${dataEnd}`;
   points.data_version = version;
-  const top = pickTour(zs);
+  const tour = pickTour(zs, override);
 
   return {
     version,
@@ -204,7 +216,7 @@ export function buildFixtures(rows) {
       "points.json": points,
       "scorecard.json": { data_version: version, scorecards, counts: tally },
       "status.json": { data_version: version, last_run: `${dataEnd}T02:00:00Z`, ok: true, row_counts: { cases: rows.length, zombies: zs.length }, anomalies: [], segments: "missing", headline_count: tally.headline, source_unknown_count: tally.source_unknown, sensitivity_count: tally.sensitivity, data_end: dataEnd },
-      "judge_tour.json": { data_version: version, provisional: true, zombie_ids: top, source: "override" },
+      "judge_tour.json": { data_version: version, provisional: true, zombie_ids: tour.ids, source: tour.source },
       "validation.json": { data_version: version, status: "awaiting_field_labels", precision: null, cant_tell_share: null, kappa: null, confirmed: [], sample_ids: [] },
     },
     shards: Object.fromEntries([...shards.entries()].sort().map(([k, v]) => [`cards/${k}.json`, { data_version: version, shard: k, cards: v.sort((x, y) => (x.zombie_id < y.zombie_id ? -1 : 1)) }])),
@@ -212,7 +224,8 @@ export function buildFixtures(rows) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const { files, shards } = buildFixtures(parseCsv(readFileSync(csvPath, "utf8")));
+  const { files, shards } = buildFixtures(parseCsv(readFileSync(csvPath, "utf8")), readOverride());
+  rmSync(join(outDir, "cards"), { recursive: true, force: true }); // no stale shards when a rule changes
   mkdirSync(join(outDir, "cards"), { recursive: true });
   for (const [name, data] of [...Object.entries(files), ...Object.entries(shards)]) writeFileSync(join(outDir, name), JSON.stringify(data) + "\n");
   console.log(`wrote ${Object.keys(files).length} files and ${Object.keys(shards).length} card shards to ${outDir}`);
