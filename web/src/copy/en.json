@@ -162,8 +162,7 @@
     "tier_note_sensitivity": "Outside the headline count: this case type is reported as a sensitivity check.",
     "loading": "Loading the card",
     "not_found": "No card was found for {id}. It may have moved after a data refresh. Go back to the map and pick it again.",
-    "reports_after": "Reported again {count} times",
-    "reports_after_one": "Reported again once"
+    "reports_since": "Times reported again"
   },
   "score": {
     "title": "Closed on time and stayed fixed",

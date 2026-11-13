@@ -116,7 +116,7 @@ export function buildFixtures(rows) {
     const rec = (c) => ({ id: c.id, system: c.system, open_time: c.openIso, close_time: c.closeIso, type_raw: c.type_raw, status: c.status, closure_text: c.text || null, street: c.street, lat: c.lat, lon: c.lon });
     cards.push({
       shard: `${slug(a.hood)}-${year}`,
-      card: { zombie_id: id, original: rec(a), rereport: rec(b), cause_of_death: label, gap_days: round(gap, 2), resurrection_date: b.openIso.slice(0, 10), confidence: conf, tier, skeptic_verdict: verdict, skeptic_notes: zombies.at(-1).skeptic_notes, reports_after: 1, times_risen: 1, bulk_closure: bulk },
+      card: { zombie_id: id, original: rec(a), rereport: rec(b), cause_of_death: label, gap_days: round(gap, 2), resurrection_date: b.openIso.slice(0, 10), confidence: conf, tier, skeptic_verdict: verdict, skeptic_notes: zombies.at(-1).skeptic_notes, reports_after: 1, times_risen: 1, bulk_closure: bulk, confidence_partial: h > 0.93 },
     });
   }
 

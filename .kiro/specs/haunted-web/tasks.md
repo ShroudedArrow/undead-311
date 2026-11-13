@@ -24,7 +24,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
   - Sortable table with the same set as the map; each row opens the card.
   - [x] 5.1 Property W4: map set = table set = counted set for any filters and tier mode. _REQ-WEB-MAP.3, REQ-WEB-TABLE.1_
   - _Requirements: REQ-WEB-TABLE.1_
-- [ ] 6. [demo-critical] Autopsy card
+- [x] 6. [demo-critical] Autopsy card
   - Triplicate form, stamps, typewriter face inside the form only, both case records, Skeptic section, `partial` confidence note, bulk-closure warning, phone bottom sheet, lazy shard loading.
   - _Requirements: REQ-WEB-CARD.1–6_
 - [ ] 7. [demo-critical] Two-number scorecard

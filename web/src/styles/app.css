@@ -166,3 +166,71 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .zombie-table th button { background: transparent; border: 0; padding: 0; min-height: 2.75rem; font-weight: 700; text-align: left; }
 .zombie-table th[aria-sort="ascending"] button, .zombie-table th[aria-sort="descending"] button { text-decoration: underline; text-decoration-thickness: 3px; }
 .table-empty { padding: var(--space-3); }
+
+/* Autopsy card: a triplicate city form (REQ-WEB-CARD). The typewriter face lives only inside .autopsy-form. */
+.card-host {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  bottom: var(--space-3);
+  width: min(34rem, calc(100% - 2 * var(--space-3)));
+  overflow-y: auto;
+  z-index: 20;
+  background: var(--concrete);
+  border: 2px solid var(--asphalt);
+  padding: var(--space-3);
+}
+.card-bar { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+.card-bar h2 { margin: 0; }
+
+.autopsy { position: relative; margin: 0 var(--space-3) var(--space-3) 0; }
+.autopsy::before,
+.autopsy::after { content: ""; position: absolute; inset: 0; border: 2px solid var(--asphalt); z-index: 0; }
+.autopsy::before { background: var(--canary-copy); transform: translate(6px, 6px); }
+.autopsy::after { background: var(--survey-pink); transform: translate(12px, 12px); z-index: -1; }
+.autopsy-form {
+  position: relative;
+  z-index: 1;
+  background: var(--crew-white);
+  border: 2px solid var(--asphalt);
+  padding: var(--space-3);
+  font-family: var(--font-form);
+  font-size: var(--step-0);
+  line-height: 1.45;
+}
+.autopsy-form h3 { font-family: var(--font-form); font-size: var(--step-0); font-weight: 700; border-bottom: 2px solid var(--asphalt); padding-bottom: var(--space-1); }
+.autopsy-form p { max-width: none; }
+.autopsy-head { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: space-between; align-items: flex-start; }
+.stamps { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; }
+.stamp { display: inline-block; border: 3px solid var(--asphalt); padding: var(--space-1) var(--space-2); font-weight: 700; letter-spacing: 0; }
+.stamp-closed { text-decoration: line-through; text-decoration-thickness: 3px; }
+.stamp-again { background: var(--survey-pink); transform: rotate(-3deg); }
+.autopsy-facts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin: var(--space-3) 0; }
+.autopsy-facts > div { border: 2px solid var(--asphalt); padding: var(--space-2); background: var(--canary-copy); }
+.autopsy-facts dt { font-weight: 700; }
+.autopsy-facts dd { margin: 0; }
+.partial-note { display: block; font-size: var(--step--1); }
+.bulk-warning { border: 2px solid var(--asphalt); border-left: 12px solid var(--cone-orange); background: var(--crew-white); padding: var(--space-2) var(--space-3); font-weight: 700; }
+.tier-note { border: 2px dashed var(--asphalt); padding: var(--space-2); }
+.case-pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.case-record dl { margin: 0; }
+.case-record dt { font-weight: 700; margin-top: var(--space-2); }
+.case-record dd { margin: 0; overflow-wrap: anywhere; }
+.autopsy-form a { color: var(--asphalt); }
+
+/* Phones: one readable copy in a bottom sheet; the offset copies appear only on wider screens. */
+@media (max-width: 640px) {
+  .card-host {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 85vh;
+    border-width: 2px 0 0;
+  }
+  .autopsy { margin: 0; }
+  .autopsy::before, .autopsy::after { display: none; }
+  .autopsy-facts, .case-pair { grid-template-columns: 1fr; }
+}
