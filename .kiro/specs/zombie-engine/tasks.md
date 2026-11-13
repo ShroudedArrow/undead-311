@@ -27,9 +27,9 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
 - [x] 6. [demo-critical] Cleaning and exclusions
   - `ingest/clean.py`: null coordinates, Boston box, the two placeholder points, unlisted and excluded types; excluded IDs and counts by reason; candidate-placeholder report (more than 200 unrelated cases on one point).
   - _Requirements: REQ-ING-CLEAN.1–4_
-- [ ] 7. [demo-critical] PII scrubbing
+- [x] 7. [demo-critical] PII scrubbing
   - `ingest/pii.py` with per-pattern counts; applied to every exported free-text field.
-  - [ ] 7.1 Property P20: scrub is idempotent and removes every generated email and phone number. _REQ-ING-PII.1_
+  - [x] 7.1 Property P20: scrub is idempotent and removes every generated email and phone number. _REQ-ING-PII.1_
   - _Requirements: REQ-ING-PII.1–3_
 - [ ] 8. [demo-critical] Coroner templates and label join
   - `coroner/templates.py` (masking, deduplication, `coroner_templates.csv`); `coroner/join.py` (precedence: Transitioned → referred, template label, then `NEW_SYSTEM_CLOSURE_LABELS`; `unlabeled` share; reject labels outside the set).
