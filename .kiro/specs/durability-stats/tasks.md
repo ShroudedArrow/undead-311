@@ -16,9 +16,9 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
   - [x] 3.1 Property P5: raw stayed-fixed ≤ on-time for every group. _REQ-STAT-SF.2; testing.md #10_
   - [x] 3.2 Property P1 (part 2): every exported rate is within [0, 1] or null with a reason. _testing.md #3_
   - _Requirements: REQ-STAT-SF.1, .2, .4, REQ-STAT-EXP.1 (scorecard)_
-- [ ] 4. [demo-critical] Provisional judge tour
+- [x] 4. [demo-critical] Provisional judge tour
   - `stats/tour.py`: `judge_tour.json` (`provisional: true`, owner override or the three headline zombies with the most re-reports) plus schema.
-  - [ ] 4.1 Property P10 (part 1): tour selection doesn't change when confidence scores are permuted. _REQ-STAT-TOUR.1_
+  - [x] 4.1 Property P10 (part 1): tour selection doesn't change when confidence scores are permuted. _REQ-STAT-TOUR.1_
   - _Requirements: REQ-STAT-TOUR.1_
 
 ## Credibility
