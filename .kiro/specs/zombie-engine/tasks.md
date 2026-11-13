@@ -9,7 +9,7 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
   - Update docstrings that cite `REQ-ING-MIRROR` to cite REQ-DET-2 / REQ-ING-CATCH.
   - Unit tests: unset, missing and unwritable `DATA_DIR`; run from inside a worktree.
   - _Requirements: REQ-ING-PATH.1–3, REQ-ING-NIGHTLY.2_
-- [ ] 2. [demo-critical] Parameters module
+- [x] 2. [demo-critical] Parameters module
   - `detect/params.py` with a frozen `Params` dataclass and `DEFAULT`; MIRROR_WINDOW_HOURS imported from `closure_flags.py`.
   - Unit test that parses the Parameters section of `.kiro/steering/zombie-definition.md` and fails on any mismatch.
   - _Requirements: REQ-DET-PARAM.1–3_
