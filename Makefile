@@ -27,11 +27,12 @@ data-sample:
 test-town:
 	$(UV) run python pipeline/scripts/build_test_town.py
 
+# Full run on $(DATA_DIR)/raw (REQ-ING-NIGHTLY.1); the sample run needs no network (REQ-ING-NIGHTLY.2)
 pipeline:
-	$(STUB)
+	PYTHONPATH=pipeline $(UV) run python -m undead311 pipeline
 
 pipeline-sample:
-	$(STUB)
+	PYTHONPATH=pipeline $(UV) run python -m undead311 pipeline --sample
 
 validation-sample:
 	$(STUB)

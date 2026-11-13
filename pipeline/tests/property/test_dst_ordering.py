@@ -1,4 +1,4 @@
-"""Property tests: DST-safe cross-system ordering (REQ-ING-TZ) and mirror filtering (REQ-ING-MIRROR)."""
+"""Property tests: DST-safe cross-system ordering (REQ-ING-TZ) and mirror filtering (REQ-DET-2.2)."""
 
 from datetime import UTC, datetime, timedelta
 

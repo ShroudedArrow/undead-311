@@ -4,7 +4,7 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
 
 ## Demo-critical
 
-- [ ] 1. [demo-critical] Package skeleton, paths and commands
+- [x] 1. [demo-critical] Package skeleton, paths and commands
   - Add `undead311/paths.py` (`data_dir()`, worktree-safe `repo_root()` via `git rev-parse --git-common-dir`), `undead311/cli.py` (`python -m undead311 pipeline [--sample]`), and Makefile targets `pipeline` and `pipeline-sample` (replacing the stub) using the same fallback.
   - Update docstrings that cite `REQ-ING-MIRROR` to cite REQ-DET-2 / REQ-ING-CATCH.
   - Unit tests: unset, missing and unwritable `DATA_DIR`; run from inside a worktree.

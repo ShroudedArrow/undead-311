@@ -1,4 +1,4 @@
-"""Unit tests for undead311.ingest.closure_flags (REQ-ING-MIRROR)."""
+"""Unit tests for undead311.ingest.closure_flags (REQ-DET-2.2-2.4, REQ-ING-CATCH)."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -75,7 +75,7 @@ def timeline_pair_survives(original, rereport):
 
 @pytest.mark.parametrize("system", ["legacy", "new"])
 def test_same_system_fast_rereport_is_candidate(system):
-    """REQ-ING-MIRROR: original opens T0, closes T0+1h, re-report opens T0+5h (inside the 6 h window), same system: candidate."""
+    """REQ-DET-2.2 / REQ-ING-CATCH: original opens T0, closes T0+1h, re-report opens T0+5h (inside the 6 h window), same system: candidate."""
     original = row(system, T0, closure_text="Case Closed", closure_code="Resolved")
     original["close_utc"] = T0 + timedelta(hours=CLOSE_AFTER_HOURS)
     rereport = row(system, T0 + timedelta(hours=5))
@@ -145,7 +145,7 @@ def test_same_system_never_mirror(system, gap_seconds, same_family, same_locatio
     ],
 )
 def test_extract_linked_case_id(text, expected):
-    """REQ-ING-MIRROR: only transfer closure text yields a link."""
+    """REQ-DET-2.2 / REQ-ING-CATCH: only transfer closure text yields a link."""
     assert extract_linked_case_id(text) == expected
 
 

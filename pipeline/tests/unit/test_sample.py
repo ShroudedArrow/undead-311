@@ -68,7 +68,7 @@ def test_cross_system_pairs_survive(rows):
 
 
 def test_traffic_signal_request_and_closure_code(rows):
-    """REQ-ING-MIRROR / scope: sensitivity-tier types stay out of the core sample; Transitioned is never an original."""
+    """REQ-DET-2 / REQ-ING-CATCH / scope: sensitivity-tier types stay out of the core sample; Transitioned is never an original."""
     assert "closure_code" in rows[0]
     assert "Traffic Signal Request" not in {r["type_raw"] for r in rows}
     assert {r["scope_tier"] for r in rows} == {"core"}
@@ -82,7 +82,7 @@ def test_traffic_signal_request_and_closure_code(rows):
 
 
 def test_street_light_other_only_when_linked_to_core(rows):
-    """REQ-ING-MIRROR: catch-all rows are in the sample only with an inherited family from a linked predecessor."""
+    """REQ-DET-2 / REQ-ING-CATCH: catch-all rows are in the sample only with an inherited family from a linked predecessor."""
     assert "predecessor_ids" in rows[0]
     slo = [r for r in rows if r["type_raw"] == "Street Light Other"]
     assert slo

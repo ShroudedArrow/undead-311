@@ -1,4 +1,4 @@
-"""Checks on undead311/ingest/type_families.csv (REQ-ING-MIRROR scope tiers)."""
+"""Checks on undead311/ingest/type_families.csv (REQ-DET-2 / REQ-ING-CATCH scope tiers)."""
 
 import csv
 from pathlib import Path
@@ -35,7 +35,7 @@ def test_crosswalk_exclusions(rows):
 
 
 def test_catch_all_flag(rows):
-    """REQ-ING-MIRROR: only Street Light Other inherits its family via the link."""
+    """REQ-DET-2 / REQ-ING-CATCH: only Street Light Other inherits its family via the link."""
     assert "catch_all" in rows[0]
     assert {r["catch_all"] for r in rows} <= {"true", "false"}
     assert [(r["system"], r["type_raw"]) for r in rows if r["catch_all"] == "true"] == [("new", "Street Light Other")]
