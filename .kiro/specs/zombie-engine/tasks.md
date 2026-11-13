@@ -20,7 +20,7 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
   - `ingest/normalize.py`: the `cases_norm` view in the normalized schema plus `system`, `closure_code`; times through a DuckDB Python UDF that calls `times.to_utc_and_local`; unparseable values set to null and counted by reason.
   - [x] 4.1 Property P4 (part 1): normalization is invariant to input row order. _REQ-ING-2.3_
   - _Requirements: REQ-ING-2.1–3, REQ-ING-TZ.1–3_
-- [ ] 5. [demo-critical] Crosswalk and catch-all inheritance
+- [x] 5. [demo-critical] Crosswalk and catch-all inheritance
   - `ingest/crosswalk.py`: join `type_families.csv`; link table from legacy closure texts with `extract_linked_case_id`; `predecessor_ids` on successors; `resolve_catch_all` per catch-all case, including the all-excluded case.
   - Unit tests: core inherit, excluded inherit, disagree, unlisted, no link (reuse the patterns in `test_closure_flags.py`).
   - _Requirements: REQ-ING-XWALK.1–3, REQ-ING-CATCH.1–5_
