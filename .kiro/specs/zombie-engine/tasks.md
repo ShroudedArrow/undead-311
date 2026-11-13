@@ -24,7 +24,7 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
   - `ingest/crosswalk.py`: join `type_families.csv`; link table from legacy closure texts with `extract_linked_case_id`; `predecessor_ids` on successors; `resolve_catch_all` per catch-all case, including the all-excluded case.
   - Unit tests: core inherit, excluded inherit, disagree, unlisted, no link (reuse the patterns in `test_closure_flags.py`).
   - _Requirements: REQ-ING-XWALK.1–3, REQ-ING-CATCH.1–5_
-- [ ] 6. [demo-critical] Cleaning and exclusions
+- [x] 6. [demo-critical] Cleaning and exclusions
   - `ingest/clean.py`: null coordinates, Boston box, the two placeholder points, unlisted and excluded types; excluded IDs and counts by reason; candidate-placeholder report (more than 200 unrelated cases on one point).
   - _Requirements: REQ-ING-CLEAN.1–4_
 - [ ] 7. [demo-critical] PII scrubbing
