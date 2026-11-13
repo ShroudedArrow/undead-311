@@ -34,7 +34,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
   - 60-second tour from `judge_tour.json`: skip, pause, keyboard, reduced motion; provisional notice; `scripts/check-tour.ts` enforced by `make build JUDGING=1`.
   - [x] 8.1 Property W8: a judging build accepts a tour only if every ID is confirmed. _REQ-WEB-JUDGE.2_
   - _Requirements: REQ-WEB-JUDGE.1–4_
-- [ ] 9. [demo-critical] Accessibility floor
+- [x] 9. [demo-critical] Accessibility floor
   - Focus styles, keyboard paths, contrast rules (no pink or orange text), color never the only signal, reduced motion; axe scan inside `make e2e`.
   - _Requirements: REQ-WEB-A11Y.1–2_
 - [ ] 10. [demo-critical] Payload and origin checks

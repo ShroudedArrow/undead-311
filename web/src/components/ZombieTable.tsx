@@ -53,8 +53,8 @@ export function ZombieTable({ rows, search }: { rows: readonly TableRow[]; searc
               <td>{familyLabel(r.family)}</td>
               <td>{r.confidence === null ? "" : r.confidence.toFixed(2)}</td>
               <td>
-                <Link to={{ pathname: `/zombie/${encodeURIComponent(r.id)}`, search }} aria-label={t("table.open_card", { id: r.id })}>
-                  {t("table.col_open")}
+                <Link to={{ pathname: `/zombie/${encodeURIComponent(r.id)}`, search }}>
+                  {t("table.open_card", { id: r.id })}
                 </Link>
               </td>
             </tr>

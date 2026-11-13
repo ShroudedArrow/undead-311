@@ -202,7 +202,7 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .autopsy-form p { max-width: none; }
 .autopsy-head { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: space-between; align-items: flex-start; }
 .stamps { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; }
-.stamp { display: inline-block; border: 3px solid var(--asphalt); padding: var(--space-1) var(--space-2); font-weight: 700; letter-spacing: 0; }
+.stamp { display: inline-block; border: 3px solid var(--asphalt); padding: var(--space-1) var(--space-2); font-weight: 700; font-size: var(--step-1); }
 .stamp-closed { text-decoration: line-through; text-decoration-thickness: 3px; }
 .stamp-again { background: var(--survey-pink); transform: rotate(-3deg); }
 .autopsy-facts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin: var(--space-3) 0; }
@@ -258,3 +258,14 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .tour-progress { font-weight: 600; }
 .judge .autopsy { max-width: 40rem; }
 .judge h2:focus-visible { outline: var(--focus-ring); }
+
+/* REQ-WEB-A11Y.1: nothing animates for people who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
