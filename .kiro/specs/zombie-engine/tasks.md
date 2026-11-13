@@ -13,7 +13,7 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
   - `detect/params.py` with a frozen `Params` dataclass and `DEFAULT`; MIRROR_WINDOW_HOURS imported from `closure_flags.py`.
   - Unit test that parses the Parameters section of `.kiro/steering/zombie-definition.md` and fails on any mismatch.
   - _Requirements: REQ-DET-PARAM.1–3_
-- [ ] 3. [demo-critical] Load raw files into DuckDB
+- [x] 3. [demo-critical] Load raw files into DuckDB
   - `ingest/load.py`: `raw_legacy`, `raw_new` from `$DATA_DIR/raw/` via `read_csv` (all varchar), row counts, a clear error naming a missing file and `make data-download`.
   - _Requirements: REQ-ING-1.1–3_
 - [ ] 4. [demo-critical] Normalize both systems
