@@ -137,22 +137,25 @@ export function buildFixtures(rows) {
   const shards = new Map();
   for (const z of zs) { const c = byId.get(z.zombie_id); (shards.get(c.shard) ?? shards.set(c.shard, []).get(c.shard)).push(c.card); }
 
-  // scorecards: crude on-time (closed within 30 days) and stayed-fixed (no pair found) per family and citywide
+  // scorecards: crude on-time (closed within 30 days) and stayed-fixed (closed on time and not reported again) per family and citywide
+  const back = new Set(zombies.map((z) => z.incident_id.slice(2)));
   const fam = new Map();
   for (const c of closed) {
-    const e = fam.get(c.family) ?? fam.set(c.family, { n: 0, ontime: 0, back: 0 }).get(c.family);
-    e.n++; if (c.close - c.open <= 30 * DAY) e.ontime++;
+    const e = fam.get(c.family) ?? fam.set(c.family, { n: 0, ontime: 0, stayed: 0 }).get(c.family);
+    const ontime = c.close - c.open <= 30 * DAY;
+    e.n++; if (ontime) e.ontime++; if (ontime && !back.has(c.id)) e.stayed++;
   }
-  for (const z of zombies) { const e = fam.get(z.type_family); if (e) e.back++; }
   const mk = (family, e) => ({
     family, tier_set: "headline", n_closed: e.n, n_on_time_known: e.n, on_time: wilson(e.ontime, e.n),
-    stayed_fixed_raw: wilson(Math.max(0, e.n - e.back), e.n), stayed_fixed_adj: wilson(Math.max(0, e.n - e.back), e.n),
+    stayed_fixed_raw: wilson(e.stayed, e.n),
+    // adjusted is a fixture stand-in: a little higher than raw, clamped to the on-time rate (testing.md #17)
+    stayed_fixed_adj: wilson(Math.min(e.ontime, Math.round(e.stayed + (e.ontime - e.stayed) * 0.1)), e.n),
   });
   const scorecards = [...fam.entries()].sort((x, y) => (x[0] < y[0] ? -1 : 1)).map(([f, e]) => mk(f, e));
-  const total = [...fam.values()].reduce((s, e) => ({ n: s.n + e.n, ontime: s.ontime + e.ontime, back: s.back + e.back }), { n: 0, ontime: 0, back: 0 });
+  const total = [...fam.values()].reduce((s, e) => ({ n: s.n + e.n, ontime: s.ontime + e.ontime, stayed: s.stayed + e.stayed }), { n: 0, ontime: 0, stayed: 0 });
   scorecards.unshift(mk("all", total));
   // one family without an adjusted rate, so the raw-only path is exercised
-  const last = scorecards.at(-1); last.stayed_fixed_adj = null;
+  scorecards.at(-1).stayed_fixed_adj = null;
 
   const tally = { headline: 0, source_unknown: 0, sensitivity: 0 };
   for (const z of zs) tally[z.tier]++;

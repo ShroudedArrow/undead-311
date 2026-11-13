@@ -27,7 +27,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 - [x] 6. [demo-critical] Autopsy card
   - Triplicate form, stamps, typewriter face inside the form only, both case records, Skeptic section, `partial` confidence note, bulk-closure warning, phone bottom sheet, lazy shard loading.
   - _Requirements: REQ-WEB-CARD.1–6_
-- [ ] 7. [demo-critical] Two-number scorecard
+- [x] 7. [demo-critical] Two-number scorecard
   - On-time next to stayed-fixed with intervals and n; label says raw or adjusted.
   - _Requirements: REQ-WEB-SCORE.1–2_
 - [ ] 8. [demo-critical] Judge mode

@@ -3,6 +3,7 @@ import { Shell } from "./components/Shell";
 import { t } from "./lib/t";
 import CardRoute from "./pages/CardRoute";
 import HomePage from "./pages/HomePage";
+import ScorecardPage from "./pages/ScorecardPage";
 
 function NotFound() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
           <Route index element={null} />
           <Route path="zombie/:id" element={<CardRoute />} />
         </Route>
+        <Route path="scorecard" element={<ScorecardPage />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

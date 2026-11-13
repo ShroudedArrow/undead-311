@@ -234,3 +234,19 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
   .autopsy::before, .autopsy::after { display: none; }
   .autopsy-facts, .case-pair { grid-template-columns: 1fr; }
 }
+
+/* Pages and scorecard (REQ-WEB-SCORE) */
+.page { padding: var(--space-3); max-width: 60rem; }
+.score-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-3); }
+.score-row { background: var(--crew-white); border: 2px solid var(--asphalt); padding: var(--space-3); }
+.score-pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.rate-label { font-weight: 600; margin: 0; }
+.rate-value { font-size: var(--step-3); font-weight: 700; margin: 0; line-height: 1.2; }
+.rate-interval-text, .rate-n { font-size: var(--step--1); margin: 0; }
+.rate-bar { width: 100%; height: 0.75rem; display: block; margin: var(--space-1) 0; }
+.rate-track { fill: var(--concrete); }
+.rate-interval { fill: var(--asphalt); }
+.rate-point { fill: var(--asphalt); stroke: var(--crew-white); stroke-width: 0.4; }
+.score-detail { margin-top: var(--space-2); }
+.score-detail summary { cursor: pointer; min-height: 2.75rem; display: flex; align-items: center; }
+@media (max-width: 640px) { .score-pair { grid-template-columns: 1fr; } }
