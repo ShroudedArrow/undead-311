@@ -8,7 +8,7 @@
       "matcher": "(^|/)(web/src/|docs/|drafts/)|(^|/)README\\.md$",
       "action": {
         "type": "command",
-        "command": "make -C \"$(git rev-parse --show-toplevel)\" copy-lint"
+        "command": "[ -f /projects/sandbox/undead-311/Makefile ] || exit 0; exec make -C /projects/sandbox/undead-311 copy-lint"
       },
       "timeout": 60,
       "enabled": false

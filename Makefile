@@ -29,11 +29,15 @@ pipeline:
 lint:
 	$(UV) run ruff check pipeline
 
+# Installs the locked dependencies first (runtime + dev group: pytest, hypothesis, ruff). pytest exits non-zero when a test
+# file cannot be collected (for example a missing import), so a collection error fails this target; it is never skipped.
 test:
+	$(UV) sync --locked --group dev
 	$(UV) run pytest
 	cd web && npm test
 
 test-fast:
+	$(UV) sync --locked --group dev
 	$(UV) run pytest -q -x pipeline/tests/unit
 
 web:

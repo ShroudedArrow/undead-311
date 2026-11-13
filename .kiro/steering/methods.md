@@ -1,6 +1,6 @@
 ---
 inclusion: fileMatch
-fileMatchPattern: ["pipeline/undead311/stats/**", "pipeline/undead311/detect/**", "docs/METHODS.md"]
+fileMatchPattern: ["**/pipeline/undead311/stats/**", "**/pipeline/undead311/detect/**", "**/docs/METHODS.md"]
 ---
 # Statistical methods
 

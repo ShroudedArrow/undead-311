@@ -1,6 +1,6 @@
 ---
 inclusion: fileMatch
-fileMatchPattern: ["web/**", "docs/screenshots/**"]
+fileMatchPattern: ["**/web/**", "**/docs/screenshots/**"]
 ---
 # Design system (TEAM-OWNED — confirm or change before the first UI build)
 

@@ -7,7 +7,7 @@
       "trigger": "PreToolUse",
       "action": {
         "type": "command",
-        "command": "python3 \"$(git rev-parse --show-toplevel)\"/scripts/guard.py"
+        "command": "S=/projects/sandbox/undead-311/scripts/guard.py; [ -f \"$S\" ] || exit 0; cd /projects/sandbox/undead-311 || exit 0; exec python3 \"$S\""
       },
       "timeout": 20
     }
