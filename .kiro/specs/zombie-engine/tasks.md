@@ -31,9 +31,9 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
   - `ingest/pii.py` with per-pattern counts; applied to every exported free-text field.
   - [x] 7.1 Property P20: scrub is idempotent and removes every generated email and phone number. _REQ-ING-PII.1_
   - _Requirements: REQ-ING-PII.1–3_
-- [ ] 8. [demo-critical] Coroner templates and label join
+- [x] 8. [demo-critical] Coroner templates and label join
   - `coroner/templates.py` (masking, deduplication, `coroner_templates.csv`); `coroner/join.py` (precedence: Transitioned → referred, template label, then `NEW_SYSTEM_CLOSURE_LABELS`; `unlabeled` share; reject labels outside the set).
-  - [ ] 8.1 Property P5: every joined label is in the allowed set; an unknown label raises. _REQ-COR-1.4_
+  - [x] 8.1 Property P5: every joined label is in the allowed set; an unknown label raises. _REQ-COR-1.4_
   - _Requirements: REQ-COR-1.1–4_
 - [ ] 9. [demo-critical] Location matching and candidate edges
   - `detect/match.py` (haversine, the segment, then intersection, then radius rule exactly as written in zombie-definition.md (radius only when a case is unsnapped), `radius` mode for the grid); `detect/edges.py` (DuckDB grid-bucket join for member and re-report edges); brute-force generator for tests.
