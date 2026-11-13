@@ -46,10 +46,11 @@ def test_prop_p9_shifting_every_timestamp_by_the_same_amount_keeps_counts(cases,
 @given(town(), st.data())
 def test_prop_p10_duplicating_a_closed_case_never_increases_the_zombie_count(cases, data):
     """REQ-DET-1, 3 (testing.md #15): same place, type, open and close time, new ID."""
-    # A lone case open longer than INCIDENT_MAX_SPAN_DAYS cannot absorb its own duplicate (clarification S12/S17: the
-    # duplicate forms its own incident), and a linked successor then no longer recognizes its predecessor's incident.
-    # The metamorphic property is about duplicates the incident rule can group, so such cases are left out.
-    closed = [c for c in cases if c.is_closed and c.close_utc - c.open_utc <= timedelta(days=7)]
+    # A predecessor of a linked successor is left out: duplicating it makes the duplicate a member of its own incident
+    # (clarification S12/S17), and the successor then re-reports that incident instead of continuing the predecessor
+    # (ZD step 9). That is a conflict between testing.md #15 and ZD step 9, reported to the owner (needs-human).
+    predecessors = {pid for c in cases for pid in c.predecessor_ids}
+    closed = [c for c in cases if c.is_closed and c.id not in predecessors]
     if not closed:
         return
     original = data.draw(st.sampled_from(closed))

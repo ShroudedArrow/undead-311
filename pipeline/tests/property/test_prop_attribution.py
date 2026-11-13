@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import timedelta
 
-from helpers import params
-from hypothesis import given
+from helpers import mk, params
+from hypothesis import example, given
 from hypothesis import strategies as st
 from strategies import town
 
 from undead311.detect.core import candidate_pairs, detect
 from undead311.detect.edges import brute_edges
+from undead311.detect.match import match
 from undead311.detect.params import DEFAULT
 from undead311.ingest.closure_flags import is_transferred_original
 
@@ -35,7 +37,7 @@ def test_prop_p2_every_attached_re_report_opens_strictly_after_its_incidents_clo
     for rid, iid in r.attribution.items():
         gap = by_id[rid].open_utc - inc[iid].close_utc
         assert gap.total_seconds() > 0
-        assert gap.days <= DEFAULT.WINDOW_DAYS
+        assert gap <= timedelta(days=DEFAULT.WINDOW_DAYS)
 
 
 @given(town(), st.sampled_from([("RADIUS_M", 50), ("RADIUS_M", 100), ("WINDOW_DAYS", 90), ("WINDOW_DAYS", 61)]),
@@ -64,6 +66,7 @@ def test_prop_p8_each_re_report_attaches_to_at_most_one_incident_deterministical
 
 
 @given(town())
+@example([mk("P", 0, 1), mk("O", 20, 21), mk("N", 20, system="new", open_hours=1)])
 def test_prop_p14_mirror_and_transfer_pairs_never_survive(cases):
     """REQ-DET-2.2, 2.4: no mirror R is attached; no incident with a transferred member has a zombie."""
     r = detect(cases)
@@ -75,6 +78,15 @@ def test_prop_p14_mirror_and_transfer_pairs_never_survive(cases):
             assert not is_transferred_original(
                 {"system": c.system, "closure_text": c.closure_text, "closure_code": c.closure_code}
             )
+    # independent of the detector's own mirror_ids: no attached R has a closed same-family cross-system case that
+    # matches it by location and opened within MIRROR_WINDOW_HOURS (REQ-DET-2.4, testing.md #20)
+    window = timedelta(hours=DEFAULT.MIRROR_WINDOW_HOURS)
+    for rid in r.attribution:
+        c = by_id[rid]
+        for o in cases:
+            if o.id != rid and o.is_closed and o.system != c.system and o.type_family == c.type_family:
+                if abs(o.open_utc - c.open_utc) <= window:
+                    assert match(c, o, DEFAULT) is None, (rid, o.id)
     # same-system pairs are never mirrors: every mirror has a closed cross-system partner within 6 h and an edge
     edges = brute_edges([c for c in cases], DEFAULT)
     for mid in r.mirror_ids:
@@ -84,6 +96,16 @@ def test_prop_p14_mirror_and_transfer_pairs_never_survive(cases):
             and abs((by_id[o].open_utc - c.open_utc).total_seconds()) <= 6 * 3600
             for a, b in edges if mid in (a, b) for o in (a if b == mid else b,)
         )
+
+
+def test_prop_p14_generator_does_produce_mirrors():
+    """REQ-DET-2.4: guard against a vacuous P14 mirror half. A cross-system copy opened within 6 h of a closed case is
+    dropped (so the legacy case resurrects P instead), while a same-system re-report 5 h after the original's open is
+    attached."""
+    r = detect([mk("P", 0, 1), mk("O", 20, 21), mk("N", 20, system="new", open_hours=1)])
+    assert r.mirror_ids == {"N"} and "N" not in r.attribution and r.attribution == {"O": "P"}
+    same = detect([mk("O", 0, 0, close_hours=1), mk("S", 0, open_hours=5)])
+    assert not same.mirror_ids and same.attribution == {"S": "O"}
 
 
 @given(town())
@@ -98,7 +120,5 @@ def test_prop_p15_a_linked_successor_is_never_a_re_report_of_its_predecessors_in
 
 def test_prop_p15_generator_does_produce_linked_successors():
     """REQ-DET-2.3: guard against a vacuous P15, a handcrafted town has the link and the exclusion is counted."""
-    from helpers import mk
-
     r = detect([mk("L", 0, 1), mk("S", 4, system="new", preds=("L",))])
     assert r.excluded_pairs["linked_successor"] == 1
