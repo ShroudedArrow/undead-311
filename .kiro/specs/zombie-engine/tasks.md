@@ -16,9 +16,9 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
 - [x] 3. [demo-critical] Load raw files into DuckDB
   - `ingest/load.py`: `raw_legacy`, `raw_new` from `$DATA_DIR/raw/` via `read_csv` (all varchar), row counts, a clear error naming a missing file and `make data-download`.
   - _Requirements: REQ-ING-1.1–3_
-- [ ] 4. [demo-critical] Normalize both systems
+- [x] 4. [demo-critical] Normalize both systems
   - `ingest/normalize.py`: the `cases_norm` view in the normalized schema plus `system`, `closure_code`; times through a DuckDB Python UDF that calls `times.to_utc_and_local`; unparseable values set to null and counted by reason.
-  - [ ] 4.1 Property P4 (part 1): normalization is invariant to input row order. _REQ-ING-2.3_
+  - [x] 4.1 Property P4 (part 1): normalization is invariant to input row order. _REQ-ING-2.3_
   - _Requirements: REQ-ING-2.1–3, REQ-ING-TZ.1–3_
 - [ ] 5. [demo-critical] Crosswalk and catch-all inheritance
   - `ingest/crosswalk.py`: join `type_families.csv`; link table from legacy closure texts with `extract_linked_case_id`; `predecessor_ids` on successors; `resolve_catch_all` per catch-all case, including the all-excluded case.
