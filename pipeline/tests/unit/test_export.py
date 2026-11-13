@@ -147,3 +147,19 @@ def test_req_exp_1_4_duckdb_file_is_written_atomically(tmp_path):
 def test_req_exp_1_3_canonical_json_is_key_sorted_and_compact():
     """REQ-EXP-1.3: sorted keys, no spaces, one trailing newline."""
     assert canonical_json({"b": 1, "a": [1, 2]}) == '{"a":[1,2],"b":1}\n'
+
+
+def test_req_exp_1_web_contract_shard_names_resurrection_date_and_card_partial_flag(tmp_path):
+    """REQ-EXP-1.1-1.2 (ops#12): shards are cards/<slug(neighborhood)>-<re-report year>.json, zombies carry
+    resurrection_date, cards carry confidence_partial, and points.year is the re-report year."""
+    result, cases, ctx = town_inputs()
+    p = build_payloads(result, cases, ctx)
+    z = {x["zombie_id"]: x for x in p["zombies.json"]["zombies"]}
+    first = z["101099001001:101099001002"]
+    assert first["resurrection_date"] == "2024-03-26"
+    shard = "cards/dorchester-2024.json"
+    assert shard in p
+    card = next(c for c in p[shard]["cards"] if c["zombie_id"] == "101099001001:101099001002")
+    assert card["resurrection_date"] == "2024-03-26" and card["confidence_partial"] is True
+    idx = p["points.json"]["id"].index("101099001001:101099001002")
+    assert p["points.json"]["year"][idx] == 2024

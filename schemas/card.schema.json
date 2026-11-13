@@ -208,6 +208,9 @@
           },
           "bulk_closure": {
             "type": "boolean"
+          },
+          "confidence_partial": {
+            "type": "boolean"
           }
         },
         "required": [

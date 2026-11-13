@@ -107,7 +107,7 @@ def zombie_record(z: Zombie) -> dict:
         "skeptic_verdict": z.skeptic_verdict, "skeptic_notes": scrub_text(z.skeptic_notes) or "",
         "type_family": z.type_family, "department": z.department, "neighborhood": z.neighborhood,
         "district": z.district, "segment_id": z.segment_id, "coroner_label": z.coroner_label,
-        "bulk_closure": z.bulk_closure, "close_year": z.close_year,
+        "bulk_closure": z.bulk_closure, "close_year": z.close_year, "resurrection_date": z.resurrection_date,
     }  # fmt: skip
 
 
@@ -153,16 +153,17 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
         "lon": [round(reps[z.zombie_id].lon, 6) for z in zombies],
         "tier": [z.tier for z in zombies], "family": [z.type_family for z in zombies],
         "department": [z.department for z in zombies], "neighborhood": [z.neighborhood for z in zombies],
-        "year": [z.close_year for z in zombies],
+        "year": [int(z.resurrection_date[:4]) for z in zombies],
     }  # fmt: skip
     shards: dict[str, list[dict]] = defaultdict(list)
     for z in zombies:
         res = cases[z.resurrection_id]
-        shards[f"{slug(z.neighborhood)}-{z.close_year}"].append(
+        shards[f"{slug(z.neighborhood)}-{z.resurrection_date[:4]}"].append(
             {
                 "zombie_id": z.zombie_id, "original": case_record(reps[z.zombie_id]), "rereport": case_record(res),
                 "cause_of_death": z.coroner_label, "gap_days": round(z.gap_days, 6),
-                "resurrection_date": res.open_utc.strftime("%Y-%m-%d"), "confidence": round(z.confidence, 6),
+                "resurrection_date": z.resurrection_date, "confidence": round(z.confidence, 6),
+                "confidence_partial": z.confidence_partial,
                 "tier": z.tier, "skeptic_verdict": z.skeptic_verdict,
                 "skeptic_notes": scrub_text(z.skeptic_notes) or "", "reports_after": z.reports_after,
                 "times_risen": z.times_risen, "bulk_closure": z.bulk_closure,

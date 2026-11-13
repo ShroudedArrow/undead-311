@@ -314,6 +314,7 @@ def detect(cases: list[Case], p: Params = DEFAULT, edges: Edges | None = None) -
                 neighborhood=inc.neighborhood,
                 district=inc.district,
                 segment_id=inc.segment_id,
+                resurrection_date=res.open_utc.strftime("%Y-%m-%d"),
                 catch_all=res.catch_all or any(by_id[mid].catch_all for mid in inc.member_ids),
             )
         result.zombies.append(rescore(z, p))

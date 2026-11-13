@@ -115,6 +115,7 @@ class Zombie:
     skeptic_notes: str = ""
     is_planned_followup: bool = False
     catch_all: bool = False
+    resurrection_date: str = ""  # YYYY-MM-DD (UTC) the re-report opened
 
     @property
     def zombie_id(self) -> str:
