@@ -56,11 +56,11 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
   - [x] 11.5 Property P14: mirror and transfer pairs never survive; same-system pairs are never mirrors; Transitioned originals never yield zombies. _REQ-DET-2.2, 2.4_
   - [x] 11.6 Property P15: a linked successor is never a re-report of its own predecessor's incident. _REQ-DET-2.3, REQ-ING-CATCH.5_
   - _Requirements: REQ-DET-2.1–5, REQ-DET-3.1–3_
-- [ ] 12. [demo-critical] Classification and tiers
+- [x] 12. [demo-critical] Classification and tiers
   - Planned follow-ups (legacy city-originated resurrection), `after_temporary_fix`, `source_unknown`, separate deaths, tier precedence, headline count.
-  - [ ] 12.1 Property P16: an unlinked or ambiguous catch-all case never enters the headline. _REQ-DET-TIER.4, REQ-ING-CATCH.3_
-  - [ ] 12.2 Property P17: exactly one tier per zombie; headline count = headline zombies. _REQ-DET-TIER.1–2_
-  - [ ] 12.3 Property P18: the step 6 outcomes for every combination of label, system and source. _REQ-DET-PF_
+  - [x] 12.1 Property P16: an unlinked or ambiguous catch-all case never enters the headline. _REQ-DET-TIER.4, REQ-ING-CATCH.3_
+  - [x] 12.2 Property P17: exactly one tier per zombie; headline count = headline zombies. _REQ-DET-TIER.1–2_
+  - [x] 12.3 Property P18: the step 6 outcomes for every combination of label, system and source. _REQ-DET-PF_
   - _Requirements: REQ-DET-PF.1–4, REQ-DET-TIER.1–4, REQ-DET-SEP.1_
 - [ ] 13. [demo-critical] Chains and repeat offenders
   - Link zombie incidents through closed resurrections; `chain_id`; chain-total `times_risen`; repeat-offender flag on headline count ≥ 3.
