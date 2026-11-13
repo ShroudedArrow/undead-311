@@ -7,9 +7,9 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 - [ ] 1. [demo-critical] App scaffold, tokens, fonts and copy
   - Vite + React + TS in `web/` (pinned in `package-lock.json`), `npm test` = vitest, `make build`, `make e2e` wiring; `styles/tokens.css` with the six palette colors only; self-hosted Public Sans and Courier Prime; `copy/en.json` plus typed `t()`; footer text, OSM credit, data licenses; "Data as of" from `status.json`.
   - _Requirements: REQ-WEB-COPY.1–3, REQ-WEB-DESIGN.1–3, REQ-WEB-FRESH.1_
-- [ ] 2. [demo-critical] Schema-derived parsers and fixtures
+- [x] 2. [demo-critical] Schema-derived parsers and fixtures
   - Generate types from `/schemas/`; ajv standalone validators (CSP-safe); per-panel error states; fixture files from `data/sample/` that follow the schemas until real exports exist.
-  - [ ] 2.1 Property W1: parsers accept every schema-valid generated file and reject files missing a required field. _REQ-WEB-DATA.1; testing.md #16_
+  - [x] 2.1 Property W1: parsers accept every schema-valid generated file and reject files missing a required field. _REQ-WEB-DATA.1; testing.md #16_
   - _Requirements: REQ-WEB-DATA.1–3_
 - [ ] 3. [demo-critical] Filtering and aggregation library
   - `lib/filter.ts` (`applyFilters`, `aggregate`), `TierMode`.

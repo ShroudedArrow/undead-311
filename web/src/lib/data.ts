@@ -1,0 +1,59 @@
+/**
+ * Same-origin data loading (REQ-WEB-DATA.1-2, REQ-WEB-PERF.2). Every file goes through a schema-derived parser;
+ * a failure becomes an error state for that panel only.
+ */
+import { useEffect, useState } from "react";
+import type { ParseResult } from "./parse";
+
+export type Load<T> =
+  | { status: "loading" }
+  | { status: "ok"; data: T }
+  | { status: "error"; file: string; error: string };
+
+export function dataUrl(file: string): string {
+  return `${import.meta.env.BASE_URL}data/${file}`;
+}
+
+export async function loadData<T>(file: string, parse: (d: unknown) => ParseResult<T>): Promise<Load<T>> {
+  try {
+    const res = await fetch(dataUrl(file));
+    if (!res.ok) return { status: "error", file, error: `HTTP ${res.status}` };
+    const json: unknown = await res.json();
+    const parsed = parse(json);
+    return parsed.ok ? { status: "ok", data: parsed.data } : { status: "error", file, error: parsed.error };
+  } catch (e) {
+    return { status: "error", file, error: e instanceof Error ? e.message : "request failed" };
+  }
+}
+
+const cache = new Map<string, Promise<Load<unknown>>>();
+
+/** Load once per file per page view; later callers share the promise. */
+export function loadOnce<T>(file: string, parse: (d: unknown) => ParseResult<T>): Promise<Load<T>> {
+  let p = cache.get(file);
+  if (!p) {
+    p = loadData(file, parse);
+    cache.set(file, p);
+  }
+  return p as Promise<Load<T>>;
+}
+
+export function clearDataCache(): void {
+  cache.clear();
+}
+
+export function useData<T>(file: string | null, parse: (d: unknown) => ParseResult<T>): Load<T> {
+  const [state, setState] = useState<Load<T>>({ status: "loading" });
+  useEffect(() => {
+    if (file === null) return;
+    let live = true;
+    setState({ status: "loading" });
+    void loadOnce(file, parse).then((r) => live && setState(r));
+    return () => {
+      live = false;
+    };
+    // `parse` is a module-level function; the file name is the only real dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file]);
+  return state;
+}

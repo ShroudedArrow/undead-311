@@ -11,6 +11,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
+    "gen:parsers": "node scripts/gen-parsers.mjs",
+    "fixtures": "node scripts/make-fixtures.mjs",
     "test": "vitest run --passWithNoTests",
     "e2e": "playwright test"
   },
