@@ -8,7 +8,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
   - `stats/intervals.py`: Wilson (null with `no_cases` at n = 0) and seeded bootstrap.
   - [x] 1.1 Property P1 (part 1): every interval is within [0, 1] and contains its estimate. _REQ-STAT-INT.1–2_
   - _Requirements: REQ-STAT-INT.1–2_
-- [ ] 2. [demo-critical] Cohort
+- [x] 2. [demo-critical] Cohort
   - `stats/cohort.py`: eligible originals (not transferred, fully observed), spot keys (segment or 60 m cell), seasons.
   - _Requirements: REQ-STAT-SF.1 (denominator), glossary_
 - [ ] 3. [demo-critical] Raw scorecard
