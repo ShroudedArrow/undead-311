@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "detector-revalidate",
+      "description": "Re-score the hand-labeled validation sample when detector code changes.",
+      "trigger": "PostFileSave",
+      "matcher": "(^|/)pipeline/undead311/detect/",
+      "action": {
+        "type": "command",
+        "command": "make -C \"$(git rev-parse --show-toplevel)\" validate"
+      },
+      "timeout": 120
+    }
+  ]
+}

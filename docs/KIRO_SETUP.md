@@ -1,4 +1,4 @@
-# The Undead 311 — Kiro Setup and One-Shot Playbook
+# The Undead 311: Kiro setup and one-shot playbook
 
 *How to set up Kiro so it can build The Undead 311 in one autonomous run, and which repos, MCP servers, and Powers are worth using. Updated Oct 31, 2026. Pairs with the starter kit (`undead-311-starter.zip`).*
 

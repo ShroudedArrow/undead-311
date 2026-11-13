@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "coroner-eval",
+      "description": "Coroner accuracy vs. 200 hand labels when the label table changes.",
+      "trigger": "PostFileSave",
+      "matcher": "(^|/)data/labels/coroner_labels\\.csv$",
+      "action": {
+        "type": "command",
+        "command": "make -C \"$(git rev-parse --show-toplevel)\" coroner-eval"
+      },
+      "timeout": 120
+    }
+  ]
+}

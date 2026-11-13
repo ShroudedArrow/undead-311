@@ -1,0 +1,59 @@
+{
+  "status": "PASS",
+  "commit": "39af6d37cfa8d11c7171dc057e25d31e668ed7a3",
+  "cwd": "/projects/sandbox/undead-311/.local-data/worktrees/smoke-2026-11-12a",
+  "at": "2026-11-12T23:45:39+00:00",
+  "results": [
+    {
+      "target": "test",
+      "exit_code": 0,
+      "ok": true,
+      "tail": [
+        "uv run pytest",
+        "============================= test session starts ==============================",
+        "platform linux -- Python 3.11.15, pytest-9.2.0, pluggy-1.7.0",
+        "rootdir: /projects/sandbox/undead-311/.local-data/worktrees/smoke-2026-11-12a",
+        "configfile: pyproject.toml",
+        "testpaths: pipeline/tests",
+        "plugins: hypothesis-6.170.15",
+        "collected 69 items",
+        "",
+        "pipeline/tests/property/test_dst_ordering.py ......                      [  8%]",
+        "pipeline/tests/unit/test_closure_flags.py .............................. [ 52%]",
+        ".............                                                            [ 71%]",
+        "pipeline/tests/unit/test_download.py ....                                [ 76%]",
+        "pipeline/tests/unit/test_sample.py ......                                [ 85%]",
+        "pipeline/tests/unit/test_times.py ......                                 [ 94%]",
+        "pipeline/tests/unit/test_type_families.py ....                           [100%]",
+        "",
+        "============================== 69 passed in 1.48s ==============================",
+        "cd web && npm test",
+        "",
+        "> undead311-web@0.0.1 test",
+        "> echo \"no web tests yet\"",
+        "",
+        "no web tests yet",
+        "Using CPython 3.11.15 interpreter at: /root/.pyenv/versions/3.11.15/bin/python3.11",
+        "Creating virtual environment at: .venv",
+        "Installed 9 packages in 11ms"
+      ]
+    },
+    {
+      "target": "lint",
+      "exit_code": 0,
+      "ok": true,
+      "tail": [
+        "uv run ruff check pipeline",
+        "All checks passed!"
+      ]
+    },
+    {
+      "target": "hello",
+      "exit_code": 0,
+      "ok": true,
+      "tail": [
+        "DATA_DIR=/projects/sandbox/undead-311/.local-data/data"
+      ]
+    }
+  ]
+}

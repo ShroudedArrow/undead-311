@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "data-validate",
+      "description": "Ask the data-steward checks to run on a new raw file. Agent hook (spends credits), disabled by default.",
+      "trigger": "PostFileCreate",
+      "matcher": "(^|/)data/raw/",
+      "action": {
+        "type": "agent",
+        "prompt": "Run the data-steward checks on the new file and report schema drift (follow .kiro/agents/data-steward.json: query through DuckDB, report null rates and out-of-bounds coordinates to docs/data-reports/)."
+      },
+      "enabled": false
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-# The Undead 311 — Refinement Audit
+# The Undead 311: refinement audit
 
 *A line-by-line review of the project from 14 angles, run before the one-shot build (Oct 31, 2026). Covers the project write-up, Kiro playbook, pre-flight checklist, starter kit, and the official rules.*
 
@@ -19,7 +19,7 @@
 |---|---|---|---|
 | 1 | **Incidents before matching:** group duplicate reports into one incident first | Without this, one pothole reported three times can count as several zombies | Applied |
 | 2 | **Planned follow-ups aren’t zombies** | City crews often make a spot safe, then come back for the permanent repair. City-generated follow-up cases would otherwise look like failed fixes | Applied |
-| 3 | **Handle the 2025 system change (new system from August 2025; most in-scope types moved by mid-2026)** | Field names changed. Without a crosswalk, closures from before the 2025 system change can’t match re-reports after it | Applied |
+| 3 | **Handle the 2025 system change** (new system from August 2025, type by type) | Field names changed. Without a crosswalk, a closure in the old system can’t match a re-report in the new one | Applied |
 | 4 | **Street-segment matching is now a must-have** | Boston’s street-segment data is public domain and updated nightly; it beats a raw radius at intersections and on parallel streets | Applied |
 | 5 | **“Check my street” search** | The most natural first action for residents and judges (“Would someone actually use this?”) | Applied |
 | 6 | **Zombie chains and “repeat offenders”** | “This sidewalk died and rose four times” is the most memorable finding the data can produce | Applied |
@@ -57,7 +57,7 @@
 
 | # | Finding | Refinement | Pri. | Status |
 |---|---|---|---|---|
-| C1 | The 311 system changed with the 2025 system change (new system from August 2025; most in-scope types moved by mid-2026), with different field names, across three resource groups | Schema adapter, type crosswalk, cross-system matching; a test-town case spans the switch | P0 | Applied |
+| C1 | Boston moved 311 to a new system from August 2025 (most in-scope types by mid-2026), with different field names, across three resource groups | Schema adapter, type crosswalk, cross-system matching; a test-town case spans the switch | P0 | Applied |
 | C2 | The source field includes city-originated channels (Employee Generated, City Worker App, Maximo Integration) | Planned-follow-up rule; show results with and without them | P0 | Applied |
 | C3 | Placeholder coordinates exist (City Hall shows up as a default) | Detect high-frequency default points automatically; count exclusions | P0 | Applied |
 | C4 | The dataset ships a CRM Value Codex | Use it to interpret codes | P0 | Applied |
@@ -145,7 +145,7 @@
 |---|---|---|---|---|
 | I1 | The idea is stronger as a reusable method | Publish a short “stayed-fixed rate” method spec any Open311 city can run | P2 | To do (Data) |
 | I2 | Results should be checkable | Publish the zombie dataset with a data card | P1 | Applied (should-have) |
-| I3 | Timely finding | Before/after the 2025 system change (new system from August 2025; most in-scope types moved by mid-2026) | P1 | Applied |
+| I3 | Timely finding | Before and after the 2025 system change | P1 | Applied |
 | I4 | Unusual lens | Reliability analysis (how long fixes survive), uncommon in civic tech | P0 | Applied |
 
 ## J. Presentation
@@ -198,7 +198,7 @@
 | Write-up, Crew App | Crew runs the nightly scan | GitHub Actions in the data repo refreshes nightly; Crew handles labeling, Discord Q&A, and the weekly report |
 | Write-up, hosting | “AWS is a natural fit” | Netlify (via its Power) or GitHub Pages |
 | Write-up, MCP and Power | “Analyze Boston MCP,” “Boston Open Data Power” | Third-party CKAN server for development; our Undead 311 MCP server; `boston-311-power` |
-| Write-up, data | Street segments “verify”; system switch vague | Segments and addresses confirmed public domain; switch dated to the 2025 system change (new system from August 2025; most in-scope types moved by mid-2026) |
+| Write-up, data | Street segments “verify”; system switch vague | Segments and addresses confirmed public domain; switch dated to August 2025, with most in-scope types moved by mid-2026 |
 | Write-up, property tests | Monotonic zombie counts | Monotonic candidate pairs, plus 4 new properties |
 | Steering, definition | Ambiguous attribution; no incidents or chains | Full algorithm (incidents, attribution, chains, follow-ups, cross-system) |
 | Steering, tech | “Dark theme” | Removed; design-system governs |
@@ -299,7 +299,7 @@ The first two passes reviewed the plan by reading it. This one tested it: a thro
 - Files that are referenced but get created later (METHODS.md, VALIDATION.md, the Coroner labels, SNAPSHOT.md, agents, hooks) are expected to be missing at this stage.
 
 ### Y. The biggest remaining data risk
-The new system, introduced with the 2025 system change (new system from August 2025; most in-scope types moved by mid-2026), renamed fields (`open_date`, `close_date`, `service_name`, `assigned_department`). Nobody has yet confirmed that coordinates and closure text survived in the new data. That matters because validating *recent* zombies depends entirely on post-change records.
+The new system, introduced type by type from August 2025, renamed fields (`open_date`, `close_date`, `service_name`, `assigned_department`). Nobody has yet confirmed that coordinates and closure text survived in the new data. That matters because validating *recent* zombies depends entirely on post-change records.
 - **Added:** a day-1 go/no-go in the kickoff prompt.
 - **Fallbacks:** match addresses to the city’s address registry if coordinates are missing; if closure text is missing, the planned-follow-up rule can use only source and timing.
 
@@ -343,7 +343,7 @@ Schedule those three reviews instead of a fourth plan audit.
 
 ## Sources for new findings
 
-- The 2025 system change (new system from August 2025; most in-scope types moved by mid-2026) and field renames: https://cdn.jsdelivr.net/gh/sgarcese/Civic-Analytics-Agent-Workflow-Claude-Skill@main/SKILL.md
+- The 2025 system change (from August 2025) and field renames: https://cdn.jsdelivr.net/gh/sgarcese/Civic-Analytics-Agent-Workflow-Claude-Skill@main/SKILL.md
 - Source channel values: https://sunli-lisun.github.io/ac221/data-sources.html
 - Dataset page and CRM Value Codex: https://data.boston.gov/dataset/311-service-requests
 - Placeholder coordinates example: https://course.ccs.neu.edu/ds2500sp23/proposals/27.html

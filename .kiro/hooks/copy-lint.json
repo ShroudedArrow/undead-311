@@ -1,0 +1,17 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "copy-lint",
+      "description": "Flag banned words/patterns and banned CSS defaults; count TODO-COPY. Disabled by default: the workflow design gate runs it.",
+      "trigger": "PostFileSave",
+      "matcher": "(^|/)(web/src/|docs/|drafts/)|(^|/)README\\.md$",
+      "action": {
+        "type": "command",
+        "command": "make -C \"$(git rev-parse --show-toplevel)\" copy-lint"
+      },
+      "timeout": 60,
+      "enabled": false
+    }
+  ]
+}

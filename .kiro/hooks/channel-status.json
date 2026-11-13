@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "channel-status",
+      "description": "Post a one-line status comment to the current run-log issue after each task. Always exits 0.",
+      "trigger": "PostTaskExec",
+      "action": {
+        "type": "command",
+        "command": "python3 \"$(git rev-parse --show-toplevel)\"/scripts/channel_post.py"
+      },
+      "timeout": 30
+    }
+  ]
+}

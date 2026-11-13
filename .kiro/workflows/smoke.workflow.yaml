@@ -1,0 +1,78 @@
+# Smoke test for the build workflow (prompts/04-workflow.md): one implement step, one validate gate, one reviewer.
+# It checks worktree creation, agents, permissions, channel access, hooks, the kill switch and the file-based stop
+# condition before the real run. Low credits: faster model for the implementer, strongest model for the reviewer.
+# Launch inputs: run_id (e.g. smoke-2026-11-12a) and worktree_path (e.g. .local-data/worktrees/<run_id>).
+name: smoke
+description: Smoke test - add `make hello` in an isolated worktree, gate it, review it, report to the channel.
+inputs:
+  run_id: string
+  worktree_path: string
+modelId: claude-sonnet-5.5
+steps:
+  - type: step
+    id: channel
+    agent: engine
+    prompt: |
+      Run {{run_id}}, step "channel". Follow docs/RUN_PROTOCOL.md.
+      Create the run directory .kiro/workflow-runs/{{run_id}}/ in the main checkout and the marker file RUNNING in it.
+      Open the run-log issue in ShroudedArrow/undead-311-ops titled "Run {{run_id}}: smoke" with label type:status,
+      using the github-channel MCP server, and save {"issue": <number>, "url": "<html_url>"} to
+      .kiro/workflow-runs/{{run_id}}/channel.json. If the MCP server is unavailable, run
+      `python3 scripts/channel_open.py --run-id {{run_id}} --recipe smoke` instead.
+  - type: step
+    id: setup
+    agent: engine
+    prompt: |
+      Run {{run_id}}, step "setup". Follow docs/RUN_PROTOCOL.md.
+      Create an isolated git worktree for this run: `git worktree add -b smoke/{{run_id}} {{worktree_path}} HEAD`.
+      Verify it with `git worktree list` and write {"worktree": "{{worktree_path}}", "branch": "smoke/{{run_id}}",
+      "base": "<sha>"} to .kiro/workflow-runs/{{run_id}}/setup.json. Do all later work inside the worktree.
+  - type: repeat
+    id: hello-loop
+    maxIterations: 2
+    onMaxIterations: abort
+    stopCondition:
+      fileCheck:
+        path: .kiro/workflow-runs/{{run_id}}/hello-loop.json
+        jsonPath: $.done
+        value: true
+    steps:
+      - type: step
+        id: implement
+        agent: engine
+        prompt: |
+          Run {{run_id}}, step "implement". Follow docs/RUN_PROTOCOL.md. Work only in {{worktree_path}}.
+          Read open to:engine findings and .kiro/workflow-runs/{{run_id}}/review-stats.json if it exists, and fix them.
+          Task: add a `make hello` target to the Makefile that prints the resolved DATA_DIR
+          (the Makefile already applies the tech.md fallback), and add `hello` to .PHONY. Run `make hello` to check it.
+          Commit with: git commit -m "chore(make): add hello target (smoke test)" --trailer "Kiro-Agent: engine" --trailer "Kiro-Run: {{run_id}}"
+      - type: step
+        id: validate
+        agent: engine
+        prompt: |
+          Run {{run_id}}, step "validate". Follow docs/RUN_PROTOCOL.md. Do not edit any code in this step.
+          Run `python3 scripts/validate_gate.py --cwd {{worktree_path}} --out .kiro/workflow-runs/{{run_id}}/hello-gate.json --target test --target lint --target hello`
+          and report the status it prints.
+      - type: step
+        id: review
+        agent: reviewer-stats
+        modelId: claude-opus-5.5
+        effortLevel: high
+        prompt: |
+          Run {{run_id}}, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only.
+          Review the diff of branch smoke/{{run_id}} against the base sha in .kiro/workflow-runs/{{run_id}}/setup.json
+          (`git diff <base>..smoke/{{run_id}}`). Check: the target prints DATA_DIR, uses the fallback, is in .PHONY,
+          touches nothing else, and the commit carries both trailers (`python3 scripts/check_trailers.py <base>..smoke/{{run_id}} --require-run {{run_id}}`).
+          Read .kiro/workflow-runs/{{run_id}}/hello-gate.json; if its status is not PASS your verdict must be CHANGES_REQUESTED.
+          Write .kiro/workflow-runs/{{run_id}}/review-stats.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}
+          and file each finding as an issue labeled to:engine and type:finding. Then run
+          `python3 scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/hello-gate.json --review .kiro/workflow-runs/{{run_id}}/review-stats.json --out .kiro/workflow-runs/{{run_id}}/hello-loop.json`.
+  - type: step
+    id: report
+    agent: engine
+    prompt: |
+      Run {{run_id}}, step "report". Follow docs/RUN_PROTOCOL.md.
+      Write .kiro/workflow-runs/{{run_id}}/report.md: what was built, the gate and review results, the trailer check, and
+      which hooks fired (kill switch, guard, channel-status, kiro-log). Append one line to docs/KIRO_LOG.md in the kiro-log.md format.
+      Post the summary as the final run-log comment, delete .kiro/workflow-runs/{{run_id}}/RUNNING, and leave the worktree
+      for the human to inspect (the branch smoke/{{run_id}} is NOT merged).

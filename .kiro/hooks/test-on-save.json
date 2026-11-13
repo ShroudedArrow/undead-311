@@ -1,0 +1,17 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "test-on-save",
+      "description": "Run the fast test subset when pipeline or web source is saved. Disabled by default: workflow validate gates run the tests.",
+      "trigger": "PostFileSave",
+      "matcher": "(^|/)pipeline/.*\\.py$|(^|/)web/src/.*\\.(ts|tsx)$",
+      "action": {
+        "type": "command",
+        "command": "make -C \"$(git rev-parse --show-toplevel)\" test-fast"
+      },
+      "timeout": 60,
+      "enabled": false
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "guard-shell",
+      "description": "Block rm -rf in the repo or DATA_DIR, force pushes, reset --hard, clean -f, and shell edits of protected paths.",
+      "trigger": "PreToolUse",
+      "matcher": "shell",
+      "action": {
+        "type": "command",
+        "command": "python3 \"$(git rev-parse --show-toplevel)\"/scripts/guard.py"
+      },
+      "timeout": 20
+    },
+    {
+      "name": "guard-write",
+      "description": "Block file-tool edits of .kiro/steering|settings|hooks|agents, .kiro/STOP and expected_zombies.json; allow workflow-runs and tasks.md checkboxes.",
+      "trigger": "PreToolUse",
+      "matcher": "^(fs_write|fs_append|str_replace|delete_file|write)$",
+      "action": {
+        "type": "command",
+        "command": "python3 \"$(git rev-parse --show-toplevel)\"/scripts/guard.py"
+      },
+      "timeout": 20
+    }
+  ]
+}

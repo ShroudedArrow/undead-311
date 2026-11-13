@@ -2,7 +2,7 @@
 
 **Version note:** Surface: Kiro Web. Date: 2026-11-12. No version number is shown, so none is recorded.
 
-**Counts:** specs 0 · steering docs 14 · hooks 0 · custom agents 0 · workflows 0 · MCP servers 5 · property tests 6 · powers 0
+**Counts:** specs 4 · steering docs 14 · hooks 9 files (11 hook definitions) · custom agents 9 (7 from prompts/01 + 2 workflow implementers) · workflows 2 · MCP servers 5 · property tests 6 · powers 0
 
 Format: `YYYY-MM-DD | surface | feature | what was built/fixed | issue + fix`
 
@@ -11,3 +11,6 @@ Format: `YYYY-MM-DD | surface | feature | what was built/fixed | issue + fix`
 2026-11-12 | Kiro Web | PR3 round 3 (mirror cross-system only, Transitioned, scope tiers) | Mirror rule is cross-system only, new-system Transitioned maps to 'referred' and is never an original, Traffic Signal Request is sensitivity-only, 12 crosswalk types added as excluded, sample gains closure_code | none
 2026-11-12 | Kiro Web | PR3 round 3 docs (mirror scope, link crosswalk, scope tiers, stale text) | Steering docs and DECISIONS updated for cross-system-only mirrors, Transitioned mapping, Traffic Signal Request sensitivity tier; unused placeholder 42.3594,-71.0587 removed from the sample builder | none
 2026-11-12 | Kiro Web | PR3 follow-up 4 (catch-all inherits family via link) | type_families.csv gains catch_all, Street Light Other inherits the family of its linked legacy case (unlinked is sensitivity-only), linked successors are never re-reports of their predecessor, sample rebuilt (15,361 rows) | none
+2026-11-12 | Kiro Web | agent + hook + workflow | Gate 2 PR A: 9 custom agents with capability permissions, 9 hook files (guard, kill switch, channel status and kiro-log as stdlib command hooks; per-save hooks disabled), test-town cases (75 in 19 scenarios) and owner worksheet, 7 missing legacy types, smoke and build-undead-311 recipes | Owner asked for '37 legacy types'; the data shows 37 cases from 7 types (recorded). The repo hooks were not loaded in this session, so the guard was verified through its hook command only
+2026-11-12 | Kiro Web | workflow (smoke, run by the session) | Smoke run smoke-2026-11-12a: worktree, make hello, gate PASS, independent reviewer APPROVED, stop condition after 1 iteration; stop issue halted the next step; trailers 1/1 | No workflow-engine tool in this session, so steps were executed in order by the session itself; channel_post labeled manual posts as hook posts (fixed)
+2026-11-12 | Kiro Web | spec + PBT | Gate 2 PR B: specs zombie-engine, durability-stats, haunted-web, nightly-and-deploy (82 EARS requirements tagged by layer, 38 correctness properties (engine 20, stats 10, web 8) mapped to testing.md, 81 tasks ordered demo-critical first) | An independent reviewer found 8 blocking issues before tasks (a matching rule that silently departed from zombie-definition.md, an undefined golden comparison, a bulk relabel that would have overwritten step 6 labels, a judge-mode layer conflict); all fixed, and the remaining choices are open questions

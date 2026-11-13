@@ -1,0 +1,26 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "kill-switch-task",
+      "description": "Block the next task if .kiro/STOP exists or the channel has an open 'stop' issue (fail-open if GitHub is unreachable).",
+      "trigger": "PreTaskExec",
+      "action": {
+        "type": "command",
+        "command": "python3 \"$(git rev-parse --show-toplevel)\"/scripts/kill_switch.py"
+      },
+      "timeout": 20
+    },
+    {
+      "name": "kill-switch-shell",
+      "description": "Same check before every shell command (PreTaskExec does not fire in Kiro Web).",
+      "trigger": "PreToolUse",
+      "matcher": "shell",
+      "action": {
+        "type": "command",
+        "command": "python3 \"$(git rev-parse --show-toplevel)\"/scripts/kill_switch.py"
+      },
+      "timeout": 20
+    }
+  ]
+}
