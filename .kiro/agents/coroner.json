@@ -56,7 +56,8 @@
           "git log*",
           "git add data/labels/coroner_labels.csv",
           "git commit *",
-          "python3 scripts/*"
+          "python3 scripts/*",
+          "make pipeline-sample"
         ],
         "effect": "allow"
       },
