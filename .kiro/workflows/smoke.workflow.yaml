@@ -63,14 +63,14 @@ steps:
         effortLevel: high
         prompt: |
           FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
-          Run {{run_id}}, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only.
+          Run {{run_id}}, step "review". Follow docs/RUN_PROTOCOL.md. You are read-only except your review file and the loop's stop file.
           Review the diff of branch smoke/{{run_id}} against the base sha in .kiro/workflow-runs/{{run_id}}/setup.json
           (`git diff <base>..smoke/{{run_id}}`). Check: the target prints DATA_DIR, uses the fallback, is in .PHONY,
           touches nothing else, and the commit carries both trailers (`python3 /projects/sandbox/undead-311/scripts/check_trailers.py <base>..smoke/{{run_id}} --require-run {{run_id}}`).
           Read .kiro/workflow-runs/{{run_id}}/hello-gate.json; if its status is not PASS your verdict must be CHANGES_REQUESTED.
           Write .kiro/workflow-runs/{{run_id}}/review-stats.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}
           and file each finding as an issue labeled to:engine and type:finding. Then run
-          `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/hello-gate.json --review .kiro/workflow-runs/{{run_id}}/review-stats.json --out .kiro/workflow-runs/{{run_id}}/hello-loop.json`.
+          `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/hello-gate.json --review /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/review-stats.json --out /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/hello-loop.json`. This step owns the loop's stop file /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/hello-loop.json: loop_status.py writes done: true only when the gate file says PASS and your verdict is APPROVED, otherwise done: false. Always run it, even when the verdict is CHANGES_REQUESTED.
   - type: step
     id: report
     agent: engine
