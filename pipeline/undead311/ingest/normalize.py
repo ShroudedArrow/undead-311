@@ -67,6 +67,7 @@ def _col(cols: set[str], name: str) -> str:
 
 def normalize(con: duckdb.DuckDBPyConnection) -> NormReport:
     """Build `cases_norm` and `norm_issues` from `raw_legacy` and `raw_new` (REQ-ING-2.1-3)."""
+    con.execute("select 1").fetchall()  # a half-read result from an earlier stage would block UDF registration
     try:
         con.create_function("undead_time", time_udf, ["VARCHAR", "VARCHAR"], "VARCHAR")
     except duckdb.NotImplementedException:

@@ -93,6 +93,7 @@ class ExportContext:
     bulk_closures: list[dict] = field(default_factory=list)
     stats_status: Mapping[str, Any] | None = None
     data_end: str | None = None
+    ok: bool = True
 
 
 def zombie_record(z: Zombie) -> dict:
@@ -203,7 +204,7 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
 def build_status(result: DetectionResult, ctx: ExportContext) -> dict:
     stats = dict(ctx.stats_status or {})
     status: dict[str, Any] = {
-        "data_version": ctx.data_version, "last_run": ctx.run_time, "ok": not ctx.anomalies,
+        "data_version": ctx.data_version, "last_run": ctx.run_time, "ok": ctx.ok,
         "row_counts": dict(sorted(ctx.row_counts.items())), "anomalies": sorted(ctx.anomalies),
         "segments": ctx.segments, "calibration_warning": stats.get("calibration_warning"),
         "headline_count": result.headline_count, "source_unknown_count": result.count("source_unknown"),

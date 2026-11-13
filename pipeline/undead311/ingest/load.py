@@ -48,7 +48,7 @@ def _read(con: duckdb.DuckDBPyConnection, table: str, files: list[Path]) -> None
     con.execute(
         f"create table {table} as select * from read_csv([{quoted}], all_varchar=true, union_by_name=true, "
         "header=true, filename=true)"
-    )
+    ).fetchall()  # drain the result so later work (UDF registration) can use the connection
 
 
 def load(con: duckdb.DuckDBPyConnection, raw_dir: Path, snapshot_md: Path | None = None) -> LoadReport:

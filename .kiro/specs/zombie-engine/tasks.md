@@ -85,7 +85,7 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
   - [x] 18.1 Property P11: every exported file validates; an invalid record is refused before writing. _REQ-EXP-1.1_
   - [x] 18.2 Test: two runs on the same input give byte-identical files. _REQ-EXP-1.3_
   - _Requirements: REQ-EXP-1.1–4_
-- [ ] 19. [demo-critical] Pipeline orchestration
+- [x] 19. [demo-critical] Pipeline orchestration
   - `make pipeline` and `make pipeline-sample` run load → normalize → crosswalk → clean → Coroner join → detect → (stats, when present) → export, with a run report (row counts, exclusions, excluded pairs, label coverage, PII counts, file sizes).
   - _Requirements: REQ-ING-1, REQ-ING-NIGHTLY.2, REQ-ING-SAMPLE.1_
 - [ ] 20. [demo-critical] Checkpoint
