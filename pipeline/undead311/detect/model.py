@@ -50,6 +50,8 @@ class Case:
     district: str | None = None
     street: str | None = None
     bulk_closure: bool = False
+    #: closed within the city's target time (legacy `ontime`); None when unknown (REQ-STAT-SF.1)
+    on_time: bool | None = None
 
     @property
     def is_closed(self) -> bool:

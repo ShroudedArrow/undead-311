@@ -75,6 +75,7 @@ def cases_from_table(con: duckdb.DuckDBPyConnection, table: str = "cases_clean")
                 neighborhood=r.get("neighborhood") or None,
                 district=r.get("district") or None,
                 street=r.get("street") or None,
+                on_time=r.get("on_time") if isinstance(r.get("on_time"), bool) else None,
             )
         )
     out.sort(key=lambda c: c.id)

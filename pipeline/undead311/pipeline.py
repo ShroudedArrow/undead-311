@@ -182,7 +182,7 @@ def run_pipeline(
         result: DetectionResult = detect(cases, p, edges)
         by_id = {c.id: c for c in cases}
         # Skeptic: input for the agent, then the join of its objections (REQ-SKEP)
-        tour = _zombie_ids(out / "judge_tour.json")
+        tour = _zombie_ids(out / "stats" / "judge_tour.json")
         sample_ids = _validation_ids(root / "data" / "labels" / "validation_sample.csv")
         write_input(processed / "skeptic_input.json", build_input(result.zombies, by_id, version, sample_ids, tour))
         result.zombies = join_objections(result.zombies, root / "data" / "labels" / "skeptic_objections.json", p)
@@ -204,12 +204,15 @@ def run_pipeline(
         # stats (durability-stats), when present
         try:
             stats = importlib.import_module("undead311.stats.pipeline")
-            stats.run_stats(con, result, by_id, out)  # type: ignore[attr-defined]
+            stats.run_stats(  # type: ignore[attr-defined]
+                con, result, by_id, out, params=p, data_version=version, labels_dir=root / "data" / "labels",
+                data_end=max((c.open_utc for c in cases), default=None),
+            )
             report.stats = "ran"
         except ModuleNotFoundError:
             report.stats = "not present"
         stats_status = None
-        for cand in (out / "stats_status.json", processed / "stats_status.json"):
+        for cand in (out / "stats" / "stats_status.json", out / "stats_status.json", processed / "stats_status.json"):
             if cand.is_file():
                 stats_status = json.loads(cand.read_text())
                 break

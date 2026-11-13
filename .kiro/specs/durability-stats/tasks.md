@@ -11,10 +11,10 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 - [x] 2. [demo-critical] Cohort
   - `stats/cohort.py`: eligible originals (not transferred, fully observed), spot keys (segment or 60 m cell), seasons.
   - _Requirements: REQ-STAT-SF.1 (denominator), glossary_
-- [ ] 3. [demo-critical] Raw scorecard
+- [x] 3. [demo-critical] Raw scorecard
   - `stats/rates.py`: on-time and raw stayed-fixed per family and citywide, with intervals and denominators; `scorecard.json` plus schema in `/schemas/`.
-  - [ ] 3.1 Property P5: raw stayed-fixed ≤ on-time for every group. _REQ-STAT-SF.2; testing.md #10_
-  - [ ] 3.2 Property P1 (part 2): every exported rate is within [0, 1] or null with a reason. _testing.md #3_
+  - [x] 3.1 Property P5: raw stayed-fixed ≤ on-time for every group. _REQ-STAT-SF.2; testing.md #10_
+  - [x] 3.2 Property P1 (part 2): every exported rate is within [0, 1] or null with a reason. _testing.md #3_
   - _Requirements: REQ-STAT-SF.1, .2, .4, REQ-STAT-EXP.1 (scorecard)_
 - [ ] 4. [demo-critical] Provisional judge tour
   - `stats/tour.py`: `judge_tour.json` (`provisional: true`, owner override or the three headline zombies with the most re-reports) plus schema.
