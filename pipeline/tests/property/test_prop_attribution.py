@@ -84,9 +84,9 @@ def test_prop_p14_mirror_and_transfer_pairs_never_survive(cases):
     for rid in r.attribution:
         c = by_id[rid]
         for o in cases:
-            if o.id != rid and o.is_closed and o.system != c.system and o.type_family == c.type_family:
-                if abs(o.open_utc - c.open_utc) <= window:
-                    assert match(c, o, DEFAULT) is None, (rid, o.id)
+            cross = o.id != rid and o.is_closed and o.system != c.system and o.type_family == c.type_family
+            if cross and abs(o.open_utc - c.open_utc) <= window:
+                assert match(c, o, DEFAULT) is None, (rid, o.id)
     # same-system pairs are never mirrors: every mirror has a closed cross-system partner within 6 h and an edge
     edges = brute_edges([c for c in cases], DEFAULT)
     for mid in r.mirror_ids:
