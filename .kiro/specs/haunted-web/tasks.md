@@ -40,7 +40,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 - [x] 10. [demo-critical] Payload and origin checks
   - Build script that measures first-view transfer size (warning for now) and fails on any non-same-origin URL in the built output.
   - _Requirements: REQ-WEB-PERF.1–2_
-- [ ] 11. [demo-critical] End-to-end judge-mode test
+- [x] 11. [demo-critical] End-to-end judge-mode test
   - Playwright on phone and desktop viewports, keyboard only, reduced motion on and off; screenshots for reviewer-ux.
   - _Requirements: REQ-WEB-TEST.1–2_
 
