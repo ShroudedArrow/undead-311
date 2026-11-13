@@ -250,3 +250,11 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .score-detail { margin-top: var(--space-2); }
 .score-detail summary { cursor: pointer; min-height: 2.75rem; display: flex; align-items: center; }
 @media (max-width: 640px) { .score-pair { grid-template-columns: 1fr; } }
+
+/* Judge mode (REQ-WEB-JUDGE) */
+.judge-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0; align-items: center; }
+.button-link { display: inline-flex; align-items: center; min-height: 2.75rem; padding: var(--space-2) var(--space-3); background: var(--crew-white); border: 2px solid var(--asphalt); border-radius: 2px; }
+.provisional-notice { border: 2px dashed var(--asphalt); background: var(--crew-white); padding: var(--space-2) var(--space-3); }
+.tour-progress { font-weight: 600; }
+.judge .autopsy { max-width: 40rem; }
+.judge h2:focus-visible { outline: var(--focus-ring); }
