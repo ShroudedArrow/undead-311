@@ -115,9 +115,50 @@ def test_guard_allows_writes_elsewhere(root, rel):
     assert guard.decide(writer("fs_write", str(root / rel)), root) is None
 
 
-def test_guard_allows_writes_outside_repo(root, tmp_path_factory):
+def test_guard_allows_unrelated_paths_outside_repo(root, tmp_path_factory):
     other = tmp_path_factory.mktemp("elsewhere")
-    assert guard.decide(writer("fs_write", str(other / ".kiro" / "steering" / "x.md")), root) is None
+    assert guard.decide(writer("fs_write", str(other / "notes" / "x.md")), root) is None
+
+
+# ---- guard: protected paths under any prefix ------------------------------------------------------------------
+
+PREFIXES = ["", "/projects/sandbox/undead-311/", "/projects/sandbox/", "/somewhere/else/", "./", "a/b/../"]
+
+
+@pytest.mark.parametrize("tool", ["fs_write", "str_replace", "delete_file"])
+@pytest.mark.parametrize("prefix", PREFIXES)
+@pytest.mark.parametrize("rel", PROTECTED)
+def test_guard_blocks_protected_paths_under_any_prefix(root, tool, prefix, rel):
+    assert guard.decide(writer(tool, prefix + rel), root)
+
+
+@pytest.mark.parametrize("prefix", PREFIXES)
+@pytest.mark.parametrize("command", [
+    "echo x > {p}.kiro/steering/x.md",
+    "rm {p}.kiro/STOP",
+    "sed -i s/a/b/ {p}.kiro/hooks/guard.json",
+    "git checkout -- {p}.kiro/agents/engine.json",
+    "tee {p}pipeline/tests/fixtures/expected_zombies.json",
+])
+def test_guard_blocks_shell_edits_under_any_prefix(root, prefix, command):
+    assert guard.decide(shell("execute_bash", command.format(p=prefix)), root)
+
+
+@pytest.mark.parametrize("path", [
+    "/projects/sandbox/.kiro/workflow-runs/run-1/report.md",
+    "/projects/sandbox/undead-311/.kiro/workflow-runs/run-1/report.md",
+    ".kiro/workflow-runs/run-1/report.md",
+    "/projects/sandbox/.kiro/specs/zombie-engine/design.md",
+    "/projects/sandbox/undead-311/docs/DECISIONS.md",
+    "/projects/sandbox/.kiro/steeringx/notes.md",
+    "/projects/sandbox/pipeline/tests/fixtures/test_town.csv",
+])
+def test_guard_still_allows_ordinary_paths_under_any_prefix(root, path):
+    assert guard.decide(writer("fs_write", path), root) is None
+
+
+def test_guard_blocks_dotdot_escape_into_protected_path(root):
+    assert guard.decide(writer("fs_write", "/projects/sandbox/.kiro/workflow-runs/../hooks/x.json"), root)
 
 
 # ---- guard: unknown and read-only tools -----------------------------------------------------------------------
@@ -183,3 +224,67 @@ def test_kill_switch_halts_when_stop_file_exists(root):
 def test_kill_switch_allows_when_no_signal_and_github_unreachable(root):
     blocked, why = kill_switch.decide(root)
     assert not blocked and "fail-open" in why
+
+
+# ---- hook commands: absolute paths, run from the repo folder, allow when the script is missing -----------------
+
+import json
+import shutil
+import subprocess
+
+REPO = Path(__file__).resolve().parents[3]
+ABS_REPO = "/projects/sandbox/undead-311"
+HOOKS_DIR = REPO / ".kiro" / "hooks"
+
+
+def _hook_commands():
+    for f in sorted(HOOKS_DIR.glob("*.json")):
+        for h in json.loads(f.read_text())["hooks"]:
+            cmd = h["action"].get("command")
+            if cmd:
+                yield pytest.param(f.name, h["name"], cmd, id=f"{f.stem}:{h['name']}")
+
+
+@pytest.mark.parametrize("fname,name,cmd", list(_hook_commands()))
+def test_hook_command_uses_absolute_path_not_git_toplevel(fname, name, cmd):
+    assert "git rev-parse" not in cmd
+    assert f"{ABS_REPO}/" in cmd
+    assert f"cd {ABS_REPO}" in cmd or f"make -C {ABS_REPO}" in cmd
+    import re
+    for script in re.findall(r"scripts/(\w+\.py)", cmd):
+        assert (REPO / "scripts" / script).is_file(), f"{fname}: {script} does not exist"
+
+
+HOOK_CMDS = list(_hook_commands())
+
+
+def run_hook(cmd: str, payload: dict, cwd: str):
+    return subprocess.run(["sh", "-c", cmd], input=json.dumps(payload), capture_output=True, text=True, cwd=cwd, timeout=30)
+
+
+def _script_hook_commands():
+    for p in HOOK_CMDS:
+        if "python3" in p.values[2]:
+            yield p
+
+
+SCRIPT_HOOK_CMDS = list(_script_hook_commands())
+
+
+@pytest.mark.parametrize("fname,name,cmd", SCRIPT_HOOK_CMDS)
+def test_hook_allows_when_script_is_missing(tmp_path, fname, name, cmd):
+    missing = cmd.replace(ABS_REPO, str(tmp_path / "no-such-repo"))
+    r = run_hook(missing, shell("execute_bash", "git push --force"), cwd=str(tmp_path))
+    assert r.returncode == 0, r.stderr
+
+
+@pytest.mark.skipif(not Path(ABS_REPO, "scripts", "guard.py").is_file(), reason="repo is not at /projects/sandbox/undead-311")
+def test_guard_hook_runs_from_sandbox_cwd_and_blocks(tmp_path):
+    cmd = json.loads((HOOKS_DIR / "guard.json").read_text())["hooks"][0]["action"]["command"]
+    for payload in (shell("execute_bash", "git push --force"),
+                    writer("fs_write", "/projects/sandbox/.kiro/hooks/x.json"),
+                    writer("fs_write", ".kiro/steering/x.md")):
+        r = run_hook(cmd, payload, cwd=str(tmp_path))      # cwd is not a git repo, like /projects/sandbox
+        assert r.returncode == 2, (payload, r.stderr)
+        assert "GUARD BLOCKED" in r.stderr
+    assert run_hook(cmd, shell("execute_bash", "ls"), cwd=str(tmp_path)).returncode == 0

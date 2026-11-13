@@ -11,6 +11,7 @@ Blocks (exit 2, reason on stderr) regardless of trust settings:
       .kiro/steering/**, .kiro/settings/**, .kiro/hooks/**, .kiro/agents/**  (humans only)
       .kiro/STOP                                                           (humans only)
       pipeline/tests/fixtures/expected_zombies.json                        (hand-written answer key)
+Protected patterns match under ANY path prefix (relative, /projects/sandbox/undead-311/..., /projects/sandbox/.kiro/...).
 Always ALLOWED: anything under .kiro/workflow-runs/** (workflow artifacts), and task checkbox updates in
 .kiro/specs/**/tasks.md. While a workflow run is active (a `.kiro/workflow-runs/*/RUNNING` marker exists),
 a tasks.md edit through str_replace must change checkbox state only.
@@ -68,8 +69,38 @@ def match(r: str, globs: list[str]) -> bool:
     return any(fnmatch.fnmatch(r, g) or r == g.rstrip("/*") or r.startswith(g.rstrip("*")) for g in globs)
 
 
-def is_protected(r: str | None) -> bool:
-    return r is not None and not match(r, ALLOWED) and match(r, PROTECTED)
+def _forms(path: str) -> list[str]:
+    """Absolute POSIX spellings of a path: lexically normalised, and symlink-resolved when that differs."""
+    p = Path(os.path.expandvars(os.path.expanduser(path)))
+    p = p if p.is_absolute() else Path.cwd() / p
+    out = [PurePosixPath(os.path.normpath(p)).as_posix()]
+    try:
+        resolved = PurePosixPath(p.resolve()).as_posix()
+    except (OSError, RuntimeError):
+        resolved = out[0]
+    if resolved not in out:
+        out.append(resolved)
+    return out
+
+
+def _suffix_verdict(form: str) -> bool:
+    """True when the path is protected, whatever folder prefixes it. Hooks load from the sandbox's cloud
+    configuration (/projects/sandbox/.kiro) and run elsewhere, so `.kiro/hooks/x` may arrive as a relative path,
+    /projects/sandbox/undead-311/.kiro/hooks/x or /projects/sandbox/.kiro/hooks/x. Every trailing run of path
+    components is tested against the patterns; the leftmost hit decides, so `.kiro/workflow-runs/**` stays allowed."""
+    parts = [x for x in form.split("/") if x]
+    for i in range(len(parts)):
+        suffix = "/".join(parts[i:])
+        if match(suffix, ALLOWED):
+            return False
+        if match(suffix, PROTECTED):
+            return True
+    return False
+
+
+def is_protected(path: str | None) -> bool:
+    """Protected-path check on a raw path string (relative to the cwd, or absolute with any prefix)."""
+    return bool(path) and any(_suffix_verdict(f) for f in _forms(path))
 
 
 def run_active(root: Path) -> bool:
@@ -85,11 +116,11 @@ def check_write(ti: dict, name: str, root: Path) -> str | None:
     target = hooklib.first(ti, *WRITE_KEYS)
     if not target:
         return None
+    if is_protected(str(target)):
+        return f"{name} on protected path {target} (humans only)"
     r = rel(str(target), root)
     if r is None:
         return None
-    if is_protected(r):
-        return f"{name} on protected path {r} (humans only)"
     if fnmatch.fnmatch(r, TASKS_GLOB) and run_active(root):
         old = hooklib.first(ti, "oldStr", "old_str", "old_string")
         new = hooklib.first(ti, "newStr", "new_str", "new_string")
@@ -158,9 +189,9 @@ def git_problem(toks: list[str], root: Path) -> str | None:
         return "git reset --hard is forbidden"
     if sub == "clean" and any(a.startswith("-") and "f" in a for a in rest):
         return "git clean -f is forbidden"
-    if sub in GIT_MODIFY and any(is_protected(rel(a, root)) for a in rest if not a.startswith("-")):
+    if sub in GIT_MODIFY and any(is_protected(a) for a in rest if not a.startswith("-")):
         return f"git {sub} on a protected path"
-    if sub == "checkout" and "--" in rest and any(is_protected(rel(a, root)) for a in rest[rest.index("--") + 1:]):
+    if sub == "checkout" and "--" in rest and any(is_protected(a) for a in rest[rest.index("--") + 1:]):
         return "git checkout on a protected path"
     return None
 
@@ -170,7 +201,7 @@ def check_shell(cmd: str, root: Path) -> str | None:
     data_dir = Path(dd).resolve() if dd else None
     # redirections into protected paths: > path, >> path, tee path
     for m in re.finditer(r"(?:>>?|>\|)\s*([^\s;&|]+)", cmd):
-        if is_protected(rel(m.group(1).strip("'\""), root)):
+        if is_protected(m.group(1).strip("'\"")):
             return f"redirect into protected path {m.group(1)}"
     # in-place editors and writers naming a protected path
     for toks in split_commands(cmd):
@@ -184,7 +215,7 @@ def check_shell(cmd: str, root: Path) -> str | None:
             if why:
                 return why
         targets = [t for t in toks[1:] if not t.startswith("-")]
-        prot = [t for t in targets if is_protected(rel(t, root))]
+        prot = [t for t in targets if is_protected(t)]
         if not prot:
             continue
         if exe in MODIFY_VERBS:
