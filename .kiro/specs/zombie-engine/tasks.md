@@ -68,7 +68,7 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
 - [ ] 14. [demo-critical] Metamorphic properties
   - [x] 14.1 Property P9: a uniform small translation or a uniform time shift leaves zombie counts per tier unchanged. _testing.md #14_
   - [x] 14.2 Property P10: duplicating a closed case never increases the zombie count. _testing.md #15_
-  - [ ] 14.3 Property P4 (part 2): detection and exports are invariant to input row order. _REQ-EXP-1.3_
+  - [x] 14.3 Property P4 (part 2): detection and exports are invariant to input row order. _REQ-EXP-1.3_
 - [x] 15. [demo-critical] Test-town loader and golden test
   - `fixtures.py` loads the raw fixture rows into `cases_norm` and runs the normal crosswalk, catch-all, clean and detect path; `golden_result()` builds the worksheet format; `schemas/test_town_expected.schema.json` validates the owner's file.
   - The golden test fails (never skips) when `expected_zombies.json` is missing. Never create or edit that file.
@@ -80,10 +80,10 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
 - [x] 17. [demo-critical] Skeptic input and join
   - `detect/skeptic.py`: `skeptic_input.json` (validation sample, tour zombies, 200 headline zombies with the most re-reports; never by confidence) and the join of `data/labels/skeptic_objections.json` with `not_reviewed` default.
   - _Requirements: REQ-SKEP.1–2_
-- [ ] 18. [demo-critical] Exports and contracts
+- [x] 18. [demo-critical] Exports and contracts
   - JSON Schemas in `/schemas/` for every engine file; deterministic writers (sorted, stable IDs, `data_version`); cards with scrubbed text; columnar points; `status.json` written last (folding in `stats_status.json` when present); atomic DuckDB write.
-  - [ ] 18.1 Property P11: every exported file validates; an invalid record is refused before writing. _REQ-EXP-1.1_
-  - [ ] 18.2 Test: two runs on the same input give byte-identical files. _REQ-EXP-1.3_
+  - [x] 18.1 Property P11: every exported file validates; an invalid record is refused before writing. _REQ-EXP-1.1_
+  - [x] 18.2 Test: two runs on the same input give byte-identical files. _REQ-EXP-1.3_
   - _Requirements: REQ-EXP-1.1–4_
 - [ ] 19. [demo-critical] Pipeline orchestration
   - `make pipeline` and `make pipeline-sample` run load → normalize → crosswalk → clean → Coroner join → detect → (stats, when present) → export, with a run report (row counts, exclusions, excluded pairs, label coverage, PII counts, file sizes).
