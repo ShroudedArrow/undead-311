@@ -1,6 +1,7 @@
 # Build The Undead 311 from the approved specs in .kiro/specs/ (prompts/04-workflow.md).
 # Layer order (docs/PROJECT.md cut lines): ALL demo-critical tasks first (by Nov 17), then credibility (by Nov 22), then delight.
-# Each layer runs the engine branch (zombie-engine -> durability-stats -> nightly-and-deploy) and the web branch (haunted-web)
+# Each layer runs the engine branch (zombie-engine -> durability-stats -> nightly-and-deploy; in the demo-critical layer a
+# coroner-label step follows zombie-engine and a skeptic-review step follows durability-stats) and the web branch (haunted-web)
 # in parallel, in separate worktrees with disjoint file ownership, then integrates. Every spec loop: implement (faster model)
 # -> deterministic validate gate (scripts/validate_gate.py) -> reviewer on a DIFFERENT, stronger model -> loop file
 # (scripts/loop_status.py). Stop conditions are files; the channel (ShroudedArrow/undead-311-ops) is the audit trail.
@@ -15,22 +16,16 @@ inputs:
 modelId: claude-sonnet-5.5
 steps:
   - type: step
-    id: channel
-    agent: engine
-    modelId: claude-sonnet-5.5
-    prompt: |
-      Run {{run_id}}, step "channel". Follow docs/RUN_PROTOCOL.md.
-      Create .kiro/workflow-runs/{{run_id}}/ in the main checkout with a RUNNING marker file. Open the run-log issue
-      "Run {{run_id}}: build-undead-311" (label type:status) in ShroudedArrow/undead-311-ops through the github-channel MCP server
-      and save {"issue": <number>, "url": "<html_url>"} to .kiro/workflow-runs/{{run_id}}/channel.json
-      (fallback: `python3 scripts/channel_open.py --run-id {{run_id}} --recipe build-undead-311`).
-      Every later step starts by reading open issues labeled to:<its role> and ends with one status comment there.
-  - type: step
     id: setup
     agent: engine
     modelId: claude-sonnet-5.5
     prompt: |
       Run {{run_id}}, step "setup". Follow docs/RUN_PROTOCOL.md.
+      0. Channel first: create .kiro/workflow-runs/{{run_id}}/ in the main checkout with a RUNNING marker file. Open the run-log issue
+         "Run {{run_id}}: build-undead-311" (label type:status) in ShroudedArrow/undead-311-ops through the github-channel MCP server
+         and save {"issue": <number>, "url": "<html_url>"} to .kiro/workflow-runs/{{run_id}}/channel.json
+         (fallback: `python3 scripts/channel_open.py --run-id {{run_id}} --recipe build-undead-311`). Every later step starts by
+         reading open issues labeled to:<its role> and ends with one status comment there.
       1. Abort unless pipeline/tests/fixtures/expected_zombies.json exists and is committed (a person writes it before the run; agents
          never edit it). If it is missing: write .kiro/workflow-runs/{{run_id}}/setup.json with {"ok": false, "reason": "..."},
          post to the run log, and call send_message with severity error.
@@ -97,6 +92,17 @@ steps:
                   Write .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
                   to:engine and type:finding, then run
                   `python3 scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-gate.json --review .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-review.json --out .kiro/workflow-runs/{{run_id}}/zombie-engine-demo-critical-loop.json`.
+          - type: step
+            id: coroner-label
+            agent: coroner
+            modelId: claude-sonnet-5.5
+            prompt: |
+              Run {{run_id}}, step "coroner-label". Follow docs/RUN_PROTOCOL.md. Work only in {{worktree_path}}-engine.
+              Run `make pipeline-sample` there if $DATA_DIR/processed/coroner_templates.csv doesn't exist. Then label the templates in
+              coroner_templates.csv in order of n_cases until labeled templates cover at least 95% of in-scope closed cases (the rest stay
+              unlabeled and count as `other`). Write data/labels/coroner_labels.csv (template,label,rationale) with only the nine allowed
+              labels, keeping existing rows unchanged. Commit only that file with the Kiro-Agent: coroner and Kiro-Run: {{run_id}} trailers.
+              Write the coverage share to .kiro/workflow-runs/{{run_id}}/coroner.json.
           - type: repeat
             id: durability-stats-demo-critical-loop
             maxIterations: 3
@@ -139,6 +145,18 @@ steps:
                   Write .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-review.json as {"verdict": "APPROVED"|"CHANGES_REQUESTED", "findings": [...]}, file each finding as an issue labeled
                   to:engine and type:finding, then run
                   `python3 scripts/loop_status.py --gate .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-gate.json --review .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-review.json --out .kiro/workflow-runs/{{run_id}}/durability-stats-demo-critical-loop.json`.
+          - type: step
+            id: skeptic-review
+            agent: skeptic
+            modelId: claude-opus-5.5
+            effortLevel: high
+            prompt: |
+              Run {{run_id}}, step "skeptic-review". Follow docs/RUN_PROTOCOL.md. Work only in {{worktree_path}}-engine.
+              Run `make pipeline` there (or `make pipeline-sample` if full data is absent) so $DATA_DIR/processed/skeptic_input.json is current.
+              For every zombie in it, argue it is a coincidence with concrete evidence from both case records (and baseline_p when present):
+              new unrelated problem, different issue at the same spot, duplicate report, data error. Write
+              data/labels/skeptic_objections.json ({incident_id, resurrection_id, objections:[{kind, evidence}], verdict}), never naming
+              individuals. Commit only that file with the Kiro-Agent: skeptic and Kiro-Run: {{run_id}} trailers.
           - type: repeat
             id: nightly-and-deploy-demo-critical-loop
             maxIterations: 3
@@ -233,7 +251,7 @@ steps:
     prompt: |
       Run {{run_id}}, step "integrate-demo-critical". Follow docs/RUN_PROTOCOL.md. Work in {{worktree_path}} (branch build/{{run_id}}).
       Merge build/{{run_id}}-engine and build/{{run_id}}-web into build/{{run_id}} with `git merge --no-edit` (file ownership keeps them
-      disjoint; if a conflict appears anyway, stop and post a needs-human proposal). Then run `make pipeline` on data/sample and `make build`.
+      disjoint; if a conflict appears anyway, stop and post a needs-human proposal). Then run `make pipeline-sample` (the pipeline on data/sample) and `make build`.
       Write {"layer": "demo-critical", "merged": [...], "pipeline": "PASS|FAIL", "build": "PASS|FAIL"} to .kiro/workflow-runs/{{run_id}}/integrate-demo-critical.json
       and post the result to the run log. A merge is not a commit of yours; any fix-up commit carries the trailers.
   # ---------- Layer 2: credibility (by Sun Nov 22) ----------
@@ -422,7 +440,7 @@ steps:
     prompt: |
       Run {{run_id}}, step "integrate-credibility". Follow docs/RUN_PROTOCOL.md. Work in {{worktree_path}} (branch build/{{run_id}}).
       Merge build/{{run_id}}-engine and build/{{run_id}}-web into build/{{run_id}} with `git merge --no-edit` (file ownership keeps them
-      disjoint; if a conflict appears anyway, stop and post a needs-human proposal). Then run `make pipeline` on data/sample and `make build`.
+      disjoint; if a conflict appears anyway, stop and post a needs-human proposal). Then run `make pipeline-sample` (the pipeline on data/sample) and `make build`.
       Write {"layer": "credibility", "merged": [...], "pipeline": "PASS|FAIL", "build": "PASS|FAIL"} to .kiro/workflow-runs/{{run_id}}/integrate-credibility.json
       and post the result to the run log. A merge is not a commit of yours; any fix-up commit carries the trailers.
   # ---------- Layer 3: delight ----------
@@ -611,7 +629,7 @@ steps:
     prompt: |
       Run {{run_id}}, step "integrate". Follow docs/RUN_PROTOCOL.md. Work in {{worktree_path}} (branch build/{{run_id}}).
       Merge build/{{run_id}}-engine and build/{{run_id}}-web into build/{{run_id}} with `git merge --no-edit` (file ownership keeps them
-      disjoint; if a conflict appears anyway, stop and post a needs-human proposal). Then run `make pipeline` on data/sample and `make build`, then `make e2e` (Playwright judge-mode path) and `make test`.
+      disjoint; if a conflict appears anyway, stop and post a needs-human proposal). Then run `make pipeline-sample` (the pipeline on data/sample) and `make build`, then `make e2e` (Playwright judge-mode path) and `make test`.
       Write {"layer": "delight", "merged": [...], "pipeline": "PASS|FAIL", "build": "PASS|FAIL"} to .kiro/workflow-runs/{{run_id}}/integrate.json
       and post the result to the run log. A merge is not a commit of yours; any fix-up commit carries the trailers.
   # ---------- Design gate ----------
