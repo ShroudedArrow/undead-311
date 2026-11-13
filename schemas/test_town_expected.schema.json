@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/test_town_expected.schema.json",
+  "title": "Test town answer key",
+  "description": "docs/TEST_TOWN_WORKSHEET.md format. The only schema whose file has no data_version.",
+  "type": "object",
+  "properties": {
+    "fixture": {
+      "type": "string"
+    },
+    "written_by": {
+      "type": "string"
+    },
+    "zombies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "incident_id": {
+            "type": "string"
+          },
+          "member_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "resurrection_id": {
+            "type": "string"
+          },
+          "reports_after": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "match_mode": {
+            "enum": [
+              "segment",
+              "intersection",
+              "radius"
+            ]
+          },
+          "tier": {
+            "enum": [
+              "headline",
+              "source_unknown",
+              "sensitivity"
+            ]
+          },
+          "after_temporary_fix": {
+            "type": "boolean"
+          },
+          "chain_id": {
+            "type": "string"
+          },
+          "times_risen": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "after_temporary_fix",
+          "chain_id",
+          "incident_id",
+          "match_mode",
+          "member_ids",
+          "reports_after",
+          "resurrection_id",
+          "tier",
+          "times_risen"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "planned_followups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "incident_id": {
+            "type": "string"
+          },
+          "resurrection_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "incident_id",
+          "resurrection_id"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "separate_deaths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "incident_id": {
+            "type": "string"
+          },
+          "label": {
+            "enum": [
+              "invalid",
+              "duplicate"
+            ]
+          },
+          "rereport_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "incident_id",
+          "label",
+          "rereport_id"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "repeat_offenders": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "chain_id": {
+            "type": "string"
+          },
+          "times_risen": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "chain_id",
+          "times_risen"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "excluded_ids": {
+      "type": "object",
+      "properties": {
+        "placeholder_or_invalid_coords": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "out_of_scope_type": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "incidents_with_several_members": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "incident_id": {
+            "type": "string"
+          },
+          "member_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "incident_id",
+          "member_ids"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": [
+    "fixture",
+    "written_by"
+  ],
+  "additionalProperties": false
+}

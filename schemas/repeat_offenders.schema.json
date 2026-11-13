@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/repeat_offenders.schema.json",
+  "title": "Repeat offenders",
+  "description": "REQ-DET-CHAIN, REQ-EXP-PRIV. At least 3 headline zombies.",
+  "type": "object",
+  "properties": {
+    "data_version": {
+      "type": "string"
+    },
+    "repeat_offenders": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "chain_id": {
+            "type": "string"
+          },
+          "times_risen": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "headline_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "incident_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "lat": {
+            "type": "number"
+          },
+          "lon": {
+            "type": "number"
+          },
+          "block_level": {
+            "type": "boolean"
+          },
+          "type_family": {
+            "type": "string"
+          },
+          "neighborhood": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "chain_id",
+          "headline_count",
+          "incident_ids",
+          "times_risen"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": [
+    "data_version",
+    "repeat_offenders"
+  ],
+  "additionalProperties": true
+}

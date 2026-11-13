@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/separate_deaths.schema.json",
+  "title": "Separate deaths (invalid or duplicate closures)",
+  "description": "REQ-DET-SEP.",
+  "type": "object",
+  "properties": {
+    "data_version": {
+      "type": "string"
+    },
+    "separate_deaths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "incident_id": {
+            "type": "string"
+          },
+          "label": {
+            "enum": [
+              "invalid",
+              "duplicate"
+            ]
+          },
+          "rereport_id": {
+            "type": "string"
+          },
+          "type_family": {
+            "type": "string"
+          },
+          "department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "incident_id",
+          "label",
+          "rereport_id"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": [
+    "data_version",
+    "separate_deaths"
+  ],
+  "additionalProperties": true
+}

@@ -1,12 +1,16 @@
 # Targets from .kiro/steering/structure.md. Stubs print a message until the code exists.
 SHELL := /bin/bash
 REPO_ROOT := $(shell git rev-parse --show-toplevel)
-export DATA_DIR ?= $(REPO_ROOT)/.local-data/data
-export UV_CACHE_DIR ?= $(REPO_ROOT)/.local-data/uv-cache
+# tech.md self-correcting fallback (ops#9): use the given DATA_DIR / UV_CACHE_DIR only when it is an existing, writable
+# directory; otherwise fall back to <repo root>/.local-data/... Command-line overrides (make DATA_DIR=x) still win.
+DATA_DIR := $(shell d="$$DATA_DIR"; if [ -n "$$d" ] && [ -d "$$d" ] && [ -w "$$d" ]; then echo "$$d"; else echo "$(REPO_ROOT)/.local-data/data"; fi)
+UV_CACHE_DIR := $(shell d="$$UV_CACHE_DIR"; if [ -n "$$d" ] && [ -d "$$d" ] && [ -w "$$d" ]; then echo "$$d"; else echo "$(REPO_ROOT)/.local-data/uv-cache"; fi)
+export DATA_DIR
+export UV_CACHE_DIR
 UV ?= uv
 STUB = @echo "[stub] $@: not implemented yet"
 
-.PHONY: test-town setup data-download data-sample pipeline test test-fast web build e2e copy-lint validate coroner-eval snapshot channel-export trace kiro-stats capture lint
+.PHONY: pipeline-sample validation-sample typecheck schema-check test-town setup data-download data-sample pipeline test test-fast web build e2e copy-lint validate coroner-eval snapshot channel-export trace kiro-stats capture lint
 
 setup:
 	$(UV) sync
@@ -26,8 +30,22 @@ test-town:
 pipeline:
 	$(STUB)
 
+pipeline-sample:
+	$(STUB)
+
+validation-sample:
+	$(STUB)
+
+typecheck:
+	cd web && npm run typecheck
+
+# Validates every file in schemas/ against the JSON Schema meta-schema, and the golden answer key against its schema.
+schema-check:
+	$(UV) run pytest -q pipeline/tests/unit/test_schemas.py
+
 lint:
 	$(UV) run ruff check pipeline
+	cd web && npm run typecheck
 
 # Installs the locked dependencies first (runtime + dev group: pytest, hypothesis, ruff). pytest exits non-zero when a test
 # file cannot be collected (for example a missing import), so a collection error fails this target; it is never skipped.
@@ -47,7 +65,7 @@ build:
 	cd web && npm run build
 
 e2e:
-	$(STUB)
+	cd web && npm run e2e
 
 copy-lint:
 	python3 scripts/copy_lint.py

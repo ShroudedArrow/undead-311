@@ -1,0 +1,27 @@
+{
+  "_note": "All user-facing text lives here (voice.md). TODO-COPY entries are written by the team before the Dec 2 freeze.",
+  "app": {
+    "title": "The Undead 311",
+    "hero_line": "TODO-COPY: hero line (what the map shows: Boston 311 cases closed, then reported again at the same place).",
+    "hero_subtitle": "TODO-COPY: hero subtitle (one sentence on possible zombies and why measured counts are a floor).",
+    "footer_independent": "Independent project. Not affiliated with the City of Boston.",
+    "footer_attribution": "Map data from OpenStreetMap contributors."
+  },
+  "about": {
+    "heading": "TODO-COPY: About heading",
+    "body": "TODO-COPY: About and team section."
+  },
+  "methods": {
+    "intro": "TODO-COPY: Methods page introduction (what a possible zombie is, in plain words)."
+  },
+  "errors": {
+    "panel_failed": "TODO-COPY: error voice sample: what failed to load and how to fix it.",
+    "data_stale": "TODO-COPY: error voice sample: latest refresh failed, showing the last good data."
+  },
+  "empty": {
+    "no_zombies_block": "TODO-COPY: empty-state voice sample: no possible zombies on this block, try widening the window to 90 days."
+  },
+  "judge": {
+    "provisional_notice": "TODO-COPY: notice shown on preview builds when the tour zombies are not yet field-confirmed."
+  }
+}

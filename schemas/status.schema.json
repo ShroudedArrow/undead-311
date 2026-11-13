@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/status.schema.json",
+  "title": "Pipeline status",
+  "description": "REQ-EXP-1, REQ-OPS-ALERT. Written last.",
+  "type": "object",
+  "properties": {
+    "data_version": {
+      "type": "string"
+    },
+    "last_run": {
+      "type": "string"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "row_counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "anomalies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "segments": {
+      "enum": [
+        "available",
+        "missing"
+      ]
+    },
+    "calibration_warning": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "headline_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_unknown_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sensitivity_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "data_end": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "anomalies",
+    "data_version",
+    "last_run",
+    "ok",
+    "row_counts",
+    "segments"
+  ],
+  "additionalProperties": true
+}

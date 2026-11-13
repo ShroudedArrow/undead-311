@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/exclusions.schema.json",
+  "title": "Exclusions",
+  "description": "REQ-ING-CLEAN, REQ-DET-2. Counts and IDs by exclusion reason.",
+  "type": "object",
+  "properties": {
+    "data_version": {
+      "type": "string"
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "excluded_ids": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "excluded_pairs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    }
+  },
+  "required": [
+    "counts",
+    "data_version",
+    "excluded_ids",
+    "excluded_pairs"
+  ],
+  "additionalProperties": true
+}

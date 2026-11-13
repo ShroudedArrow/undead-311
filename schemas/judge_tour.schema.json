@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/judge_tour.schema.json",
+  "title": "Judge-mode tour",
+  "description": "REQ-STAT-TOUR, REQ-WEB-JUDGE.",
+  "type": "object",
+  "properties": {
+    "data_version": {
+      "type": "string"
+    },
+    "provisional": {
+      "type": "boolean"
+    },
+    "zombie_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "source": {
+      "enum": [
+        "override",
+        "most_reports"
+      ]
+    }
+  },
+  "required": [
+    "data_version",
+    "provisional",
+    "source",
+    "zombie_ids"
+  ],
+  "additionalProperties": true
+}

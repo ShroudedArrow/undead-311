@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/excess.schema.json",
+  "title": "Excess resurrections",
+  "description": "REQ-STAT-BASE, REQ-STAT-SHIFT, REQ-STAT-PLACEBO.",
+  "type": "object",
+  "properties": {
+    "data_version": {
+      "type": "string"
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "department",
+              "family",
+              "neighborhood"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "observed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expected": {
+            "type": "number"
+          },
+          "excess": {
+            "type": "number"
+          },
+          "lo": {
+            "type": "number"
+          },
+          "hi": {
+            "type": "number"
+          },
+          "tier_set": {
+            "enum": [
+              "headline",
+              "all"
+            ]
+          }
+        },
+        "required": [
+          "excess",
+          "expected",
+          "hi",
+          "kind",
+          "lo",
+          "name",
+          "observed",
+          "tier_set"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": [
+    "data_version",
+    "rows"
+  ],
+  "additionalProperties": true
+}

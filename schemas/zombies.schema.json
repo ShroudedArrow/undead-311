@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/zombies.schema.json",
+  "title": "Possible zombies (all tiers)",
+  "description": "REQ-EXP-1. Sorted by zombie_id = incident_id:resurrection_id.",
+  "type": "object",
+  "properties": {
+    "data_version": {
+      "type": "string"
+    },
+    "zombies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "zombie_id": {
+            "type": "string"
+          },
+          "incident_id": {
+            "type": "string"
+          },
+          "resurrection_id": {
+            "type": "string"
+          },
+          "reports_after": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "gap_days": {
+            "type": "number",
+            "minimum": 0
+          },
+          "match_mode": {
+            "enum": [
+              "segment",
+              "intersection",
+              "radius"
+            ]
+          },
+          "distance_m": {
+            "type": "number",
+            "minimum": 0
+          },
+          "tier": {
+            "enum": [
+              "headline",
+              "source_unknown",
+              "sensitivity"
+            ]
+          },
+          "baseline_p": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "confidence_partial": {
+            "type": "boolean"
+          },
+          "is_planned_followup": {
+            "type": "boolean"
+          },
+          "after_temporary_fix": {
+            "type": "boolean"
+          },
+          "source_unknown": {
+            "type": "boolean"
+          },
+          "chain_id": {
+            "type": "string"
+          },
+          "times_risen": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "skeptic_verdict": {
+            "enum": [
+              "survives",
+              "weakened",
+              "explained_away",
+              "not_reviewed"
+            ]
+          },
+          "skeptic_notes": {
+            "type": "string"
+          },
+          "type_family": {
+            "type": "string"
+          },
+          "department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "neighborhood": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "district": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "segment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "coroner_label": {
+            "enum": [
+              "resolved",
+              "noted",
+              "invalid",
+              "duplicate",
+              "referred",
+              "made_safe_temporary",
+              "planned_followup",
+              "bulk_backlog",
+              "other"
+            ]
+          },
+          "bulk_closure": {
+            "type": "boolean"
+          },
+          "close_year": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "after_temporary_fix",
+          "baseline_p",
+          "chain_id",
+          "confidence",
+          "confidence_partial",
+          "distance_m",
+          "gap_days",
+          "incident_id",
+          "is_planned_followup",
+          "match_mode",
+          "reports_after",
+          "resurrection_id",
+          "skeptic_notes",
+          "skeptic_verdict",
+          "source_unknown",
+          "tier",
+          "times_risen",
+          "zombie_id"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": [
+    "data_version",
+    "zombies"
+  ],
+  "additionalProperties": true
+}

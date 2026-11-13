@@ -1,0 +1,8 @@
+{
+  "_note": "needs-review: Spanish strings stay marked needs-review until a native speaker reviews them.",
+  "app": {
+    "title": "The Undead 311",
+    "footer_independent": "Proyecto independiente. Sin afiliación con la Ciudad de Boston.",
+    "footer_attribution": "Datos del mapa de colaboradores de OpenStreetMap."
+  }
+}
