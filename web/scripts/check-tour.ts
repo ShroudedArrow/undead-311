@@ -4,14 +4,15 @@ import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkTour } from "../src/lib/tour.ts";
+import { statsPath } from "../src/lib/statsFiles.ts";
 
 const dataDir = join(dirname(fileURLToPath(import.meta.url)), "..", "public", "data");
 const judging = process.env.JUDGING === "1";
-const read = (f: string) => (existsSync(join(dataDir, f)) ? JSON.parse(readFileSync(join(dataDir, f), "utf8")) : null);
+const read = (f: string) => (existsSync(join(dataDir, statsPath(f))) ? JSON.parse(readFileSync(join(dataDir, statsPath(f)), "utf8")) : null);
 
 const tour = read("judge_tour.json");
 if (!tour) {
-  console.error("check-tour: public/data/judge_tour.json is missing");
+  console.error("check-tour: public/data/stats/judge_tour.json is missing");
   process.exit(judging ? 1 : 0);
 }
 const result = checkTour(tour, read("validation.json"), judging);

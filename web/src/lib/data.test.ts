@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { clearDataCache, loadData, loadOnce } from "./data";
+import { clearDataCache, dataUrl, loadData, loadOnce } from "./data";
+import { STATS_FILES, statsPath } from "./statsFiles";
 import { parseStatus } from "./parse";
 
 const GOOD = { data_version: "v", last_run: "2026-11-11T02:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" };
@@ -40,5 +41,20 @@ describe("loadData (REQ-WEB-DATA.1-2)", () => {
     const url = String((fn.mock.calls[0] as unknown[])[0]);
     expect(url.startsWith("/")).toBe(true);
     expect(url).not.toMatch(/^https?:/);
+  });
+});
+
+describe("stats files load from data/stats/ (REQ-WEB-DATA.1, ops#101)", () => {
+  it("maps every statistics file under stats/ and leaves the other files flat", () => {
+    for (const f of STATS_FILES) expect(dataUrl(f)).toMatch(/\/data\/stats\/[a-z_]+\.json$/);
+    for (const f of ["status.json", "points.json", "zombies.json", "exclusions.json", "bulk_closures.json", "cards/a-2020.json"]) {
+      expect(dataUrl(f)).toMatch(/\/data\/(?!stats\/)/);
+      expect(statsPath(f)).toBe(f);
+    }
+  });
+  it("requests scorecard.json at /data/stats/scorecard.json", async () => {
+    const fn = mockFetch(GOOD);
+    await loadData("scorecard.json", parseStatus);
+    expect(String((fn.mock.calls[0] as unknown[])[0])).toBe("/data/stats/scorecard.json");
   });
 });
