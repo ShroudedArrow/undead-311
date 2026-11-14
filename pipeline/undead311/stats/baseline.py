@@ -55,7 +55,7 @@ from undead311.stats.intervals import bootstrap_sum_cells
 DAY = 86_400.0
 MIN_WINDOWS = 4  # REQ-STAT-BASE.3
 DENSE_WINDOWS = 2  # a spot with at least one report per DENSE_WINDOWS windows is dense (methods.md hybrid, ops#130, ops#131)
-SHORT_DENSE_WINDOWS = 1  # a spot watched for less than MIN_WINDOWS windows is read by its own windows only with one report per window, counting the first (ops#136)  # a spot watched for less than MIN_WINDOWS windows is read by its own windows only when it has one report per window (ops#136)
+SHORT_DENSE_WINDOWS = 1  # a spot watched for less than MIN_WINDOWS windows is read by its own windows only with one report per window, counting the first (ops#136)
 POOLED_MIN = 100  # pooled windows needed before the citywide fallback is taken for one season, else all seasons
 _SEASON_OF_MONTH = np.array([0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 0])  # Jan..Dec -> winter, spring, summer, autumn
 UNKNOWN = "(unknown)"
@@ -324,9 +324,10 @@ class BaselineModel:
 
         Windows start on each whole day from the spot's first report to WINDOW_DAYS before the data end, only on days outside
         the dead stretches after closures, and a window holds a report when one opens in (start, start + WINDOW_DAYS]. Every
-        non-mirror report counts, the ones in a dead stretch too: counting directly assumes nothing about how reports
-        arrive (a Poisson formula is wrong for a spot reported on a near-regular schedule), and a real resurrection can only
-        raise the share, the cautious direction. Returns 5 values: the share of the windows that start in each season
+        non-mirror report counts, the ones in a dead stretch too: counting directly needs no Poisson formula (which is
+        wrong for a spot reported on a near-regular schedule), and a real resurrection can only raise the share, the
+        cautious direction. It still assumes the windows that start on live days are typical of the spot, which holds for
+        Poisson arrivals and fails for bursts, fixed schedules and spots whose reports stop (see docs/METHODS.md). Returns 5 values: the share of the windows that start in each season
         (nan when none do), then the share over all seasons (nan when there are no windows)."""
         out = np.full(5, np.nan)
         n = math.floor((self.t_end - self.window_s - live.t0) / DAY) + 1

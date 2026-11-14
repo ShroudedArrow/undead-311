@@ -322,3 +322,29 @@ def test_req_stat_base_3_the_fallback_is_the_higher_of_the_neighborhood_and_the_
     small = BaselineModel({c.id: c for c in cs}, detect(cs), data_end=day(440), areas_m2={"Roxbury": 1e3})
     e2 = small.estimate(next(i for i in small.result.incidents if "A0" in i.member_ids))
     assert e2.source == "neighborhood" and e2.p == e2.p_nbr
+
+
+def time_limited_town(kind, active, starts, seed, spots=300):
+    """Spots reported every 30 days (`kind` "regular": 30 +- 3, "poisson": mean 30) for `active` days from a first report
+    in [0, starts], then quiet to the data end. Each report is closed 2 days after it opens, so nothing resurrects by cause."""
+    rng = np.random.default_rng(seed)
+    out = []
+    for s in range(spots):
+        t0 = float(rng.uniform(0.0, starts))
+        t, n = t0, 0
+        while t <= min(float(END), t0 + active):
+            out.append(mk(f"S{s:03d}-{n:03d}", t, t + 2.0, x=s * 1000.0, segment=f"seg{s}"))
+            n += 1
+            t += 30.0 + rng.uniform(-3.0, 3.0) if kind == "regular" else rng.exponential(30.0)
+    return out
+
+
+@pytest.mark.parametrize("kind", ["regular", "poisson"])
+def test_req_stat_base_1_a_time_limited_null_town_is_a_documented_limit_above_zero(kind):
+    """REQ-STAT-BASE.1-3 (ops#141, ops#131): a spot reported every 30 days for 400 days and then quiet is read as nearly
+    always quiet, because its quiet tail fills the live-start windows. The excess is far above 0. This pins the documented
+    limit in docs/METHODS.md, pending the owner's answer on ops#141; the estimator is not changed before then. If it is
+    fixed, this test must move to the never-above-zero tests."""
+    cs = time_limited_town(kind, 400.0, 1300.0, 5)
+    _m, _res, row = staggered_excess(cs)
+    assert row.lo > 0, (kind, row)
