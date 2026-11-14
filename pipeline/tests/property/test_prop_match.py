@@ -93,15 +93,15 @@ def test_prop_p21_placement_helper_is_consistent():
 # --- P21 variant: towns built from segment GeoJSON, so build_intersections and snap_cases are in the path --------
 # REQ-DET-MATCH.1-3, REQ-ING-SNAP.1, REQ-ING-SNAP.4 (ops#81). The rule is checked on the DERIVED segment_id and near_nodes.
 
-import json  # noqa: E402
-import tempfile  # noqa: E402
-from pathlib import Path  # noqa: E402
+import json
+import tempfile
+from pathlib import Path
 
-import duckdb  # noqa: E402
-from hypothesis import HealthCheck, settings  # noqa: E402
+import duckdb
+from hypothesis import HealthCheck, settings
 
-from undead311.detect.cases import cases_from_table  # noqa: E402
-from undead311.ingest.snap import snap_cases  # noqa: E402
+from undead311.detect.cases import cases_from_table
+from undead311.ingest.snap import snap_cases
 
 M_LAT = 111_320.0
 LAT0, LON0 = 42.33, -71.08
