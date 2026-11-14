@@ -222,10 +222,11 @@ def test_req_stat_base_1_the_window_days_split_at_the_season_boundary():
     assert d.sum(axis=1).tolist() == [60.0, 60.0]
 
 
-def test_req_stat_base_1_a_window_that_runs_into_the_next_season_is_scored_at_each_seasons_rate():
-    """ops#111: closure on 2024-05-13 12:00, so 19 window days are spring and 41 are summer. Spot: first report day 0 (spring),
+def test_req_stat_base_1_a_window_that_runs_into_the_next_season_is_scored_at_each_seasons_rate(monkeypatch):
+    """ops#111 (the sparse estimator: this seven-report spot would be dense under the ops#131 hybrid, so it is forced sparse here): closure on 2024-05-13 12:00, so 19 window days are spring and 41 are summer. Spot: first report day 0 (spring),
     live spring reports on days 10 and 20, live summer reports on days 140, 150 and 160; the incident's own report (day 69) is
     left out. The 60 days after the closure are dead (spring 19 d, summer 41 d), so live days: spring 127 - 19, summer 92 - 41."""
+    monkeypatch.setattr("undead311.stats.baseline.DENSE_WINDOWS", 0)
     cs = [mk("F", 0), mk("S1", 10), mk("S2", 20), mk("I", 69, 70), mk("U1", 140), mk("U2", 150), mk("U3", 160)]
     res = detect(cs)
     m = BaselineModel({c.id: c for c in cs}, res, data_end=day(400))
@@ -255,10 +256,12 @@ def _seasonal_town(gap, winter=4.0, spots=300, span=1400, seed=5):
     return out
 
 
-def test_req_stat_base_1_a_seasonal_null_town_is_closer_to_its_observed_count_than_the_closure_season_estimate():
-    """REQ-STAT-BASE.1-2, ops#111 (S37): winter reports at 4x the rest of the year, nothing resurrecting by cause, seeds 5-10.
+def test_req_stat_base_1_a_seasonal_null_town_is_closer_to_its_observed_count_than_the_closure_season_estimate(monkeypatch):
+    """REQ-STAT-BASE.1-2, ops#111 (S37), for the sparse estimator (forced for every spot; the hybrid's dense spots are tested in
+    test_stats_credibility, ops#131): winter reports at 4x the rest of the year, nothing resurrecting by cause, seeds 5-10.
     The closure-season estimate ran 12% above the observed count here (late-winter closures took a winter rate for a spring
     window); the season-integrated estimate runs under 9% above. The rest is the thin-time bias of busy spots (ops#114)."""
+    monkeypatch.setattr("undead311.stats.baseline.DENSE_WINDOWS", 0)
     exp, obs = 0.0, 0
     for seed in range(5, 11):
         cs = _seasonal_town(300.0, seed=seed)

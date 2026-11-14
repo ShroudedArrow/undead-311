@@ -109,12 +109,28 @@ def bootstrap_sum(
     return float(np.quantile(totals, tail)), float(np.quantile(totals, 1 - tail))
 
 
-def _bernoulli_variance(values: np.ndarray) -> float:
+def _bernoulli_variance(values: np.ndarray, var: np.ndarray | None = None) -> float:
     """Variance of sum(observed_i) when each outcome is Bernoulli(p_i), from `values_i = observed_i - p_i`.
 
-    A positive value means observed 1 (p = 1 - v), a negative one observed 0 (p = -v); a value of 0 is a certain outcome."""
+    A positive value means observed 1 (p = 1 - v), a negative one observed 0 (p = -v); a value of 0 is a certain outcome.
+    That reading needs one 0/1 outcome per value. A caller whose values are means of several outcomes (the placebo's mean
+    over shifted runs) passes each value's variance in `var` instead (REQ-STAT-INT.1, REQ-STAT-PLACEBO.1, ops#133)."""
+    if var is not None:
+        return float(np.sum(var))
     p = np.where(values > 0, 1.0 - values, -values)
     return float(np.sum(p * (1.0 - p)))
+
+
+def independent_units(clusters: Sequence[int], cells: Sequence[int]) -> int:
+    """Independent spots or pooled cells behind a set of originals (REQ-STAT-INT.1, ops#133).
+
+    Originals of one spot (cluster >= 0) are one unit; originals that share a pooled estimate (cell >= 0, no spot) are one
+    unit per cell; an original with neither is its own unit."""
+    cl = np.asarray(clusters, dtype=int)
+    ce = np.asarray(cells, dtype=int)
+    spots = set(cl[cl >= 0].tolist())
+    pooled = set(ce[(cl < 0) & (ce >= 0)].tolist())
+    return len(spots) + len(pooled) + int(((cl < 0) & (ce < 0)).sum())
 
 
 def bootstrap_sum_cells(
@@ -126,6 +142,7 @@ def bootstrap_sum_cells(
     B: int = 1000,
     level: float = 0.95,
     clusters: Sequence[int] | None = None,
+    var: Sequence[float] | None = None,
 ) -> tuple[float, float] | None:
     """Bootstrap interval of a SUM whose terms each subtract an estimated chance probability (REQ-STAT-INT.1, REQ-STAT-BASE.2).
 
@@ -139,6 +156,9 @@ def bootstrap_sum_cells(
       as Binomial(n, p_hat) / n, which is centred on p_hat and stays in [0, 1] without clipping, so the interval always
       holds a point estimate whose cells have p_hat 0 or 1 (ops#108, S35). The replicate's sum becomes
       `sum(resampled values) + sum_c count_c * (p_hat_c - p_c)`. Cells with `cell_n <= 0` stay fixed.
+
+    `var[i]` (optional) is the variance of value i when it is not a single 0/1 outcome minus p (the placebo's mean over runs);
+    it feeds the small-spot floor. The floor applies below MIN_CLUSTERS independent spots or pooled cells (ops#133).
 
     Reproducible for the caller's generator; None for an empty sample.
     """
@@ -178,8 +198,9 @@ def bootstrap_sum_cells(
             totals[lo:hi] += (cl_cnt[idx].sum(axis=1) * (ph - p_draw)).sum(axis=1)
     tail = (1 - level) / 2
     lo, hi = float(np.quantile(totals, tail)), float(np.quantile(totals, 1 - tail))
-    if n_cl < MIN_CLUSTERS:  # too few spots to resample: never narrower than the Bernoulli noise of the outcomes (ops#115)
-        half = Z95 * math.sqrt(_bernoulli_variance(arr))
+    n_units = independent_units(raw, cell_arr)
+    if n_units < MIN_CLUSTERS:  # too few spots to resample: never narrower than the Bernoulli noise of the outcomes (ops#115)
+        half = Z95 * math.sqrt(_bernoulli_variance(arr, None if var is None else np.asarray(var, dtype=float)))
         centre = float(arr.sum())
         lo, hi = min(lo, centre - half), max(hi, centre + half)
     return lo, hi

@@ -22,7 +22,7 @@ import numpy as np
 
 from undead311.stats.baseline import BaselineModel, season_array, season_integrated_p
 from undead311.stats.cohort import eligible_originals, season_idx, spot_key
-from undead311.stats.intervals import MIN_CLUSTERS, bootstrap_sum_cells
+from undead311.stats.intervals import MIN_CLUSTERS, bootstrap_sum_cells, independent_units
 
 SHIFT_RUNS = 1000
 PLACEBO_RUNS = 10
@@ -204,6 +204,13 @@ def _placebo(model: BaselineModel, sp: _Spots, delta: np.ndarray, t_min: float, 
             np.add.at(mine, (local[ok_own], own_s[ok_own]), 1.0)
             # the excess's own estimator on the moved closure: the days of its window in each season against the spot's live
             # reports and days of that season (REQ-STAT-BASE.1, REQ-STAT-PLACEBO.1, ops#111)
+            if model.is_dense(key):  # dense spots use the same sliding-window share as the excess (ops#131)
+                share = model.dense_share(opens, live)
+                seas = season_array(shifted[rows, run])
+                got = np.where(np.isnan(share[seas]), share[4], share[seas])
+                if not np.isnan(got).any():
+                    expected[rows, run] = got
+                    continue
             k = np.maximum(live.counts[None, :] - mine, 0.0)
             expected[rows, run] = season_integrated_p(k, live.days, model.window_season_days(shifted[rows, run]))
     per_incident = (hits - expected).mean(axis=1)  # each original's mean (hit - baseline) over the shifted runs
@@ -223,11 +230,13 @@ def _placebo(model: BaselineModel, sp: _Spots, delta: np.ndarray, t_min: float, 
         cell_p[c] = float(expected[members].mean())
         cell_n[c] = float(sp.n_eff[members[0]])
     clusters = np.where(sp.spot_based, g, -1)
+    p_bar = np.clip(expected.mean(axis=1), 0.0, 1.0)  # each value is a mean of n_runs outcomes: variance p(1 - p) / n_runs
     ci = bootstrap_sum_cells(
-        per_incident, cells, cell_p, cell_n, np.random.Generator(np.random.PCG64(seed + 1)), clusters=clusters
+        per_incident, cells, cell_p, cell_n, np.random.Generator(np.random.PCG64(seed + 1)), clusters=clusters,
+        var=p_bar * (1.0 - p_bar) / n_runs,
     )
     if ci is None:
         return None
-    n_clusters = len(set(clusters[clusters >= 0].tolist())) + int((clusters < 0).sum())
+    n_clusters = independent_units(clusters, cells)
     # a handful of spots says nothing about calibration: no warning below MIN_CLUSTERS (ops#115)
     return PlaceboResult(n_runs, mean, ci[0], ci[1], bool((ci[0] > 0 or ci[1] < 0) and n_clusters >= MIN_CLUSTERS))

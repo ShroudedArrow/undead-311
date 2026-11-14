@@ -196,7 +196,9 @@ def test_req_stat_placebo_2_the_warning_is_set_exactly_when_the_interval_exclude
     res = detect(cs)
     m = BaselineModel({c.id: c for c in cs}, res, data_end=day(420))
     _s, p = shift_and_placebo(m, 311, 50, 5)
-    assert p.calibration_warning == (p.lo > 0 or p.hi < 0) and p.lo <= p.excess <= p.hi
+    # the warning needs at least MIN_CLUSTERS independent spots or pooled cells (ops#115, ops#133): this town's 30 spots are
+    # watched for too few windows each, so all of them share one pooled estimate and count as one unit, with no warning
+    assert p.lo <= p.excess <= p.hi and p.calibration_warning is False
     assert shift_and_placebo(BaselineModel({}, detect([]), data_end=day(10)), 1, 10, 2) == (None, None)
 
 
@@ -652,11 +654,13 @@ def causal_town(q, bg=300.0, spots=300, span=1400, seed=5):
 
 
 @pytest.mark.parametrize("q", [0.2, 0.4])
-def test_req_stat_base_1_a_causal_resurrection_town_has_an_expected_count_close_to_the_true_chance(q):
-    """REQ-STAT-BASE.1, REQ-STAT-BASE.2 (ops#113): real resurrections, and the links of a chain, are not chance reports. 300 spots
+def test_req_stat_base_1_a_causal_resurrection_town_has_an_expected_count_close_to_the_true_chance(q, monkeypatch):
+    """REQ-STAT-BASE.1, REQ-STAT-BASE.2 (ops#113), for the sparse estimator, forced for every spot (a dense spot counts every
+    report, a real resurrection included, so it can only run higher: the cautious direction, ops#131): real resurrections, and the links of a chain, are not chance reports. 300 spots
     with a background report every 300 days and a causal re-report 5-40 days after each closure with probability q: the true
     chance of a window holding a background report is 1 - exp(-60/300) = 0.181 per original. The expected count ran 1.5 times
     that before the 60 days after a resurrection's own closure were left out as well; it is now within 1.0-1.25."""
+    monkeypatch.setattr("undead311.stats.baseline.DENSE_WINDOWS", 0)
     ratios, observed_over_true = [], []
     for seed in (5, 6):
         cs = causal_town(q, seed=seed)
@@ -672,9 +676,11 @@ def test_req_stat_base_1_a_causal_resurrection_town_has_an_expected_count_close_
     assert all(o > 1.5 for o in observed_over_true)  # the causal re-reports are far above the chance count
 
 
-def test_req_stat_base_1_a_mixed_gap_null_town_has_an_excess_interval_that_covers_zero():
-    """REQ-STAT-BASE.1-2 (ops#114): 300 spots whose reports come every 30, 60, 120, 250 or 400 days, nothing resurrecting by
-    cause. Busy and quiet spots together: the excess interval holds 0 in every seeded town (seeds 5-8)."""
+def test_req_stat_base_1_a_mixed_gap_null_town_has_an_excess_interval_that_is_never_above_zero():
+    """REQ-STAT-BASE.1-2 (ops#114, ops#131): 300 spots whose reports come every 30, 60, 120, 250 or 400 days, nothing
+    resurrecting by cause. Busy and quiet spots together: the excess interval never lies above 0 in the seeded towns (seeds 5-8).
+    Under the hybrid the dense spots count every report, so the interval lies below 0 (cautious); it covered 0 before the
+    owner's ops#130 decision."""
     from helpers import mk as _mk
 
     for seed in (5, 6, 7, 8):
@@ -692,7 +698,7 @@ def test_req_stat_base_1_a_mixed_gap_null_town_has_an_excess_interval_that_cover
         res = detect(cs)
         m = BaselineModel({c.id: c for c in cs}, res, data_end=day(1400))
         row = next(r for r in excess_rows(m, 311, 200) if r.kind == "family" and r.tier_set == "headline")
-        assert row.lo <= 0 <= row.hi, (seed, row)
+        assert row.lo <= 0, (seed, row)
 
 
 def test_req_stat_int_1_a_group_whose_originals_share_one_spot_gets_an_interval_with_width_and_no_placebo_warning():

@@ -4,20 +4,20 @@
 within WINDOW_DAYS of a closure by coincidence?
 
 * Same spot (REQ-STAT-BASE.1): the spot (segment, or a 60 m cell) is watched from its first same-family report to the data
-  end. Its other same-family reports (mirror copies are one report, the incident's own members and the first report are not
-  counted) in season s, K_s, fall in the d_s days of the incident's window (WINDOW_DAYS from the closure) that lie in season
-  s by chance with probability `d_s / T_s`, where T_s is the live days of that season in the watched span. A window that
-  runs into the next season is scored with each season's own rate: `p_spot = 1 - prod_s (1 - d_s / T_s)^K_s` (methods.md,
-  ops#111). A season with no live time uses the spot's all-season rate for its days. This is the share of the spot's
-  windows that contain a report, estimated so that it is unbiased (a count of the other reports of
-  the same spot, as opposed to a share of windows that a hit makes unusable, which came out 40% too high at sparse spots,
-  ops#107). Leaving the incident's own reports out is what keeps a busy spot from raising the baseline of its own originals.
-  Counting every other report is the cautious choice: a real resurrection at the spot can only raise `p_spot`.
-* Fewer than MIN_WINDOWS windows of the season in the watched span (REQ-STAT-BASE.3): the neighborhood estimate (`P` below)
-  is used, and when there is no neighborhood area, the pooled p of the same family and season (at least POOLED_MIN windows,
-  else of any season: "citywide"). The pooled p is the mean of the spot p of every incident of that family and season. The
-  number of incidents that fell back, and to what, is exported. The choice depends on the spot's first report only, never on
-  whether anything was re-reported.
+  end. The WINDOW_DAYS after every same-family closure at the spot are dead time (whether or not the closed case was itself
+  a resurrection, ops#113): neither the days nor the reports in them count. What is left is the spot's live time and live
+  reports. The baseline is a hybrid (methods.md, ops#130, ops#131):
+  - Sparse spots (fewer than one report per DENSE_WINDOWS windows over the watched span): the other live reports of season s,
+    K_s, fall in the d_s days of the incident's window that lie in season s by chance with probability `d_s / T_s`, T_s being
+    the live days of that season: `p_spot = 1 - prod_s (1 - d_s / T_s)^K_s` (ops#111). A season with no live time uses the
+    spot's all-season rate. This is unbiased for the Poisson chance of a report in a window (a share of windows that a hit
+    makes unusable came out 40% too high at sparse spots, ops#107). The incident's own reports are left out, so a busy spot
+    does not raise the baseline of its own originals.
+  - Dense spots (at least one report per DENSE_WINDOWS windows): `p_spot` is the share of sliding WINDOW_DAYS windows that
+    start on a live day of the incident's season and hold at least one report (`dense_share`). Counting directly assumes
+    nothing about how reports arrive, which fails for a spot reported on a near-regular schedule (the Poisson formula ran low
+    there and gave a positive excess, ops#131). Every report counts, reports in a dead stretch too, so a real resurrection can
+    only raise the share: the excess runs at or below 0 on a null town (the cautious direction).
 * Neighborhood Poisson check (REQ-STAT-NBR.1): lambda = same-family reports per m2 per day in the neighborhood and
   season, leaving out reports within RADIUS_M and +-WINDOW_DAYS of the case; expected = lambda * pi * RADIUS_M^2 *
   WINDOW_DAYS, P = 1 - exp(-expected). It is computed for every incident as a second, independent baseline.
@@ -46,6 +46,7 @@ from undead311.stats.intervals import bootstrap_sum_cells
 
 DAY = 86_400.0
 MIN_WINDOWS = 4  # REQ-STAT-BASE.3
+DENSE_WINDOWS = 2  # a spot with at least one report per DENSE_WINDOWS windows is dense (methods.md hybrid, ops#130, ops#131)
 POOLED_MIN = 100  # pooled windows needed before the citywide fallback is taken for one season, else all seasons
 _SEASON_OF_MONTH = np.array([0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 0])  # Jan..Dec -> winter, spring, summer, autumn
 UNKNOWN = "(unknown)"
@@ -174,6 +175,7 @@ class BaselineModel:
         self._build_season_days()
         self._spot_info = self._spots()
         self._own: dict[str, np.ndarray] = {}
+        self._dense_cache: dict[tuple[str, str], np.ndarray] = {}
         self._pooled = self._pool()
         self._estimates: dict[str, Estimate] = {}
         self._nbr_data: dict[tuple[str, str], dict] | None = None
@@ -299,6 +301,40 @@ class BaselineModel:
         ]  # fmt: skip
         return np.bincount(season_array(np.array(opens)), minlength=4) if opens else np.zeros(4, dtype=int)
 
+    def is_dense(self, key: tuple[str, str]) -> bool:
+        """A dense spot has at least one report per DENSE_WINDOWS windows over its watched span (methods.md hybrid baseline,
+        REQ-STAT-BASE.1). Reports and span do not depend on closures, so a placebo shift never changes the class."""
+        live = self._spot_info.get(key)
+        if live is None or live.all_counts is None:
+            return False
+        span = float(live.span.sum())
+        return span > 0 and float(live.all_counts.sum()) * DENSE_WINDOWS * self.params.WINDOW_DAYS >= span
+
+    def dense_share(self, opens: np.ndarray, live: LiveSpot) -> np.ndarray:
+        """Share of sliding WINDOW_DAYS windows that contain a report, for the dense estimator (REQ-STAT-BASE.1, ops#131).
+
+        Windows start on each whole day from the spot's first report to WINDOW_DAYS before the data end, only on days outside
+        the dead stretches after closures, and a window holds a report when one opens in (start, start + WINDOW_DAYS]. Every
+        non-mirror report counts, the ones in a dead stretch too: counting directly assumes nothing about how reports
+        arrive (a Poisson formula is wrong for a spot reported on a near-regular schedule), and a real resurrection can only
+        raise the share, the cautious direction. Returns 5 values: the share of the windows that start in each season
+        (nan when none do), then the share over all seasons (nan when there are no windows)."""
+        out = np.full(5, np.nan)
+        n = math.floor((self.t_end - self.window_s - live.t0) / DAY) + 1
+        if n < 1:
+            return out
+        starts = live.t0 + DAY * np.arange(n)
+        starts = starts[live.is_live(starts)]
+        if not starts.size:
+            return out
+        hit = np.searchsorted(opens, starts + self.window_s, side="right") > np.searchsorted(opens, starts, side="right")
+        seasons = season_array(starts)
+        for x in range(4):
+            if (seasons == x).any():
+                out[x] = hit[seasons == x].mean()
+        out[4] = hit.mean()
+        return out
+
     def spot_p(self, inc: Incident, s: int | None = None) -> tuple[float, int] | None:
         """(p_spot, windows) of the incident's spot; None when the spot's live time holds less than one window.
 
@@ -312,6 +348,14 @@ class BaselineModel:
         windows = int(float(live.span[s]) // self.params.WINDOW_DAYS)
         if windows < 1:
             return None
+        key = self._incident_key[inc.incident_id]
+        if self.is_dense(key):
+            if key not in self._dense_cache:
+                self._dense_cache[key] = self.dense_share(self.groups[key][0], live)
+            share = self._dense_cache[key]
+            got = share[s] if not math.isnan(share[s]) else share[4]
+            if not math.isnan(got):
+                return float(got), windows
         k = live.counts - self.own_after(inc)
         d = self.window_season_days(np.array([inc.close_utc.timestamp()]))
         return float(season_integrated_p(np.maximum(k, 0)[None, :], live.days, d)[0]), windows
