@@ -383,13 +383,16 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .chart-band { fill: var(--asphalt); fill-opacity: 0.18; stroke: none; }
 .funnel-mark { stroke: var(--asphalt); stroke-width: 1.5; }
 .funnel-typical { fill: var(--crew-white); }
-.funnel-unusual { fill: var(--survey-pink); }
+.funnel-above { fill: var(--survey-pink); }
+.funnel-below { fill: var(--asphalt); }
+/* UX-19: on phones the viewBox is narrow, so the same 13-unit text draws at about 12 CSS px or more */
+.chart-narrow .chart-tick, .chart-narrow .chart-axis { font-size: 13px; }
 .chart-controls { display: flex; flex-wrap: wrap; gap: var(--space-3); margin: var(--space-3) 0; border: 0; padding: 0; }
 .chart-controls fieldset { border: 2px solid var(--asphalt); padding: var(--space-2) var(--space-3); }
 .chart-controls label { display: flex; gap: var(--space-2); align-items: center; min-height: 2.75rem; }
 .chart-controls input[type="radio"] { width: 1.25rem; height: 1.25rem; accent-color: var(--asphalt); }
 .chart-pick { flex-direction: column; align-items: flex-start; }
-.chart-pick select { min-height: 2.75rem; }
+.chart-pick select { min-height: 2.75rem; background-color: var(--crew-white); color: var(--asphalt); border: 2px solid var(--asphalt); border-radius: 0; padding: var(--space-2) var(--space-3); font-family: var(--font-ui); }
 .chart-legend { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-3); padding: 0; margin: var(--space-2) 0; }
 .chart-legend li { display: flex; align-items: center; gap: var(--space-2); }
 .chart-table { padding: var(--space-3) 0; }

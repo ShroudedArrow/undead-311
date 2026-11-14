@@ -1,31 +1,34 @@
-import { intensityText, isUnusual, leaderboard, linePath, linear, logScale } from "../lib/charts";
+import { chartDims, intensityText, leaderboard, linePath, linear, logScale, niceTicks, unusualDirection } from "../lib/charts";
 import { groupLabel } from "../lib/labels";
 import type { FunnelLimit, Group } from "../lib/parse";
 import { pct } from "../lib/rates";
 import { t } from "../lib/t";
-
-const W = 640;
-const H = 360;
-const M = { l: 64, r: 16, t: 12, b: 44 };
+import { useNarrow } from "../lib/useNarrow";
 
 /**
  * Funnel plot: each group's raw rate against its n, with 95% and 99.8% limits around the citywide rate (REQ-WEB-CHARTS.2).
- * Unusual groups (outside the 99.8% limits) are diamonds, all others circles, so shape and the table both carry the signal.
+ * Groups outside the 99.8% limits are marked by direction: a pink diamond above the upper limit (more resurrections than chance
+ * explains), an Asphalt square below the lower limit (fewer). All others are circles, so shape and the table carry the signal.
+ * Pink never marks a group with fewer resurrections than chance (UX-17).
  */
 export function FunnelChart({ groups, limits, citywide }: { groups: readonly Group[]; limits: readonly FunnelLimit[]; citywide: number | null }) {
+  const { W, H, M, narrow } = chartDims(useNarrow(), 360);
   const sorted = [...limits].sort((a, b) => a.n - b.n);
   const maxN = Math.max(...sorted.map((l) => l.n), ...groups.map((g) => g.n), 2);
   // the vertical range fits the groups, not the very wide limits of the smallest n; those lines are clipped at the top
   const maxY = Math.min(1, Math.max(0.05, ...groups.map((g) => g.raw ?? 0), citywide ?? 0) * 1.25);
+  const yTicks = niceTicks(0, maxY, narrow ? 4 : 5);
+  const yTop = Math.max(maxY, yTicks[yTicks.length - 1]);
   const x = logScale(1, maxN, M.l, W - M.r);
-  const y = linear(0, maxY, H - M.b, M.t);
+  const y = linear(0, yTop, H - M.b, M.t);
   const xs = sorted.map((l) => x(l.n));
-  const unusualCount = groups.filter((g) => isUnusual(g, limits)).length;
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => f * maxY);
+  const dirs = groups.map((g) => unusualDirection(g, limits));
+  const aboveCount = dirs.filter((d) => d === "above").length;
+  const belowCount = dirs.filter((d) => d === "below").length;
   const xTicks = [1, 10, 100, 1000, 10000].filter((n) => n <= maxN);
   return (
-    <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" focusable="false" data-testid="funnel-chart"
-      aria-label={t("charts.funnel_label", { count: groups.length, rate: pct(citywide), unusual: unusualCount })}>
+    <svg className={narrow ? "chart chart-narrow" : "chart"} viewBox={`0 0 ${W} ${H}`} role="img" focusable="false" data-testid="funnel-chart"
+      aria-label={t("charts.funnel_label", { count: groups.length, rate: pct(citywide), above: aboveCount, below: belowCount })}>
       {yTicks.map((v) => (
         <g key={v}>
           <line className="chart-grid" x1={M.l} x2={W - M.r} y1={y(v)} y2={y(v)} />
@@ -39,7 +42,7 @@ export function FunnelChart({ groups, limits, citywide }: { groups: readonly Gro
         </g>
       ))}
       <text className="chart-axis" x={(M.l + W - M.r) / 2} y={H - 6} textAnchor="middle">{t("charts.funnel_axis_n")}</text>
-      <text className="chart-axis" transform={`translate(12 ${(M.t + H - M.b) / 2}) rotate(-90)`} textAnchor="middle">{t("charts.funnel_axis_rate")}</text>
+      <text className="chart-axis" transform={`translate(${narrow ? 11 : 12} ${(M.t + H - M.b) / 2}) rotate(-90)`} textAnchor="middle">{t("charts.funnel_axis_rate")}</text>
       <defs>
         <clipPath id="funnel-clip">
           <rect x={M.l} y={M.t} width={W - M.l - M.r} height={H - M.t - M.b} />
@@ -57,12 +60,19 @@ export function FunnelChart({ groups, limits, citywide }: { groups: readonly Gro
       {groups.filter((g) => g.raw !== null && g.n > 0).map((g) => {
         const cx = x(g.n);
         const cy = y(g.raw as number);
-        const unusual = isUnusual(g, limits);
-        const name = `${g.name}: ${pct(g.raw)}, n = ${g.n}`;
-        return unusual ? (
-          <polygon key={`${g.kind}|${g.name}`} className="funnel-mark funnel-unusual" points={`${cx},${cy - 8} ${cx + 8},${cy} ${cx},${cy + 8} ${cx - 8},${cy}`}>
+        const dir = unusualDirection(g, limits);
+        const name = t("charts.mark_title", { name: groupLabel(g.kind, g.name), rate: pct(g.raw), n: g.n, side: dir === null ? "" : t(`charts.side_${dir}`) }).trim();
+        if (dir === "above") {
+          return (
+            <polygon key={`${g.kind}|${g.name}`} className="funnel-mark funnel-above" points={`${cx},${cy - 8} ${cx + 8},${cy} ${cx},${cy + 8} ${cx - 8},${cy}`}>
+              <title>{name}</title>
+            </polygon>
+          );
+        }
+        return dir === "below" ? (
+          <rect key={`${g.kind}|${g.name}`} className="funnel-mark funnel-below" x={cx - 6} y={cy - 6} width={12} height={12}>
             <title>{name}</title>
-          </polygon>
+          </rect>
         ) : (
           <circle key={`${g.kind}|${g.name}`} className="funnel-mark funnel-typical" cx={cx} cy={cy} r={5}>
             <title>{name}</title>
@@ -79,7 +89,8 @@ export function FunnelLegend() {
       <li><svg width="28" height="10" aria-hidden="true" focusable="false"><line className="chart-line chart-line-limit95" x1="0" x2="28" y1="5" y2="5" /></svg> {t("charts.limit_95")}</li>
       <li><svg width="28" height="10" aria-hidden="true" focusable="false"><line className="chart-line chart-line-limit998" x1="0" x2="28" y1="5" y2="5" /></svg> {t("charts.limit_998")}</li>
       <li><svg width="14" height="14" aria-hidden="true" focusable="false"><circle className="funnel-mark funnel-typical" cx="7" cy="7" r="5" /></svg> {t("charts.mark_typical")}</li>
-      <li><svg width="18" height="18" aria-hidden="true" focusable="false"><polygon className="funnel-mark funnel-unusual" points="9,1 17,9 9,17 1,9" /></svg> {t("charts.mark_unusual")}</li>
+      <li><svg width="18" height="18" aria-hidden="true" focusable="false"><polygon className="funnel-mark funnel-above" points="9,1 17,9 9,17 1,9" /></svg> {t("charts.mark_above")}</li>
+      <li><svg width="16" height="16" aria-hidden="true" focusable="false"><rect className="funnel-mark funnel-below" x="2" y="2" width="12" height="12" /></svg> {t("charts.mark_below")}</li>
     </ul>
   );
 }
@@ -107,14 +118,14 @@ export function Leaderboard({ groups, limits, kind }: { groups: readonly Group[]
           {rows.map((g) => {
             const intensity = intensityText(g);
             return (
-              <tr key={g.name} data-unusual={g.unusualShown ? "true" : "false"}>
+              <tr key={g.name} data-unusual={g.unusualShown ? "true" : "false"} data-direction={g.direction ?? ""}>
                 <th scope="row">{groupLabel(kind === "family" ? "family" : kind, g.name)}</th>
                 <td>{pct(g.shrunk)}</td>
                 <td>{g.lo === null || g.hi === null ? "" : t("charts.interval_text", { lo: pct(g.lo), hi: pct(g.hi) })}</td>
                 <td>{pct(g.raw)}</td>
                 <td>{g.n}</td>
                 <td>{intensity === null ? t("charts.intensity_missing") : t("charts.intensity_value", { value: intensity })}</td>
-                <td>{g.unusualShown ? t("charts.unusual") : t("charts.typical")}</td>
+                <td>{g.direction === null ? t("charts.typical") : t(`charts.unusual_${g.direction}`)}</td>
               </tr>
             );
           })}

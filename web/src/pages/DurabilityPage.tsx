@@ -1,7 +1,7 @@
 import { useId, useMemo, useState } from "react";
 import { FunnelChart, FunnelLegend, Leaderboard } from "../components/FunnelChart";
 import { PanelError } from "../components/PanelError";
-import { SurvivalChart, SurvivalTable, curveLabel } from "../components/SurvivalChart";
+import { SurvivalChart, SurvivalLegend, SurvivalTable, curveLabel } from "../components/SurvivalChart";
 import { curveKind, curvesFor, type CurveKind } from "../lib/charts";
 import { useData } from "../lib/data";
 import { parseFunnel, parseGroups, parseSurvival, type Group } from "../lib/parse";
@@ -60,6 +60,7 @@ function SurvivalPanel() {
             </label>
           </div>
           <SurvivalChart curve={shown} baseline={picked ? citywide : null} tierLabel={t(tier === "headline" ? "charts.tier_headline" : "charts.tier_all")} />
+          <SurvivalLegend curve={shown} baseline={picked ? citywide : null} />
           <SurvivalTable curves={tableRows} />
         </>
       ) : null}

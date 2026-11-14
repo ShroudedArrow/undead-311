@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { curveKind, curvesFor, intensityText, isUnusual, isValidCurve, leaderboard, limitAt, linePath, linear, logScale } from "./charts";
+import { chartDims, curveKind, curvesFor, intensityText, isUnusual, isValidCurve, leaderboard, limitAt, linePath, linear, logScale, niceTicks, unusualDirection } from "./charts";
 import { parseFunnel, parseGroups, parseSurvival, type FunnelLimit, type Group } from "./parse";
 
 const read = (f: string): unknown => JSON.parse(readFileSync(join(__dirname, "..", "..", "public", "data", f), "utf8"));
@@ -130,5 +130,47 @@ describe("scales and paths", () => {
     expect(linear(0, 10, 100, 200)(10)).toBe(200);
     expect(logScale(1, 100, 0, 200)(10)).toBeCloseTo(100);
     expect(linePath([0, 1], [2, 3])).toBe("M0.0 2.0 L1.0 3.0");
+  });
+});
+
+describe("direction of an unusual group (REQ-WEB-CHARTS.2, UX-17)", () => {
+  it("is above over the upper 99.8% limit, below under the lower one, null inside or when not flagged", () => {
+    expect(unusualDirection({ n: 100, raw: 0.5, unusual: true }, LIMITS)).toBe("above");
+    expect(unusualDirection({ n: 100, raw: 0.01, unusual: true }, LIMITS)).toBe("below");
+    expect(unusualDirection({ n: 100, raw: 0.1, unusual: true }, LIMITS)).toBeNull();
+    expect(unusualDirection({ n: 100, raw: 0.5, unusual: false }, LIMITS)).toBeNull();
+  });
+  it("is set exactly when isUnusual holds, and leaderboard rows carry it", () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 1, max: 3000 }), fc.double({ min: 0, max: 1, noNaN: true }), (n, raw) => {
+        const g = { n, raw, unusual: true };
+        expect(unusualDirection(g, LIMITS) !== null).toBe(isUnusual(g, LIMITS));
+      }),
+    );
+    const rows = leaderboard([grp({ name: "hi", raw: 0.5, shrunk: 0.3, unusual: true }), grp({ name: "lo", raw: 0.01, shrunk: 0.05, unusual: true })], "neighborhood", LIMITS);
+    expect(rows.map((r) => [r.name, r.direction])).toEqual([["hi", "above"], ["lo", "below"]]);
+  });
+});
+
+describe("chart ticks and phone size (REQ-WEB-CHARTS.1, REQ-WEB-A11Y.1; UX-19, UX-22)", () => {
+  it("niceTicks gives whole or 5% steps inside the range, at most the asked number", () => {
+    expect(niceTicks(0.85, 1, 5)).toEqual([0.85, 0.9, 0.95, 1]);
+    fc.assert(
+      fc.property(fc.double({ min: 0, max: 0.9, noNaN: true }), fc.double({ min: 0.05, max: 1, noNaN: true }), fc.integer({ min: 2, max: 6 }), (lo, span, max) => {
+        const hi = Math.min(1, lo + span);
+        const ticks = niceTicks(lo, hi, max);
+        expect(ticks.length).toBeLessThanOrEqual(Math.max(max, 1));
+        for (const v of ticks) { expect(v).toBeGreaterThanOrEqual(lo - 1e-9); expect(v).toBeLessThanOrEqual(hi + 1e-9); }
+        for (let i = 1; i < ticks.length; i++) expect(ticks[i]).toBeGreaterThan(ticks[i - 1]);
+      }),
+    );
+  });
+  it("the narrow viewBox is no wider than a phone, so 13-unit text draws at 12 CSS px or more", () => {
+    const n = chartDims(true, 360);
+    const w = chartDims(false, 360);
+    expect(n.W).toBeLessThanOrEqual(360);
+    expect(w.W).toBe(640);
+    const phoneChartWidth = 412 - 2 * 16;
+    expect((phoneChartWidth / n.W) * 13).toBeGreaterThanOrEqual(12);
   });
 });

@@ -70,9 +70,21 @@ export function isUnusual(g: Pick<Group, "n" | "raw" | "unusual">, limits: reado
   return l !== null && (g.raw < l.lo998 || g.raw > l.hi998);
 }
 
+/**
+ * Which side of the 99.8% limits an unusual group lies on (REQ-WEB-CHARTS.2, UX-17): "above" means more resurrections than chance
+ * explains, "below" means fewer. Null when the group is not unusual (see isUnusual).
+ */
+export function unusualDirection(g: Pick<Group, "n" | "raw" | "unusual">, limits: readonly FunnelLimit[]): "above" | "below" | null {
+  if (!isUnusual(g, limits)) return null;
+  const l = limitAt(limits, g.n);
+  return l !== null && (g.raw as number) > l.hi998 ? "above" : "below";
+}
+
 export interface LeaderRow extends Group {
   /** Whether the "unusual" tag may be shown (see isUnusual). */
   unusualShown: boolean;
+  /** Which side of the limits, when shown. */
+  direction: "above" | "below" | null;
 }
 
 /**
@@ -82,11 +94,39 @@ export interface LeaderRow extends Group {
 export function leaderboard(groups: readonly Group[], kind: Group["kind"], limits: readonly FunnelLimit[]): LeaderRow[] {
   return groups
     .filter((g) => g.kind === kind)
-    .map((g) => ({ ...g, unusualShown: isUnusual(g, limits) }))
+    .map((g) => ({ ...g, unusualShown: isUnusual(g, limits), direction: unusualDirection(g, limits) }))
     .sort((a, b) => (b.shrunk ?? -1) - (a.shrunk ?? -1) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
 /** "12 per km" style value, or null when the file has no reporting intensity. */
 export function intensityText(g: Pick<Group, "reports_per_km">): string | null {
   return g.reports_per_km === null || g.reports_per_km === undefined ? null : g.reports_per_km.toFixed(1);
+}
+
+/**
+ * Tick values on whole or 5% steps (UX-22): at most `maxTicks` values between lo and hi, on a step taken from a short list of
+ * round numbers. The first tick is the first multiple of the step at or above lo, so labels read 85%, 90%, 95%, not 88.8%.
+ */
+export function niceTicks(lo: number, hi: number, maxTicks = 5): number[] {
+  const steps = [0.01, 0.02, 0.05, 0.1, 0.2, 0.25, 0.5, 1];
+  const span = hi - lo;
+  if (!(span > 0)) return [lo];
+  const step = steps.find((s) => Math.floor(span / s + 1e-9) + 1 <= maxTicks) ?? 1;
+  const out: number[] = [];
+  for (let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + 1e-9; v += step) out.push(Math.round(v * 1e6) / 1e6);
+  return out;
+}
+
+export interface ChartDims {
+  W: number;
+  H: number;
+  M: { l: number; r: number; t: number; b: number };
+  narrow: boolean;
+}
+/** Below 640 CSS px the charts use a viewBox about as wide as the screen, so 13-unit text draws at 12 CSS px or more (UX-19). */
+export const NARROW_QUERY = "(max-width: 640px)";
+export function chartDims(narrow: boolean, tall: number): ChartDims {
+  return narrow
+    ? { W: 340, H: tall - 20, M: { l: 52, r: 10, t: 12, b: 48 }, narrow }
+    : { W: 640, H: tall, M: { l: 64, r: 16, t: 12, b: 44 }, narrow };
 }

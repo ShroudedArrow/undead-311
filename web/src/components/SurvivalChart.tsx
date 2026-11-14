@@ -1,12 +1,9 @@
-import { bandPath, curveKind, linePath, linear } from "../lib/charts";
+import { bandPath, chartDims, curveKind, linePath, linear, niceTicks } from "../lib/charts";
 import { groupLabel } from "../lib/labels";
 import type { Curve } from "../lib/parse";
 import { pct } from "../lib/rates";
 import { t } from "../lib/t";
-
-const W = 640;
-const H = 320;
-const M = { l: 64, r: 16, t: 12, b: 44 };
+import { useNarrow } from "../lib/useNarrow";
 
 /** Display name for a curve: "Citywide", a case type or a department. */
 export function curveLabel(name: string): string {
@@ -28,18 +25,20 @@ function share(c: Curve, at: "at_7" | "at_30" | "at_90"): string {
  * drawn. Two curves differ by line style (solid and dashed), not only by place, and a table below repeats every number.
  */
 export function SurvivalChart({ curve, baseline, tierLabel }: { curve: Curve; baseline: Curve | null; tierLabel: string }) {
+  const { W, H, M, narrow } = chartDims(useNarrow(), 320);
   const x = linear(0, Math.max(...curve.times, 1), M.l, W - M.r);
   // the vertical range starts below the lowest interval bound (rounded down to 5%), so the band is readable when most fixes hold
   const floor = Math.max(0, Math.min(0.95, Math.floor(Math.min(...curve.lo, ...(baseline?.lo ?? [1])) * 20) / 20));
   const y = linear(floor, 1, H - M.b, M.t);
   const xs = curve.times.map(x);
   const ticksX = [0, 7, 30, 60, 90].filter((d) => d <= Math.max(...curve.times));
-  const ticksY = [0, 1, 2, 3, 4].map((i) => floor + ((1 - floor) * i) / 4);
+  const ticksY = niceTicks(floor, 1, narrow ? 4 : 5);
+  const unknown = t("charts.share_unknown");
   const label = t("charts.survival_label", {
-    name: curveLabel(curve.name), tier: tierLabel, at7: pct(curve.at_7) || "unknown", at30: pct(curve.at_30) || "unknown", at90: pct(curve.at_90) || "unknown",
-  });
+    name: curveLabel(curve.name), tier: tierLabel, at7: pct(curve.at_7) || unknown, at30: pct(curve.at_30) || unknown, at90: pct(curve.at_90) || unknown,
+  }) + (baseline ? " " + t("charts.survival_label_base", { name: curveLabel(baseline.name), at7: pct(baseline.at_7) || unknown, at30: pct(baseline.at_30) || unknown, at90: pct(baseline.at_90) || unknown }) : "");
   return (
-    <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} data-testid="survival-chart" focusable="false">
+    <svg className={narrow ? "chart chart-narrow" : "chart"} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} data-testid="survival-chart" focusable="false">
       {ticksY.map((v) => (
         <g key={v}>
           <line className="chart-grid" x1={M.l} x2={W - M.r} y1={y(v)} y2={y(v)} />
@@ -53,11 +52,22 @@ export function SurvivalChart({ curve, baseline, tierLabel }: { curve: Curve; ba
         </g>
       ))}
       <text className="chart-axis" x={(M.l + W - M.r) / 2} y={H - 6} textAnchor="middle">{t("charts.axis_days")}</text>
-      <text className="chart-axis" transform={`translate(12 ${(M.t + H - M.b) / 2}) rotate(-90)`} textAnchor="middle">{t("charts.axis_share")}</text>
+      <text className="chart-axis" transform={`translate(${narrow ? 11 : 12} ${(M.t + H - M.b) / 2}) rotate(-90)`} textAnchor="middle">{t("charts.axis_share")}</text>
       <path className="chart-band" data-testid="survival-band" d={bandPath(xs, curve.lo.map(y), curve.hi.map(y))} />
       {baseline ? <path className="chart-line chart-line-base" d={linePath(baseline.times.map(x), baseline.survival.map(y))} /> : null}
       <path className="chart-line" d={linePath(xs, curve.survival.map(y))} />
     </svg>
+  );
+}
+
+/** Key for the survival chart: the picked group (solid), the citywide curve (dashed, only when a group is picked) and the band (UX-22). */
+export function SurvivalLegend({ curve, baseline }: { curve: Curve; baseline: Curve | null }) {
+  return (
+    <ul className="chart-legend" data-testid="survival-legend">
+      <li><svg width="28" height="10" aria-hidden="true" focusable="false"><line className="chart-line" x1="0" x2="28" y1="5" y2="5" /></svg> {curveLabel(curve.name)}</li>
+      {baseline ? <li><svg width="28" height="10" aria-hidden="true" focusable="false"><line className="chart-line chart-line-base" x1="0" x2="28" y1="5" y2="5" /></svg> {t("charts.citywide")}</li> : null}
+      <li><svg width="28" height="14" aria-hidden="true" focusable="false"><rect className="chart-band" x="0" y="1" width="28" height="12" /></svg> {t("charts.legend_band")}</li>
+    </ul>
   );
 }
 
