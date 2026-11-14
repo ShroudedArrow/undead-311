@@ -86,3 +86,55 @@ def test_req_ing_sample_1_sample_run_needs_no_raw_data_and_writes_valid_files(tm
     assert status["planned_followup_count"] == rep.planned_followups
     if co["city_originated_share"] >= 0.5:
         assert any("city-originated" in a for a in status["anomalies"])
+
+
+def test_req_stat_exp_1_stats_ran_and_a_stale_tour_is_removed(tmp_path):
+    """REQ-STAT-EXP.1: the stats stage runs, writes scorecard.json, and removes a judge_tour.json it did not produce."""
+    raw, snap = raw_folder(tmp_path)
+    out = tmp_path / "out"
+    (out / "stats").mkdir(parents=True)
+    stale = out / "stats" / "judge_tour.json"
+    stale.write_text('{"zombie_ids": ["old:1", "old:2", "old:3"]}')
+    rep = run_pipeline(out_dir=out, raw_dir=raw, work_dir=tmp_path / "data", snapshot_md=snap, run_time="2026-11-13T00:00:00Z")
+    assert rep.stats == "ran"
+    assert (out / "stats" / "scorecard.json").is_file() and (out / "stats" / "stats_status.json").is_file()
+    assert not stale.exists()  # one headline zombie only: no tour this run
+    assert "calibration_warning" in json.loads((out / "status.json").read_text())
+
+
+def test_req_stat_exp_1_a_dependency_missing_inside_stats_fails_the_run(tmp_path, monkeypatch):
+    """REQ-STAT-EXP.1: only an absent stats package is "not present"; a missing dependency inside it is an error."""
+    import importlib
+
+    real = importlib.import_module
+
+    def fake(name, *a, **k):
+        if name == "undead311.stats.pipeline":
+            raise ModuleNotFoundError("No module named 'lifelines'", name="lifelines")
+        return real(name, *a, **k)
+
+    monkeypatch.setattr(importlib, "import_module", fake)
+    raw, snap = raw_folder(tmp_path)
+    with pytest.raises(ModuleNotFoundError, match="lifelines"):
+        run_pipeline(out_dir=tmp_path / "out", raw_dir=raw, work_dir=tmp_path / "data", snapshot_md=snap)
+
+
+def test_req_stat_exp_1_an_absent_stats_package_is_not_present(tmp_path, monkeypatch):
+    """REQ-STAT-EXP.1: with no stats package the run goes on, and an old stats_status.json is not folded into status.json."""
+    import importlib
+
+    real = importlib.import_module
+
+    def fake(name, *a, **k):
+        if name == "undead311.stats.pipeline":
+            raise ModuleNotFoundError("No module named 'undead311.stats'", name="undead311.stats")
+        return real(name, *a, **k)
+
+    monkeypatch.setattr(importlib, "import_module", fake)
+    raw, snap = raw_folder(tmp_path)
+    out = tmp_path / "out"
+    (out / "stats").mkdir(parents=True)
+    (out / "stats" / "stats_status.json").write_text('{"calibration_warning": "stale"}')
+    rep = run_pipeline(out_dir=out, raw_dir=raw, work_dir=tmp_path / "data", snapshot_md=snap, run_time="2026-11-13T00:00:00Z")
+    assert rep.stats == "not present"
+    assert json.loads((out / "status.json").read_text())["calibration_warning"] is None

@@ -18,6 +18,7 @@ from undead311.stats.rates import scorecard_payload, scorecards
 from undead311.stats.tour import build_tour, read_override
 
 OVERRIDE_FILE = "judge_tour_override.json"
+STAT_FILES = ("scorecard.json", "judge_tour.json")  # demo-critical outputs; one that is not produced is removed
 
 
 def build_stats(
@@ -59,13 +60,18 @@ def run_stats(
 ) -> dict[str, Any]:
     """Validate, then write the stats files under `<out>/stats/` (REQ-STAT-EXP.1). Returns the stats status."""
     end = data_end or max((c.open_utc for c in by_id.values()), default=None)
-    if end is None:
-        return {"calibration_warning": None, "warnings": ["no cases"]}
-    payloads, status = build_stats(result, by_id, data_version, end, params, labels_dir)
-    for name, payload in payloads.items():
-        validate(name.removesuffix(".json"), payload)
     folder = Path(out) / "stats"
+    if end is None:
+        payloads: dict[str, Any] = {}
+        status: dict[str, Any] = {"calibration_warning": None, "warnings": ["no cases"]}
+    else:
+        payloads, status = build_stats(result, by_id, data_version, end, params, labels_dir)
+        for name, payload in payloads.items():
+            validate(name.removesuffix(".json"), payload)
     for name in sorted(payloads):
         write_text_atomic(folder / name, canonical_json(payloads[name]))
+    for name in STAT_FILES:  # a file from an earlier run must not outlive a run that did not produce it
+        if name not in payloads:
+            (folder / name).unlink(missing_ok=True)
     write_text_atomic(folder / "stats_status.json", canonical_json(status))
     return status

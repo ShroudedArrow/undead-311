@@ -201,21 +201,21 @@ def run_pipeline(
                 pii.scrub(by_id[cid].closure_text)
                 pii.scrub(by_id[cid].street)
         report.pii_counts = dict(sorted(pii.counts.items()))
-        # stats (durability-stats), when present
+        # stats (durability-stats), when present (REQ-STAT-EXP.1). Only an absent stats package means "not present":
+        # a dependency missing inside it, or any error in run_stats, fails the run instead of passing as absent.
+        stats_status = None
         try:
             stats = importlib.import_module("undead311.stats.pipeline")
-            stats.run_stats(  # type: ignore[attr-defined]
+        except ModuleNotFoundError as e:
+            if e.name is None or not e.name.startswith("undead311.stats"):
+                raise
+            report.stats = "not present"
+        else:
+            stats_status = stats.run_stats(  # type: ignore[attr-defined]
                 con, result, by_id, out, params=p, data_version=version, labels_dir=root / "data" / "labels",
                 data_end=max((c.open_utc for c in cases), default=None),
             )
             report.stats = "ran"
-        except ModuleNotFoundError:
-            report.stats = "not present"
-        stats_status = None
-        for cand in (out / "stats" / "stats_status.json", out / "stats_status.json", processed / "stats_status.json"):
-            if cand.is_file():
-                stats_status = json.loads(cand.read_text())
-                break
         ctx = ExportContext(
             data_version=version,
             run_time=run_time or datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
