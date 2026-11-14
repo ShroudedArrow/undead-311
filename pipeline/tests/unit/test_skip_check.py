@@ -28,9 +28,9 @@ def test_recipe_declares_base_branch_and_start_at():
     assert "default main" in inputs["base_branch"]
 
 
-def test_durability_stats_credibility_loop_has_five_iterations(flat):
+def test_durability_stats_credibility_loop_has_four_iterations(flat):
     node = next(n["node"] for n in flat if n["id"] == "durability-stats-credibility-loop")
-    assert node["maxIterations"] == 5
+    assert node["maxIterations"] == 4
 
 
 def test_every_other_loop_keeps_three(flat):
@@ -120,3 +120,13 @@ def test_start_at_is_read_from_the_run_folder(tmp_path):
         subprocess.run([*base, "--step-id", "coroner-label"], check=False).returncode == skip_check.SKIP_EXIT
     )
     assert subprocess.run([*base, "--step-id", "design-gate"], check=False).returncode == 0
+
+
+def test_recipe_carry_over_is_an_input_not_a_hard_coded_branch():
+    """Setup merges origin/build/<carry_from>-engine and -web; no run id is baked into the recipe."""
+    data = yaml.safe_load(RECIPE.read_text())
+    assert "carry_from" in data["inputs"]
+    text = RECIPE.read_text()
+    assert "origin/build/<CARRY>-engine" in text and "origin/build/<CARRY>-web" in text
+    assert "origin/build/build-1" not in text
+
