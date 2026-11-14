@@ -5,10 +5,9 @@
 # `cd web && npm run build` (tsc, then vite). Dependencies are installed first because package.json sits in web/, not
 # at the repo root where Netlify looks by default.
 #
-# Headers (REQ-OPS-HOST.3, REQ-OPS-CACHE.1): the target is a `_headers` file the web build writes into web/dist, which
-# Netlify reads from the publish directory. No branch generates it yet (haunted-web task 12, credibility layer), so an
-# INTERIM same-origin Content-Security-Policy is set below, so that a first deploy never ships without one. When the
-# web build writes `_headers`, Netlify gives that file precedence for the same header and path; delete the block then.
+# Headers (REQ-OPS-HOST.3, REQ-OPS-CACHE.1): the Content-Security-Policy lives in ONE place, the `_headers` file the web
+# build writes into web/dist (web/scripts/write-headers.ts, from web/src/lib/csp.ts), which Netlify reads from the publish
+# directory. This file sets no security header, so Netlify never sends two policies (ops#59, ops#64).
 # Cache headers (immutable assets, no-cache index.html) are nightly-and-deploy task 5 and are not set here.
 
 [build]
@@ -22,12 +21,3 @@
 
 [context.deploy-preview]
   command = "npm --prefix web ci && make build"
-
-# INTERIM (review N1, ops#53). Same-origin only: no third-party script, font, tile or API host (tech.md). MapLibre and
-# deck.gl need blob: workers and data: or blob: images; they and React set inline styles, hence style-src 'unsafe-inline'.
-[[headers]]
-  for = "/*"
-  [headers.values]
-    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
-    X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin"
