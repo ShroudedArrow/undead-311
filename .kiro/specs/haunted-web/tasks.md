@@ -46,7 +46,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 
 ## Credibility
 
-- [ ] 12. [credibility] Content Security Policy and budget gate
+- [x] 12. [credibility] Content Security Policy and budget gate
   - Generate the CSP headers file for the host; the budget check becomes a failure once engine sharding exists.
   - _Requirements: REQ-WEB-PERF.1, .3_
 - [ ] 13. [credibility] Sensitivity tier toggle

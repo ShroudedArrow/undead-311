@@ -3,8 +3,8 @@
 //     Text files are scanned for absolute URLs; every host must be on the reviewed INERT list (namespaces, documentation
 //     links, link-only references, and library defaults that are never requested). A new host fails the build until a
 //     person reviews it. The e2e test "makes no request to another origin" proves nothing is fetched at run time.
-//  2. First-view payload (warning only for now): gzip size of what "/" loads, against the 3 MB budget. It becomes a
-//     failure with --strict once the engine's sharding exists (REQ-WEB-PERF.1, credibility layer).
+//  2. First-view payload: gzip size of what "/" loads, against the 3 MB budget. A failure under --strict, which `npm run build`
+//     uses now that the engine shards its card files (REQ-WEB-PERF.1).
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, extname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -75,6 +75,12 @@ export function checkOrigins(files) {
   return problems;
 }
 
+/** REQ-WEB-PERF.1: over the 3 MB budget is a build failure under --strict, a warning otherwise. */
+export function budgetVerdict(totalBytes, strictMode) {
+  const over = totalBytes > BUDGET_BYTES;
+  return { over, fail: over && strictMode };
+}
+
 function gz(path) {
   return gzipSync(readFileSync(path)).length;
 }
@@ -114,8 +120,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   total += tiles;
   const mb = (total / 1024 / 1024).toFixed(2);
   const msg = `check-build: first view about ${mb} MB transferred (${view.length} files gzip + ${Math.round(tiles / 1024)} KB tile estimate), budget 3 MB`;
-  if (total > BUDGET_BYTES) {
-    console.warn(`${msg}: OVER BUDGET${strict ? "" : " (warning only until the engine shards its files)"}`);
-    if (strict) process.exit(1);
+  const verdict = budgetVerdict(total, strict);
+  if (verdict.over) {
+    console.warn(`${msg}: OVER BUDGET${strict ? "" : " (warning only without --strict)"}`);
+    if (verdict.fail) process.exit(1);
   } else console.log(msg);
 }

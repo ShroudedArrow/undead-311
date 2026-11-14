@@ -11,7 +11,7 @@
     "dev": "vite",
     "check-build": "node scripts/check-build.mjs",
     "check-tour": "node scripts/check-tour.ts",
-    "build": "node scripts/check-tour.ts && tsc --noEmit && vite build && node scripts/check-build.mjs",
+    "build": "node scripts/check-tour.ts && tsc --noEmit && vite build && node scripts/write-headers.ts && node scripts/check-build.mjs --strict",
     "typecheck": "tsc --noEmit",
     "gen:parsers": "node scripts/gen-parsers.mjs",
     "fixtures": "node scripts/make-fixtures.mjs",
