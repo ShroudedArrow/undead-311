@@ -144,7 +144,8 @@
     "loading": "Loading possible zombies",
     "bulk_toggle": "Mark closures that were part of a bulk closure",
     "bulk_note": "Rings possible zombies whose closure was part of a bulk closure. Those closures are less certain evidence.",
-    "bulk_count": "{count} of the possible zombies shown follow a bulk closure, ringed in orange."
+    "bulk_count": "{count} of the possible zombies shown follow a bulk closure, ringed in orange.",
+    "bulk_none": "None of the possible zombies shown follow a bulk closure, so no rings are drawn."
   },
   "departments": {
     "PWDx": "Public Works Department (PWDx)",

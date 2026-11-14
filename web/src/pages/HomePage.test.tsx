@@ -21,10 +21,10 @@ const POINTS = {
   department: ["PWDx", "BTDT", null, "PWDx"], neighborhood: ["Dorchester", "Roxbury", "Roxbury", "Roxbury"], year: [2020, 2021, 2021, 2021],
 };
 
-function stubFetch() {
+function stubFetch(bulkFlags: [boolean, boolean, boolean, boolean] = [false, true, true, false]) {
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
     const zz = (id: string, bulk: boolean) => ({ zombie_id: id, incident_id: `I-${id}`, resurrection_id: `R-${id}`, reports_after: 1, gap_days: 3, match_mode: "radius", distance_m: 5, tier: "headline", baseline_p: 0.1, confidence: 0.8, confidence_partial: false, is_planned_followup: false, after_temporary_fix: false, source_unknown: false, chain_id: `C-${id}`, times_risen: 1, skeptic_verdict: "survives", skeptic_notes: "", type_family: "sign", department: null, neighborhood: "Roxbury", coroner_label: "resolved", bulk_closure: bulk, close_year: 2020, resurrection_date: "2021-01-01" });
-    const body = String(url).endsWith("zombies.json") ? { data_version: "v", zombies: [zz("a", false), zz("b", true), zz("c", true), zz("d", false)] } : String(url).endsWith("points.json") ? POINTS : { data_version: "v", last_run: "2026-11-11T00:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" };
+    const body = String(url).endsWith("zombies.json") ? { data_version: "v", zombies: [zz("a", bulkFlags[0]), zz("b", bulkFlags[1]), zz("c", bulkFlags[2]), zz("d", bulkFlags[3])] } : String(url).endsWith("points.json") ? POINTS : { data_version: "v", last_run: "2026-11-11T00:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" };
     return { ok: true, status: 200, json: async () => body } as Response;
   }));
 }
@@ -125,6 +125,15 @@ describe("Bulk-closure layer (REQ-WEB-DEATHS.1)", () => {
     await user.click(screen.getByLabelText("Mark closures that were part of a bulk closure"));
     expect(await screen.findByText("2 of the possible zombies shown follow a bulk closure, ringed in orange.")).toBeTruthy();
     expect(screen.getByTestId("map").getAttribute("data-bulk-ids")).toBe("b,c");
+  });
+  it("says so when no zombie shown follows a bulk closure, instead of '0 ... ringed in orange' (REQ-WEB-DEATHS.1; UX-28)", async () => {
+    stubFetch([false, false, false, false]);
+    const user = userEvent.setup();
+    render(<MemoryRouter><App /></MemoryRouter>);
+    await screen.findByText("3 possible zombies match these filters");
+    await user.click(screen.getByLabelText("Mark closures that were part of a bulk closure"));
+    expect(await screen.findByText("None of the possible zombies shown follow a bulk closure, so no rings are drawn.")).toBeTruthy();
+    expect(screen.queryByText(/^0 of the possible zombies/)).toBeNull();
   });
   it("adds a Bulk closure column to the table that mirrors the map", async () => {
     stubFetch();

@@ -138,6 +138,14 @@ describe("fixtures follow the zombie definition (UX-16, UX-18, UX-20, UX-25)", (
     for (const c of cards) expect(TRANSFER.test(c.original.closure_text ?? ""), c.zombie_id).toBe(false);
   });
 
+  it("no card has a new-system original closed as Transitioned: step 9 says it is never an original (UX-26, testing.md property 20)", () => {
+    const cards = allCards();
+    for (const c of cards) {
+      expect((c.original.closure_text ?? "").trim().toLowerCase(), c.zombie_id).not.toBe("transitioned");
+      expect(c.original.closure_text ?? "", c.zombie_id).not.toMatch(/transition/i);
+    }
+  });
+
   it("bulk flags come from bulk_closures.json: a zombie is flagged exactly when its original's (department, day, text) is listed (UX-18)", () => {
     const bulk = parseBulkClosures(read("bulk_closures.json"));
     const zs = parseZombies(read("zombies.json"));
@@ -188,6 +196,15 @@ describe("fixture builder rules (UX-16, UX-18, UX-20)", () => {
       const gone = build([row({ id: "a", closure_text: text }), re("b", "42.3")]).files["zombies.json"].zombies ?? [];
       expect(gone, text).toEqual([]);
     }
+  });
+  it("drops a pair whose new-system original was closed with code Transitioned, by code or by text (ZD step 9, UX-26)", () => {
+    const re = row({ id: "b", system: "new", open_time_utc: "2020-01-10T10:00:00Z", close_time_utc: "", status: "Open" });
+    for (const over of [{ closure_code: "Transitioned" }, { closure_text: "Transitioned" }] as Row[]) {
+      const gone = build([row({ id: "a", system: "new", ...over }), re]).files["zombies.json"].zombies ?? [];
+      expect(gone, JSON.stringify(over)).toEqual([]);
+    }
+    const kept = build([row({ id: "a", system: "new", closure_code: "Noted", closure_text: "Noted" }), re]).files["zombies.json"].zombies ?? [];
+    expect(kept.map((z) => z.zombie_id)).toEqual(["I-a:b"]);
   });
   it("flags bulk_closure only for originals in a listed (department, day, template) group, and lists that group (UX-18)", () => {
     const text = "Case Closed Case Noted Backlog cleanup.";

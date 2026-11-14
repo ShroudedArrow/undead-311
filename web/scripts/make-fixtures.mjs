@@ -59,6 +59,8 @@ const NOT_A_NEIGHBORHOOD = new Set(["Boston"]);
 export const canonicalHood = (h) => (h && !NOT_A_NEIGHBORHOOD.has(h) ? (HOOD_ALIASES[h] ?? h) : null);
 /** ZD step 9: a legacy closure text that says the case was resubmitted, replaced or migrated. Such a case is never an original (UX-16, ops#65). */
 export const TRANSFER = /resubmitted|see new case|transferred|migrated/i;
+/** ZD step 9: a new-system closure coded Transitioned is a transfer. It is never an original (UX-26, ops#76). The code can also appear as the closure text. */
+export const isTransferred = (c) => TRANSFER.test(c.text || "") || c.code === "Transitioned" || (c.text || "").trim().toLowerCase() === "transitioned";
 const slug = (s) => (s || "unknown").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 function coronerLabel(text, code) {
@@ -129,7 +131,7 @@ export function buildFixtures(rows, override = null) {
   for (const a of closed) {
     const label = coronerLabel(a.text, a.code);
     if (label === "duplicate" || label === "invalid") continue;
-    if (TRANSFER.test(a.text)) continue; // ZD step 9: a transferred closure is never an original
+    if (isTransferred(a)) continue; // ZD step 9: a transferred or Transitioned closure is never an original
     let best = null;
     const [f, la, lo] = [a.family, Math.floor(a.lat / 0.0005), Math.floor(a.lon / 0.0005)];
     for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
@@ -217,7 +219,7 @@ export function buildFixtures(rows, override = null) {
   const dataEndMs = Math.max(...cases.map((c) => c.close ?? c.open));
   const statsFiles = buildStatsFixtures({
     closed: labelled, zombies: zs, dataEnd: dataEndMs, version: `fixture-${new Date(dataEndMs).toISOString().slice(0, 10)}`,
-    nullCoords: rows.length - cases.length, mirrorPairs, transferred: labelled.filter((c) => TRANSFER.test(c.text || "")).length,
+    nullCoords: rows.length - cases.length, mirrorPairs, transferred: labelled.filter(isTransferred).length,
   });
 
   const tally = { headline: 0, source_unknown: 0, sensitivity: 0 };
