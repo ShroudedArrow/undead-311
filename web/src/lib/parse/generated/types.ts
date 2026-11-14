@@ -356,13 +356,26 @@ export interface ExcessFile {
     [k: string]: unknown;
   }[];
   /**
-   * REQ-STAT-SHIFT: observed count against the distribution of counts under random time shifts. Fields: runs, seed, observed, mean, q025, q975 (numbers). Inner fields are not type-checked so the methods page can say a result is missing instead of failing the whole file (ops#64).
+   * REQ-STAT-SHIFT: observed count against the distribution of counts under random time shifts.
    */
-  shift?: {};
+  shift?: {
+    runs: number;
+    seed: number;
+    observed: number;
+    mean: number;
+    q025: number;
+    q975: number;
+    [k: string]: unknown;
+  };
   /**
-   * REQ-STAT-PLACEBO: excess for a placebo outcome that should be about zero. Fields: excess, lo, hi (numbers). Inner fields are not type-checked, see `shift`.
+   * REQ-STAT-PLACEBO: excess for a placebo outcome that should be about zero, with its interval.
    */
-  placebo?: {};
+  placebo?: {
+    excess: number;
+    lo: number;
+    hi: number;
+    [k: string]: unknown;
+  };
   [k: string]: unknown;
 }
 

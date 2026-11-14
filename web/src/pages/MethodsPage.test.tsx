@@ -63,7 +63,7 @@ describe("Methods page (REQ-WEB-METHODS.1)", () => {
     expect(screen.getByTestId("placebo").textContent).toBe("Placebo excess 0.4, 95% interval -3.1 to 3.9");
   });
   it("says so when the shift and placebo results are missing, instead of inventing them", async () => {
-    stub({ "excess.json": { ...(FILES["excess.json"] as object), shift: undefined, placebo: { excess: "x" } } });
+    stub({ "excess.json": { ...(FILES["excess.json"] as object), shift: undefined, placebo: undefined } });  // a malformed result no longer reaches the page: the schema rejects it (ops#92)
     open();
     expect(await screen.findByText("The shift-test distribution is not part of this data yet.")).toBeTruthy();
     expect(screen.getByText("The placebo result is not part of this data yet.")).toBeTruthy();
