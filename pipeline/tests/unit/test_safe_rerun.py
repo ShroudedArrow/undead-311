@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,7 @@ from test_pipeline import raw_folder
 
 import undead311.export.writers as w
 import undead311.pipeline as pl
-from undead311.export.writers import Swap, staging_dir, swap_into
+from undead311.export.writers import Swap, _proc_start, find_staging_leftovers, staging_dir, swap_into
 from undead311.pipeline import owns_output, run_pipeline
 
 RUN = "2026-11-13T00:00:00Z"
@@ -210,3 +211,40 @@ def test_req_ing_nightly_1_a_killed_runs_staging_folder_is_removed_by_the_next_r
         (d / "cards" / "x.json").write_text("{}")
     stage = staging_dir(tmp_path / "out")
     assert not dead.exists() and live.exists() and other.exists() and stage.is_dir()
+
+
+@pytest.mark.skipif(_proc_start(os.getpid()) is None, reason="needs /proc to read a process start time")
+def test_req_ing_nightly_1_a_reused_pid_does_not_keep_a_dead_runs_staging_folder(tmp_path):
+    """ops#93: the name carries pid and start time. The parent is alive, so a folder with its pid but another start time
+    (a reused pid) is stale, while one with its real start time belongs to a running process and stays."""
+    ppid = os.getppid()
+    reused = tmp_path / f".out.staging-{ppid}-1"
+    running = tmp_path / f".out.staging-{ppid}-{_proc_start(ppid)}"
+    for d in (reused, running):
+        d.mkdir()
+    staging_dir(tmp_path / "out")
+    assert not reused.exists() and running.exists()
+
+
+def test_req_ing_nightly_1_a_folder_with_no_start_time_expires_by_age(tmp_path):
+    """ops#93: where no start time is known the pid alone is trusted only while the folder is under a day old."""
+    old = tmp_path / f".out.staging-{os.getppid()}"
+    old.mkdir()
+    day_and_a_bit = time.time() - 25 * 3600
+    os.utime(old, (day_and_a_bit, day_and_a_bit))
+    staging_dir(tmp_path / "out")
+    assert not old.exists()
+
+
+def test_req_ing_nightly_1_a_staging_folder_is_named_for_its_process_and_is_found_under_a_tree(tmp_path):
+    stage = staging_dir(tmp_path / "public" / "data")
+    assert stage.name.startswith(f".data.staging-{os.getpid()}-")
+    assert find_staging_leftovers(tmp_path) == [stage]
+    assert find_staging_leftovers(tmp_path / "missing") == []
+
+
+def test_req_ing_nightly_1_no_staging_folder_sits_in_the_shipped_web_folders():
+    """ops#93: a leftover `.*.staging-*` under web/public or web/dist would ship with the static site."""
+    repo = Path(__file__).resolve().parents[3]
+    for folder in ("public", "dist"):
+        assert find_staging_leftovers(repo / "web" / folder) == [], folder

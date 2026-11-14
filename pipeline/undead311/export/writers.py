@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 from collections import defaultdict
 from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass, field
@@ -303,6 +304,9 @@ def export_all(result: DetectionResult, cases: Mapping[str, Case], out_dir: Path
     return written
 
 
+STAGING_MAX_AGE_S = 24 * 3600  # where a process start time can't be read, a folder this old is stale whatever its pid
+
+
 def _pid_alive(pid: int) -> bool:
     try:
         os.kill(pid, 0)
@@ -313,26 +317,58 @@ def _pid_alive(pid: int) -> bool:
     return True
 
 
+def _proc_start(pid: int) -> str | None:
+    """The process start time in clock ticks since boot (field 22 of /proc/<pid>/stat), or None where /proc is absent.
+    A reused pid has a different start time, so pid plus start time names one process for good."""
+    try:
+        stat = Path(f"/proc/{pid}/stat").read_text()
+    except OSError:
+        return None
+    return stat.rpartition(")")[2].split()[19]  # fields after the command name; starttime is the 22nd overall
+
+
+def _owner_alive(folder: Path) -> bool:
+    """True when the process that made `folder` is still running (ops#93). The folder name ends in `-<pid>-<start>`,
+    the writer's pid and start time: a pid that was reused by another process has a different start time, so it does
+    not keep a dead run's folder. A name with no start time (or no /proc to read one) trusts the pid only while the
+    folder is under STAGING_MAX_AGE_S old."""
+    parts = folder.name.rsplit(".staging-", 1)[-1].split("-")
+    if not parts[0].isdigit() or int(parts[0]) == os.getpid() or not _pid_alive(int(parts[0])):
+        return False
+    now = _proc_start(int(parts[0]))
+    if now is None or len(parts) < 2 or not parts[1]:
+        try:
+            return time.time() - folder.stat().st_mtime < STAGING_MAX_AGE_S
+        except OSError:
+            return False
+    return now == parts[1]
+
+
 def remove_stale_staging(target: Path) -> list[Path]:
-    """Delete `.<name>.staging-<pid>` folders beside `target` left by a killed run (REQ-ING-NIGHTLY.1, ops#85).
+    """Delete `.<name>.staging-<pid>` folders beside `target` left by a killed run (REQ-ING-NIGHTLY.1, ops#85, ops#93).
 
     A SIGKILL or CI timeout skips the `finally` cleanup, and later runs have a new pid, so the folder would stay (under
-    web/public it would ship with the static build). Folders whose pid is still running are left alone."""
+    web/public it would ship with the static build). A folder is kept only while the exact process that made it runs
+    (pid plus start time in its name); a reused pid does not keep a dead run's folder."""
     target = Path(target)
     removed = []
     for old in sorted(target.parent.glob(f".{target.name}.staging-*")):
-        pid = old.name.rsplit("-", 1)[-1]
-        if old.is_dir() and not (pid.isdigit() and int(pid) != os.getpid() and _pid_alive(int(pid))):
+        if old.is_dir() and not _owner_alive(old):
             shutil.rmtree(old, ignore_errors=True)
             removed.append(old)
     return removed
+
+
+def find_staging_leftovers(root: Path) -> list[Path]:
+    """Every `.*.staging-*` folder under `root`: nothing of the kind may ship in a build (ops#93)."""
+    return sorted(p for p in Path(root).rglob(".*.staging-*") if p.is_dir()) if Path(root).is_dir() else []
 
 
 def staging_dir(target: Path) -> Path:
     """A fresh hidden folder beside `target` (same filesystem, so `os.replace` is atomic) for one run's output."""
     target = Path(target)
     remove_stale_staging(target)
-    stage = target.parent / f".{target.name}.staging-{os.getpid()}"
+    stage = target.parent / f".{target.name}.staging-{os.getpid()}-{_proc_start(os.getpid()) or ''}"
     shutil.rmtree(stage, ignore_errors=True)
     stage.mkdir(parents=True)
     return stage
