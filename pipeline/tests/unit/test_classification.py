@@ -36,9 +36,20 @@ def test_req_det_pf_3_new_system_re_report_after_made_safe_is_source_unknown():
 
 
 def test_req_det_pf_4_other_labels_are_not_affected_even_for_city_sources():
-    """REQ-DET-PF.4: after `resolved` a city-originated re-report is an ordinary zombie."""
-    z = run("resolved", r_source="Employee Generated").zombies[0]
-    assert z.tier == "headline" and not z.after_temporary_fix and not z.source_unknown
+    """REQ-DET-PF.4, REQ-DET-TIER.3: after `resolved` a city-originated re-report is still a possible zombie, in the
+    `city_rereport` tier outside the headline (ZD step 6, ops#29); it is not a planned follow-up."""
+    r = run("resolved", r_source="Employee Generated")
+    z = r.zombies[0]
+    assert z.tier == "city_rereport" and z.city_rereport and not z.after_temporary_fix and not z.source_unknown
+    assert not r.planned_followups and r.headline_count == 0
+
+
+def test_req_det_tier_3_sensitivity_wins_over_the_city_tier():
+    """REQ-DET-TIER.1, .3: a sensitivity-scope original keeps its zombie in the sensitivity tier even for a city re-report;
+    the `city_rereport` flag still says the re-report is a city case."""
+    r = detect([mk("A", 0, 1, tier="sensitivity"), mk("R", 10, source="Employee Generated")])
+    z = r.zombies[0]
+    assert z.tier == "sensitivity" and z.city_rereport
 
 
 def test_req_det_pf_classification_uses_the_resurrection_not_later_reports():

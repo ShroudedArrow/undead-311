@@ -4,7 +4,8 @@ A re-report is city-originated when it is a legacy case opened by city staff (`d
 system records no origin, so new-system re-reports are never removed: the counts say so. A zombie is removed only when
 every re-report attached to its incident is city-originated; an incident with a resident re-report keeps its zombie.
 The detector is not rerun: a first re-report that is city-originated while a later one is a resident's stays a zombie
-with its original tier (a small approximation, stated in METHODS.md).
+with its original tier (a small approximation, stated in METHODS.md). Since ops#29 a city-originated FIRST re-report is
+its own tier (`city_rereport`, outside the headline), so `city_only_incidents` is only a safety net for the scorecards.
 """
 
 from __future__ import annotations
@@ -25,12 +26,16 @@ def city_only_incidents(result: DetectionResult, cases: Mapping[str, Case]) -> f
 
 
 def city_counts(result: DetectionResult, cases: Mapping[str, Case]) -> dict[str, int]:
-    """Headline zombies with all re-reports, with city-originated ones removed, and what was removed (REQ-STAT-CITY.1)."""
-    only = city_only_incidents(result, cases)
+    """Headline counts with and without city-originated re-reports (REQ-STAT-CITY.1, REQ-DET-TIER.3).
+
+    A legacy city-originated first re-report puts the zombie in the `city_rereport` tier, outside the headline (ZD step 6,
+    ops#29), so `headline_without_city` is the headline itself and `city_originated_removed` is the size of that tier.
+    `headline_all` is what the headline held before the tier existed. A headline zombie whose later re-report is a city
+    case but whose first is a resident's keeps its place."""
     headline = [z for z in result.zombies if z.tier == "headline"]
-    removed = [z for z in headline if z.incident_id in only]
+    city_tier = result.count("city_rereport")
     unknown = [z for z in headline if cases[z.resurrection_id].system == "new"]
     return {
-        "headline_all": len(headline), "headline_without_city": len(headline) - len(removed),
-        "city_originated_removed": len(removed), "new_system_origin_unknown": len(unknown),
+        "headline_all": len(headline) + city_tier, "headline_without_city": len(headline),
+        "city_originated_removed": city_tier, "new_system_origin_unknown": len(unknown),
     }  # fmt: skip

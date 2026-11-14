@@ -45,6 +45,7 @@
             "enum": [
               "headline",
               "source_unknown",
+              "city_rereport",
               "sensitivity"
             ]
           },
@@ -76,6 +77,10 @@
           },
           "source_unknown": {
             "type": "boolean"
+          },
+          "city_rereport": {
+            "type": "boolean",
+            "description": "the re-report is a legacy city-originated case that is not a planned follow-up; such a zombie is tier city_rereport, outside the headline (ZD step 6, ops#29)"
           },
           "chain_id": {
             "type": "string"

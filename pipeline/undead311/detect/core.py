@@ -86,14 +86,16 @@ def is_city_originated(c: Case) -> bool:
 
 
 def city_origin_summary(result: DetectionResult, cases: dict[str, Case]) -> dict[str, float | int]:
-    """How many headline resurrections are legacy city-originated, and how many of those opened under 1 h after the
-    closure (REQ-DET-PF, methods.md: results with and without city-originated re-reports). Reported, never filtered."""
-    headline = [z for z in result.zombies if z.tier == "headline"]
-    city = [z for z in headline if is_city_originated(cases[z.resurrection_id])]
+    """How many legacy city-originated re-reports (tier `city_rereport`) sit beside the headline, and how many of them
+    opened under 1 h after the closure (ZD step 6, ops#29; REQ-DET-TIER.3). The share is of headline plus city tier, the
+    count the headline would have been before the tier existed. Reported, never filtered."""
+    headline = result.count("headline")
+    city = [z for z in result.zombies if z.city_rereport and z.tier == "city_rereport"]
     quick = [z for z in city if z.gap_days < 1 / 24]
+    both = headline + len(city)
     return {
-        "headline": len(headline), "city_originated": len(city), "city_originated_under_1h": len(quick),
-        "city_originated_share": len(city) / len(headline) if headline else 0.0,
+        "headline": headline, "city_rereport": len(city), "city_rereport_under_1h": len(quick),
+        "city_rereport_share": len(city) / both if both else 0.0,
     }  # fmt: skip
 
 
@@ -243,7 +245,7 @@ def detect(cases: list[Case], p: Params = DEFAULT, edges: Edges | None = None) -
             result.attribution[r.id] = target
 
     # 4. classification and tiers
-    pending: list[tuple[Incident, Case, int, bool, bool, Tier, Match]] = []
+    pending: list[tuple[Incident, Case, int, bool, bool, bool, Tier, Match]] = []
     by_id = {c.id: c for c in cases}
     for iid in sorted(attached):
         inc, rs = final[iid], attached[iid]
@@ -254,6 +256,7 @@ def detect(cases: list[Case], p: Params = DEFAULT, edges: Edges | None = None) -
             )
             continue
         after_temp = source_unknown = False
+        city = res.system == "legacy" and bool(is_city_originated(res))  # not a planned follow-up past this point (ZD step 6)
         if inc.coroner_label in PF_LABELS:
             if res.system == "legacy":
                 if is_city_originated(res):
@@ -264,11 +267,13 @@ def detect(cases: list[Case], p: Params = DEFAULT, edges: Edges | None = None) -
                 source_unknown = True
         if inc.tier == "sensitivity" or res.scope_tier == "sensitivity":
             tier: Tier = "sensitivity"
+        elif city:  # REQ-DET-TIER.3: a city re-report is a possible zombie outside the headline (ZD step 6, ops#29)
+            tier = "city_rereport"
         elif source_unknown:
             tier = "source_unknown"
         else:
             tier = "headline"
-        pending.append((inc, res, len(rs), after_temp, source_unknown, tier, best_match[(iid, res.id)]))
+        pending.append((inc, res, len(rs), after_temp, source_unknown, city, tier, best_match[(iid, res.id)]))
 
     # 5. chains: zombie incident -> the incident its closed resurrection belongs to
     parent: dict[str, str] = {}
@@ -291,7 +296,7 @@ def detect(cases: list[Case], p: Params = DEFAULT, edges: Edges | None = None) -
     comps: dict[str, list[str]] = defaultdict(list)
     for iid in list(parent):
         comps[find(iid)].append(iid)
-    zombie_inc = {inc.incident_id: tier for inc, _, _, _, _, tier, _ in pending}
+    zombie_inc = {inc.incident_id: tier for inc, _, _, _, _, _, tier, _ in pending}
     chain_of: dict[str, Chain] = {}
     for members in comps.values():
         starts = [i for i in members if i not in has_incoming] or members
@@ -309,7 +314,7 @@ def detect(cases: list[Case], p: Params = DEFAULT, edges: Edges | None = None) -
             result.chains.append(chain)
     result.chains.sort(key=lambda c: c.chain_id)
 
-    for inc, res, n_after, after_temp, source_unknown, tier, m in pending:
+    for inc, res, n_after, after_temp, source_unknown, city, tier, m in pending:
         chain = chain_of[inc.incident_id]
         z = Zombie(
                 incident_id=inc.incident_id,
@@ -322,6 +327,7 @@ def detect(cases: list[Case], p: Params = DEFAULT, edges: Edges | None = None) -
                 tier=tier,
                 after_temporary_fix=after_temp,
                 source_unknown=source_unknown,
+                city_rereport=city,
                 chain_id=chain.chain_id,
                 times_risen=chain.times_risen,
                 type_family=inc.type_family,

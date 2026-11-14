@@ -11,7 +11,7 @@ same edge set `sql_edges` gives at that window (tested).
 
 Tables written by `store_grid`:
   grid_run_index(run_id, matching, radius_m, window_days, without_street_light_other, n_cases, headline, source_unknown,
-                 sensitivity)  -- one row per run, also for a run with no zombie
+                 city_rereport, sensitivity)  -- one row per run, also for a run with no zombie
   grid_runs(run_id, matching, radius_m, window_days, without_street_light_other, tier, family, department, zombies)
                  -- long format: one row per run, tier, type family and department with at least one zombie
 """
@@ -26,7 +26,7 @@ import duckdb
 
 from undead311.detect.core import detect
 from undead311.detect.edges import sql_edges, time_related
-from undead311.detect.model import Case, DetectionResult, Match
+from undead311.detect.model import ZOMBIE_TIERS, Case, DetectionResult, Match
 from undead311.detect.params import DEFAULT, Params
 
 GRID_MATCHING = ("segment", "radius")
@@ -34,7 +34,7 @@ GRID_RADIUS_M = (15, 30, 50)
 GRID_WINDOW_DAYS = (30, 60, 90)
 CATCH_ALL_TYPE = "Street Light Other"
 UNKNOWN = "(unknown)"
-TIERS = ("headline", "source_unknown", "sensitivity")
+TIERS = ZOMBIE_TIERS
 
 
 @dataclass(frozen=True)
@@ -119,14 +119,14 @@ def store_grid(con: duckdb.DuckDBPyConnection, runs: list[GridRun]) -> None:
     con.execute("drop table if exists grid_runs")
     con.execute(
         "create table grid_run_index(run_id varchar, matching varchar, radius_m double, window_days double, "
-        "without_street_light_other boolean, n_cases integer, headline integer, source_unknown integer, sensitivity integer)"
+        "without_street_light_other boolean, n_cases integer, headline integer, source_unknown integer, city_rereport integer, sensitivity integer)"
     )
     con.execute(
         "create table grid_runs(run_id varchar, matching varchar, radius_m double, window_days double, "
         "without_street_light_other boolean, tier varchar, family varchar, department varchar, zombies integer)"
     )
     con.executemany(
-        "insert into grid_run_index values (?,?,?,?,?,?,?,?,?)",
+        "insert into grid_run_index values (?,?,?,?,?,?,?,?,?,?)",
         [(r.run_id, r.matching, r.radius_m, r.window_days, r.without_street_light_other, r.n_cases,
           *(r.total(t) for t in TIERS)) for r in runs],
     )  # fmt: skip

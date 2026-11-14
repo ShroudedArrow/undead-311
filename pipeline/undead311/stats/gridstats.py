@@ -66,19 +66,19 @@ def grid_payload(con: Any, data_version: str, params: Params, dataset: str) -> d
     try:
         runs = con.execute(
             "select i.run_id, i.matching, i.radius_m, i.window_days, i.without_street_light_other, i.headline, "
-            "i.source_unknown, i.sensitivity, m.excess, m.stayed_fixed_rate from grid_run_index i "
+            "i.source_unknown, i.city_rereport, i.sensitivity, m.excess, m.stayed_fixed_rate from grid_run_index i "
             "left join grid_metrics m using (run_id) order by i.run_id"
         ).fetchall()
     except duckdb.Error:  # no grid tables: the run skipped the grid
         return None
     points, without = [], {"headline": 0, "all_tiers": 0}
-    for _rid, matching, radius, window, no_slo, head, su, sens, excess, stayed in runs:
+    for _rid, matching, radius, window, no_slo, head, su, city, sens, excess, stayed in runs:
         if no_slo:
-            without = {"headline": int(head), "all_tiers": int(head + su + sens)}
+            without = {"headline": int(head), "all_tiers": int(head + su + city + sens)}
             continue
         points.append({
             "matching": matching, "radius_m": int(radius), "window_days": int(window), "headline": int(head),
-            "source_unknown": int(su), "sensitivity": int(sens), "excess": excess, "stayed_fixed_rate": stayed,
+            "source_unknown": int(su), "city_rereport": int(city), "sensitivity": int(sens), "excess": excess, "stayed_fixed_rate": stayed,
         })  # fmt: skip
     return {
         "data_version": data_version, "dataset": dataset, "params": params_json(params), "seed": None,

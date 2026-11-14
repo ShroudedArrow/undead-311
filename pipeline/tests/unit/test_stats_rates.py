@@ -102,7 +102,7 @@ def test_req_stat_exp_1_payload_validates_and_counts_the_tiers():
     result = detect(cs)
     payload = scorecard_payload(scorecards(result, {x.id: x for x in cs}, END), result, "v1")
     validate("scorecard", payload)
-    assert payload["counts"] == {"headline": 1, "source_unknown": 1, "sensitivity": 0}
+    assert payload["counts"] == {"headline": 1, "source_unknown": 1, "city_rereport": 0, "sensitivity": 0}
     assert payload["data_version"] == "v1"
 
 

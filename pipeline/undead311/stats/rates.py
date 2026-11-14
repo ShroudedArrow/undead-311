@@ -9,7 +9,7 @@ unknown are left out of both rates and counted in `n_closed - n_on_time_known` (
   The numerator is a subset of the on-time cases, so stayed-fixed <= on-time for every group (testing.md #10).
 
 `tier_set` "headline" counts only headline zombies and core-scope incidents; "all" counts zombies of every tier and
-adds sensitivity-scope incidents. The headline never includes `source_unknown` or `sensitivity` (REQ-STAT-TIER.2).
+adds sensitivity-scope incidents. The headline never includes `source_unknown`, `city_rereport` or `sensitivity` (REQ-STAT-TIER.2).
 The adjusted rate (REQ-STAT-SF.3) adds back the expected coincidences among on-time originals that are zombies of the
 tier set: `adj_k = raw_k + min(E, Z)`, with `Z` the on-time cases in zombie incidents and `E` the sum of each such
 incident's baseline `p` over its on-time cases (an original without a baseline adds nothing). `raw_k + Z` is the on-time
@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
-from undead311.detect.model import Case, DetectionResult, Incident
+from undead311.detect.model import ZOMBIE_TIERS, Case, DetectionResult, Incident
 from undead311.detect.params import DEFAULT, Params
 from undead311.stats.cohort import eligible_originals
 from undead311.stats.intervals import Rate, make_rate, wilson_p
@@ -122,8 +122,8 @@ def scorecards(
 
 
 def counts_by_tier(result: DetectionResult) -> dict[str, int]:
-    """Headline, `source_unknown` and `sensitivity` zombie counts, side by side (REQ-STAT-TIER.1)."""
-    return {t: result.count(t) for t in ("headline", "source_unknown", "sensitivity")}  # type: ignore[misc]
+    """Headline, `source_unknown`, `city_rereport` and `sensitivity` zombie counts, side by side (REQ-STAT-TIER.1)."""
+    return {t: result.count(t) for t in ZOMBIE_TIERS}  # type: ignore[misc]
 
 
 def scorecard_payload(

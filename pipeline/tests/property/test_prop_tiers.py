@@ -8,6 +8,7 @@ from hypothesis import strategies as st
 from strategies import LABELS, SOURCES, town
 
 from undead311.detect.core import CITY_SOURCES, PF_LABELS, detect
+from undead311.detect.model import ZOMBIE_TIERS
 
 
 @given(town())
@@ -26,11 +27,12 @@ def test_prop_p16_sensitivity_cases_never_enter_the_headline(cases):
 def test_prop_p17_exactly_one_tier_and_headline_count_equals_headline_zombies(cases):
     """REQ-DET-TIER.1-2: every zombie has one valid tier; the counts add up; flags agree with tiers."""
     r = detect(cases)
-    assert all(z.tier in ("headline", "source_unknown", "sensitivity") for z in r.zombies)
+    assert all(z.tier in ZOMBIE_TIERS for z in r.zombies)
     assert r.headline_count == sum(1 for z in r.zombies if z.tier == "headline")
-    assert r.count("headline") + r.count("source_unknown") + r.count("sensitivity") == len(r.zombies)
+    assert sum(r.count(t) for t in ZOMBIE_TIERS) == len(r.zombies)  # REQ-DET-TIER.3: four tiers
     assert len({z.zombie_id for z in r.zombies}) == len(r.zombies)
     assert all(z.source_unknown for z in r.zombies if z.tier == "source_unknown")
+    assert all(z.city_rereport for z in r.zombies if z.tier == "city_rereport")  # REQ-DET-TIER.3
 
 
 @given(
@@ -51,4 +53,6 @@ def test_prop_p18_step_6_outcomes_for_every_label_system_and_source(label, syste
         (z,) = r.zombies
         assert z.after_temporary_fix == (system == "legacy" and label == "made_safe_temporary")
         assert z.source_unknown == (system == "new" and label in PF_LABELS)
-        assert z.tier == ("source_unknown" if z.source_unknown else "headline")
+        # REQ-DET-TIER.3: a legacy city-originated re-report is the city tier; a new-system one is never known to be
+        assert z.city_rereport == city
+        assert z.tier == ("city_rereport" if city else "source_unknown" if z.source_unknown else "headline")

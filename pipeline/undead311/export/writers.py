@@ -146,7 +146,7 @@ def zombie_record(z: Zombie) -> dict:
         "distance_m": round(z.distance_m, 3), "tier": z.tier, "baseline_p": z.baseline_p,
         "confidence": round(z.confidence, 6), "confidence_partial": z.confidence_partial,
         "is_planned_followup": z.is_planned_followup, "after_temporary_fix": z.after_temporary_fix,
-        "source_unknown": z.source_unknown, "chain_id": z.chain_id, "times_risen": z.times_risen,
+        "source_unknown": z.source_unknown, "city_rereport": z.city_rereport, "chain_id": z.chain_id, "times_risen": z.times_risen,
         "skeptic_verdict": z.skeptic_verdict, "skeptic_notes": scrub_text(z.skeptic_notes) or "",
         "type_family": z.type_family, "department": z.department, "neighborhood": z.neighborhood,
         "district": z.district, "segment_id": z.segment_id, "coroner_label": z.coroner_label,
@@ -260,12 +260,11 @@ def build_status(result: DetectionResult, ctx: ExportContext) -> dict:
         "row_counts": dict(sorted(ctx.row_counts.items())), "anomalies": sorted(ctx.anomalies),
         "segments": ctx.segments, "calibration_warning": stats.get("calibration_warning"),
         "headline_count": result.headline_count, "source_unknown_count": result.count("source_unknown"),
-        "sensitivity_count": result.count("sensitivity"),
+        "city_rereport_count": result.count("city_rereport"), "sensitivity_count": result.count("sensitivity"),
     }  # fmt: skip
     status["planned_followup_count"] = len(result.planned_followups)
     if ctx.city_origin:
-        status["headline_city_originated_count"] = int(ctx.city_origin["city_originated"])
-        status["headline_city_originated_under_1h_count"] = int(ctx.city_origin["city_originated_under_1h"])
+        status["city_rereport_under_1h_count"] = int(ctx.city_origin["city_rereport_under_1h"])
     if ctx.dataset:
         status["dataset"] = ctx.dataset
     if ctx.data_end:

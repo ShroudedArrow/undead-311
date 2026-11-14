@@ -41,6 +41,10 @@
             "type": "integer",
             "minimum": 0
           },
+          "city_rereport": {
+            "type": "integer",
+            "minimum": 0
+          },
           "sensitivity": {
             "type": "integer",
             "minimum": 0

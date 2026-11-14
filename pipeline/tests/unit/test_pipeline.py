@@ -42,7 +42,7 @@ def test_req_ing_1_full_pipeline_on_a_tiny_raw_folder(tmp_path):
     rep = run_pipeline(out_dir=out, raw_dir=raw, work_dir=tmp_path / "data", snapshot_md=snap, run_time="2026-11-13T00:00:00Z")
     assert rep.ok and rep.row_counts["raw_legacy"] == 4 and rep.row_counts["raw_new"] == 1
     assert rep.exclusions["excluded_type"] == 1 and rep.exclusions["placeholder"] == 1
-    assert rep.tier_counts == {"headline": 1, "source_unknown": 0, "sensitivity": 0}
+    assert rep.tier_counts == {"headline": 1, "source_unknown": 0, "city_rereport": 0, "sensitivity": 0}
     zs = json.loads((out / "zombies.json").read_text())["zombies"]
     assert [z["zombie_id"] for z in zs] == ["1001:1002"]
     status = json.loads((out / "status.json").read_text())
@@ -75,17 +75,19 @@ def test_req_ing_sample_1_sample_run_needs_no_raw_data_and_writes_valid_files(tm
     assert (out / "status.json").is_file() and (out / "zombies.json").is_file()
     assert rep.excluded_pairs["transferred_original"] > 0 and rep.file_sizes["status.json"] > 0
     assert "sample" in rep.summary()
-    # ops#29: the city-originated share and the under-1-h count are reported, with the planned follow-ups kept out
+    # ops#29, REQ-DET-TIER.3: city re-reports are their own tier; the share and the under-1-h count are reported, with the
+    # planned follow-ups kept out
     co = rep.city_origin
-    assert co["headline"] == rep.tier_counts["headline"] and 0 < co["city_originated"] <= co["headline"]
-    assert co["city_originated_under_1h"] <= co["city_originated"]
-    assert "city-originated headline resurrections" in rep.summary()
+    assert co["headline"] == rep.tier_counts["headline"] and co["city_rereport"] == rep.tier_counts["city_rereport"] > 0
+    assert co["city_rereport_under_1h"] <= co["city_rereport"]
+    assert "city re-reports (outside the headline)" in rep.summary()
     status = json.loads((out / "status.json").read_text())
-    assert status["headline_city_originated_count"] == co["city_originated"]
-    assert status["headline_city_originated_under_1h_count"] == co["city_originated_under_1h"]
+    assert status["city_rereport_count"] == co["city_rereport"]
+    assert status["city_rereport_under_1h_count"] == co["city_rereport_under_1h"]
+    assert "headline_city_originated_count" not in status
     assert status["planned_followup_count"] == rep.planned_followups
-    if co["city_originated_share"] >= 0.5:
-        assert any("city-originated" in a for a in status["anomalies"])
+    if co["city_rereport_share"] >= 0.5:
+        assert any("city re-reports" in a for a in status["anomalies"])
 
 
 def test_req_stat_exp_1_stats_ran_and_a_stale_tour_is_removed(tmp_path):

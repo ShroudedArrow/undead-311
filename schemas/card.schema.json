@@ -184,6 +184,7 @@
             "enum": [
               "headline",
               "source_unknown",
+              "city_rereport",
               "sensitivity"
             ]
           },

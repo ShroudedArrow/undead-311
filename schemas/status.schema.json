@@ -63,15 +63,25 @@
       "minimum": 0,
       "description": "Re-reports kept out of zombies as planned city follow-ups (ZD step 6); REQ-DET-PF"
     },
+    "city_rereport_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Zombies in the city_rereport tier: legacy city-originated re-reports that are not planned follow-ups, outside the headline; ZD step 6, REQ-DET-TIER.3"
+    },
     "headline_city_originated_count": {
       "type": "integer",
       "minimum": 0,
-      "description": "Headline resurrections that are legacy city-originated cases; REQ-DET-PF"
+      "description": "DEPRECATED, no longer written: the headline holds no city-originated re-report (see city_rereport_count)"
+    },
+    "city_rereport_under_1h_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Of the city_rereport zombies, those opened under 1 h after the closure; REQ-DET-TIER.3"
     },
     "headline_city_originated_under_1h_count": {
       "type": "integer",
       "minimum": 0,
-      "description": "Of those, opened under 1 h after the closure; REQ-DET-PF"
+      "description": "DEPRECATED, no longer written (see city_rereport_under_1h_count)"
     },
     "dataset": {
       "enum": [

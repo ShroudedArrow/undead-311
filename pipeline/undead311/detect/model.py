@@ -13,7 +13,8 @@ from typing import Literal
 EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 _US = timedelta(microseconds=1)
 
-Tier = Literal["headline", "source_unknown", "sensitivity"]
+Tier = Literal["headline", "source_unknown", "city_rereport", "sensitivity"]
+ZOMBIE_TIERS: tuple[str, ...] = ("headline", "source_unknown", "city_rereport", "sensitivity")
 MatchMode = Literal["segment", "intersection", "radius"]
 
 
@@ -116,6 +117,8 @@ class Zombie:
     skeptic_verdict: Literal["survives", "weakened", "explained_away", "not_reviewed"] = "not_reviewed"
     skeptic_notes: str = ""
     is_planned_followup: bool = False
+    #: the re-report is a legacy city-originated case that is not a planned follow-up (ZD step 6, ops#29)
+    city_rereport: bool = False
     catch_all: bool = False
     resurrection_date: str = ""  # YYYY-MM-DD (UTC) the re-report opened
 

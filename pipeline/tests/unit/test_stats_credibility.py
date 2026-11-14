@@ -383,15 +383,18 @@ def test_req_stat_temp_2_separate_deaths_are_counted_and_exclusions_ride_along()
     assert payload["exclusions"]["placeholder"] == 4 and payload["separate_deaths"]["duplicate"] == 1
 
 
-def test_req_stat_city_1_a_zombie_is_removed_only_when_every_re_report_is_city_originated():
+def test_req_stat_city_1_a_city_first_re_report_is_its_own_tier_and_a_later_one_changes_nothing():
+    """REQ-STAT-CITY.1, REQ-DET-TIER.3 (ops#29): a city-originated first re-report puts the zombie in the city tier, outside
+    the headline; a resident's first re-report keeps it in the headline even when a city case follows."""
     cs = [
-        mk("A", 0, 1, x=0), mk("RA", 10, x=0, source="Employee Generated"),  # only city: removed
-        mk("B", 0, 1, x=500), mk("RB1", 10, x=500, source="Employee Generated"), mk("RB2", 12, x=500),  # a resident too
-        mk("C", 0, 1, x=1000), mk("RC", 10, x=1000, system="new", source=None),  # origin unknown: kept
+        mk("A", 0, 1, x=0), mk("RA", 10, x=0, source="Employee Generated"),  # only city: its own tier
+        mk("B", 0, 1, x=500), mk("RB1", 10, x=500), mk("RB2", 12, x=500, source="Employee Generated"),  # resident first
+        mk("C", 0, 1, x=1000), mk("RC", 10, x=1000, system="new", source=None),  # origin unknown: headline
     ]  # fmt: skip
     res = detect(cs)
     by = {c.id: c for c in cs}
     assert city_only_incidents(res, by) == {"A"}
+    assert {z.incident_id: z.tier for z in res.zombies} == {"A": "city_rereport", "B": "headline", "C": "headline"}
     assert city_counts(res, by) == {
         "headline_all": 3, "headline_without_city": 2, "city_originated_removed": 1, "new_system_origin_unknown": 1,
     }  # fmt: skip

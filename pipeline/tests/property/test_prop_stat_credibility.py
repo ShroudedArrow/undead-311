@@ -15,7 +15,7 @@ from hypothesis import strategies as st
 from strategies import town
 
 from undead311.detect.core import detect
-from undead311.detect.model import DetectionResult, Zombie
+from undead311.detect.model import ZOMBIE_TIERS, DetectionResult, Zombie
 from undead311.stats.baseline import BaselineModel, excess_rows
 from undead311.stats.groups import (
     build_groups,
@@ -101,7 +101,7 @@ def test_prop_stat_7_headline_values_ignore_other_tiers_and_all_tiers_add_up(cas
     has = {z.incident_id for z in result.zombies}
     extra = [
         replace(result.zombies[0], incident_id=inc.incident_id, resurrection_id=f"X{i}",
-                tier="source_unknown" if (seed + i) % 2 else "sensitivity")
+                tier=("source_unknown", "city_rereport", "sensitivity")[(seed + i) % 3])
         for i, inc in enumerate(result.incidents) if inc.incident_id not in has
     ]  # fmt: skip
     plus = DetectionResult(**{**result.__dict__, "zombies": result.zombies + extra})
@@ -109,7 +109,7 @@ def test_prop_stat_7_headline_values_ignore_other_tiers_and_all_tiers_add_up(cas
     after = [c.to_json() for c in scorecards(plus, by_id, END, baseline=model2.p) if c.tier_set == "headline"]
     assert before == after
     assert rows_before == [r.to_json() for r in excess_rows(model2, 1, 30) if r.tier_set == "headline"]
-    assert plus.count("headline") + plus.count("source_unknown") + plus.count("sensitivity") == len(plus.zombies)
+    assert sum(plus.count(t) for t in ZOMBIE_TIERS) == len(plus.zombies)
 
 
 @given(town(), st.integers(0, 10_000))

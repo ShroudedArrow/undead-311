@@ -27,7 +27,7 @@ from undead311.detect.cases import cases_from_table
 from undead311.detect.core import city_origin_summary, detect
 from undead311.detect.edges import sql_edges
 from undead311.detect.grid import run_grid, store_grid
-from undead311.detect.model import DetectionResult
+from undead311.detect.model import ZOMBIE_TIERS, DetectionResult
 from undead311.detect.params import DEFAULT, Params
 from undead311.detect.skeptic import build_input, join_objections, write_input
 from undead311.export.writers import (
@@ -78,7 +78,7 @@ def owns_output(rel: str) -> bool:
 
 def owns_processed(rel: str) -> bool:
     return rel in PROCESSED_OWNED
-CITY_SHARE_WARN = 0.5  # run-report anomaly when this share of headline resurrections is city-originated (ops#29)
+CITY_SHARE_WARN = 0.5  # run-report anomaly when this share of headline-plus-city resurrections is in the city tier (ops#29)
 
 
 @dataclass
@@ -119,11 +119,12 @@ class RunReport:
             f"  exclusions: {self.exclusions}",
             f"  excluded pairs: {self.excluded_pairs}",
             f"  Coroner label coverage: {self.label_coverage:.1%} ({self.unlabeled} unlabeled)",
-            "  zombies: " + ", ".join(f"{k} {t.get(k, 0)}" for k in ("headline", "source_unknown", "sensitivity")),
+            "  zombies: " + ", ".join(f"{k} {t.get(k, 0)}" for k in ZOMBIE_TIERS),
             (
-                f"  city-originated headline resurrections: {co.get('city_originated', 0)} of {co.get('headline', 0)} "
-                f"({co.get('city_originated_share', 0.0):.1%}), {co.get('city_originated_under_1h', 0)} opened under "
-                f"1 h after closure; planned follow-ups kept out: {self.planned_followups}"
+                f"  city re-reports (outside the headline): {co.get('city_rereport', 0)} of "
+                f"{co.get('headline', 0) + co.get('city_rereport', 0)} headline-plus-city ({co.get('city_rereport_share', 0.0):.1%}), "
+                f"{co.get('city_rereport_under_1h', 0)} opened under 1 h after closure; planned follow-ups kept out: "
+                f"{self.planned_followups}"
             ),
             f"  confidence: {self.baseline_zombies} zombies with a baseline_p, {self.confidence_partial} partial scores",
             f"  PII replacements: {self.pii_counts}",
@@ -282,15 +283,16 @@ def run_pipeline(
         write_input(stage_proc / "skeptic_input.json", build_input(result.zombies, by_id, version, sample_ids, tour))
         result.zombies = join_objections(result.zombies, root / "data" / "labels" / "skeptic_objections.json", p)
         report.excluded_pairs = dict(result.excluded_pairs)
-        report.tier_counts = {t: result.count(t) for t in ("headline", "source_unknown", "sensitivity")}  # type: ignore[arg-type]
+        report.tier_counts = {t: result.count(t) for t in ZOMBIE_TIERS}  # type: ignore[arg-type]
         report.confidence_partial = sum(z.confidence_partial for z in result.zombies)
         report.city_origin = city_origin_summary(result, by_id)
         report.planned_followups = len(result.planned_followups)
         co = report.city_origin
-        if co["headline"] and co["city_originated_share"] >= CITY_SHARE_WARN:
+        if co["city_rereport"] and co["city_rereport_share"] >= CITY_SHARE_WARN:
             report.warnings.append(
-                f"{co['city_originated_share']:.0%} of headline resurrections ({co['city_originated']} of {co['headline']}) "
-                f"are legacy city-originated cases; {co['city_originated_under_1h']} opened under 1 h after the closure"
+                f"{co['city_rereport_share']:.0%} of headline-plus-city resurrections ({co['city_rereport']} of "
+                f"{co['headline'] + co['city_rereport']}) are legacy city re-reports, kept outside the headline; "
+                f"{co['city_rereport_under_1h']} opened under 1 h after the closure"
             )
         for z in result.zombies:  # PII counts over the free text that the cards export
             for cid in exported_case_ids(z, by_id):
