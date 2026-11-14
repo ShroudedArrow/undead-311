@@ -4,7 +4,9 @@ Unit: an eligible original (cohort.py). A group's rate is the share of its origi
 tier set (the resurrection rate; lower is better). `k` is the number of those originals and `n` the number of originals.
 
 * Shrinkage (REQ-STAT-EB.1): beta-binomial with prior mean mu fixed at the citywide rate and concentration kappa fitted by
-  maximum marginal likelihood (method of moments when the likelihood has no interior maximum). The posterior mean
+  maximum marginal likelihood (method of moments when the likelihood has no interior maximum). Kappa is fitted once per
+  kind (department, family, neighborhood): the groups of one kind partition the originals, so each original enters one
+  likelihood once, and the spread between neighborhoods is not mixed with the spread between departments (ops#105). The posterior mean
   `(k + mu*kappa) / (n + kappa)` is `w*raw + (1-w)*mu` with `w = n / (n + kappa)` in [0, 1], so it lies between the raw and
   the citywide rate. The interval is the 95% posterior interval of that rate (widened to contain it).
 * Funnel limits (REQ-STAT-FUNNEL.1): exact binomial quantiles of Bin(n, mu) / n at 0.025 / 0.975 (95%) and 0.001 / 0.999
@@ -147,8 +149,8 @@ def group_counts(
 
 def build_groups(
     counts: Mapping[tuple[str, str], tuple[int, int]], intensity: Mapping[str, float] | None = None
-) -> tuple[float | None, float | None, list[Group]]:
-    """(citywide rate, kappa, groups) from (k, n) counts (REQ-STAT-EB, REQ-STAT-FUNNEL.2, REQ-STAT-REP.2).
+) -> tuple[float | None, dict[str, float | None], list[Group]]:
+    """(citywide rate, kappa per kind, groups) from (k, n) counts (REQ-STAT-EB, REQ-STAT-FUNNEL.2, REQ-STAT-REP.2).
 
     The citywide rate is taken over the family groups, which partition the originals. Neighborhood groups without a
     reports-per-km value are left out.
@@ -157,11 +159,16 @@ def build_groups(
     total_n = sum(n for _, n in fam)
     mu = sum(k for k, _ in fam) / total_n if total_n else None
     if mu is None:
-        return None, None, []
+        return None, {}, []
     items = [(key, v) for key, v in counts.items() if v[1] > 0]
-    kappa, _method = fit_kappa([v[0] for _, v in items], [v[1] for _, v in items], mu)
+    kappas: dict[str, float | None] = {}
+    for kind in sorted({key[0] for key, _ in items}):
+        of_kind = [v for key, v in items if key[0] == kind]
+        kappas[kind] = fit_kappa([v[0] for v in of_kind], [v[1] for v in of_kind], mu)[0]
     out: list[Group] = []
     for (kind, name), (k, n) in items:
+        kappa = kappas[kind]
+        assert kappa is not None
         per_km = None
         if kind == "neighborhood":
             per_km = (intensity or {}).get(name)
@@ -174,7 +181,7 @@ def build_groups(
         w = wilson(k, n)
         out.append(Group(kind, name, n, k, raw, s, lo, hi, bool(raw < lo998 or raw > hi998), per_km,
                          w[0] if w else None, w[1] if w else None))  # fmt: skip
-    return mu, kappa, out
+    return mu, kappas, out
 
 
 def intensity_by_neighborhood(cases: Mapping[str, Case], street_km: Mapping[str, float]) -> dict[str, float]:
@@ -211,14 +218,14 @@ def groups_payload(
     head: dict = {"data_version": data_version, "dataset": dataset, "params": params_json(params), "seed": None}
     sets = {}
     for tier_set in ("headline", "all"):
-        mu, kappa, groups = build_groups(group_counts(result, data_end, params, tier_set=tier_set), intensity)
-        sets[tier_set] = (mu, kappa, [g.to_json() for g in groups])
-    mu, kappa, groups = sets["headline"]
-    mu_all, kappa_all, groups_all = sets["all"]
+        mu, kappas, groups = build_groups(group_counts(result, data_end, params, tier_set=tier_set), intensity)
+        sets[tier_set] = (mu, kappas, [g.to_json() for g in groups])
+    mu, kappas, groups = sets["headline"]
+    mu_all, kappas_all, groups_all = sets["all"]
     note = None if street_km else "reports per km are unavailable without the neighborhood boundaries and SAM segments"
     groups_file = {
-        **head, "citywide": mu, "kappa": kappa, "groups": groups, "all_tiers": {
-            "citywide": mu_all, "kappa": kappa_all, "groups": groups_all},
+        **head, "citywide": mu, "kappa": kappas.get("family"), "kappas": kappas, "groups": groups, "all_tiers": {
+            "citywide": mu_all, "kappa": kappas_all.get("family"), "kappas": kappas_all, "groups": groups_all},
         "intensity": intensity_by_family(cases, street_km or {}), "intensity_note": note,
     }  # fmt: skip
     n_max = max((g["n"] for g in groups + groups_all), default=0)

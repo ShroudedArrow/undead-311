@@ -58,8 +58,12 @@ def season_idx(when: datetime) -> int:
 
 
 def spot_key(segment_id: str | None, lat: float, lon: float, params: Params = DEFAULT) -> str:
-    """The matching location unit: the segment when snapped, else a 60 m grid cell (glossary "Spot")."""
-    if segment_id:
+    """The matching location unit: the segment when snapped, else a grid cell of 2 x RADIUS_M (glossary "Spot").
+
+    In `radius` matching segments are ignored (ZD parameters), so every case is keyed by its cell, snapped or not: a
+    whole segment is much larger than a 15-50 m circle and would inflate the baseline of the radius-mode grid points
+    (REQ-STAT-GRID.1, ops#104)."""
+    if segment_id and params.matching != "radius":
         return f"seg:{segment_id}"
     cell_m = CELL_FACTOR * params.RADIUS_M
     row = math.floor(lat * M_PER_DEG / cell_m)

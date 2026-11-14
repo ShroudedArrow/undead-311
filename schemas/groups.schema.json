@@ -28,7 +28,45 @@
         {
           "type": "null"
         }
-      ]
+      ],
+      "description": "the concentration of the family groups (the kind whose groups give the citywide rate); every kind's value is in `kappas`"
+    },
+    "kappas": {
+      "type": "object",
+      "description": "beta-binomial concentration fitted per kind over groups that partition the eligible originals (REQ-STAT-EB.1)",
+      "properties": {
+        "department": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "family": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "neighborhood": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     },
     "groups": {
       "type": "array",

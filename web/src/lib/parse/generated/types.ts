@@ -353,7 +353,18 @@ export interface FunnelFile {
 export interface GroupsFile {
   data_version: string;
   citywide: number | null;
+  /**
+   * the concentration of the family groups (the kind whose groups give the citywide rate); every kind's value is in `kappas`
+   */
   kappa: number | null;
+  /**
+   * beta-binomial concentration fitted per kind over groups that partition the eligible originals (REQ-STAT-EB.1)
+   */
+  kappas?: {
+    department?: number | null;
+    family?: number | null;
+    neighborhood?: number | null;
+  };
   groups: {
     kind: "department" | "neighborhood" | "family";
     name: string;
