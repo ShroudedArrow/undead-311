@@ -5,7 +5,7 @@ fileMatchPattern: ["**/pipeline/undead311/stats/**", "**/pipeline/undead311/dete
 # Statistical methods
 
 ## Primary baseline: the same spot as its own control
-Reports cluster in busy places, so a citywide Poisson rate understates coincidence. Primary comparison: for each location (segment), compare the re-report rate in the window right after a closure with the same location's rate in comparable windows that did NOT follow a closure (same season). Excess = after-closure rate minus same-spot typical rate. The neighborhood Poisson model below is the secondary check.
+   Reports cluster in busy places, so a citywide rate understates coincidence. Primary baseline: for each spot (segment), the chance that a same-family report lands in the window after a closure anyway, estimated from the spot's own report history outside after-closure windows, season by season: p = 1 − Π_s (1 − d_s/T_s)^K_s, where for each season s, K_s is the spot's report count and T_s its observed days in that season (outside after-closure windows), and d_s is how many of the window's days fall in season s. Excess = observed zombies − Σ p. The placebo check uses the same estimator. The survival analysis uses a 365-day horizon. The neighborhood Poisson model below is the secondary check.
 
 ## Secondary baseline (neighborhood rate)
 For each closed case, local background rate λ = same-family reports per m² per day in its neighborhood and season, excluding a buffer window around the case. With match area A = π·RADIUS_M² and window D:
