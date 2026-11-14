@@ -10,7 +10,7 @@ export UV_CACHE_DIR
 UV ?= uv
 STUB = @echo "[stub] $@: not implemented yet"
 
-.PHONY: pipeline-sample validation-sample typecheck schema-check test-town setup data-download data-sample pipeline test test-fast web build e2e copy-lint validate coroner-eval snapshot channel-export trace kiro-stats capture lint
+.PHONY: cloud-sync-check pipeline-sample validation-sample typecheck schema-check test-town setup data-download data-sample pipeline test test-fast web build e2e copy-lint validate coroner-eval snapshot channel-export trace kiro-stats capture lint
 
 setup:
 	$(UV) sync
@@ -92,3 +92,7 @@ kiro-stats:
 
 capture:
 	$(STUB)
+
+# Fails when the cloud-cache copies of workflows, agents, hooks and steering differ from the repo copies on main.
+cloud-sync-check:
+	python3 scripts/cloud_sync.py

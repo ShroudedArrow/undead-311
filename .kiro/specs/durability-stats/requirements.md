@@ -30,7 +30,7 @@ IDs use the prefix `REQ-STAT-`. Layers follow docs/PROJECT.md: **demo-critical**
 ### REQ-STAT-BASE: Same-spot baseline and excess
 **Layer:** credibility
 **User story:** As a skeptic, I want each spot compared with itself, so busy places don't produce zombies by chance.
-1. FOR each eligible original, THE stats SHALL estimate `p_spot`: the share of the same spot's comparable windows (same family, same season, length WINDOW_DAYS, starting at least WINDOW_DAYS after any same-family closure there) that contain at least one same-family report.
+1. FOR each eligible original, THE stats SHALL estimate `p_spot` with the season-integrated estimator in methods.md ("Primary baseline"): the chance that a window of WINDOW_DAYS holds at least one other same-family report at the same spot, integrated over the seasons the window spans (`p = 1 - prod_s (1 - d_s/T_s)^K_s`), from the spot's reports and live days outside the WINDOW_DAYS that follow any same-family closure there. THE placebo (REQ-STAT-PLACEBO) SHALL call the same estimator code as the excess.
 2. THE stats SHALL compute expected resurrections as Σ `p_spot` and excess resurrections as observed headline zombies − expected, by department, family and neighborhood, with bootstrap intervals.
 3. WHEN a spot has fewer than 4 comparable windows, THE stats SHALL use the neighborhood estimate (REQ-STAT-NBR) for that original and count how often this happens.
 4. THE stats SHALL write `baseline_p` per zombie for the engine's confidence score.

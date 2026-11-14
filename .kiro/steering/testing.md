@@ -24,7 +24,7 @@ inclusion: always
 12. Incident clustering is a partition: every closed in-scope case belongs to exactly one incident.
 13. Every re-report is attributed to at most one incident; attribution is deterministic (ties by ID).
 14. Metamorphic: translating every case by the same small offset, or shifting every timestamp by the same amount, leaves zombie counts unchanged.
-15. Metamorphic: duplicating a closed case (same place, type, close time) never increases the zombie count.
+15. Metamorphic: duplicating a closed case (same place, type, close time) never increases the zombie count.    , except when the duplicated case is the linked predecessor of a resubmitted or catch-all successor (a copy that forms its own incident breaks the link by design).
 16. Contract: every exported file validates against its JSON Schema in `/schemas/`; the web app's parsers accept every valid file.
 17. The adjusted stayed-fixed rate is clamped so it never exceeds the on-time rate.
 18. A case opened after an incident's first closure is never a member of that incident (prevents fast resurrections from vanishing).
