@@ -196,9 +196,16 @@ def test_req_stat_placebo_2_the_warning_is_set_exactly_when_the_interval_exclude
     res = detect(cs)
     m = BaselineModel({c.id: c for c in cs}, res, data_end=day(420))
     _s, p = shift_and_placebo(m, 311, 50, 5)
-    # the warning needs at least MIN_CLUSTERS independent spots or pooled cells (ops#115, ops#133): this town's 30 spots are
-    # watched for too few windows each, so all of them share one pooled estimate and count as one unit, with no warning
-    assert p.lo <= p.excess <= p.hi and p.calibration_warning is False
+    # ops#136: this town's 30 spots (a report about every 40 days over 400 days, so dense and short) are now read by their own
+    # windows, so they are 30 independent spots (>= MIN_CLUSTERS) and the warning is set exactly when the interval excludes 0.
+    # It excludes 0 on the negative side: the baseline is cautious here, never above 0.
+    assert p.lo <= p.excess <= p.hi
+    assert p.calibration_warning == (p.lo > 0 or p.hi < 0) and p.hi < 0
+    # five such spots are too few to say anything about calibration (ops#115, ops#133): no warning, whatever the interval
+    few = [c for c in cs if int(c.id[1:3]) < 5]
+    m5 = BaselineModel({c.id: c for c in few}, detect(few), data_end=day(420))
+    _s5, p5 = shift_and_placebo(m5, 311, 50, 5)
+    assert p5 is not None and p5.calibration_warning is False
     assert shift_and_placebo(BaselineModel({}, detect([]), data_end=day(10)), 1, 10, 2) == (None, None)
 
 
@@ -264,13 +271,18 @@ def test_req_stat_shift_1_own_member_reports_are_never_counted_when_a_closure_is
 
 def test_req_stat_base_2_the_excess_interval_carries_the_error_of_the_pooled_baseline_and_covers_zero_on_a_null_town():
     """REQ-STAT-BASE.2-3, REQ-STAT-INT.1 (ops#103, S30): with a pooled fallback p estimated from few windows, resampling originals
-    alone would give a narrow interval that excludes 0 on a town where nothing resurrects by cause."""
-    cs = null_town(20.0, spots=60, span=700)
+    alone would give a narrow interval that excludes 0 on a town where nothing resurrects by cause. The town is sparse (a report
+    every 200 days, 100 spots, 700 days): since ops#136 a short spot with a report every 20 days is read by its own windows, so
+    the pooled fallback is exercised by sparse short spots (covers 0 in 8 of 8 seeds, 5-12)."""
+    cs = null_town(200.0, spots=100, span=700)
     res = detect(cs)
     m = BaselineModel({c.id: c for c in cs}, res, data_end=day(700))
     rows = [r for r in excess_rows(m, 311, 300) if r.kind == "family" and r.tier_set == "headline"]
     assert rows and m.fallback_counts(res.incidents)["citywide"] > len(res.incidents) // 2
     assert all(r.lo <= 0 <= r.hi for r in rows)
+    busy = null_town(20.0, spots=60, span=700)  # the old town: short dense spots, read by their own windows, never above 0
+    mb = BaselineModel({c.id: c for c in busy}, detect(busy), data_end=day(700))
+    assert all(r.lo <= 0 for r in excess_rows(mb, 311, 300) if r.kind == "family" and r.tier_set == "headline")
 
 
 @pytest.mark.parametrize("gap", [400.0, 300.0])
@@ -674,6 +686,25 @@ def test_req_stat_base_1_a_causal_resurrection_town_has_an_expected_count_close_
         observed_over_true.append(sum(i.incident_id in zs for i in el) / true_chance)
     assert all(1.0 <= r <= 1.25 for r in ratios), ratios
     assert all(o > 1.5 for o in observed_over_true)  # the causal re-reports are far above the chance count
+
+
+@pytest.mark.parametrize("q", [0.2, 0.4])
+def test_req_stat_base_1_a_causal_resurrection_town_on_the_production_estimator_is_never_below_the_true_chance(q):
+    """REQ-STAT-BASE.1, REQ-STAT-BASE.2 (ops#113, ops#139): the same causal towns on the hybrid as shipped (dense spots read by
+    their sliding windows), with no forcing. The hybrid counts every report at a dense spot, a real resurrection included, so
+    the expected count runs above the true chance (1.1-1.4 times, seeds 5-6) and the excess is a floor: it still lies above 0
+    and finds most of the real excess (observed minus true chance: 84-87% at a report every 300 days)."""
+    for seed in (5, 6):
+        cs = causal_town(q, seed=seed)
+        res = detect(cs)
+        m = BaselineModel({c.id: c for c in cs}, res, data_end=day(1400))
+        el = list(eligible_originals(res.incidents, m.data_end))
+        expected = sum(m.estimate(i).p or 0.0 for i in el)
+        true_chance = len(el) * (1.0 - np.exp(-60.0 / 300.0))
+        assert 1.0 <= expected / true_chance <= 1.4, (q, seed, expected / true_chance)
+        row = next(r for r in excess_rows(m, 311, 200) if r.kind == "family" and r.tier_set == "headline")
+        assert row.lo > 0, (q, seed, row)
+        assert row.excess >= 0.75 * (row.observed - true_chance), (q, seed, row)
 
 
 def test_req_stat_base_1_a_mixed_gap_null_town_has_an_excess_interval_that_is_never_above_zero():

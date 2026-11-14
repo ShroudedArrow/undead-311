@@ -14,10 +14,18 @@ within WINDOW_DAYS of a closure by coincidence?
     makes unusable came out 40% too high at sparse spots, ops#107). The incident's own reports are left out, so a busy spot
     does not raise the baseline of its own originals.
   - Dense spots (at least one report per DENSE_WINDOWS windows): `p_spot` is the share of sliding WINDOW_DAYS windows that
-    start on a live day of the incident's season and hold at least one report (`dense_share`). Counting directly assumes
-    nothing about how reports arrive, which fails for a spot reported on a near-regular schedule (the Poisson formula ran low
-    there and gave a positive excess, ops#131). Every report counts, reports in a dead stretch too, so a real resurrection can
-    only raise the share: the excess runs at or below 0 on a null town (the cautious direction).
+    start on a live day of the incident's season and hold at least one report (`dense_share`). Counting directly drops the
+    Poisson formula, which ran low for a spot reported on a near-regular schedule (ops#131). It still assumes something: the
+    windows start on live days, which follow a quiet stretch of at least WINDOW_DAYS after a closure, so the share is unbiased
+    only for Poisson arrivals. At a spot reported every 70 +- 5 days it is about 0.78 against a true chance of 0 (cautious);
+    for bursty arrivals it runs low (about 0.43 against 0.5) and a null town lies above 0 (ops#137, ops#138). Every report counts,
+    reports in a dead stretch too, so a real resurrection can only raise the share, which is one reason the excess runs below 0
+    at dense spots; it does not make the excess non-positive in every town (docs/METHODS.md lists the limits).
+  - A dense spot watched for less than MIN_WINDOWS windows is read the same way (`dense_p`) when it also has one report per
+    WINDOW_DAYS (SHORT_DENSE_WINDOWS, counting the first report): spots with fewer reports cannot be told from a lucky sparse
+    spot, and a near-regular spot with every report in a dead stretch got a pooled p of about 0 (ops#136).
+  - Other spots below MIN_WINDOWS use the higher of the neighborhood rate and the pooled family rate (REQ-STAT-BASE.3): the
+    neighborhood rate is the chance at a random point, which runs low for a spot that has reports (ops#136).
 * Neighborhood Poisson check (REQ-STAT-NBR.1): lambda = same-family reports per m2 per day in the neighborhood and
   season, leaving out reports within RADIUS_M and +-WINDOW_DAYS of the case; expected = lambda * pi * RADIUS_M^2 *
   WINDOW_DAYS, P = 1 - exp(-expected). It is computed for every incident as a second, independent baseline.
@@ -47,6 +55,7 @@ from undead311.stats.intervals import bootstrap_sum_cells
 DAY = 86_400.0
 MIN_WINDOWS = 4  # REQ-STAT-BASE.3
 DENSE_WINDOWS = 2  # a spot with at least one report per DENSE_WINDOWS windows is dense (methods.md hybrid, ops#130, ops#131)
+SHORT_DENSE_WINDOWS = 1  # a spot watched for less than MIN_WINDOWS windows is read by its own windows only with one report per window, counting the first (ops#136)  # a spot watched for less than MIN_WINDOWS windows is read by its own windows only when it has one report per window (ops#136)
 POOLED_MIN = 100  # pooled windows needed before the citywide fallback is taken for one season, else all seasons
 _SEASON_OF_MONTH = np.array([0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 0])  # Jan..Dec -> winter, spring, summer, autumn
 UNKNOWN = "(unknown)"
@@ -360,6 +369,26 @@ class BaselineModel:
         d = self.window_season_days(np.array([inc.close_utc.timestamp()]))
         return float(season_integrated_p(np.maximum(k, 0)[None, :], live.days, d)[0]), windows
 
+    def dense_p(self, inc: Incident, s: int | None = None) -> float | None:
+        """The dense estimator for a dense spot watched for less than MIN_WINDOWS windows of the closure's season (REQ-STAT-BASE.1,
+        REQ-STAT-BASE.3, ops#136). None when the spot is not dense or has no window that starts on a live day.
+
+        A near-regular spot has its reports inside the dead stretches after closures, so the pooled Poisson rate of the fallback
+        runs near 0 and gives a positive excess however short the spot's history (ops#131, ops#136). The spot's own sliding-window
+        share has no such blind spot and needs only one watched window: it is the same quantity the long dense spots use."""
+        key = self._incident_key[inc.incident_id]
+        live = self._spot_info.get(key)
+        if live is None or not self.is_dense(key):
+            return None
+        if (float(live.all_counts.sum()) + 1.0) * SHORT_DENSE_WINDOWS * self.params.WINDOW_DAYS < float(live.span.sum()):
+            return None  # fewer than one report per window: too few reports to tell a dense spot from a lucky sparse one
+        s = season_idx(inc.close_utc) if s is None else s
+        if key not in self._dense_cache:
+            self._dense_cache[key] = self.dense_share(self.groups[key][0], live)
+        share = self._dense_cache[key]
+        got = share[s] if not math.isnan(share[s]) else share[4]
+        return None if math.isnan(got) else float(got)
+
     def _pool(self) -> dict[tuple[str, int], tuple[int, float]]:
         """Windows and pooled p of every family and season (season -1: all seasons), for the fallback (REQ-STAT-BASE.3).
 
@@ -478,16 +507,22 @@ class BaselineModel:
         p_nbr, e_nbr = (nbr if nbr else (None, None))
         if got is not None and windows >= MIN_WINDOWS:
             est = Estimate(got[0], "spot", windows, p_nbr, e_nbr, None, 0, ("spot", *key))
-        elif p_nbr is not None:
-            est = Estimate(p_nbr, "neighborhood", windows, p_nbr, e_nbr)
+        elif (p_dense := self.dense_p(inc, s)) is not None:  # a dense spot is read by its own windows however short (ops#136)
+            est = Estimate(p_dense, "spot", windows, p_nbr, e_nbr, None, 0, ("spot", *key))
         else:
             season_key = s
             n, pool_p = self._pooled.get((inc.type_family, s), (0, 0.0))
             if n < POOLED_MIN:  # too few windows for one season: pool all seasons of the family
                 season_key = -1
                 n, pool_p = self._pooled.get((inc.type_family, -1), (0, 0.0))
-            est = Estimate(pool_p if n else None, "citywide" if n else "none", windows, p_nbr, e_nbr,
-                           ("pool", inc.type_family, season_key), n)  # fmt: skip
+            # The neighborhood rate is the first fallback (REQ-STAT-BASE.3), but it is the chance at a random point and a spot that
+            # has reports is busier than a random point, so on its own it runs low and gave an excess above 0 on a null town of
+            # sparse spots (ops#136). The fallback is the higher of the two: never lower than the family's own live rate.
+            if p_nbr is not None and not (n and pool_p > p_nbr):
+                est = Estimate(p_nbr, "neighborhood", windows, p_nbr, e_nbr)
+            else:
+                est = Estimate(pool_p if n else None, "citywide" if n else "none", windows, p_nbr, e_nbr,
+                               ("pool", inc.type_family, season_key), n)  # fmt: skip
         self._estimates[inc.incident_id] = est
         return est
 

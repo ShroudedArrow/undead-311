@@ -132,7 +132,7 @@ def test_req_stat_placebo_1_the_placebo_uses_the_dense_estimator_so_an_unshifted
     placebo excess = candidate hits - sum of the model's p over the same originals."""
     cs = town((60.0,), 5, spots=40, span=700)
     res = detect(cs)
-    m = BaselineModel({c.id: c for c in cs}, res, data_end=day(700))
+    m = BaselineModel({c.id: c for c in cs}, res, data_end=day(800))  # no closure in the last window: a shift of 0 wraps none
     sp = _build(m)
     assert sp is not None and any(m.is_dense(k) for k in sp.keys)
     got = _placebo(m, sp, np.zeros((len(sp.keys), 1)), min(float(m.groups[k][0][0]) for k in sp.keys), 311)
@@ -186,3 +186,139 @@ def test_req_stat_placebo_2_the_warning_is_set_exactly_when_the_interval_exclude
     _s, p = shift_and_placebo(m, 311, 50, 10)
     assert p is not None and p.lo <= p.excess <= p.hi
     assert p.calibration_warning == (p.lo > 0 or p.hi < 0) and p.hi < 0
+
+
+# --- staggered first reports and the dense fallback (REQ-STAT-BASE.1-3, REQ-STAT-PLACEBO.1; ops#136, ops#137) ----------------
+def spread_town(kind, seed, spots=300, starts=1300.0):
+    """Every spot's first report falls at a random day in [0, starts], so most spots are watched for less than MIN_WINDOWS
+    windows of a season and take the fallback. `kind`: ("regular", gap, jitter) reports `gap` +- `jitter` days apart,
+    ("poisson", gap...) one mean gap per spot drawn from the list, ("mixreg",) 10% of spots regular every 30 +- 3 days and the
+    rest Poisson every 300 days. Each report is closed 2 days after it opens, so nothing resurrects by cause."""
+    rng = np.random.default_rng(seed)
+    out = []
+    for s in range(spots):
+        t = rng.uniform(0.0, starts)
+        mode, gap = kind[0], 300.0
+        if mode == "poisson":
+            gap = kind[1:][int(rng.integers(len(kind) - 1))]
+        elif mode == "mixreg":
+            mode, gap = ("regular", 30.0) if rng.random() < 0.1 else ("poisson", 300.0)
+        elif mode == "regular":
+            gap = kind[1]
+        n = 0
+        while t <= END:
+            out.append(mk(f"S{s:03d}-{n:03d}", t, t + 2.0, x=s * 1000.0, segment=f"seg{s}"))
+            n += 1
+            t += gap + rng.uniform(-3.0, 3.0) if mode == "regular" else rng.exponential(gap)
+    return out
+
+
+def with_areas(cs, area_m2):
+    from dataclasses import replace
+
+    return [replace(c, neighborhood="Roxbury") for c in cs], {"Roxbury": area_m2}
+
+
+def staggered_excess(cs, areas=None, boot=200):
+    res = detect(cs)
+    m = BaselineModel({c.id: c for c in cs}, res, data_end=day(END), areas_m2=areas)
+    row = next(r for r in excess_rows(m, 311, boot) if r.kind == "family" and r.tier_set == "headline")
+    return m, res, row
+
+
+@pytest.mark.parametrize("starts", [600.0, 1300.0])
+@pytest.mark.parametrize("seed", [5, 6, 7, 8])
+@pytest.mark.parametrize("area", [None, 3e6])
+def test_req_stat_base_2_a_near_regular_30_day_town_with_staggered_first_reports_is_never_above_zero(seed, area, starts):
+    """REQ-STAT-BASE.1-3 (ops#131, ops#136): reports every 30 +- 3 days at 300 spots whose first report falls anywhere in the
+    first 600 or 1,300 days, with and without a neighborhood area. Most spots are watched for less than MIN_WINDOWS windows. The
+    Poisson fallback gave +1,978 to +3,259 with an interval above 0 (every report of such a spot lands in a dead stretch, so its
+    live rate is about 0); a dense spot now reads its own windows however short."""
+    cs = spread_town(("regular", 30.0, 3.0), seed, starts=starts)
+    areas = None
+    if area:
+        cs, areas = with_areas(cs, area)
+    _m, _res, row = staggered_excess(cs, areas)
+    assert row.lo <= 0 and row.excess <= 0, row
+    assert row.n_fallback < 0.02 * row.n_originals  # the dense estimate carries them, not a pooled rate
+
+
+@pytest.mark.parametrize("seed", [5, 6, 7, 8])
+@pytest.mark.parametrize("area", [None, 3e6])
+def test_req_stat_base_2_the_mixed_null_towns_with_staggered_first_reports_are_never_above_zero(seed, area):
+    """REQ-STAT-BASE.1-3 (ops#114, ops#136): the ops#114 mixed town (30 or 60 days), the mixed 30-400 town and 10% near-regular
+    spots among Poisson 300-day ones, each with staggered first reports (above 0 in 4 of 4 seeds before: +177 to +261)."""
+    for kind in (("poisson", 30.0, 60.0), ("poisson", 30.0, 60.0, 120.0, 250.0, 400.0), ("mixreg",)):
+        cs = spread_town(kind, seed)
+        areas = None
+        if area:
+            cs, areas = with_areas(cs, area)
+        _m, _res, row = staggered_excess(cs, areas)
+        assert row.lo <= 0, (kind, seed, area, row)
+
+
+@pytest.mark.parametrize("seed", [5, 6, 7, 8])
+def test_req_stat_base_2_sparse_random_spots_with_staggered_first_reports_and_a_neighborhood_area_are_never_above_zero(seed):
+    """REQ-STAT-BASE.3 (ops#136): the neighborhood rate is the chance at a random point, so on its own it ran low for a spot
+    that has reports (+48 to +84, interval above 0, on a sparse town with staggered starts). The fallback is the higher of the
+    neighborhood and the pooled family rate."""
+    cs, areas = with_areas(spread_town(("poisson", 300.0), seed), 3e7)
+    _m, _res, row = staggered_excess(cs, areas)
+    assert row.lo <= 0, row
+
+
+@pytest.mark.parametrize("seed", [5, 6])
+def test_req_stat_placebo_2_a_near_regular_town_with_staggered_first_reports_has_a_placebo_never_above_zero(seed):
+    """REQ-STAT-PLACEBO.1-2 (ops#136): the placebo reads dense spots with the same windows, however short the spot, so on
+    staggered near-regular and mixed null towns it is never above 0 (it was +3,249 and warned)."""
+    for kind in (("regular", 30.0, 3.0), ("poisson", 30.0, 60.0, 120.0, 250.0, 400.0)):
+        cs = spread_town(kind, seed)
+        res = detect(cs)
+        m = BaselineModel({c.id: c for c in cs}, res, data_end=day(END))
+        _s, placebo = shift_and_placebo(m, 311, 50, 10)
+        assert placebo is not None and placebo.lo <= 0, (kind, seed, placebo)
+
+
+def _estimates(cs, **kw):
+    res = detect(cs)
+    m = BaselineModel({c.id: c for c in cs}, res, data_end=day(kw.pop("end", 400)), **kw)
+    return m, {i.incident_id: m.estimate(i) for i in res.incidents}, res
+
+
+def test_req_stat_base_3_a_dense_spot_watched_for_a_short_time_is_read_by_its_own_windows():
+    """REQ-STAT-BASE.1, REQ-STAT-BASE.3 (ops#136): a spot reported every 30 days for 150 days has less than MIN_WINDOWS windows in
+    any season, yet it is dense with one report per window, so its estimate is the spot's own sliding-window share (here 1:
+    every window holds a report) with source "spot", not a pooled rate."""
+    cs = [mk(f"A{n}", 30.0 * n, 30.0 * n + 2.0, x=0.0, segment="a") for n in range(6)]
+    _m, est, res = _estimates(cs, end=300)
+    first = next(i for i in res.incidents if "A0" in i.member_ids)
+    e = est[first.incident_id]
+    assert e.windows < 4 and e.source == "spot" and e.p == pytest.approx(1.0) and e.cluster is not None
+
+
+def test_req_stat_base_3_a_short_spot_with_fewer_than_one_report_per_window_keeps_the_pooled_fallback():
+    """REQ-STAT-BASE.3 (ops#136): reports 100 days apart are dense by the long-spot rule (one per 120 days) but too few in a short
+    span to tell from a lucky sparse spot (it would raise the baseline of sparse towns): the pooled rate is used."""
+    cs = [mk(f"A{n}", 100.0 * n, 100.0 * n + 2.0, x=0.0, segment="a") for n in range(4)]
+    m, est, res = _estimates(cs, end=330)
+    key = m._incident_key[res.incidents[0].incident_id]
+    assert m.is_dense(key)
+    assert all(e.source == "citywide" for e in est.values())
+
+
+def test_req_stat_base_3_the_fallback_is_the_higher_of_the_neighborhood_and_the_pooled_rate():
+    """REQ-STAT-BASE.3 (ops#136): a neighborhood so large that its rate is almost 0 no longer sets the baseline of a spot whose
+    family has live reports; a tiny area (a high rate) still does."""
+    from dataclasses import replace
+
+    pool = [mk(f"P{s}-{n}", 10.0 * n + s, 10.0 * n + s + 1.0, x=s * 1000.0, segment=f"p{s}") for s in range(12) for n in range(40)]
+    short = [mk("A0", 300.0, 301.0, x=50000.0, segment="z"), mk("A1", 380.0, x=50000.0, segment="z")]  # one report in 140 days: sparse
+    cs = [replace(c, neighborhood="Roxbury") for c in pool + short]
+    big = BaselineModel({c.id: c for c in cs}, detect(cs), data_end=day(440), areas_m2={"Roxbury": 1e12})
+    inc = next(i for i in big.result.incidents if "A0" in i.member_ids)
+    e = big.estimate(inc)
+    assert e.p_nbr is not None and e.p_nbr < 1e-3
+    assert e.source == "citywide" and e.p > e.p_nbr
+    small = BaselineModel({c.id: c for c in cs}, detect(cs), data_end=day(440), areas_m2={"Roxbury": 1e3})
+    e2 = small.estimate(next(i for i in small.result.incidents if "A0" in i.member_ids))
+    assert e2.source == "neighborhood" and e2.p == e2.p_nbr
