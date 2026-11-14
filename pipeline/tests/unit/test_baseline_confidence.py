@@ -133,3 +133,16 @@ def test_req_conf_2_a_partial_baseline_is_an_anomaly_and_a_bad_one_fails_the_run
     with pytest.raises(BadBaseline):
         run_pipeline(out_dir=tmp_path / "o3", raw_dir=raw, work_dir=tmp_path / "d3", snapshot_md=snap, run_time="2026-11-13T00:00:00Z")
     assert not (tmp_path / "o3").exists()  # nothing exported
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="blocked on durability-stats task 5: stats.pipeline has no zombie_baselines yet (ops#82). When it lands this test "
+    "XPASSES and strict mode fails the suite: remove the marker and tick zombie-engine task 27.",
+)
+def test_req_conf_2_integration_the_real_stats_stage_gives_every_zombie_a_baseline_p(tmp_path):
+    """REQ-CONF.1-2, REQ-STAT-BASE.4: no monkeypatch. A run with the real stats stage scores a zombie with baseline_p."""
+    raw, snap = raw_folder(tmp_path)
+    rep = run_pipeline(out_dir=tmp_path / "out", raw_dir=raw, work_dir=tmp_path / "d", snapshot_md=snap, run_time="2026-11-13T00:00:00Z")
+    [z] = json.loads((tmp_path / "out" / "zombies.json").read_text())["zombies"]
+    assert z["baseline_p"] is not None and rep.baseline_zombies == 1
