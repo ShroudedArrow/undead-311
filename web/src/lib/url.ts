@@ -9,9 +9,11 @@ export interface PageState {
   filters: Filters;
   tierMode: TierMode;
   view: View;
+  /** Optional map layer: mark possible zombies whose closure was part of a bulk closure (REQ-WEB-DEATHS.1). */
+  bulk: boolean;
 }
 
-export const DEFAULT_STATE: PageState = { filters: EMPTY_FILTERS, tierMode: "headline", view: "map" };
+export const DEFAULT_STATE: PageState = { filters: EMPTY_FILTERS, tierMode: "headline", view: "map", bulk: false };
 
 const sortedUnique = <T extends string | number>(xs: T[]): T[] => [...new Set(xs)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 
@@ -23,6 +25,7 @@ export function encodeState(s: PageState): string {
   for (const v of sortedUnique(s.filters.years)) p.append("y", String(v));
   if (s.tierMode === "all") p.set("tier", "all");
   if (s.view === "table") p.set("view", "table");
+  if (s.bulk) p.set("bulk", "1");
   return p.toString();
 }
 
@@ -38,5 +41,6 @@ export function decodeState(search: string): PageState {
     },
     tierMode: p.get("tier") === "all" ? "all" : "headline",
     view: p.get("view") === "table" ? "table" : "map",
+    bulk: p.get("bulk") === "1",
   };
 }

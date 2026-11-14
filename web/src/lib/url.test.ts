@@ -11,6 +11,7 @@ const arbState: fc.Arbitrary<PageState> = fc.record({
   }),
   tierMode: fc.constantFrom("headline", "all"),
   view: fc.constantFrom("map", "table"),
+  bulk: fc.boolean(),
 });
 
 describe("URL state (REQ-WEB-MAP.3)", () => {
@@ -28,5 +29,7 @@ describe("URL state (REQ-WEB-MAP.3)", () => {
   it("ignores junk values", () => {
     expect(decodeState("y=abc&tier=zzz&view=x").filters.years).toEqual([]);
     expect(decodeState("tier=zzz").tierMode).toBe("headline");
+    expect(decodeState("bulk=yes").bulk).toBe(false);
+    expect(decodeState("bulk=1").bulk).toBe(true);
   });
 });

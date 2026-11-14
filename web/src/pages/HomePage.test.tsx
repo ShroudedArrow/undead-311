@@ -8,9 +8,9 @@ import { clearDataCache } from "../lib/data";
 // The real map needs WebGL; the page's contract is the rows it hands to the map.
 const mapRows = vi.fn();
 vi.mock("../map/MapView", () => ({
-  default: (props: { rows: { id: string }[] }) => {
+  default: (props: { rows: { id: string }[]; bulkIds?: ReadonlySet<string> | null }) => {
     mapRows(props.rows.map((r) => r.id));
-    return <div data-testid="map" data-marker-count={props.rows.length} />;
+    return <div data-testid="map" data-marker-count={props.rows.length} data-bulk-ids={props.bulkIds ? [...props.bulkIds].sort().join(",") : ""} />;
   },
 }));
 
@@ -23,7 +23,8 @@ const POINTS = {
 
 function stubFetch() {
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-    const body = String(url).endsWith("points.json") ? POINTS : { data_version: "v", last_run: "2026-11-11T00:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" };
+    const zz = (id: string, bulk: boolean) => ({ zombie_id: id, incident_id: `I-${id}`, resurrection_id: `R-${id}`, reports_after: 1, gap_days: 3, match_mode: "radius", distance_m: 5, tier: "headline", baseline_p: 0.1, confidence: 0.8, confidence_partial: false, is_planned_followup: false, after_temporary_fix: false, source_unknown: false, chain_id: `C-${id}`, times_risen: 1, skeptic_verdict: "survives", skeptic_notes: "", type_family: "sign", department: null, neighborhood: "Roxbury", coroner_label: "resolved", bulk_closure: bulk, close_year: 2020, resurrection_date: "2021-01-01" });
+    const body = String(url).endsWith("zombies.json") ? { data_version: "v", zombies: [zz("a", false), zz("b", true), zz("c", true), zz("d", false)] } : String(url).endsWith("points.json") ? POINTS : { data_version: "v", last_run: "2026-11-11T00:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" };
     return { ok: true, status: 200, json: async () => body } as Response;
   }));
 }
@@ -105,6 +106,34 @@ describe("Sensitivity tier toggle (REQ-WEB-TIER.1-2)", () => {
     render(<MemoryRouter initialEntries={["/?view=table&tier=all"]}><App /></MemoryRouter>);
     const table = await screen.findByTestId("zombie-table");
     expect(within(within(table).getAllByRole("row").find((r) => r.getAttribute("data-id") === "d") as HTMLElement).getByText("Sensitivity check")).toBeTruthy();
+  });
+});
+
+describe("Bulk-closure layer (REQ-WEB-DEATHS.1)", () => {
+  it("is off by default: no zombie file is requested and nothing is ringed", async () => {
+    stubFetch();
+    render(<MemoryRouter><App /></MemoryRouter>);
+    await screen.findByText("3 possible zombies match these filters");
+    expect(screen.getByTestId("map").getAttribute("data-bulk-ids")).toBe("");
+    expect((vi.mocked(fetch).mock.calls as unknown[][]).some((c) => String(c[0]).endsWith("zombies.json"))).toBe(false);
+  });
+  it("rings only the visible zombies whose closure was part of a bulk closure, and says how many", async () => {
+    stubFetch();
+    const user = userEvent.setup();
+    render(<MemoryRouter><App /></MemoryRouter>);
+    await screen.findByText("3 possible zombies match these filters");
+    await user.click(screen.getByLabelText("Mark closures that were part of a bulk closure"));
+    expect(await screen.findByText("2 of the possible zombies shown follow a bulk closure, ringed in orange.")).toBeTruthy();
+    expect(screen.getByTestId("map").getAttribute("data-bulk-ids")).toBe("b,c");
+  });
+  it("adds a Bulk closure column to the table that mirrors the map", async () => {
+    stubFetch();
+    render(<MemoryRouter initialEntries={["/?view=table&bulk=1"]}><App /></MemoryRouter>);
+    const table = await screen.findByTestId("zombie-table");
+    const rowB = within(table).getAllByRole("row").find((r) => r.getAttribute("data-id") === "b") as HTMLElement;
+    expect(within(table).getByRole("columnheader", { name: "Bulk closure" })).toBeTruthy();
+    expect(await within(table).findAllByText("Part of a bulk closure")).toHaveLength(2);
+    expect(rowB.textContent).toContain("Part of a bulk closure");
   });
 });
 

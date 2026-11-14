@@ -140,7 +140,10 @@
     "tier_toggle": "Include cases outside the headline count",
     "tier_toggle_note": "Adds cases whose source is unknown and sensitivity checks. They show as dashed outlines and are labeled on their cards. The headline count above does not change.",
     "count_floor": "Counts are a floor: a possible zombie appears only if someone reported the problem again.",
-    "loading": "Loading possible zombies"
+    "loading": "Loading possible zombies",
+    "bulk_toggle": "Mark closures that were part of a bulk closure",
+    "bulk_note": "Rings possible zombies whose closure was part of a bulk closure. Those closures are less certain evidence.",
+    "bulk_count": "{count} of the possible zombies shown follow a bulk closure, ringed in orange."
   },
   "departments": {
     "PWDx": "Public Works Department (PWDx)",
@@ -177,7 +180,9 @@
     "open_card": "Open card {id}",
     "sort_by": "Sort by {column}",
     "sorted_asc": "sorted ascending",
-    "sorted_desc": "sorted descending"
+    "sorted_desc": "sorted descending",
+    "col_bulk": "Bulk closure",
+    "bulk_yes": "Part of a bulk closure"
   },
   "tiers": {
     "headline": "Headline",

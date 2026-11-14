@@ -2,7 +2,7 @@
  * Haunted map (REQ-WEB-MAP.1, .5). MapLibre draws the self-hosted PMTiles basemap; a deck.gl IconLayer draws the
  * possible zombies as spray-circle sprites. Loaded lazily from the page so the first view stays small (REQ-WEB-PERF.1).
  */
-import { IconLayer } from "@deck.gl/layers";
+import { IconLayer, ScatterplotLayer } from "@deck.gl/layers";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -29,9 +29,11 @@ interface Props {
   rows: PointRow[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /** IDs to ring in Cone orange (bulk-closure layer, REQ-WEB-DEATHS.1); null when the layer is off. */
+  bulkIds?: ReadonlySet<string> | null;
 }
 
-export default function MapView({ rows, selectedId, onSelect }: Props) {
+export default function MapView({ rows, selectedId, onSelect, bulkIds = null }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const overlayRef = useRef<MapboxOverlay | null>(null);
@@ -87,6 +89,19 @@ export default function MapView({ rows, selectedId, onSelect }: Props) {
     if (!overlay || !atlasRef.current) return;
     overlay.setProps({
       layers: [
+        // Cone orange rings under the markers: a warning, never text (design-system.md). Asphalt ring beneath keeps 3:1 on Concrete.
+        ...(bulkIds && bulkIds.size > 0
+          ? [
+              new ScatterplotLayer<PointRow>({
+                id: "bulk-ring-edge", data: rows.filter((r) => bulkIds.has(r.id)), getPosition: (d) => [d.lon, d.lat], stroked: true, filled: false,
+                radiusUnits: "pixels", getRadius: 22, lineWidthUnits: "pixels", getLineWidth: 8, getLineColor: [46, 49, 52, 255],
+              }),
+              new ScatterplotLayer<PointRow>({
+                id: "bulk-ring", data: rows.filter((r) => bulkIds.has(r.id)), getPosition: (d) => [d.lon, d.lat], stroked: true, filled: false,
+                radiusUnits: "pixels", getRadius: 22, lineWidthUnits: "pixels", getLineWidth: 4, getLineColor: [242, 107, 29, 255],
+              }),
+            ]
+          : []),
         new IconLayer<PointRow>({
           id: "zombies",
           data: rows,
@@ -107,7 +122,7 @@ export default function MapView({ rows, selectedId, onSelect }: Props) {
         }),
       ],
     });
-  }, [rows, selectedId, ready]);
+  }, [rows, selectedId, ready, bulkIds]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -128,6 +143,7 @@ export default function MapView({ rows, selectedId, onSelect }: Props) {
       data-testid="map"
       data-ready={ready ? "true" : "false"}
       data-marker-count={rows.length}
+      data-bulk-count={bulkIds ? bulkIds.size : 0}
     />
   );
 }

@@ -6,7 +6,7 @@ import { t } from "../lib/t";
 
 const W = 640;
 const H = 320;
-const M = { l: 52, r: 16, t: 12, b: 44 };
+const M = { l: 64, r: 16, t: 12, b: 44 };
 
 /** Display name for a curve: "Citywide", a case type or a department. */
 export function curveLabel(name: string): string {
@@ -29,10 +29,12 @@ function share(c: Curve, at: "at_7" | "at_30" | "at_90"): string {
  */
 export function SurvivalChart({ curve, baseline, tierLabel }: { curve: Curve; baseline: Curve | null; tierLabel: string }) {
   const x = linear(0, Math.max(...curve.times, 1), M.l, W - M.r);
-  const y = linear(0, 1, H - M.b, M.t);
+  // the vertical range starts below the lowest interval bound (rounded down to 5%), so the band is readable when most fixes hold
+  const floor = Math.max(0, Math.min(0.95, Math.floor(Math.min(...curve.lo, ...(baseline?.lo ?? [1])) * 20) / 20));
+  const y = linear(floor, 1, H - M.b, M.t);
   const xs = curve.times.map(x);
   const ticksX = [0, 7, 30, 60, 90].filter((d) => d <= Math.max(...curve.times));
-  const ticksY = [0, 0.25, 0.5, 0.75, 1];
+  const ticksY = [0, 1, 2, 3, 4].map((i) => floor + ((1 - floor) * i) / 4);
   const label = t("charts.survival_label", {
     name: curveLabel(curve.name), tier: tierLabel, at7: pct(curve.at_7) || "unknown", at30: pct(curve.at_30) || "unknown", at90: pct(curve.at_90) || "unknown",
   });
@@ -41,7 +43,7 @@ export function SurvivalChart({ curve, baseline, tierLabel }: { curve: Curve; ba
       {ticksY.map((v) => (
         <g key={v}>
           <line className="chart-grid" x1={M.l} x2={W - M.r} y1={y(v)} y2={y(v)} />
-          <text className="chart-tick" x={M.l - 6} y={y(v) + 4} textAnchor="end">{pct(v).replace(".0", "")}</text>
+          <text className="chart-tick" x={M.l - 6} y={y(v) + 4} textAnchor="end">{pct(v)}</text>
         </g>
       ))}
       {ticksX.map((d) => (

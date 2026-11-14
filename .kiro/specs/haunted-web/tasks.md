@@ -59,7 +59,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 - [x] 15. [credibility] Methods page, status and corrections
   - Definitions, baselines, excess with the shift distribution, placebo, validation precision and kappa, limitations; Methods introduction as TODO-COPY; nightly status and `calibration_warning`; "Report an error" link; corrections page from `docs/CORRECTIONS.md`.
   - _Requirements: REQ-WEB-METHODS.1, REQ-WEB-FRESH.2–3_
-- [ ] 16. [credibility] What the headline leaves out
+- [x] 16. [credibility] What the headline leaves out
   - Separate deaths, temporary-fix return rates, exclusions, the `source_unknown` explanation, the bulk-closure layer in Cone orange.
   - _Requirements: REQ-WEB-DEATHS.1_
 

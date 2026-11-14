@@ -6,7 +6,7 @@ import { t } from "../lib/t";
 
 const W = 640;
 const H = 360;
-const M = { l: 52, r: 16, t: 12, b: 44 };
+const M = { l: 64, r: 16, t: 12, b: 44 };
 
 /**
  * Funnel plot: each group's raw rate against its n, with 95% and 99.8% limits around the citywide rate (REQ-WEB-CHARTS.2).
@@ -15,7 +15,8 @@ const M = { l: 52, r: 16, t: 12, b: 44 };
 export function FunnelChart({ groups, limits, citywide }: { groups: readonly Group[]; limits: readonly FunnelLimit[]; citywide: number | null }) {
   const sorted = [...limits].sort((a, b) => a.n - b.n);
   const maxN = Math.max(...sorted.map((l) => l.n), ...groups.map((g) => g.n), 2);
-  const maxY = Math.min(1, Math.max(0.05, ...groups.map((g) => g.raw ?? 0), ...sorted.map((l) => l.hi998)) * 1.1);
+  // the vertical range fits the groups, not the very wide limits of the smallest n; those lines are clipped at the top
+  const maxY = Math.min(1, Math.max(0.05, ...groups.map((g) => g.raw ?? 0), citywide ?? 0) * 1.25);
   const x = logScale(1, maxN, M.l, W - M.r);
   const y = linear(0, maxY, H - M.b, M.t);
   const xs = sorted.map((l) => x(l.n));
@@ -39,13 +40,18 @@ export function FunnelChart({ groups, limits, citywide }: { groups: readonly Gro
       ))}
       <text className="chart-axis" x={(M.l + W - M.r) / 2} y={H - 6} textAnchor="middle">{t("charts.funnel_axis_n")}</text>
       <text className="chart-axis" transform={`translate(12 ${(M.t + H - M.b) / 2}) rotate(-90)`} textAnchor="middle">{t("charts.funnel_axis_rate")}</text>
+      <defs>
+        <clipPath id="funnel-clip">
+          <rect x={M.l} y={M.t} width={W - M.l - M.r} height={H - M.t - M.b} />
+        </clipPath>
+      </defs>
       {sorted.length > 1 ? (
-        <>
+        <g clipPath="url(#funnel-clip)">
           <path className="chart-line chart-line-limit95" d={linePath(xs, sorted.map((l) => y(l.hi95)))} />
           <path className="chart-line chart-line-limit95" d={linePath(xs, sorted.map((l) => y(l.lo95)))} />
           <path className="chart-line chart-line-limit998" d={linePath(xs, sorted.map((l) => y(l.hi998)))} />
           <path className="chart-line chart-line-limit998" d={linePath(xs, sorted.map((l) => y(l.lo998)))} />
-        </>
+        </g>
       ) : null}
       {citywide !== null ? <line className="chart-line chart-line-base" x1={M.l} x2={W - M.r} y1={y(citywide)} y2={y(citywide)} /> : null}
       {groups.filter((g) => g.raw !== null && g.n > 0).map((g) => {

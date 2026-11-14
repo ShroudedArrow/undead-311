@@ -8,7 +8,7 @@ import { visibleSet } from "../lib/filter";
 import { useData } from "../lib/data";
 import { parsePoints, parseZombies } from "../lib/parse";
 import { pointsToRows } from "../lib/points";
-import { buildTableRows } from "../lib/table";
+import { buildTableRows, bulkIds } from "../lib/table";
 import { t } from "../lib/t";
 import { decodeState, encodeState, type PageState } from "../lib/url";
 
@@ -23,15 +23,17 @@ export default function HomePage() {
   const state = useMemo(() => decodeState(params.toString()), [params]);
   const points = useData("points.json", parsePoints);
   const rows = useMemo(() => (points.status === "ok" ? pointsToRows(points.data) : []), [points]);
-  const zombies = useData(state.view === "table" ? "zombies.json" : null, parseZombies);
+  const zombies = useData(state.view === "table" || state.bulk ? "zombies.json" : null, parseZombies);
   const zombieById = useMemo(() => (zombies.status === "ok" ? new Map(zombies.data.zombies.map((z) => [z.zombie_id, z])) : null), [zombies]);
   const visible = useMemo(() => visibleSet(rows, state.filters, state.tierMode), [rows, state]);
 
+  const bulkSet = useMemo(() => (state.bulk ? bulkIds(visible.items, zombieById) : null), [state.bulk, visible, zombieById]);
   // filter menus count what the current tier mode can show, so an option's number matches what picking it yields
   const optionRows = useMemo(() => (state.tierMode === "all" ? rows : rows.filter((r) => r.tier === "headline")), [rows, state.tierMode]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filtersId = useId();
   const tierNoteId = useId();
+  const bulkNoteId = useId();
   const update = (next: PageState) => setParams(encodeState(next), { replace: true });
   const select = (id: string) => navigate({ pathname: `/zombie/${encodeURIComponent(id)}`, search: params.toString() });
 
@@ -64,6 +66,13 @@ export default function HomePage() {
               <p className="count-note" id={tierNoteId}>
                 {t("filters.tier_toggle_note")}
               </p>
+              <label className="tier-toggle">
+                <input type="checkbox" checked={state.bulk} aria-describedby={bulkNoteId} onChange={(e) => update({ ...state, bulk: e.target.checked })} />
+                <span>{t("filters.bulk_toggle")}</span>
+              </label>
+              <p className="count-note" id={bulkNoteId} data-testid="bulk-note">
+                {state.bulk && bulkSet && zombies.status === "ok" ? t("filters.bulk_count", { count: bulkSet.size }) : t("filters.bulk_note")}
+              </p>
               <Filters rows={optionRows} filters={state.filters} onChange={(filters) => update({ ...state, filters })} />
             </div>
           </>
@@ -80,12 +89,12 @@ export default function HomePage() {
         </div>
         {state.view === "map" ? (
           <Suspense fallback={<p>{t("map.loading")}</p>}>
-            <MapView rows={visible.items} selectedId={selectedId} onSelect={select} />
+            <MapView rows={visible.items} selectedId={selectedId} onSelect={select} bulkIds={bulkSet} />
           </Suspense>
         ) : (
           <>
             {zombies.status === "error" && <PanelError file={zombies.file} error={zombies.error} />}
-            <ZombieTable rows={buildTableRows(visible.items, zombieById)} search={params.toString()} />
+            <ZombieTable rows={buildTableRows(visible.items, zombieById, state.bulk)} search={params.toString()} />
           </>
         )}
       </section>

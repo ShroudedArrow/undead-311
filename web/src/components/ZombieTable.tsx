@@ -18,6 +18,7 @@ export function ZombieTable({ rows, search }: { rows: readonly TableRow[]; searc
   const [key, setKey] = useState<SortKey>("date");
   const [dir, setDir] = useState<SortDir>("desc");
   const sorted = sortRows(rows, key, dir);
+  const showBulk = rows.some((r) => r.bulk !== undefined);
   if (rows.length === 0) return <p className="table-empty">{t("empty.no_matches")}</p>;
   return (
     <div className="table-wrap">
@@ -43,6 +44,7 @@ export function ZombieTable({ rows, search }: { rows: readonly TableRow[]; searc
               </th>
             ))}
             <th scope="col">{t("table.col_tier")}</th>
+            {showBulk ? <th scope="col">{t("table.col_bulk")}</th> : null}
             <th scope="col">{t("table.col_open")}</th>
           </tr>
         </thead>
@@ -55,6 +57,7 @@ export function ZombieTable({ rows, search }: { rows: readonly TableRow[]; searc
               <td>{familyLabel(r.family)}</td>
               <td>{r.confidence === null ? "" : r.confidence.toFixed(2)}</td>
               <td>{t(`tiers.${r.tier}`)}</td>
+              {showBulk ? <td>{r.bulk ? t("table.bulk_yes") : ""}</td> : null}
               <td>
                 <Link to={{ pathname: `/zombie/${encodeURIComponent(r.id)}`, search }}>
                   {t("table.open_card", { id: r.id })}
