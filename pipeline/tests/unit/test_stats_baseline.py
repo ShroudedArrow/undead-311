@@ -11,7 +11,15 @@ from helpers import at, day, mk
 
 from undead311.detect.core import detect
 from undead311.detect.params import DEFAULT
-from undead311.stats.baseline import DAY, MIN_WINDOWS, BaselineModel, excess_rows, season_array, thinned_p
+from undead311.stats.baseline import (
+    DAY,
+    MIN_WINDOWS,
+    BaselineModel,
+    excess_rows,
+    season_array,
+    season_integrated_p,
+    thinned_p,
+)
 from undead311.stats.cohort import spot_key
 from undead311.stats.pipeline import zombie_baselines
 
@@ -177,3 +185,78 @@ def test_req_stat_base_4_zombie_baselines_covers_every_zombie_with_a_value_in_0_
     res = detect(cs)
     got = zombie_baselines(None, res, {c.id: c for c in cs}, DEFAULT)
     assert set(got) == {z.zombie_id for z in res.zombies} and all(0.0 <= v <= 1.0 for v in got.values())
+
+
+# --- season-integrated baseline (REQ-STAT-BASE.1, methods.md Primary baseline, ops#111) --------------------------------------
+def test_req_stat_base_1_season_integrated_p_by_hand():
+    """p = 1 - prod_s (1 - d_s/T_s)^K_s: 2 reports in 100 live winter days with 20 window days, 3 in 200 spring days with 40."""
+    got = season_integrated_p(np.array([[2, 3, 0, 0]]), np.array([100.0, 200.0, 50.0, 50.0]), np.array([[20.0, 40.0, 0.0, 0.0]]))
+    assert got[0] == pytest.approx(1 - (1 - 20 / 100) ** 2 * (1 - 40 / 200) ** 3)
+    # with the whole window in one season it is the single-season estimate
+    one = season_integrated_p(np.array([[0, 3, 0, 0]]), np.array([90.0, 240.0, 90.0, 90.0]), np.array([[0.0, 60.0, 0.0, 0.0]]))
+    assert one[0] == pytest.approx(thinned_p(3, 240.0, 60.0)[0])
+    # live time no longer than the window's share: every other live report is in the window
+    assert season_integrated_p(np.array([[1, 0, 0, 0]]), np.array([20.0, 100.0, 0.0, 0.0]), np.array([[30.0, 30.0, 0.0, 0.0]]))[0] == 1.0
+    assert season_integrated_p(np.array([[0, 0, 0, 0]]), np.array([20.0, 100.0, 0.0, 0.0]), np.array([[30.0, 30.0, 0.0, 0.0]]))[0] == 0.0
+
+
+def test_req_stat_base_1_a_season_without_live_time_takes_the_all_season_rate():
+    """No live summer days: the window's summer share uses the spot's all-season counts and days (here 4 reports, 200 days)."""
+    got = season_integrated_p(np.array([[1, 3, 0, 0]]), np.array([100.0, 100.0, 0.0, 0.0]), np.array([[0.0, 30.0, 30.0, 0.0]]))
+    assert got[0] == pytest.approx(1 - (1 - 30 / 100) ** 3 * (1 - 30 / 200) ** 4)
+
+
+def test_req_stat_base_1_the_window_days_split_at_the_season_boundary():
+    """A window opened 2024-05-13 12:00 has 19 spring days and 41 summer days (days are whole 24 h blocks from the first report,
+    each in the season it starts in, the same way live days are counted); the rows sum to WINDOW_DAYS."""
+    cs = [mk("A0", 0, 1)]
+    m = BaselineModel({c.id: c for c in cs}, detect(cs), data_end=day(400))
+    d = m.window_season_days(np.array([ts(70), ts(10)]))
+    assert d[0].tolist() == [0.0, 19.0, 41.0, 0.0]
+    assert d.sum(axis=1).tolist() == [60.0, 60.0]
+
+
+def test_req_stat_base_1_a_window_that_runs_into_the_next_season_is_scored_at_each_seasons_rate():
+    """ops#111: closure on 2024-05-13 12:00, so 19 window days are spring and 41 are summer. Spot: first report day 0 (spring),
+    live spring reports on days 10 and 20, live summer reports on days 140, 150 and 160; the incident's own report (day 69) is
+    left out. The 60 days after the closure are dead (spring 19 d, summer 41 d), so live days: spring 127 - 19, summer 92 - 41."""
+    cs = [mk("F", 0), mk("S1", 10), mk("S2", 20), mk("I", 69, 70), mk("U1", 140), mk("U2", 150), mk("U3", 160)]
+    res = detect(cs)
+    m = BaselineModel({c.id: c for c in cs}, res, data_end=day(400))
+    inc = next(i for i in res.incidents if "I" in i.member_ids)
+    got = m.spot_p(inc)
+    expected = 1 - (1 - 19 / (127 - 19)) ** 2 * (1 - 41 / (92 - 41)) ** 3
+    assert got is not None and got[0] == pytest.approx(expected)
+    only_closure_season = 1 - (1 - 60 / (127 - 19)) ** 2  # the old estimate: all 60 days at the spring rate
+    assert abs(got[0] - only_closure_season) > 0.1
+
+
+def _seasonal_town(gap, winter=4.0, spots=300, span=1400, seed=5):
+    """Poisson reports at every spot, `winter` times as many in December to February, each closed 2 days later: nothing
+    resurrects by cause."""
+    rng = np.random.default_rng(seed)
+    out = []
+    for s in range(spots):
+        t, n = 0.0, 0
+        while True:
+            t += rng.exponential(gap / winter)
+            if t > span:
+                break
+            if day(t).month not in (12, 1, 2) and rng.random() > 1.0 / winter:
+                continue
+            out.append(mk(f"S{s:03d}-{n:03d}", t, t + 2.0, x=s * 1000.0, segment=f"seg{s}"))
+            n += 1
+    return out
+
+
+def test_req_stat_base_1_a_seasonal_null_town_is_closer_to_its_observed_count_than_the_closure_season_estimate():
+    """REQ-STAT-BASE.1-2, ops#111 (S37): winter reports at 4x the rest of the year, nothing resurrecting by cause, seeds 5-10.
+    The closure-season estimate ran 12% above the observed count here (late-winter closures took a winter rate for a spring
+    window); the season-integrated estimate runs under 9% above. The rest is the thin-time bias of busy spots (ops#114)."""
+    exp, obs = 0.0, 0
+    for seed in range(5, 11):
+        cs = _seasonal_town(300.0, seed=seed)
+        m = BaselineModel({c.id: c for c in cs}, detect(cs), data_end=day(1400))
+        row = next(r for r in excess_rows(m, 311, 20) if r.kind == "family" and r.tier_set == "headline")
+        exp, obs = exp + row.expected, obs + row.observed
+    assert 0.95 < exp / obs < 1.09

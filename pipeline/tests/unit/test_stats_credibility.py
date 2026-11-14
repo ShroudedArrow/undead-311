@@ -588,3 +588,29 @@ def test_req_stat_val_1_the_committed_owner_config_names_four_neighborhoods_that
         ["Fenway / Kenmore / Audubon Circle / Longwood", "Mission Hill", "Roxbury", "South End"]
     )
     assert all(canonical_neighborhood(n) == n for n in cfg["neighborhoods"])
+
+
+def test_req_stat_placebo_1_a_shift_of_zero_reproduces_the_excess_with_the_same_estimator():
+    """REQ-STAT-PLACEBO.1, REQ-STAT-BASE.1 (ops#111, ops#112): the placebo runs the baseline's own season-integrated estimator
+    on the moved closures, so a shift of 0 gives observed hits minus the excess's expected. Reports at least 62 days apart, so
+    no report opens in a dead stretch (an incident born there leaves out its ancestor in the excess, which the placebo does not)."""
+    from undead311.stats.cohort import eligible_originals
+    from undead311.stats.shift import _build, _placebo
+
+    rng = np.random.default_rng(7)
+    cs = []
+    for s in range(30):
+        t = 0.0
+        for n in range(8):
+            cs.append(mk(f"P{s:02d}-{n}", t, t + 2.0, x=s * 1000.0, segment=f"seg{s}"))
+            t += 70.0 + rng.exponential(120.0)
+    res = detect(cs)
+    m = BaselineModel({c.id: c for c in cs}, res, data_end=day(4000))
+    sp = _build(m)
+    assert sp is not None and sp.spot_based.any()
+    got = _placebo(m, sp, np.zeros((len(sp.keys), 1)), min(float(m.groups[k][0][0]) for k in sp.keys), 311)
+    shift, _ = shift_and_placebo(m, 311, 10, 1)
+    expected = sum(m.estimate(i).p or 0.0 for i in eligible_originals(res.incidents, m.data_end, m.params)
+                   if m._incident_key[i.incident_id] in sp.keys)  # fmt: skip
+    assert got is not None and shift is not None
+    assert got.excess == pytest.approx(shift.observed - expected, abs=1e-6)

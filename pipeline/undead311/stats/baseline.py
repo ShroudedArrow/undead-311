@@ -5,9 +5,11 @@ within WINDOW_DAYS of a closure by coincidence?
 
 * Same spot (REQ-STAT-BASE.1): the spot (segment, or a 60 m cell) is watched from its first same-family report to the data
   end. Its other same-family reports (mirror copies are one report, the incident's own members and the first report are not
-  counted) in the incident's season, K, fall in a window of WINDOW_DAYS by chance with probability `c = WINDOW_DAYS / T`,
-  where T is the number of days of that season in the watched span. `p_spot = 1 - (1 - c)^K`. This is the share of the
-  spot's windows of that season that contain a report, estimated so that it is unbiased (a count of the other reports of
+  counted) in season s, K_s, fall in the d_s days of the incident's window (WINDOW_DAYS from the closure) that lie in season
+  s by chance with probability `d_s / T_s`, where T_s is the live days of that season in the watched span. A window that
+  runs into the next season is scored with each season's own rate: `p_spot = 1 - prod_s (1 - d_s / T_s)^K_s` (methods.md,
+  ops#111). A season with no live time uses the spot's all-season rate for its days. This is the share of the spot's
+  windows that contain a report, estimated so that it is unbiased (a count of the other reports of
   the same spot, as opposed to a share of windows that a hit makes unusable, which came out 40% too high at sparse spots,
   ops#107). Leaving the incident's own reports out is what keeps a busy spot from raising the baseline of its own originals.
   Counting every other report is the cautious choice: a real resurrection at the spot can only raise `p_spot`.
@@ -71,6 +73,32 @@ def thinned_p(k: int, live_days: float, window_days: float, span_days: float | N
     if live_days <= window_days:  # (almost) no live time: every other live report is in the window
         return (1.0 if k > 0 else 0.0), windows
     return 1.0 - (1.0 - window_days / live_days) ** max(k, 0), windows
+
+
+def season_integrated_p(k: np.ndarray, days: np.ndarray, d: np.ndarray) -> np.ndarray:
+    """p = 1 - prod_s (1 - d_s / T_s)^K_s for each row (REQ-STAT-BASE.1, methods.md Primary baseline, ops#111).
+
+    `k` (n, 4) is the other live reports per season of each row's spot, `days` (4,) the spot's live days per season (T_s)
+    and `d` (n, 4) the days of each row's window that fall in each season (they sum to WINDOW_DAYS). A season with no live
+    time takes the spot's all-season counts and days for its share of the window (a threshold on live days instead was
+    tried and biased the baseline down 0.023 on sparse null towns: a season with many reports has fewer live days). A season whose live days do not exceed
+    its share of the window has every other live report inside the window: the factor is 0 with a report, 1 without.
+    With the whole window in one season this is `thinned_p`. Shared by the excess and the placebo, so both use one estimator.
+    """
+    k = np.atleast_2d(np.asarray(k, dtype=float))
+    d = np.atleast_2d(np.asarray(d, dtype=float))
+    t = np.asarray(days, dtype=float)
+    none = t <= 0  # seasons without live time
+    k_eff = np.where(none[None, :], k.sum(axis=1, keepdims=True), k)
+    t_eff = np.where(none, t.sum(), t)[None, :]
+    active = d > 1e-9
+    enough = t_eff > d
+    ratio = np.zeros_like(d)
+    np.divide(d, t_eff, out=ratio, where=enough & active)  # share of the season's live days that the window covers
+    log_none = np.where(active & enough, k_eff * np.log1p(-ratio), 0.0)
+    log_none = log_none.sum(axis=1)
+    certain = (active & ~enough & (k_eff > 0)).any(axis=1)  # every other live report is in the window
+    return np.where(certain, 1.0, 1.0 - np.exp(log_none))
 
 
 @dataclass(frozen=True)
@@ -192,7 +220,7 @@ class BaselineModel:
 
     def _build_season_days(self) -> None:
         """Cumulative days of each season from the first report, by day, so any stretch of time is two lookups."""
-        n = max(int((self.t_end - self.t_start) // DAY) + 2, 1)
+        n = max(int((self.t_end - self.t_start) // DAY) + 2, 1) + math.ceil(self.params.WINDOW_DAYS) + 1  # + one window
         self._day_season = season_array(self.t_start + DAY * np.arange(n))
         self._cum = np.zeros((4, n + 1))
         for s in range(4):
@@ -206,6 +234,12 @@ class BaselineModel:
         out = self._cum[:, i].copy()
         out[self._day_season[i], np.arange(i.size)] += frac  # the part of day i that has passed counts for its season
         return out
+
+    def window_season_days(self, ts: np.ndarray) -> np.ndarray:
+        """Days of each season in the window of WINDOW_DAYS that starts at each time in `ts`. Shape (len(ts), 4); each row
+        sums to WINDOW_DAYS (REQ-STAT-BASE.1: d_s)."""
+        ts = np.asarray(ts, dtype=float)
+        return (self._season_days_upto(ts + self.window_s) - self._season_days_upto(ts)).T
 
     def live_spot(self, opens: np.ndarray, closes: np.ndarray) -> LiveSpot:
         """The watched time of a spot with the `WINDOW_DAYS` that follow each closure taken out (REQ-STAT-BASE.1).
@@ -279,14 +313,22 @@ class BaselineModel:
         ]  # fmt: skip
         return np.bincount(season_array(np.array(opens)), minlength=4) if opens else np.zeros(4, dtype=int)
 
-    def spot_p(self, inc: Incident, s: int) -> tuple[float, int] | None:
-        """(p_spot, windows) of the incident's spot in season `s`; None when its live time holds less than one window."""
+    def spot_p(self, inc: Incident, s: int | None = None) -> tuple[float, int] | None:
+        """(p_spot, windows) of the incident's spot; None when the spot's live time holds less than one window.
+
+        p follows the days of the incident's own window in each season (REQ-STAT-BASE.1, ops#111). `windows` counts the
+        windows of season `s` (default: the season of the closure) in the watched span, which REQ-STAT-BASE.3 compares
+        with MIN_WINDOWS."""
         live = self._spot_info.get(self._incident_key[inc.incident_id])
         if live is None:  # only mirror copies at the spot: nothing to watch
             return None
-        return thinned_p(
-            int(live.counts[s] - self.own_after(inc)[s]), float(live.days[s]), self.params.WINDOW_DAYS, float(live.span[s])
-        )
+        s = season_idx(inc.close_utc) if s is None else s
+        windows = int(float(live.span[s]) // self.params.WINDOW_DAYS)
+        if windows < 1:
+            return None
+        k = live.counts - self.own_after(inc)
+        d = self.window_season_days(np.array([inc.close_utc.timestamp()]))
+        return float(season_integrated_p(np.maximum(k, 0)[None, :], live.days, d)[0]), windows
 
     def _pool(self) -> dict[tuple[str, int], tuple[int, float]]:
         """Windows and pooled p of every family and season (season -1: all seasons), for the fallback (REQ-STAT-BASE.3).
@@ -308,15 +350,18 @@ class BaselineModel:
             live = self._spot_info.get(key)
             if live is None:
                 continue
-            got = thinned_p(int(live.all_counts[s] - self.own_all(inc)[s]), float(live.span[s]), w, float(live.span[s]))
-            if got is None:
+            n_win = int(float(live.span[s]) // w)
+            if n_win < 1:
                 continue
+            k = np.maximum(live.all_counts - self.own_all(inc), 0)[None, :]
+            d = self.window_season_days(np.array([inc.close_utc.timestamp()]))
+            p_inc = float(season_integrated_p(k, live.span, d)[0])
             for ps in (s, -1):
-                total[(key[0], ps)] += got[0]
+                total[(key[0], ps)] += p_inc
                 count[(key[0], ps)] += 1
                 if (key, ps) not in seen:
                     seen.add((key, ps))
-                    windows[(key[0], ps)] += got[1] if ps == s else sum(int(live.span[x] // w) for x in range(4))
+                    windows[(key[0], ps)] += n_win if ps == s else sum(int(live.span[x] // w) for x in range(4))
         return {k: (windows[k], total[k] / count[k]) for k in count}
 
     # --- neighborhood ------------------------------------------------------------------------------------------------

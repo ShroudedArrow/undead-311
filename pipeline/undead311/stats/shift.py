@@ -20,7 +20,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from undead311.stats.baseline import BaselineModel, season_array
+from undead311.stats.baseline import BaselineModel, season_array, season_integrated_p
 from undead311.stats.cohort import eligible_originals, season_idx, spot_key
 from undead311.stats.intervals import bootstrap_sum_cells
 
@@ -186,13 +186,12 @@ def _placebo(model: BaselineModel, sp: _Spots, delta: np.ndarray, t_min: float, 
     g = sp.group_of
     shifted = sp.t0[g][:, None] + np.mod(sp.close[:, None] - sp.t0[g][:, None] + delta[g], sp.length[g][:, None])
     hits = _hits(sp, t_min, w, shifted)
-    wd = float(model.params.WINDOW_DAYS)
     expected = np.tile(sp.p_fixed[:, None], (1, n_runs))  # fallbacks keep their unshifted value
     for gi, key in enumerate(sp.keys):
         rows = np.flatnonzero((g == gi) & sp.spot_based)
         if rows.size == 0:
             continue
-        opens, closes, _live = model.groups[key]
+        opens, _closes, closes = model.groups[key]  # the live closures, as in the baseline (ops#112)
         own_sel = np.flatnonzero(np.isin(sp.own_inc, rows))
         local = np.searchsorted(rows, sp.own_inc[own_sel])  # position of each own member's incident among `rows`
         own_t = sp.own_raw[own_sel]
@@ -203,12 +202,10 @@ def _placebo(model: BaselineModel, sp: _Spots, delta: np.ndarray, t_min: float, 
             mine = np.zeros((rows.size, 4))
             ok_own = (own_t > live.t0) & live.is_live(own_t)
             np.add.at(mine, (local[ok_own], own_s[ok_own]), 1.0)
-            # annual, not seasonal: a shifted window starts anywhere in the year whatever the season it was moved to, so the
-            # year's live rate is what it should be compared with (a seasonal rate would count the incident's own reports
-            # in a season they are not in, and busy spots would look busier than they are)
-            k = live.counts.sum() - mine.sum(axis=1)
-            days = float(live.days.sum())
-            expected[rows, run] = 1.0 - (1.0 - wd / days) ** k if days > wd else 1.0 * (k > 0)
+            # the excess's own estimator on the moved closure: the days of its window in each season against the spot's live
+            # reports and days of that season (REQ-STAT-BASE.1, REQ-STAT-PLACEBO.1, ops#111)
+            k = np.maximum(live.counts[None, :] - mine, 0.0)
+            expected[rows, run] = season_integrated_p(k, live.days, model.window_season_days(shifted[rows, run]))
     per_incident = (hits - expected).mean(axis=1)  # each original's mean (hit - baseline) over the shifted runs
     mean = float(per_incident.sum())
     # the baseline's own error (ops#103): originals share the draw of the pooled estimate their baseline came from, and

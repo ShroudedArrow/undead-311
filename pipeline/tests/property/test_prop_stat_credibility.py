@@ -9,6 +9,7 @@ from __future__ import annotations
 import random
 from dataclasses import replace
 
+import numpy as np
 from helpers import day
 from hypothesis import assume, given
 from hypothesis import strategies as st
@@ -219,3 +220,23 @@ def test_prop_stat_10_a_non_provisional_tour_contains_only_confirmed_ids(spec, s
         assert set(t2.zombie_ids) <= real
         if set(named) <= real:
             assert t2.source == "override" and set(t2.zombie_ids) == set(named)
+
+
+@given(
+    k=st.lists(st.integers(0, 12), min_size=4, max_size=4),
+    days=st.lists(st.floats(0, 400, allow_nan=False), min_size=4, max_size=4),
+    split=st.lists(st.integers(0, 60), min_size=4, max_size=4),
+    extra=st.integers(0, 5),
+    season=st.integers(0, 3),
+)
+def test_req_stat_base_1_season_integrated_p_is_a_probability_and_never_falls_with_another_report(k, days, split, extra, season):
+    """REQ-STAT-BASE.1 (ops#111), testing.md #3: p is in [0, 1] and one more live report in any season never lowers it."""
+    from undead311.stats.baseline import season_integrated_p
+
+    d = np.array([split], dtype=float)
+    base = season_integrated_p(np.array([k]), np.array(days), d)[0]
+    more = list(k)
+    more[season] += extra
+    higher = season_integrated_p(np.array([more]), np.array(days), d)[0]
+    assert 0.0 <= base <= 1.0 and 0.0 <= higher <= 1.0
+    assert higher >= base - 1e-12
