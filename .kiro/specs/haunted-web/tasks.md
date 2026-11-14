@@ -56,7 +56,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 - [x] 14. [credibility] Survival and funnel charts, leaderboards
   - Plain SVG components; intervals always visible; "unusual" only outside 99.8%; reporting intensity beside every neighborhood rate.
   - _Requirements: REQ-WEB-CHARTS.1–2_
-- [ ] 15. [credibility] Methods page, status and corrections
+- [x] 15. [credibility] Methods page, status and corrections
   - Definitions, baselines, excess with the shift distribution, placebo, validation precision and kappa, limitations; Methods introduction as TODO-COPY; nightly status and `calibration_warning`; "Report an error" link; corrections page from `docs/CORRECTIONS.md`.
   - _Requirements: REQ-WEB-METHODS.1, REQ-WEB-FRESH.2–3_
 - [ ] 16. [credibility] What the headline leaves out

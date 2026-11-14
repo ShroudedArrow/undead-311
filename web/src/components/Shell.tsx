@@ -20,6 +20,7 @@ export function Shell() {
           </NavLink>
           <NavLink to="/scorecard">{t("nav.scorecard")}</NavLink>
           <NavLink to="/durability">{t("nav.durability")}</NavLink>
+          <NavLink to="/methods">{t("nav.methods")}</NavLink>
           <NavLink to="/judge">{t("nav.judge")}</NavLink>
         </nav>
         <DataAsOf />

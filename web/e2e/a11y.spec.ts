@@ -49,3 +49,14 @@ test("durability page: survival chart, funnel, leaderboard (REQ-WEB-CHARTS, REQ-
   await expect(page.getByTestId("leaderboard")).toBeVisible();
   await scan(page, "durability");
 });
+
+test("methods and corrections pages (REQ-WEB-METHODS.1, REQ-WEB-FRESH.3, REQ-WEB-A11Y.2)", async ({ page }) => {
+  await page.goto("/methods");
+  await expect(page.getByTestId("excess-table")).toBeVisible();
+  await expect(page.getByTestId("nightly-status")).toBeVisible();
+  await expect(page.getByTestId("leaves-out")).toBeVisible();
+  await scan(page, "methods");
+  await page.goto("/corrections");
+  await expect(page.getByRole("heading", { name: "Corrections log" })).toBeVisible();
+  await scan(page, "corrections");
+});

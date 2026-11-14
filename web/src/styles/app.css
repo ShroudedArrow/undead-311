@@ -393,3 +393,12 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .chart-legend { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-3); padding: 0; margin: var(--space-2) 0; }
 .chart-legend li { display: flex; align-items: center; gap: var(--space-2); }
 .chart-table { padding: var(--space-3) 0; }
+
+/* REQ-WEB-METHODS: plain lists, the shift-test bar and the calibration note. */
+.plain-list { padding-left: 1.25rem; max-width: var(--measure); }
+.plain-list li { margin-bottom: var(--space-2); }
+.shift-bar { width: 100%; max-width: 32rem; height: 1.75rem; display: block; background: var(--crew-white); border: 2px solid var(--asphalt); }
+.shift-observed-mark { fill: var(--survey-pink); stroke: var(--asphalt); stroke-width: 0.3; }
+.calibration-warning { border: 2px solid var(--asphalt); border-left: 0.6rem solid var(--cone-orange); padding: var(--space-2) var(--space-3); background: var(--crew-white); max-width: var(--measure); }
+.report-error { font-weight: 600; }
+.autopsy-report { margin: var(--space-3) 0 0; }

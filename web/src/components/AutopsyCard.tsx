@@ -1,6 +1,7 @@
 import { formatDateTime, formatDay, formatGap } from "../lib/format";
 import type { Card, CaseRecord } from "../lib/parse";
 import { t } from "../lib/t";
+import { ReportError } from "./ReportError";
 
 /** Cards may carry `confidence_partial` as an extra field (zombies.json has it; see the engine proposal). */
 export type CardWithPartial = Card & { confidence_partial?: boolean };
@@ -106,6 +107,9 @@ export function AutopsyCard({ card }: { card: CardWithPartial }) {
           <CaseBlock heading={t("card.original")} rec={card.original} />
           <CaseBlock heading={t("card.rereport")} rec={card.rereport} />
         </div>
+        <p className="autopsy-report">
+          <ReportError id={card.zombie_id} />
+        </p>
       </div>
     </article>
   );
