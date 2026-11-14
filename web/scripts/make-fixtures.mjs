@@ -4,10 +4,13 @@
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildStatsFixtures, findBulkClosures } from "./stats-fixtures.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const csvPath = join(here, "..", "..", "data", "sample", "sample_311.csv");
 const outDir = join(here, "..", "public", "data");
+/** The detector defaults the fixtures stand in for (REQ-EXP-1.2: stats files carry params and seed). */
+const PARAMS = { WINDOW_DAYS: 60, RADIUS_M: 30, matching: "segment" };
 const overridePath = join(here, "..", "..", "data", "labels", "judge_tour_override.json");
 
 export function parseCsv(text) {
@@ -45,8 +48,17 @@ const cleanText = (s) => (s || "").replace(/&amp;/g, "&").replace(/\s+/g, " ").t
 const scrubStreet = (s) => cleanText(s).replace(/^INTERSECTION\s+/i, "").replace(/^\d+[A-Za-z-]*\s+/, "") || null;
 // UX-11 (ops#24): the two systems spell a few neighborhoods differently; the fixture groups the split ones.
 // The engine should normalize this in the export (handoff to:engine); the web app does not guess neighborhood names.
-const HOOD_ALIASES = { Allston: "Allston / Brighton", Brighton: "Allston / Brighton" };
-const canonicalHood = (h) => (h ? (HOOD_ALIASES[h] ?? h) : null);
+// UX-20 (ops#69): Fenway and Longwood, and South Boston and South Boston Waterfront, are one area each in the other system;
+// "Boston" is not a neighborhood, so those cases carry no neighborhood (shown as "Neighborhood not recorded", outside rankings).
+const HOOD_ALIASES = {
+  Allston: "Allston / Brighton", Brighton: "Allston / Brighton", Downtown: "Downtown / Financial District", Mattapan: "Greater Mattapan",
+  Fenway: "Fenway / Kenmore / Audubon Circle / Longwood", Longwood: "Fenway / Kenmore / Audubon Circle / Longwood",
+  "South Boston": "South Boston / South Boston Waterfront", "South Boston Waterfront": "South Boston / South Boston Waterfront",
+};
+const NOT_A_NEIGHBORHOOD = new Set(["Boston"]);
+export const canonicalHood = (h) => (h && !NOT_A_NEIGHBORHOOD.has(h) ? (HOOD_ALIASES[h] ?? h) : null);
+/** ZD step 9: a legacy closure text that says the case was resubmitted, replaced or migrated. Such a case is never an original (UX-16, ops#65). */
+export const TRANSFER = /resubmitted|see new case|transferred|migrated/i;
 const slug = (s) => (s || "unknown").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 function coronerLabel(text, code) {
@@ -109,9 +121,15 @@ export function buildFixtures(rows, override = null) {
   const zombies = [], cards = [];
   const seenRe = new Set();
   const closed = cases.filter((c) => c.close !== null).sort((a, b) => a.close - b.close || (a.id < b.id ? -1 : 1));
+  // UX-18 (ops#67): the bulk flag on a zombie comes from the same (department, close day, template) groups that bulk_closures.json lists
+  const labelled = closed.map((c) => ({ ...c, label: coronerLabel(c.text, c.code) }));
+  const bulkDays = findBulkClosures(labelled.filter((c) => c.label !== "duplicate" && c.label !== "invalid"));
+  const bulkKeys = new Set(bulkDays.map((b) => `${b.department}\u0000${b.close_date}\u0000${b.template}`));
+  const inBulk = (c) => bulkKeys.has(`${c.dept}\u0000${new Date(c.close).toISOString().slice(0, 10)}\u0000${c.text}`);
   for (const a of closed) {
     const label = coronerLabel(a.text, a.code);
     if (label === "duplicate" || label === "invalid") continue;
+    if (TRANSFER.test(a.text)) continue; // ZD step 9: a transferred closure is never an original
     let best = null;
     const [f, la, lo] = [a.family, Math.floor(a.lat / 0.0005), Math.floor(a.lon / 0.0005)];
     for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
@@ -133,7 +151,7 @@ export function buildFixtures(rows, override = null) {
     const id = `${incident}:${b.id}`;
     const verdict = h > 0.9 ? "weakened" : h > 0.86 ? "explained_away" : h > 0.8 ? "not_reviewed" : "survives";
     const conf = round(Math.max(0.05, Math.min(0.97, 0.75 - gap / 150 - d / 120 + (verdict === "survives" ? 0.1 : -0.1))), 2);
-    const bulk = h > 0.97;
+    const bulk = inBulk(a);
     const year = new Date(b.open).getUTCFullYear();
     zombies.push({
       zombie_id: id, incident_id: incident, resurrection_id: b.id, reports_after: 1, gap_days: round(gap, 2), match_mode: "radius",
@@ -151,24 +169,9 @@ export function buildFixtures(rows, override = null) {
     });
   }
 
-  // keep the fixture small: the 400 highest-confidence pairs, then make sure the kept set exercises the bulk warning and
-  // the partial note (REQ-WEB-CARD.1, .6): swap in the best flagged pairs for the lowest-confidence unflagged ones.
-  // The cut ignores the gap term of the confidence stand-in, so short and long gaps both survive it (UX-1).
-  const cut = (z) => z.confidence + z.gap_days / 150;
-  zombies.sort((x, y) => cut(y) - cut(x) || (x.zombie_id < y.zombie_id ? -1 : 1));
-  const kept = zombies.slice(0, 400);
-  const rest = zombies.slice(400);
-  for (const flag of ["bulk_closure", "confidence_partial"]) {
-    const want = 8;
-    const have = kept.filter((z) => z[flag]).length;
-    const extra = rest.filter((z) => z[flag]).slice(0, Math.max(0, want - have));
-    for (const z of extra) {
-      const victim = kept.findLastIndex((k) => !k.bulk_closure && !k.confidence_partial);
-      if (victim >= 0) kept.splice(victim, 1, z);
-    }
-  }
-  const keep = new Set(kept.map((z) => z.zombie_id));
-  const zs = zombies.filter((z) => keep.has(z.zombie_id)).sort((x, y) => (x.zombie_id < y.zombie_id ? -1 : 1));
+  // UX-25 (ops#74): no size cut. The map, the table and every statistics file (excess, survival, funnel) use the same set of pairs,
+  // so the methods numbers match the map's headline count.
+  const zs = [...zombies].sort((x, y) => (x.zombie_id < y.zombie_id ? -1 : 1));
   const byId = new Map(cards.map((c) => [c.card.zombie_id, c]));
   const coords = new Map(cases.map((c) => [c.id, c]));
 
@@ -202,6 +205,21 @@ export function buildFixtures(rows, override = null) {
   // one family without an adjusted rate, so the raw-only path is exercised
   scorecards.at(-1).stayed_fixed_adj = null;
 
+  // credibility-layer statistics (REQ-WEB-CHARTS, REQ-WEB-METHODS): fixture stand-ins computed from the same crude pairs
+  let mirrorPairs = 0;
+  for (const a of cases) {
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      for (const b of grid.get(`${a.family}|${Math.floor(a.lat / 0.0005) + i}|${Math.floor(a.lon / 0.0005) + j}`) ?? []) {
+        if (a.system === "legacy" && b.system === "new" && Math.abs(a.open - b.open) <= 6 * 3600000 && dist(a, b) <= 30) mirrorPairs++;
+      }
+    }
+  }
+  const dataEndMs = Math.max(...cases.map((c) => c.close ?? c.open));
+  const statsFiles = buildStatsFixtures({
+    closed: labelled, zombies: zs, dataEnd: dataEndMs, version: `fixture-${new Date(dataEndMs).toISOString().slice(0, 10)}`,
+    nullCoords: rows.length - cases.length, mirrorPairs, transferred: labelled.filter((c) => TRANSFER.test(c.text || "")).length,
+  });
+
   const tally = { headline: 0, source_unknown: 0, sensitivity: 0 };
   for (const z of zs) tally[z.tier]++;
   const dataEnd = new Date(Math.max(...cases.map((c) => c.close ?? c.open))).toISOString().slice(0, 10);
@@ -214,9 +232,10 @@ export function buildFixtures(rows, override = null) {
     files: {
       "zombies.json": { data_version: version, zombies: zs },
       "points.json": points,
-      "scorecard.json": { data_version: version, scorecards, counts: tally },
+      "scorecard.json": { data_version: version, params: PARAMS, scorecards, counts: tally, seed: null },
       "status.json": { data_version: version, last_run: `${dataEnd}T02:00:00Z`, ok: true, row_counts: { cases: rows.length, zombies: zs.length }, anomalies: [], segments: "missing", headline_count: tally.headline, source_unknown_count: tally.source_unknown, sensitivity_count: tally.sensitivity, data_end: dataEnd },
-      "judge_tour.json": { data_version: version, provisional: true, zombie_ids: tour.ids, source: tour.source },
+      "judge_tour.json": { data_version: version, params: PARAMS, provisional: true, zombie_ids: tour.ids, source: tour.source, seed: null },
+      ...statsFiles,
       "validation.json": { data_version: version, status: "awaiting_field_labels", precision: null, cant_tell_share: null, kappa: null, confirmed: [], sample_ids: [] },
     },
     shards: Object.fromEntries([...shards.entries()].sort().map(([k, v]) => [`cards/${k}.json`, { data_version: version, shard: k, cards: v.sort((x, y) => (x.zombie_id < y.zombie_id ? -1 : 1)) }])),

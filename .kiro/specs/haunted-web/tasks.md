@@ -46,20 +46,20 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 
 ## Credibility
 
-- [ ] 12. [credibility] Content Security Policy and budget gate
+- [x] 12. [credibility] Content Security Policy and budget gate
   - Generate the CSP headers file for the host; the budget check becomes a failure once engine sharding exists.
   - _Requirements: REQ-WEB-PERF.1, .3_
-- [ ] 13. [credibility] Sensitivity tier toggle
+- [x] 13. [credibility] Sensitivity tier toggle
   - Outline markers, tier notes on cards, headline count always shown first.
-  - [ ] 13.1 Property W6: headline mode never contains non-headline zombies; the headline count is unchanged when the toggle is on. _REQ-WEB-TIER.1–2_
+  - [x] 13.1 Property W6: headline mode never contains non-headline zombies; the headline count is unchanged when the toggle is on. _REQ-WEB-TIER.1–2_
   - _Requirements: REQ-WEB-TIER.1–2_
-- [ ] 14. [credibility] Survival and funnel charts, leaderboards
+- [x] 14. [credibility] Survival and funnel charts, leaderboards
   - Plain SVG components; intervals always visible; "unusual" only outside 99.8%; reporting intensity beside every neighborhood rate.
   - _Requirements: REQ-WEB-CHARTS.1–2_
-- [ ] 15. [credibility] Methods page, status and corrections
+- [x] 15. [credibility] Methods page, status and corrections
   - Definitions, baselines, excess with the shift distribution, placebo, validation precision and kappa, limitations; Methods introduction as TODO-COPY; nightly status and `calibration_warning`; "Report an error" link; corrections page from `docs/CORRECTIONS.md`.
   - _Requirements: REQ-WEB-METHODS.1, REQ-WEB-FRESH.2–3_
-- [ ] 16. [credibility] What the headline leaves out
+- [x] 16. [credibility] What the headline leaves out
   - Separate deaths, temporary-fix return rates, exclusions, the `source_unknown` explanation, the bulk-closure layer in Cone orange.
   - _Requirements: REQ-WEB-DEATHS.1_
 

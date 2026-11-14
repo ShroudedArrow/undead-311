@@ -1,14 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { drawAtlas, iconMapping, rng, SPRITE_SIZE, SPRITE_VARIANTS, variantFor } from "./sprites";
+import { drawAtlas, iconFor, iconMapping, OUTLINE_VARIANTS, rng, SPRITE_COUNT, SPRITE_OUTLINE_NAMES, SPRITE_SIZE, SPRITE_SOLID_NAMES, SPRITE_VARIANTS, variantFor } from "./sprites";
 import { buildStyle, tilesUrl } from "./style";
 
 describe("sprite atlas (REQ-WEB-MAP.1)", () => {
-  it("offers 3 to 5 variants laid out without overlap", () => {
+  it("offers 3 to 5 solid variants, plus outline variants, laid out without overlap", () => {
     expect(SPRITE_VARIANTS).toBeGreaterThanOrEqual(3);
     expect(SPRITE_VARIANTS).toBeLessThanOrEqual(5);
     const xs = Object.values(iconMapping()).map((d) => d.x);
-    expect(new Set(xs).size).toBe(SPRITE_VARIANTS);
-    expect(Math.max(...xs) + SPRITE_SIZE).toBe(SPRITE_SIZE * SPRITE_VARIANTS);
+    expect(new Set(xs).size).toBe(SPRITE_COUNT);
+    expect(Math.max(...xs) + SPRITE_SIZE).toBe(SPRITE_SIZE * SPRITE_COUNT);
+  });
+  it("draws the headline tier solid and every other tier as an outline (REQ-WEB-TIER.1)", () => {
+    expect(SPRITE_SOLID_NAMES as readonly string[]).toContain(iconFor("z1", "headline"));
+    for (const tier of ["source_unknown", "sensitivity"]) {
+      const names = new Set(Array.from({ length: 100 }, (_, i) => iconFor(`z${i}`, tier)));
+      expect(names.size).toBe(OUTLINE_VARIANTS);
+      for (const n of names) expect(SPRITE_OUTLINE_NAMES as readonly string[]).toContain(n);
+    }
+    for (const name of SPRITE_OUTLINE_NAMES) expect(iconMapping()[name]).toBeTruthy();
   });
   it("picks the same variant for the same id and uses every variant over many ids", () => {
     expect(variantFor("I-1:2")).toBe(variantFor("I-1:2"));
@@ -21,13 +30,13 @@ describe("sprite atlas (REQ-WEB-MAP.1)", () => {
       const ctx = {
         strokeStyle: "", fillStyle: "", lineWidth: 0, lineCap: "",
         beginPath: () => calls.push("b"), stroke: () => calls.push(`s${ctx.strokeStyle}${ctx.lineWidth}`), fill: () => calls.push("f"),
-        clearRect: () => calls.push("c"),
+        clearRect: () => calls.push("c"), setLineDash: (d: number[]) => calls.push(`d${d.join("-")}`),
         arc: (...a: number[]) => calls.push(a.map((n) => n.toFixed(3)).join(",")),
       };
       return { n: drawAtlas(ctx as never), calls };
     };
     const a = run();
-    expect(a.n).toBe(SPRITE_VARIANTS);
+    expect(a.n).toBe(SPRITE_COUNT);
     expect(a.calls).toEqual(run().calls);
     expect(rng(1)()).toBe(rng(1)());
   });

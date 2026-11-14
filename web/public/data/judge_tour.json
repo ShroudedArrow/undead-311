@@ -1,1 +1,1 @@
-{"data_version":"fixture-2026-11-11","provisional":true,"zombie_ids":["I-101001248789:101001297609","I-101001252522:101001324825","I-101001252992:101001266594"],"source":"most_reports"}
+{"data_version":"fixture-2026-11-11","params":{"WINDOW_DAYS":60,"RADIUS_M":30,"matching":"segment"},"provisional":true,"zombie_ids":["I-101001244541:101001279489","I-101001245457:101001323306","I-101001245548:101001250665"],"source":"most_reports","seed":null}

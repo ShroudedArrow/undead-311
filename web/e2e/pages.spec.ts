@@ -38,6 +38,20 @@ test.describe("pages for the UX reviewer (REQ-WEB-TEST.2)", () => {
     expect(foreign).toEqual([]);
   });
 
+  test("the page runs under the Content Security Policy with no violation (REQ-WEB-PERF.3)", async ({ page }) => {
+    const violations: string[] = [];
+    page.on("console", (m) => {
+      if (/content security policy/i.test(m.text())) violations.push(m.text());
+    });
+    const res = await page.goto("/");
+    expect(res?.headers()["content-security-policy"] ?? "").toContain("default-src 'self'");
+    await expect(page.getByTestId("map")).toHaveAttribute("data-ready", "true");
+    await page.goto("/?view=table");
+    await page.locator("[data-testid=zombie-table] tbody a").first().click();
+    await expect(page.getByTestId("autopsy-card")).toBeVisible();
+    expect(violations).toEqual([]);
+  });
+
   test("on a phone-sized screen the card is a bottom sheet", async ({ page, viewport }, info) => {
     test.skip((viewport?.width ?? 1000) >= 640, "phone only");
     await page.goto("/?view=table");

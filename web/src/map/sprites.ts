@@ -9,6 +9,10 @@ import { PALETTE } from "./palette";
 export const SPRITE_VARIANTS = 4;
 export const SPRITE_SIZE = 64;
 export const SPRITE_SOLID_NAMES = ["spray-0", "spray-1", "spray-2", "spray-3"] as const;
+/** Outline-only markers for zombies outside the headline tier (REQ-WEB-TIER.1): a dashed hollow ring, so shape (not color) differs. */
+export const OUTLINE_VARIANTS = 2;
+export const SPRITE_OUTLINE_NAMES = ["outline-0", "outline-1"] as const;
+export const SPRITE_COUNT = SPRITE_VARIANTS + OUTLINE_VARIANTS;
 
 export interface IconDef {
   x: number;
@@ -18,21 +22,30 @@ export interface IconDef {
   mask: boolean;
 }
 
-/** Atlas layout: one row, SPRITE_VARIANTS sprites left to right. */
+/** Atlas layout: one row, the solid sprites then the outline sprites, left to right. */
 export function iconMapping(): Record<string, IconDef> {
   return Object.fromEntries(
-    SPRITE_SOLID_NAMES.map((name, i) => [name, { x: i * SPRITE_SIZE, y: 0, width: SPRITE_SIZE, height: SPRITE_SIZE, mask: false }]),
+    [...SPRITE_SOLID_NAMES, ...SPRITE_OUTLINE_NAMES].map((name, i) => [name, { x: i * SPRITE_SIZE, y: 0, width: SPRITE_SIZE, height: SPRITE_SIZE, mask: false }]),
   );
 }
 
-/** Pick a sprite variant for a zombie id, stable across renders. */
-export function variantFor(id: string): (typeof SPRITE_SOLID_NAMES)[number] {
+function hash(id: string): number {
   let h = 2166136261;
   for (let i = 0; i < id.length; i++) {
     h ^= id.charCodeAt(i);
     h = Math.imul(h, 16777619);
   }
-  return SPRITE_SOLID_NAMES[(h >>> 0) % SPRITE_VARIANTS];
+  return h >>> 0;
+}
+
+/** Pick a solid sprite variant for a zombie id, stable across renders. */
+export function variantFor(id: string): (typeof SPRITE_SOLID_NAMES)[number] {
+  return SPRITE_SOLID_NAMES[hash(id) % SPRITE_VARIANTS];
+}
+
+/** The sprite for a zombie: solid for the headline tier, a dashed outline for any other tier (REQ-WEB-TIER.1). */
+export function iconFor(id: string, tier: string): string {
+  return tier === "headline" ? variantFor(id) : SPRITE_OUTLINE_NAMES[hash(id) % OUTLINE_VARIANTS];
 }
 
 /** Small deterministic generator (mulberry32). */
@@ -47,7 +60,7 @@ export function rng(seed: number): () => number {
   };
 }
 
-type Ctx = Pick<CanvasRenderingContext2D, "beginPath" | "arc" | "stroke" | "fill" | "clearRect"> & {
+type Ctx = Pick<CanvasRenderingContext2D, "beginPath" | "arc" | "stroke" | "fill" | "clearRect" | "setLineDash"> & {
   strokeStyle: unknown;
   fillStyle: unknown;
   lineWidth: number;
@@ -56,7 +69,7 @@ type Ctx = Pick<CanvasRenderingContext2D, "beginPath" | "arc" | "stroke" | "fill
 
 /** Draw the atlas into a 2D context. Returns the number of sprites drawn. */
 export function drawAtlas(ctx: Ctx): number {
-  ctx.clearRect(0, 0, SPRITE_SIZE * SPRITE_VARIANTS, SPRITE_SIZE);
+  ctx.clearRect(0, 0, SPRITE_SIZE * SPRITE_COUNT, SPRITE_SIZE);
   for (let v = 0; v < SPRITE_VARIANTS; v++) {
     const rand = rng(1000 + v * 77);
     const cx = v * SPRITE_SIZE + SPRITE_SIZE / 2 + (rand() - 0.5) * 2;
@@ -84,13 +97,33 @@ export function drawAtlas(ctx: Ctx): number {
       ctx.fill();
     }
   }
-  return SPRITE_VARIANTS;
+  // Outline sprites: a thin dashed ring, hollow, Asphalt edge under a pink line.
+  for (let v = 0; v < OUTLINE_VARIANTS; v++) {
+    const rand = rng(5000 + v * 53);
+    const cx = (SPRITE_VARIANTS + v) * SPRITE_SIZE + SPRITE_SIZE / 2;
+    const cy = SPRITE_SIZE / 2;
+    const r = SPRITE_SIZE * 0.32 + rand() * 2;
+    ctx.lineCap = "butt";
+    ctx.setLineDash([7, 5]);
+    ctx.strokeStyle = PALETTE.asphalt;
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = PALETTE.surveyPink;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  return SPRITE_COUNT;
 }
 
 /** Build the atlas canvas in the browser. */
 export function makeAtlasCanvas(): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
-  canvas.width = SPRITE_SIZE * SPRITE_VARIANTS;
+  canvas.width = SPRITE_SIZE * SPRITE_COUNT;
   canvas.height = SPRITE_SIZE;
   const ctx = canvas.getContext("2d");
   if (ctx) drawAtlas(ctx);

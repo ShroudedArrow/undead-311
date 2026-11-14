@@ -4,19 +4,33 @@
  * so one bad file only breaks its own panel (REQ-WEB-DATA.2).
  */
 import type {
+  BulkClosuresFile,
   CardShard,
+  ExcessFile,
+  ExclusionsFile,
+  FunnelFile,
+  GroupsFile,
   JudgeTourFile,
   PointsFile,
   ScorecardFile,
   StatusFile,
+  SurvivalFile,
+  TemporaryFixesFile,
   ValidationFile,
   ZombiesFile,
 } from "./generated/types";
+import validateBulkClosures from "./generated/validators/bulk_closures";
 import validateCard from "./generated/validators/card";
+import validateExcess from "./generated/validators/excess";
+import validateExclusions from "./generated/validators/exclusions";
+import validateFunnel from "./generated/validators/funnel";
+import validateGroups from "./generated/validators/groups";
 import validateJudgeTour from "./generated/validators/judge_tour";
 import validatePoints from "./generated/validators/points";
 import validateScorecard from "./generated/validators/scorecard";
 import validateStatus from "./generated/validators/status";
+import validateSurvival from "./generated/validators/survival";
+import validateTemporaryFixes from "./generated/validators/temporary_fixes";
 import validateValidation from "./generated/validators/validation";
 import validateZombies from "./generated/validators/zombies";
 
@@ -44,6 +58,19 @@ export const parseScorecard = (d: unknown) => runValidator<ScorecardFile>(valida
 export const parseStatus = (d: unknown) => runValidator<StatusFile>(validateStatus, d);
 export const parseJudgeTour = (d: unknown) => runValidator<JudgeTourFile>(validateJudgeTour, d);
 export const parseValidation = (d: unknown) => runValidator<ValidationFile>(validateValidation, d);
+export const parseSurvival = (d: unknown) => runValidator<SurvivalFile>(validateSurvival, d);
+export const parseFunnel = (d: unknown) => runValidator<FunnelFile>(validateFunnel, d);
+export const parseGroups = (d: unknown) => runValidator<GroupsFile>(validateGroups, d);
+export const parseExcess = (d: unknown) => runValidator<ExcessFile>(validateExcess, d);
+export const parseTemporaryFixes = (d: unknown) => runValidator<TemporaryFixesFile>(validateTemporaryFixes, d);
+export const parseExclusions = (d: unknown) => runValidator<ExclusionsFile>(validateExclusions, d);
+export const parseBulkClosures = (d: unknown) => runValidator<BulkClosuresFile>(validateBulkClosures, d);
+
+export type Curve = SurvivalFile["curves"][number];
+export type Group = GroupsFile["groups"][number];
+export type FunnelLimit = FunnelFile["limits"][number];
+export type ExcessRow = ExcessFile["rows"][number];
+export type { BulkClosuresFile, ExcessFile, ExclusionsFile, FunnelFile, GroupsFile, SurvivalFile, TemporaryFixesFile };
 
 export type Zombie = ZombiesFile["zombies"][number] & { resurrection_date?: string };
 export type Card = CardShard["cards"][number];

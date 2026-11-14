@@ -17,6 +17,7 @@ export type Schema = {
   maxItems?: number;
   minimum?: number;
   maximum?: number;
+  pattern?: string;
 };
 
 export function arbFromSchema(s: Schema): fc.Arbitrary<unknown> {
@@ -28,6 +29,11 @@ export function arbFromSchema(s: Schema): fc.Arbitrary<unknown> {
     case "boolean":
       return fc.boolean();
     case "string":
+      // the engine uses one pattern: an ISO calendar date (zombies.resurrection_date)
+      if (s.pattern === "^\\d{4}-\\d{2}-\\d{2}$") {
+        return fc.date({ min: new Date("2015-01-01"), max: new Date("2030-12-31"), noInvalidDate: true }).map((d) => d.toISOString().slice(0, 10));
+      }
+      if (s.pattern) throw new Error(`schemaArb: unsupported pattern ${s.pattern}`);
       return fc.string({ maxLength: 12 });
     case "integer":
       return fc.integer({ min: s.minimum ?? -1000, max: s.maximum ?? 100000 });

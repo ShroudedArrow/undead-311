@@ -42,3 +42,37 @@ test("map page, table view, card and scorecard", async ({ page }) => {
   await expect(page.getByText("Closed on time").first()).toBeVisible();
   await scan(page, "scorecard");
 });
+
+test("durability page: survival chart, funnel, leaderboard (REQ-WEB-CHARTS, REQ-WEB-A11Y.2)", async ({ page }) => {
+  await page.goto("/durability");
+  await expect(page.getByTestId("survival-chart")).toBeVisible();
+  await expect(page.getByTestId("leaderboard")).toBeVisible();
+  await scan(page, "durability");
+});
+
+test("chart text is at least 12 CSS px on every screen (REQ-WEB-CHARTS.1, REQ-WEB-A11Y.1; UX-19)", async ({ page }) => {
+  await page.goto("/durability");
+  for (const id of ["survival-chart", "funnel-chart"]) {
+    await expect(page.getByTestId(id)).toBeVisible();
+    const sizes = await page.getByTestId(id).locator("text.chart-tick, text.chart-axis").evaluateAll((nodes) =>
+      nodes.map((n) => {
+        const svg = n.ownerSVGElement as SVGSVGElement;
+        const scale = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
+        return parseFloat(getComputedStyle(n).fontSize) * scale;
+      }),
+    );
+    expect(sizes.length).toBeGreaterThan(0);
+    for (const px of sizes) expect(px, id).toBeGreaterThanOrEqual(11.9);
+  }
+});
+
+test("methods and corrections pages (REQ-WEB-METHODS.1, REQ-WEB-FRESH.3, REQ-WEB-A11Y.2)", async ({ page }) => {
+  await page.goto("/methods");
+  await expect(page.getByTestId("excess-table")).toBeVisible();
+  await expect(page.getByTestId("nightly-status")).toBeVisible();
+  await expect(page.getByTestId("leaves-out")).toBeVisible();
+  await scan(page, "methods");
+  await page.goto("/corrections");
+  await expect(page.getByRole("heading", { name: "Corrections log" })).toBeVisible();
+  await scan(page, "corrections");
+});

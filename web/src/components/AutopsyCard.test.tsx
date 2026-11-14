@@ -131,3 +131,12 @@ describe("CardRoute loads lazily (REQ-WEB-CARD.4)", () => {
     expect(await screen.findByText(/No card was found for nope/)).toBeTruthy();
   });
 });
+
+describe("Report an error on every card (REQ-WEB-FRESH.3)", () => {
+  it("links to the public issue form with the zombie ID in the title", () => {
+    render(<MemoryRouter><AutopsyCard card={CARD} /></MemoryRouter>);
+    const link = screen.getByRole("link", { name: "Report an error" });
+    expect(link.getAttribute("href")).toContain("/issues/new?title=Error%20report%3A%20I-1%3A2");
+    expect(link.getAttribute("rel")).toContain("noreferrer");
+  });
+});

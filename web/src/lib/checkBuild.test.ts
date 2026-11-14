@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error plain .mjs build script, no type declarations
-import { checkOrigins, findFetchRefs, findHosts, INERT_HOSTS } from "../../scripts/check-build.mjs";
+import { budgetVerdict, checkOrigins, findFetchRefs, findHosts, INERT_HOSTS, reportUrlProblems } from "../../scripts/check-build.mjs";
 
 type Files = [string, string][];
 const check = checkOrigins as (files: Files) => string[];
@@ -26,5 +28,37 @@ describe("build origin check (REQ-WEB-PERF.2)", () => {
   });
   it("keeps a reason for every reviewed host", () => {
     for (const [host, why] of INERT_HOSTS as Map<string, string>) expect(why.length, host).toBeGreaterThan(5);
+  });
+});
+
+describe("first-view budget gate (REQ-WEB-PERF.1)", () => {
+  const verdict = budgetVerdict as (bytes: number, strict: boolean) => { over: boolean; fail: boolean };
+  it("passes under 3 MB", () => {
+    expect(verdict(3 * 1024 * 1024, true)).toEqual({ over: false, fail: false });
+  });
+  it("fails the build over 3 MB when strict, and only warns when not", () => {
+    expect(verdict(3 * 1024 * 1024 + 1, true)).toEqual({ over: true, fail: true });
+    expect(verdict(3 * 1024 * 1024 + 1, false)).toEqual({ over: true, fail: false });
+  });
+  it("the build script runs the strict budget check and writes the headers file (REQ-WEB-PERF.3)", () => {
+    const pkg = JSON.parse(readFileSync(join(__dirname, "..", "..", "package.json"), "utf8")) as { scripts: Record<string, string> };
+    expect(pkg.scripts.build).toContain("check-build.mjs --strict");
+    expect(pkg.scripts.build).toContain("write-headers.ts");
+  });
+});
+
+describe("Report an error link is never a placeholder (REQ-WEB-FRESH.3, UX-21)", () => {
+  const problems = reportUrlProblems as (u: unknown) => string[];
+  it("accepts the address in en.json", () => {
+    const en = JSON.parse(readFileSync(join(__dirname, "..", "copy", "en.json"), "utf8")) as { links: { report_error_url: string } };
+    expect(problems(en.links.report_error_url)).toEqual([]);
+  });
+  it("rejects an empty, non-https, example or placeholder address", () => {
+    expect(problems("")).not.toEqual([]);
+    expect(problems(undefined)).not.toEqual([]);
+    expect(problems("http://github.com/a/b/issues/new")).not.toEqual([]);
+    expect(problems("https://example.com/issues/new")).not.toEqual([]);
+    expect(problems("https://github.com/TODO-COPY/issues/new")).not.toEqual([]);
+    expect(problems("not a url")).not.toEqual([]);
   });
 });

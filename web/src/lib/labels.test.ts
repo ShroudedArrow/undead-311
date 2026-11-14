@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canonicalDepartment, departmentLabel } from "./labels";
+import { canonicalDepartment, departmentLabel, groupLabel } from "./labels";
 import { pointsToRows } from "./points";
 import { visibleSet } from "./filter";
 import type { PointsFile } from "./parse";
@@ -15,6 +15,8 @@ describe("one filter key per department across both systems (REQ-WEB-MAP.2, UX-1
 
   it("gives INFO a readable label instead of the bare code", () => {
     expect(departmentLabel("INFO")).not.toBe("INFO");
+    // UX-15: no unsourced claim about the city, no nested parentheses
+    expect(departmentLabel("INFO")).not.toMatch(/city|\(/i);
   });
 
   it("a department filter keeps cases from both systems (REQ-WEB-MAP.2)", () => {
@@ -26,5 +28,12 @@ describe("one filter key per department across both systems (REQ-WEB-MAP.2, UX-1
     const rows = pointsToRows(p);
     const r = visibleSet(rows, { neighborhoods: [], departments: ["PWDx"], families: [], years: [] }, "headline");
     expect(r.items.map((i) => i.id).sort()).toEqual(["a", "b"]);
+  });
+});
+
+describe("unassigned neighborhoods (REQ-WEB-CHARTS.2, UX-20)", () => {
+  it("reads 'Neighborhood not recorded' for a neighborhood and plain 'Unknown' for other groupings", () => {
+    expect(groupLabel("neighborhood", "unknown")).toBe("Neighborhood not recorded");
+    expect(groupLabel("department", "unknown")).toBe("Unknown");
   });
 });

@@ -44,6 +44,7 @@ const arbTableRow: fc.Arbitrary<TableRow> = fc.record({
   neighborhood: fc.constantFrom("A", "B", ""),
   family: fc.constantFrom("sign", "sidewalk"),
   confidence: fc.option(fc.double({ min: 0, max: 1, noNaN: true }), { nil: null }),
+  tier: fc.constantFrom("headline", "source_unknown", "sensitivity"),
 });
 
 describe("sortRows (REQ-WEB-TABLE.1)", () => {
@@ -58,9 +59,9 @@ describe("sortRows (REQ-WEB-TABLE.1)", () => {
   });
   it("orders ascending and descending, with missing numbers last", () => {
     const rows: TableRow[] = [
-      { id: "a", date: "2020", gap: 5, neighborhood: "A", family: "sign", confidence: 0.5 },
-      { id: "b", date: "2021", gap: null, neighborhood: "B", family: "sign", confidence: null },
-      { id: "c", date: "2019", gap: 1, neighborhood: "A", family: "sign", confidence: 0.9 },
+      { id: "a", date: "2020", gap: 5, neighborhood: "A", family: "sign", confidence: 0.5, tier: "headline" },
+      { id: "b", date: "2021", gap: null, neighborhood: "B", family: "sign", confidence: null, tier: "headline" },
+      { id: "c", date: "2019", gap: 1, neighborhood: "A", family: "sign", confidence: 0.9, tier: "headline" },
     ];
     expect(sortRows(rows, "gap", "asc").map((r) => r.id)).toEqual(["c", "a", "b"]);
     expect(sortRows(rows, "gap", "desc").map((r) => r.id)).toEqual(["a", "c", "b"]);

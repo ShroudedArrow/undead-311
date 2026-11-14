@@ -2,8 +2,11 @@ import { Route, Routes } from "react-router-dom";
 import { Shell } from "./components/Shell";
 import { t } from "./lib/t";
 import CardRoute from "./pages/CardRoute";
+import CorrectionsPage from "./pages/CorrectionsPage";
+import DurabilityPage from "./pages/DurabilityPage";
 import HomePage from "./pages/HomePage";
 import JudgePage from "./pages/JudgePage";
+import MethodsPage from "./pages/MethodsPage";
 import ScorecardPage from "./pages/ScorecardPage";
 
 function NotFound() {
@@ -24,6 +27,9 @@ export default function App() {
           <Route path="zombie/:id" element={<CardRoute />} />
         </Route>
         <Route path="scorecard" element={<ScorecardPage />} />
+        <Route path="durability" element={<DurabilityPage />} />
+        <Route path="methods" element={<MethodsPage />} />
+        <Route path="corrections" element={<CorrectionsPage />} />
         <Route path="judge" element={<JudgePage />} />
         <Route path="*" element={<NotFound />} />
       </Route>

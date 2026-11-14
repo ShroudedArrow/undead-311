@@ -42,6 +42,7 @@ export interface ZombiesFile {
       | "other";
     bulk_closure?: boolean;
     close_year?: number;
+    resurrection_date?: string;
     [k: string]: unknown;
   }[];
   [k: string]: unknown;
@@ -100,6 +101,7 @@ export interface CardShard {
     reports_after?: number;
     times_risen?: number;
     bulk_closure?: boolean;
+    confidence_partial?: boolean;
     [k: string]: unknown;
   }[];
   [k: string]: unknown;
@@ -167,6 +169,12 @@ export interface ScorecardFile {
     sensitivity: number;
     [k: string]: unknown;
   };
+  params: {
+    WINDOW_DAYS: number;
+    RADIUS_M: number;
+    matching: string;
+  };
+  seed: number | null;
   [k: string]: unknown;
 }
 
@@ -187,6 +195,18 @@ export interface StatusFile {
   source_unknown_count?: number;
   sensitivity_count?: number;
   data_end?: string;
+  /**
+   * Re-reports kept out of zombies as planned city follow-ups (ZD step 6); REQ-DET-PF
+   */
+  planned_followup_count?: number;
+  /**
+   * Headline resurrections that are legacy city-originated cases; REQ-DET-PF
+   */
+  headline_city_originated_count?: number;
+  /**
+   * Of those, opened under 1 h after the closure; REQ-DET-PF
+   */
+  headline_city_originated_under_1h_count?: number;
   [k: string]: unknown;
 }
 
@@ -202,6 +222,12 @@ export interface JudgeTourFile {
    */
   zombie_ids: [string, string, string];
   source: "override" | "most_reports";
+  params: {
+    WINDOW_DAYS: number;
+    RADIUS_M: number;
+    matching: string;
+  };
+  seed: number | null;
   [k: string]: unknown;
 }
 

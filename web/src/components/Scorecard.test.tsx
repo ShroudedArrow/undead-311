@@ -11,7 +11,7 @@ const rate = (r: number, n = 100) => ({ rate: r, lo: Math.max(0, r - 0.05), hi: 
 const sc = (family: string, adj: boolean, tier_set: "headline" | "all" = "headline"): Sc => ({
   family, tier_set, n_closed: 100, n_on_time_known: 100, on_time: rate(0.8), stayed_fixed_raw: rate(0.5), stayed_fixed_adj: adj ? rate(0.55) : null,
 });
-const file = (scorecards: Sc[]): ScorecardFile => ({ data_version: "v", scorecards, counts: { headline: 10, source_unknown: 2, sensitivity: 1 } });
+const file = (scorecards: Sc[]): ScorecardFile => ({ data_version: "v", scorecards, counts: { headline: 10, source_unknown: 2, sensitivity: 1 }, params: { WINDOW_DAYS: 60, RADIUS_M: 30, matching: "segment" }, seed: null });
 
 describe("Scorecard (REQ-WEB-SCORE.1-2)", () => {
   it("shows on-time and stayed-fixed side by side, each with interval and n", () => {
