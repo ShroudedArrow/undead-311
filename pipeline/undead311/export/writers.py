@@ -303,9 +303,35 @@ def export_all(result: DetectionResult, cases: Mapping[str, Case], out_dir: Path
     return written
 
 
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True  # the process exists, owned by someone else
+    return True
+
+
+def remove_stale_staging(target: Path) -> list[Path]:
+    """Delete `.<name>.staging-<pid>` folders beside `target` left by a killed run (REQ-ING-NIGHTLY.1, ops#85).
+
+    A SIGKILL or CI timeout skips the `finally` cleanup, and later runs have a new pid, so the folder would stay (under
+    web/public it would ship with the static build). Folders whose pid is still running are left alone."""
+    target = Path(target)
+    removed = []
+    for old in sorted(target.parent.glob(f".{target.name}.staging-*")):
+        pid = old.name.rsplit("-", 1)[-1]
+        if old.is_dir() and not (pid.isdigit() and int(pid) != os.getpid() and _pid_alive(int(pid))):
+            shutil.rmtree(old, ignore_errors=True)
+            removed.append(old)
+    return removed
+
+
 def staging_dir(target: Path) -> Path:
     """A fresh hidden folder beside `target` (same filesystem, so `os.replace` is atomic) for one run's output."""
     target = Path(target)
+    remove_stale_staging(target)
     stage = target.parent / f".{target.name}.staging-{os.getpid()}"
     shutil.rmtree(stage, ignore_errors=True)
     stage.mkdir(parents=True)

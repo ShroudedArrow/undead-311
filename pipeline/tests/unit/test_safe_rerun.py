@@ -193,3 +193,20 @@ def test_req_ing_nightly_1_a_failed_duckdb_rename_rolls_the_swapped_files_back(t
         again(tmp_path, raw, snap, out, work)
     monkeypatch.undo()
     assert snapshot(out) == before_out and snapshot(work) == before_work and no_staging_left(tmp_path)
+
+
+def test_req_ing_nightly_1_a_killed_runs_staging_folder_is_removed_by_the_next_run(tmp_path):
+    """ops#85: a SIGKILL skips the finally cleanup; the folder of a dead pid goes, the folder of a live pid stays."""
+    import subprocess
+    import sys
+
+    proc = subprocess.Popen([sys.executable, "-c", "pass"])
+    proc.wait()
+    dead = tmp_path / f".out.staging-{proc.pid}"
+    live = tmp_path / f".out.staging-{os.getppid()}"
+    other = tmp_path / f".elsewhere.staging-{proc.pid}"
+    for d in (dead, live, other):
+        (d / "cards").mkdir(parents=True)
+        (d / "cards" / "x.json").write_text("{}")
+    stage = staging_dir(tmp_path / "out")
+    assert not dead.exists() and live.exists() and other.exists() and stage.is_dir()
