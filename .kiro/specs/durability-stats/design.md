@@ -24,7 +24,7 @@ Run order inside `make pipeline`: engine detect, then `stats.baseline` (writes `
 | `stats/intervals.py` | `wilson(k, n, z=1.96) -> (lo, hi)`, `bootstrap(values, fn, seed, B=1000)` | REQ-STAT-INT |
 | `stats/cohort.py` | `eligible_originals(con, params, data_end)`; spot keys; seasons | glossary, REQ-STAT-SF |
 | `stats/rates.py` | `scorecard(con, tier_set) -> Scorecard` with on-time, raw stayed-fixed, adjusted (clamped) | REQ-STAT-SF, REQ-STAT-TIER |
-| `stats/baseline.py` | `same_spot(con, params) -> {incident_id: p_spot}`, `neighborhood(con, areas) -> {incident_id: (P, expected)}`, `excess(...)` | REQ-STAT-BASE, -NBR |
+| `stats/baseline.py` | `same_spot(con, params) -> {incident_id: p_spot}`; `stats.pipeline.zombie_baselines(con, result, cases, params) -> {zombie_id: p}` is an adapter over `same_spot` (a zombie takes its incident's value) and is the interface the engine calls (owner decision 2026-11-14, ops#89); `neighborhood(con, areas) -> {incident_id: (P, expected)}`, `excess(...)` | REQ-STAT-BASE, -NBR |
 | `stats/shift.py` | `shift_test(con, params, seed, runs=1000)`, `placebo(...)` | REQ-STAT-SHIFT, -PLACEBO |
 | `stats/survival.py` | `km(durations, events) -> Curve` (lifelines), `holding_at(curve, [7, 30, 90])`, `half_life(curve)` | REQ-STAT-KM |
 | `stats/groups.py` | `shrink(groups, citywide) -> list[Group]`, `funnel_limits(p0, n_max)`, `intensity(con, segments)` | REQ-STAT-EB, -FUNNEL, -REP |

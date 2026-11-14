@@ -20,7 +20,7 @@ ABS_REPO = "/projects/sandbox/undead-311"
 ABS_WORKTREES = "/projects/sandbox/worktrees"
 CLOUD_DIRS = ("hooks", "agents", "steering", "workflows")
 # files a run creates or a spec adds later; they are not expected to exist in the repo yet
-RUN_CREATED = {"docs/METHODS.md", "docs/VALIDATION.md"}
+RUN_CREATED = {"docs/METHODS.md", "docs/VALIDATION.md", "docs/DEPLOY.md"}
 RUN_CREATED_TARGETS = {"hello"}                      # the smoke recipe adds this Makefile target itself
 
 
@@ -120,7 +120,8 @@ def test_every_step_starts_in_the_repo_folder(recipe):
 @pytest.mark.parametrize("recipe", RECIPES, ids=lambda p: p.name)
 def test_recipe_inputs_and_worktrees(recipe):
     data = yaml.safe_load(recipe.read_text())
-    assert set(data["inputs"]) == {"run_id"}
+    expected = {"run_id", "base_branch", "start_at"} if data["name"] == "build-undead-311" else {"run_id"}
+    assert set(data["inputs"]) == expected
     text = recipe.read_text()
     assert "worktree_path" not in text
     assert ".local-data/worktrees" not in text

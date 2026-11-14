@@ -32,6 +32,10 @@ Legacy ID: code written before these specs cites `REQ-ING-MIRROR`. It is covered
 2. THE engine SHALL resolve `<repo root>` at run time. In a git worktree, it SHALL use the main checkout's root (`git rev-parse --git-common-dir`), so worktrees share one data folder.
 3. THE Makefile SHALL apply the same rule for every target that reads data.
 
+### REQ-ING-NBR: Neighborhood naming
+**Layer:** credibility
+1. THE engine SHALL name each case's neighborhood by point in polygon against the City's neighborhood boundaries file for both systems, fold polygon names to one name set shared by both systems, and leave no case with a neighborhood name that is not an area (for example Boston). (Owner decision 2026-11-14, ops#96.)
+
 ### REQ-ING-2: Normalized schema
 **Layer:** demo-critical
 **User story:** As the detector, I want one schema for both systems, so matching never depends on the source format.
@@ -74,7 +78,7 @@ Legacy ID: code written before these specs cites `REQ-ING-MIRROR`. It is covered
 **Layer:** credibility
 **User story:** As the detector, I want cases on Boston SAM street segments, so matches don't jump to parallel streets, and cases at one intersection still match.
 1. THE engine SHALL snap every in-scope case to the nearest Boston Street Segments (SAM) line and store `segment_id` and `segment_snap_m`. A case is "snapped" only when `segment_snap_m <= 15`.
-2. IF the segments file is missing, THEN THE engine SHALL leave every case unsnapped (radius matching only) and record `segments: unavailable` in `status.json`.
+2. IF the segments file is missing, THEN THE engine SHALL leave every case unsnapped (radius matching only) and record `segments: missing` in `status.json` (the value `status.schema.json` allows; owner decision 2026-11-14, ops#75).
 3. THE engine SHALL accept pre-snapped `segment_id` / `segment_snap_m` columns when present (the test town) and skip snapping for those rows.
 4. WHEN the segments file is present, THE engine SHALL derive an `intersections` table from the segment geometry: an intersection is a segment endpoint (first or last vertex, matched at 6 decimal places of latitude and longitude and at the same z-level, `F_ZLEV` / `T_ZLEV`) shared by two or more segments. SAM has no node IDs, so endpoints are matched on coordinates. THE engine SHALL store, for each snapped case, the intersections within INTERSECTION_M of it (`near_node_ids`).
 5. WHEN a case is pre-snapped without segment geometry (the test town), THE engine SHALL leave `near_node_ids` empty, so the intersection mode never applies to the fixture. Intersection matching is covered by unit and property tests that build their own small segment grids (REQ-DET-MATCH.2).

@@ -88,7 +88,7 @@ class Zombie:
 
 ### Confidence formula (proposal; frozen in docs/METHODS.md before the first full-data run, REQ-CONF)
 `confidence = clamp01(0.20·match + 0.15·gap + 0.10·specificity + 0.15·label + 0.30·baseline + 0.10·skeptic)`
-- **match:** segment mode `1 − d/(2·MAX_SEGMENT_DIST)`; intersection mode `0.7·(1 − d/(2·INTERSECTION_M))` where d is the sum of the two distances to the intersection; radius mode `0.8·(1 − d/RADIUS_M)`. The intersection weight is a proposal like the others in this formula.
+- **match:** segment mode `1 − d/(2·MAX_SEGMENT_DIST)`; intersection mode `0.9·(1 − d/(2·INTERSECTION_M))` where d is the sum of the two distances to the intersection; radius mode `0.8·(1 − d/RADIUS_M)`. The intersection factor is 0.9 so that segment > intersection > radius holds at equal distance; the owner approved the weights on 2026-11-14 (ops#31).
 - **gap:** `1 − gap_days/WINDOW_DAYS`.
 - **specificity:** 1 for a specific type; 0.7 for an inherited catch-all.
 - **label:** resolved 1, made_safe_temporary 0.9, noted 0.8, referred 0.7, planned_followup 0.6, other 0.6, bulk_backlog 0.5. invalid and duplicate never reach scoring (separate deaths). If `bulk_closure` is set, the term is min(label, 0.5).
