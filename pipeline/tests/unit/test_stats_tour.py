@@ -115,3 +115,24 @@ def test_req_stat_exp_1_tour_carries_params_and_a_null_seed():
         assert payloads[name]["seed"] is None
         assert {"WINDOW_DAYS", "RADIUS_M", "matching"} <= set(payloads[name]["params"])
         validate(name.removesuffix(".json"), payloads[name])
+
+
+def test_req_stat_tour_1_provisional_ranking_skips_rereports_within_an_hour_of_the_closure():
+    """REQ-STAT-TOUR.1, ops#44: a crew's work log (re-report seconds after the closure) is not on the provisional tour."""
+    cs = town_with_reports()
+    # a fifth spot with the most re-reports of all, the first one 10 minutes after the closure (gap < 1 h)
+    cs += [mk("Q-O", 0, 1, x=3000.0), mk("Q-R0", 1, x=3000.0, open_hours=0.1)]  # 6 minutes after the closure
+    cs += [mk(f"Q-R{k}", 5 + k, x=3000.0) for k in range(1, 6)]
+    result = detect(cs)
+    q = next(z for z in result.zombies if z.incident_id == "Q-O")
+    assert q.tier == "headline" and q.gap_days * 24 < 1.0 and q.reports_after >= 5
+    tour = build_tour(result.zombies)
+    assert q.zombie_id not in tour.zombie_ids and tour.zombie_ids == ("Z1-O:Z1-R0", "Z2-O:Z2-R0", "Z3-O:Z3-R0")
+
+
+def test_req_stat_tour_1_provisional_ranking_needs_three_zombies_past_the_gap():
+    """REQ-STAT-TOUR.1, ops#44: with fewer than three resident re-reports of at least an hour, there is no provisional tour."""
+    cs = []
+    for n in range(3):
+        cs += [mk(f"S{n}-O", 0, 1, x=500.0 * n), mk(f"S{n}-R", 1, x=500.0 * n, open_hours=0.2)]
+    assert build_tour(detect(cs).zombies) is None

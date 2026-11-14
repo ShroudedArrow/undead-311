@@ -2,7 +2,9 @@
 
 Three headline zombies the Skeptic has not explained away: the owner's override
 (`data/labels/judge_tour_override.json`) when it names exactly three such zombies, else the three with the most
-re-reports, ties by zombie ID. The confidence
+re-reports, ties by zombie ID. The provisional ranking only counts resident-reported zombies (headline tier, which
+leaves out city re-reports and planned follow-ups) whose re-report opened at least `MIN_TOUR_GAP_HOURS` after the closure
+(owner decision, ops#44: a re-report seconds after a closure is a crew's work log, not a resurrection to show). The confidence
 score is never read, so the tour cannot be tuned by it (design property P10). `provisional` is true until the
 confirmed validation set exists (REQ-STAT-TOUR.2, a credibility task).
 """
@@ -20,6 +22,7 @@ from undead311.detect.params import DEFAULT, Params
 from undead311.stats.meta import params_json
 
 TOUR_SIZE = 3
+MIN_TOUR_GAP_HOURS = 1.0  # ops#44: the provisional ranking skips re-reports that opened sooner than this after the closure
 
 
 @dataclass(frozen=True)
@@ -73,5 +76,9 @@ def build_tour(
         return JudgeTour(provisional, tuple(override), "override")  # type: ignore[arg-type]
     if len(headline) < TOUR_SIZE:
         return None
+    if provisional:  # the confirmed set was checked in the field; only the provisional ranking is filtered (ops#44)
+        headline = {i: z for i, z in headline.items() if z.gap_days * 24.0 >= MIN_TOUR_GAP_HOURS and not z.city_rereport}
+        if len(headline) < TOUR_SIZE:
+            return None
     ranked = sorted(headline.values(), key=lambda z: (-z.reports_after, z.zombie_id))
     return JudgeTour(provisional, tuple(z.zombie_id for z in ranked[:TOUR_SIZE]), "most_reports")
