@@ -365,3 +365,8 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 
 /* UX-13 (ops#26): the card repeats a short preview notice, because the phone sheet can cover the header notice. */
 .card-fixture-notice { border: 2px dashed var(--asphalt); padding: var(--space-1) var(--space-2); margin: 0 0 var(--space-3); font-weight: 600; max-width: none; }
+
+/* REQ-WEB-TIER: the sensitivity toggle sits above the filter groups; the all-tier count sits under the headline count. */
+.tier-toggle { display: flex; gap: var(--space-2); align-items: center; min-height: 2.75rem; font-weight: 600; }
+.tier-toggle input[type="checkbox"] { width: 1.25rem; height: 1.25rem; accent-color: var(--asphalt); }
+.count-all { margin: 0; }

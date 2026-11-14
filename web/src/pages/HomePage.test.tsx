@@ -78,6 +78,36 @@ describe("HomePage (REQ-WEB-MAP.2-4)", () => {
   });
 });
 
+describe("Sensitivity tier toggle (REQ-WEB-TIER.1-2)", () => {
+  it("is off by default: no all-tier count, and the map has only headline rows", async () => {
+    stubFetch();
+    render(<MemoryRouter><App /></MemoryRouter>);
+    await screen.findByText("3 possible zombies match these filters");
+    expect((screen.getByLabelText("Include cases outside the headline count") as HTMLInputElement).checked).toBe(false);
+    expect(screen.queryByTestId("count-all")).toBeNull();
+    expect(mapRows).toHaveBeenLastCalledWith(["a", "b", "c"]);
+  });
+  it("adds the other tiers to the map and shows the headline count first, then the all-tier count", async () => {
+    stubFetch();
+    const user = userEvent.setup();
+    render(<MemoryRouter><App /></MemoryRouter>);
+    await screen.findByText("3 possible zombies match these filters");
+    await user.click(screen.getByLabelText("Include cases outside the headline count"));
+    expect(await screen.findByTestId("count-all")).toBeTruthy();
+    expect(screen.getByTestId("count").textContent).toBe("3 possible zombies match these filters");
+    expect(screen.getByTestId("count-all").textContent).toBe("4 when cases outside the headline are included");
+    const [first, second] = [screen.getByTestId("count"), screen.getByTestId("count-all")];
+    expect(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(mapRows).toHaveBeenLastCalledWith(["a", "b", "c", "d"]);
+  });
+  it("the table labels which tier counts each row, in words", async () => {
+    stubFetch();
+    render(<MemoryRouter initialEntries={["/?view=table&tier=all"]}><App /></MemoryRouter>);
+    const table = await screen.findByTestId("zombie-table");
+    expect(within(within(table).getAllByRole("row").find((r) => r.getAttribute("data-id") === "d") as HTMLElement).getByText("Sensitivity check")).toBeTruthy();
+  });
+});
+
 describe("Table view mirrors the map (REQ-WEB-TABLE.1)", () => {
   it("lists the same zombies the map got, and each row links to its card", async () => {
     stubFetch();

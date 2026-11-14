@@ -49,9 +49,9 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 - [x] 12. [credibility] Content Security Policy and budget gate
   - Generate the CSP headers file for the host; the budget check becomes a failure once engine sharding exists.
   - _Requirements: REQ-WEB-PERF.1, .3_
-- [ ] 13. [credibility] Sensitivity tier toggle
+- [x] 13. [credibility] Sensitivity tier toggle
   - Outline markers, tier notes on cards, headline count always shown first.
-  - [ ] 13.1 Property W6: headline mode never contains non-headline zombies; the headline count is unchanged when the toggle is on. _REQ-WEB-TIER.1–2_
+  - [x] 13.1 Property W6: headline mode never contains non-headline zombies; the headline count is unchanged when the toggle is on. _REQ-WEB-TIER.1–2_
   - _Requirements: REQ-WEB-TIER.1–2_
 - [ ] 14. [credibility] Survival and funnel charts, leaderboards
   - Plain SVG components; intervals always visible; "unusual" only outside 99.8%; reporting intensity beside every neighborhood rate.

@@ -42,6 +42,7 @@ export function ZombieTable({ rows, search }: { rows: readonly TableRow[]; searc
                 </button>
               </th>
             ))}
+            <th scope="col">{t("table.col_tier")}</th>
             <th scope="col">{t("table.col_open")}</th>
           </tr>
         </thead>
@@ -53,6 +54,7 @@ export function ZombieTable({ rows, search }: { rows: readonly TableRow[]; searc
               <td>{r.neighborhood || t("filters.unknown")}</td>
               <td>{familyLabel(r.family)}</td>
               <td>{r.confidence === null ? "" : r.confidence.toFixed(2)}</td>
+              <td>{t(`tiers.${r.tier}`)}</td>
               <td>
                 <Link to={{ pathname: `/zombie/${encodeURIComponent(r.id)}`, search }}>
                   {t("table.open_card", { id: r.id })}

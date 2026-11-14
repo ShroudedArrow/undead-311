@@ -11,7 +11,7 @@ import { Protocol } from "pmtiles";
 import { useEffect, useRef, useState } from "react";
 import type { PointRow } from "../lib/points";
 import { t } from "../lib/t";
-import { iconMapping, makeAtlasCanvas, variantFor } from "./sprites";
+import { iconFor, iconMapping, makeAtlasCanvas } from "./sprites";
 import { BOSTON_BOUNDS, BOSTON_CENTER, BOSTON_ZOOM, buildStyle, tilesUrl } from "./style";
 
 let protocolAdded = false;
@@ -95,7 +95,7 @@ export default function MapView({ rows, selectedId, onSelect }: Props) {
           loadOptions: { worker: false },
           iconAtlas: atlasRef.current as unknown as string,
           iconMapping: iconMapping(),
-          getIcon: (d) => variantFor(d.id),
+          getIcon: (d) => iconFor(d.id, d.tier),
           getPosition: (d) => [d.lon, d.lat],
           getSize: (d) => (d.id === selectedId ? 44 : 30),
           sizeUnits: "pixels",

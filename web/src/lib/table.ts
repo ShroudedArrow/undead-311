@@ -1,4 +1,5 @@
 /** Table rows and sorting (REQ-WEB-TABLE.1). Rows come from the same visible set as the map and the count (property W4). */
+import type { Tier } from "./filter";
 import type { PointRow } from "./points";
 import type { Zombie } from "./parse";
 
@@ -13,6 +14,8 @@ export interface TableRow {
   neighborhood: string;
   family: string;
   confidence: number | null;
+  /** Which tier counts it; shown as text so color is never the only signal (REQ-WEB-TIER.1). */
+  tier: Tier;
 }
 
 export function buildTableRows(items: readonly PointRow[], zombies: ReadonlyMap<string, Zombie> | null): TableRow[] {
@@ -25,6 +28,7 @@ export function buildTableRows(items: readonly PointRow[], zombies: ReadonlyMap<
       neighborhood: p.neighborhood ?? "",
       family: p.family,
       confidence: z ? z.confidence : null,
+      tier: p.tier,
     };
   });
 }

@@ -27,8 +27,11 @@ export default function HomePage() {
   const zombieById = useMemo(() => (zombies.status === "ok" ? new Map(zombies.data.zombies.map((z) => [z.zombie_id, z])) : null), [zombies]);
   const visible = useMemo(() => visibleSet(rows, state.filters, state.tierMode), [rows, state]);
 
+  // filter menus count what the current tier mode can show, so an option's number matches what picking it yields
+  const optionRows = useMemo(() => (state.tierMode === "all" ? rows : rows.filter((r) => r.tier === "headline")), [rows, state.tierMode]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filtersId = useId();
+  const tierNoteId = useId();
   const update = (next: PageState) => setParams(encodeState(next), { replace: true });
   const select = (id: string) => navigate({ pathname: `/zombie/${encodeURIComponent(id)}`, search: params.toString() });
 
@@ -44,12 +47,24 @@ export default function HomePage() {
         {points.status === "loading" && <p>{t("filters.loading")}</p>}
         {points.status === "ok" && (
           <>
-            <CountLine count={visible.headlineCount} />
+            <CountLine headlineCount={visible.headlineCount} allCount={state.tierMode === "all" ? visible.allCount : undefined} />
             <button type="button" className="filters-toggle" aria-expanded={filtersOpen} aria-controls={filtersId} onClick={() => setFiltersOpen(!filtersOpen)}>
               {t(filtersOpen ? "filters.hide" : "filters.show")}
             </button>
             <div id={filtersId} className={filtersOpen ? "filters-body filters-open" : "filters-body"}>
-              <Filters rows={rows} filters={state.filters} onChange={(filters) => update({ ...state, filters })} />
+              <label className="tier-toggle">
+                <input
+                  type="checkbox"
+                  checked={state.tierMode === "all"}
+                  aria-describedby={tierNoteId}
+                  onChange={(e) => update({ ...state, tierMode: e.target.checked ? "all" : "headline" })}
+                />
+                <span>{t("filters.tier_toggle")}</span>
+              </label>
+              <p className="count-note" id={tierNoteId}>
+                {t("filters.tier_toggle_note")}
+              </p>
+              <Filters rows={optionRows} filters={state.filters} onChange={(filters) => update({ ...state, filters })} />
             </div>
           </>
         )}

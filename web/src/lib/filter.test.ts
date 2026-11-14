@@ -110,3 +110,26 @@ describe("visibleSet (REQ-WEB-MAP.4, REQ-WEB-TIER.2)", () => {
     );
   });
 });
+
+describe("Property W6: tier modes (REQ-WEB-TIER.1-2)", () => {
+  it("headline mode never contains a non-headline zombie", () => {
+    fc.assert(
+      fc.property(arbZombies, arbFilters, (zs, f) => {
+        expect(applyFilters(zs, f, "headline").every((z) => z.tier === "headline")).toBe(true);
+      }),
+    );
+  });
+  it("the headline count is the same with the toggle off and on, and the all-tier count is never smaller", () => {
+    fc.assert(
+      fc.property(arbZombies, arbFilters, (zs, f) => {
+        const off = visibleSet(zs, f, "headline");
+        const on = visibleSet(zs, f, "all");
+        expect(on.headlineCount).toBe(off.headlineCount);
+        expect(off.items.length).toBe(off.headlineCount);
+        expect(on.items.length).toBe(on.allCount);
+        expect(on.allCount).toBeGreaterThanOrEqual(on.headlineCount);
+        expect(on.items.filter((z) => z.tier === "headline").length).toBe(off.headlineCount);
+      }),
+    );
+  });
+});

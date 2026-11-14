@@ -86,6 +86,9 @@
     "unknown": "Unknown",
     "count_headline": "{count} possible zombies match these filters",
     "count_headline_one": "1 possible zombie matches these filters",
+    "count_all_tiers": "{count} when cases outside the headline are included",
+    "tier_toggle": "Include cases outside the headline count",
+    "tier_toggle_note": "Adds cases whose source is unknown and sensitivity checks. They show as dashed outlines and are labeled on their cards. The headline count above does not change.",
     "count_floor": "Counts are a floor: a possible zombie appears only if someone reported the problem again.",
     "loading": "Loading possible zombies"
   },
@@ -119,6 +122,7 @@
     "col_neighborhood": "Neighborhood",
     "col_family": "Case type",
     "col_confidence": "Confidence",
+    "col_tier": "Counted in",
     "col_open": "Open the autopsy card",
     "open_card": "Open card {id}",
     "sort_by": "Sort by {column}",
