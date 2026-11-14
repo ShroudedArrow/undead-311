@@ -25,7 +25,14 @@ def wilson(k: int, n: int, z: float = Z95) -> tuple[float, float] | None:
         return None
     if not 0 <= k <= n:
         raise ValueError(f"k={k} must be within 0..n={n}")
-    p = k / n
+    return wilson_p(k / n, n, z)
+
+
+def wilson_p(p: float, n: int, z: float = Z95) -> tuple[float, float]:
+    """Wilson score interval around a proportion `p` (which may be fractional, as for the adjusted stayed-fixed rate)."""
+    if n <= 0:
+        raise ValueError("n must be positive")
+    p = min(1.0, max(0.0, p))
     z2 = z * z
     denom = 1 + z2 / n
     centre = (p + z2 / (2 * n)) / denom
@@ -79,3 +86,23 @@ def bootstrap(
     stats = np.sort(np.array([fn(arr[row]) for row in idx], dtype=float))
     tail = (1 - level) / 2
     return float(np.quantile(stats, tail)), float(np.quantile(stats, 1 - tail))
+
+
+def bootstrap_sum(
+    values: Sequence[float], rng: np.random.Generator, B: int = 1000, level: float = 0.95
+) -> tuple[float, float] | None:
+    """Percentile bootstrap interval of the SUM of `values` (REQ-STAT-INT.1, REQ-STAT-BASE.2).
+
+    Resamples with replacement from the caller's generator, so a sequence of calls is reproducible for one seed. The
+    resamples are drawn in chunks so memory stays bounded for a large cohort. None for an empty sample.
+    """
+    arr = np.asarray(values, dtype=float)
+    if arr.size == 0:
+        return None
+    totals = np.empty(B)
+    step = max(1, 4_000_000 // arr.size)
+    for lo in range(0, B, step):
+        hi = min(B, lo + step)
+        totals[lo:hi] = arr[rng.integers(0, arr.size, size=(hi - lo, arr.size))].sum(axis=1)
+    tail = (1 - level) / 2
+    return float(np.quantile(totals, tail)), float(np.quantile(totals, 1 - tail))

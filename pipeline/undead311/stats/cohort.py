@@ -49,6 +49,14 @@ def season(when: datetime) -> str:
     return SEASONS[when.month]
 
 
+SEASON_INDEX = {"winter": 0, "spring": 1, "summer": 2, "autumn": 3}
+
+
+def season_idx(when: datetime) -> int:
+    """Season index (0 winter, 1 spring, 2 summer, 3 autumn) of a UTC timestamp."""
+    return SEASON_INDEX[SEASONS[when.month]]
+
+
 def spot_key(segment_id: str | None, lat: float, lon: float, params: Params = DEFAULT) -> str:
     """The matching location unit: the segment when snapped, else a 60 m grid cell (glossary "Spot")."""
     if segment_id:

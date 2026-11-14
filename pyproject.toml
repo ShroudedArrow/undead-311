@@ -7,6 +7,7 @@ dependencies = [
     "duckdb>=1.1",
     "jsonschema>=4.21",   # export contracts (zombie-engine design)
     "numpy>=1.26",        # durability-stats: seeded resampling
+    "pandas>=2.0",        # neighborhood rewrite (DuckDB .df()); also a lifelines dependency
     "scipy>=1.11",        # durability-stats: beta-binomial, binomial quantiles
     "statsmodels>=0.14",  # tech.md statistics
     "lifelines>=0.28",    # durability-stats: Kaplan-Meier
