@@ -19,6 +19,7 @@ export function Shell() {
             {t("nav.map")}
           </NavLink>
           <NavLink to="/scorecard">{t("nav.scorecard")}</NavLink>
+          <NavLink to="/durability">{t("nav.durability")}</NavLink>
           <NavLink to="/judge">{t("nav.judge")}</NavLink>
         </nav>
         <DataAsOf />

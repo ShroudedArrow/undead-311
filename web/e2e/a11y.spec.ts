@@ -42,3 +42,10 @@ test("map page, table view, card and scorecard", async ({ page }) => {
   await expect(page.getByText("Closed on time").first()).toBeVisible();
   await scan(page, "scorecard");
 });
+
+test("durability page: survival chart, funnel, leaderboard (REQ-WEB-CHARTS, REQ-WEB-A11Y.2)", async ({ page }) => {
+  await page.goto("/durability");
+  await expect(page.getByTestId("survival-chart")).toBeVisible();
+  await expect(page.getByTestId("leaderboard")).toBeVisible();
+  await scan(page, "durability");
+});

@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import { Shell } from "./components/Shell";
 import { t } from "./lib/t";
 import CardRoute from "./pages/CardRoute";
+import DurabilityPage from "./pages/DurabilityPage";
 import HomePage from "./pages/HomePage";
 import JudgePage from "./pages/JudgePage";
 import ScorecardPage from "./pages/ScorecardPage";
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="zombie/:id" element={<CardRoute />} />
         </Route>
         <Route path="scorecard" element={<ScorecardPage />} />
+        <Route path="durability" element={<DurabilityPage />} />
         <Route path="judge" element={<JudgePage />} />
         <Route path="*" element={<NotFound />} />
       </Route>

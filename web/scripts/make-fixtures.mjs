@@ -4,6 +4,7 @@
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildStatsFixtures } from "./stats-fixtures.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const csvPath = join(here, "..", "..", "data", "sample", "sample_311.csv");
@@ -204,6 +205,23 @@ export function buildFixtures(rows, override = null) {
   // one family without an adjusted rate, so the raw-only path is exercised
   scorecards.at(-1).stayed_fixed_adj = null;
 
+  // credibility-layer statistics (REQ-WEB-CHARTS, REQ-WEB-METHODS): fixture stand-ins computed from the same crude pairs
+  const TRANSFER = /resubmitted|see new case|transferred|migrated/i;
+  let mirrorPairs = 0;
+  for (const a of cases) {
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      for (const b of grid.get(`${a.family}|${Math.floor(a.lat / 0.0005) + i}|${Math.floor(a.lon / 0.0005) + j}`) ?? []) {
+        if (a.system === "legacy" && b.system === "new" && Math.abs(a.open - b.open) <= 6 * 3600000 && dist(a, b) <= 30) mirrorPairs++;
+      }
+    }
+  }
+  const labelled = closed.map((c) => ({ ...c, label: coronerLabel(c.text, c.code) }));
+  const dataEndMs = Math.max(...cases.map((c) => c.close ?? c.open));
+  const statsFiles = buildStatsFixtures({
+    closed: labelled, zombies, dataEnd: dataEndMs, version: `fixture-${new Date(dataEndMs).toISOString().slice(0, 10)}`,
+    nullCoords: rows.length - cases.length, mirrorPairs, transferred: labelled.filter((c) => TRANSFER.test(c.text || "")).length,
+  });
+
   const tally = { headline: 0, source_unknown: 0, sensitivity: 0 };
   for (const z of zs) tally[z.tier]++;
   const dataEnd = new Date(Math.max(...cases.map((c) => c.close ?? c.open))).toISOString().slice(0, 10);
@@ -219,6 +237,7 @@ export function buildFixtures(rows, override = null) {
       "scorecard.json": { data_version: version, params: PARAMS, scorecards, counts: tally, seed: null },
       "status.json": { data_version: version, last_run: `${dataEnd}T02:00:00Z`, ok: true, row_counts: { cases: rows.length, zombies: zs.length }, anomalies: [], segments: "missing", headline_count: tally.headline, source_unknown_count: tally.source_unknown, sensitivity_count: tally.sensitivity, data_end: dataEnd },
       "judge_tour.json": { data_version: version, params: PARAMS, provisional: true, zombie_ids: tour.ids, source: tour.source, seed: null },
+      ...statsFiles,
       "validation.json": { data_version: version, status: "awaiting_field_labels", precision: null, cant_tell_share: null, kappa: null, confirmed: [], sample_ids: [] },
     },
     shards: Object.fromEntries([...shards.entries()].sort().map(([k, v]) => [`cards/${k}.json`, { data_version: version, shard: k, cards: v.sort((x, y) => (x.zombie_id < y.zombie_id ? -1 : 1)) }])),

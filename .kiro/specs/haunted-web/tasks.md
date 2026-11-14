@@ -53,7 +53,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
   - Outline markers, tier notes on cards, headline count always shown first.
   - [x] 13.1 Property W6: headline mode never contains non-headline zombies; the headline count is unchanged when the toggle is on. _REQ-WEB-TIER.1–2_
   - _Requirements: REQ-WEB-TIER.1–2_
-- [ ] 14. [credibility] Survival and funnel charts, leaderboards
+- [x] 14. [credibility] Survival and funnel charts, leaderboards
   - Plain SVG components; intervals always visible; "unusual" only outside 99.8%; reporting intensity beside every neighborhood rate.
   - _Requirements: REQ-WEB-CHARTS.1–2_
 - [ ] 15. [credibility] Methods page, status and corrections

@@ -370,3 +370,26 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .tier-toggle { display: flex; gap: var(--space-2); align-items: center; min-height: 2.75rem; font-weight: 600; }
 .tier-toggle input[type="checkbox"] { width: 1.25rem; height: 1.25rem; accent-color: var(--asphalt); }
 .count-all { margin: 0; }
+
+/* REQ-WEB-CHARTS: plain SVG charts in palette colors only. Intervals are always drawn; pink never carries text. */
+.chart-section { margin: 0 0 var(--space-5); max-width: 48rem; }
+.chart { width: 100%; height: auto; display: block; background: var(--crew-white); border: 2px solid var(--asphalt); }
+.chart-grid { stroke: var(--concrete); stroke-width: 1; }
+.chart-tick, .chart-axis { fill: var(--asphalt); font-family: var(--font-ui); font-size: 12px; }
+.chart-line { fill: none; stroke: var(--asphalt); stroke-width: 2.5; }
+.chart-line-base { stroke-dasharray: 8 5; stroke-width: 2; }
+.chart-line-limit95 { stroke-width: 1.5; stroke-dasharray: 3 4; }
+.chart-line-limit998 { stroke-width: 1.5; }
+.chart-band { fill: var(--asphalt); fill-opacity: 0.18; stroke: none; }
+.funnel-mark { stroke: var(--asphalt); stroke-width: 1.5; }
+.funnel-typical { fill: var(--crew-white); }
+.funnel-unusual { fill: var(--survey-pink); }
+.chart-controls { display: flex; flex-wrap: wrap; gap: var(--space-3); margin: var(--space-3) 0; border: 0; padding: 0; }
+.chart-controls fieldset { border: 2px solid var(--asphalt); padding: var(--space-2) var(--space-3); }
+.chart-controls label { display: flex; gap: var(--space-2); align-items: center; min-height: 2.75rem; }
+.chart-controls input[type="radio"] { width: 1.25rem; height: 1.25rem; accent-color: var(--asphalt); }
+.chart-pick { flex-direction: column; align-items: flex-start; }
+.chart-pick select { min-height: 2.75rem; }
+.chart-legend { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-3); padding: 0; margin: var(--space-2) 0; }
+.chart-legend li { display: flex; align-items: center; gap: var(--space-2); }
+.chart-table { padding: var(--space-3) 0; }

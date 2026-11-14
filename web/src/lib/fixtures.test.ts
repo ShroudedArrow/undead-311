@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseCardShard, parseJudgeTour, parsePoints, parseScorecard, parseStatus, parseValidation, parseZombies } from "./parse";
+import { parseBulkClosures, parseCardShard, parseExcess, parseExclusions, parseFunnel, parseGroups, parseJudgeTour, parseSurvival, parseTemporaryFixes, parsePoints, parseScorecard, parseStatus, parseValidation, parseZombies } from "./parse";
 import { shardFile } from "./shard";
 
 const dir = join(__dirname, "..", "..", "public", "data");
@@ -15,6 +15,13 @@ describe("fixture files follow the schemas (REQ-WEB-DATA.3)", () => {
     ["status.json", parseStatus],
     ["judge_tour.json", parseJudgeTour],
     ["validation.json", parseValidation],
+    ["survival.json", parseSurvival],
+    ["funnel.json", parseFunnel],
+    ["groups.json", parseGroups],
+    ["excess.json", parseExcess],
+    ["temporary_fixes.json", parseTemporaryFixes],
+    ["exclusions.json", parseExclusions],
+    ["bulk_closures.json", parseBulkClosures],
   ] as const)("%s parses", (file, parse) => {
     expect(parse(read(file))).toMatchObject({ ok: true });
   });
