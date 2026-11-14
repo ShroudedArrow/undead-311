@@ -137,6 +137,7 @@ def test_req_conf_2_a_partial_baseline_is_an_anomaly_and_a_bad_one_fails_the_run
 
 @pytest.mark.xfail(
     strict=True,
+    raises=AssertionError,  # only the missing baseline counts as the expected failure; a crash in the hook is a real failure (ops#95)
     reason="blocked on durability-stats task 5: stats.pipeline has no zombie_baselines yet (ops#82). When it lands this test "
     "XPASSES and strict mode fails the suite: remove the marker and tick zombie-engine task 27.",
 )
