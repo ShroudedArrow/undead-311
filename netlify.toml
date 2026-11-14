@@ -1,0 +1,22 @@
+# Netlify build settings (REQ-OPS-HOST.1 to .4). No secret lives here. Account linking is a human step: docs/DEPLOY.md.
+#
+# The build is web-only. Netlify's build image has Node (version read from .nvmrc) and make, but not `uv`, so the build
+# never runs the Python pipeline: the site is built from the data already under web/public/data. `make build` runs
+# `cd web && npm run build` (tsc, then vite). Dependencies are installed first because package.json sits in web/, not
+# at the repo root where Netlify looks by default.
+#
+# Headers: the web build writes a `_headers` file (CSP and cache rules, REQ-OPS-HOST.3 and REQ-OPS-CACHE.1) into
+# web/dist, and Netlify reads it from the publish directory. They are deliberately not repeated here, so there is one
+# source of truth.
+
+[build]
+  command = "npm --prefix web ci && make build"
+  publish = "web/dist"
+
+# Production deploys come from the branch set in the Netlify UI (main). Deploy previews are built for pull requests.
+# Branch deploys are switched off in the UI (docs/DEPLOY.md, step 3), because the toml cannot turn them off.
+[context.production]
+  command = "npm --prefix web ci && make build"
+
+[context.deploy-preview]
+  command = "npm --prefix web ci && make build"
