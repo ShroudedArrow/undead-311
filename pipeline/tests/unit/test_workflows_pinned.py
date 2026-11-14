@@ -18,8 +18,13 @@ WORKFLOWS = sorted(
     [*(REPO / ".github" / "workflows").glob("*.y*ml"), *(REPO / "ops").glob("**/.github/workflows/*.y*ml")]
 )
 
-TAG_REF = re.compile(r"^v?\d+(\.\d+){0,2}([-+.][0-9A-Za-z.-]+)?$")   # v4, v4.2.1, 1.2.3
+# v4, v4.2.1, 1.2.3, v2.0.0-beta.1. A suffix must be a semver pre-release (alpha, beta, rc, pre), so branch-style
+# refs such as v4.x, 1.x, v2-dev and v1-branch do not pass (review N3, ops#55).
+TAG_REF = re.compile(r"^v?\d+(\.\d+){0,2}(-(alpha|beta|rc|pre)([.-]?\d+)*)?$")
 SHA_REF = re.compile(r"^[0-9a-f]{40}$")
+# Job-level write scopes allowed per workflow location. CI jobs never write; the data-repo template (ops/) needs
+# `contents: write` for the Release with the Parquet files and `issues: write` for the needs-human alert.
+WRITE_ALLOWED = {"ci": set(), "ops": {"contents", "issues"}}
 
 
 def unpinned(uses: str) -> str | None:
@@ -50,6 +55,31 @@ def jobs_without_permissions(doc: dict) -> list[str]:
     return [name for name, job in (doc.get("jobs") or {}).items() if "permissions" not in job]
 
 
+def excess_permissions(doc: dict, allowed: set[str]) -> list[str]:
+    """Permissions broader than least privilege (REQ-OPS-CI.4, review N3): `write-all` anywhere, any write scope
+    at workflow level, and any job-level write scope that is not in `allowed`."""
+    bad: list[str] = []
+
+    def scan(where: str, perms, allow: set[str]) -> None:
+        if perms is None:
+            return
+        if isinstance(perms, str):
+            if perms == "write-all":
+                bad.append(f"{where}: write-all")
+            return
+        bad.extend(f"{where}: {scope}: write" for scope, level in perms.items()
+                   if level == "write" and scope not in allow)
+
+    scan("workflow", doc.get("permissions"), set())
+    for name, job in (doc.get("jobs") or {}).items():
+        scan(f"job {name}", job.get("permissions"), allowed)
+    return bad
+
+
+def location(path: Path) -> str:
+    return "ops" if "ops" in path.relative_to(REPO).parts[:1] else "ci"
+
+
 def load(path: Path) -> dict:
     doc = yaml.safe_load(path.read_text())
     assert isinstance(doc, dict), path
@@ -69,12 +99,14 @@ def test_every_action_is_pinned_and_every_job_has_permissions(path):
     bad = {u: why for u in used_actions(doc) if (why := unpinned(u))}
     assert not bad, f"{path.name}: unpinned actions {bad}"
     assert not jobs_without_permissions(doc), f"{path.name}: jobs without permissions: {jobs_without_permissions(doc)}"
+    assert not excess_permissions(doc, WRITE_ALLOWED[location(path)]), excess_permissions(doc, WRITE_ALLOWED[location(path)])
 
 
 @pytest.mark.parametrize(
     "uses",
     ["actions/checkout", "actions/checkout@main", "actions/checkout@master", "owner/repo@feature-x",
-     "owner/repo@abc123", "docker://node:22"],
+     "owner/repo@abc123", "docker://node:22", "a/b@v4.x", "a/b@1.x", "a/b@v2-dev", "a/b@v1-branch",
+     "a/b@v4.2.1.x"],
 )
 def test_the_pin_check_rejects_moving_refs(uses):
     """REQ-OPS-CI.4: the O1 checker bites. Branches, short SHAs, bare names and untagged images fail."""
@@ -84,7 +116,7 @@ def test_the_pin_check_rejects_moving_refs(uses):
 @pytest.mark.parametrize(
     "uses",
     ["actions/checkout@v4", "actions/setup-node@v4.1.0", "astral-sh/setup-uv@v5", "./local-action",
-     "actions/checkout@" + "a" * 40, "docker://node@sha256:" + "b" * 64],
+     "a/b@v2.0.0-beta.1", "a/b@1.2.3-rc1", "actions/checkout@" + "a" * 40, "docker://node@sha256:" + "b" * 64],
 )
 def test_the_pin_check_accepts_tags_and_full_shas(uses):
     """REQ-OPS-CI.4."""
@@ -116,3 +148,23 @@ def test_ci_jobs_hold_read_only_contents_permission():
     doc = load(REPO / ".github" / "workflows" / "ci.yml")
     for name in ("python", "web"):
         assert doc["jobs"][name]["permissions"] == {"contents": "read"}, name
+
+
+def test_excess_permissions_are_reported():
+    """REQ-OPS-CI.4 (review N3): write-all, workflow-level writes and job writes off the allow list are rejected."""
+    assert excess_permissions({"permissions": "write-all", "jobs": {}}, set())
+    assert excess_permissions({"permissions": {"contents": "write"}, "jobs": {}}, {"contents"})
+    assert excess_permissions({"jobs": {"a": {"permissions": "write-all"}}}, {"contents"})
+    assert excess_permissions({"jobs": {"a": {"permissions": {"contents": "write"}}}}, set())
+    assert not excess_permissions({"jobs": {"a": {"permissions": {"contents": "read", "issues": "write"}}}}, {"issues"})
+    assert not excess_permissions({"permissions": {}, "jobs": {"a": {"permissions": {"contents": "read"}}}}, set())
+
+
+def test_ci_creates_the_uv_cache_folder_before_setup():
+    """REQ-OPS-CI.1 (review N5): UV_CACHE_DIR exists before `make setup`, so the Makefile's fallback keeps it."""
+    steps = load(REPO / ".github" / "workflows" / "ci.yml")["jobs"]["python"]["steps"]
+    runs = [s.get("run", "") for s in steps]
+    mk = next(i for i, r in enumerate(runs) if "mkdir -p" in r and "UV_CACHE_DIR" in r)
+    setup = next(i for i, r in enumerate(runs) if "make setup" in r)
+    cache = next(i for i, s in enumerate(steps) if str(s.get("uses", "")).startswith("astral-sh/setup-uv"))
+    assert cache < mk < setup

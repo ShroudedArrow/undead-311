@@ -33,6 +33,11 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: web/package-lock.json
+      # setup-uv exports UV_CACHE_DIR but may not create the folder. The Makefile (ops#9) falls back to
+      # .local-data/uv-cache when UV_CACHE_DIR is not an existing writable folder, which would fill a cache that
+      # setup-uv never saves. Create it first (review N5, ops#57).
+      - name: Create the uv cache folder
+        run: mkdir -p "$UV_CACHE_DIR"
       - name: Install Python and Node dependencies
         run: make setup
       # `make test` runs pytest (unit, property, and the test-town golden check in test_golden.py) and vitest.
@@ -40,6 +45,9 @@ jobs:
         run: make test
       - name: Schema validation (every schema, and the answer key against its schema)
         run: make schema-check
+      # Scope decision (review N4, ops#56): lint the package only. scripts/ holds the run's hooks and gate tools,
+      # which the engine does not own and which carry 18 existing ruff errors (ops#52). Widen this to the whole
+      # repo once their owner has fixed them.
       - name: Ruff
         run: uv run ruff check pipeline
 
