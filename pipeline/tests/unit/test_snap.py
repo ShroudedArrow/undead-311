@@ -128,6 +128,21 @@ def test_req_ing_snap_3_pre_snapped_rows_are_left_alone(tmp_path):
     assert row(con, "plain")[0] == "2"
 
 
+def test_req_ing_snap_5_pre_snapped_rows_keep_near_nodes_empty_even_beside_an_intersection(tmp_path):
+    """REQ-ING-SNAP.5: a pre-snapped fixture row at the crossing gets no near_nodes, so intersection mode never applies to it."""
+    con = cases_table([("fixture", 0, 0), ("plain", 0, 0)], pre={"fixture": ("TOWN-1", 3.0)})
+    snap_cases(con, crossing(tmp_path / "g.geojson"))
+    assert not row(con, "fixture")[2]
+    assert row(con, "plain")[2]  # a row that is snapped here does get the crossing
+
+
+def test_req_ing_snap_6_methods_page_states_the_segment_break_limitation():
+    """REQ-ING-SNAP.6: docs/METHODS.md says a shared endpoint is a segment break, not always a cross street, and that dead ends are not intersections."""
+    text = (Path(__file__).resolve().parents[3] / "docs" / "METHODS.md").read_text()
+    assert "segment break" in text and "not every break is a cross street" in text
+    assert "mid-block" in text and "dead end" in text
+
+
 def test_req_ing_snap_2_without_the_file_nothing_is_snapped(tmp_path):
     con = cases_table([("a", 0, 5)])
     rep = snap_cases(con, tmp_path / "missing.geojson")
