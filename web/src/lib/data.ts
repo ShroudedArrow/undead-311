@@ -4,6 +4,7 @@
  */
 import { useEffect, useState } from "react";
 import type { ParseResult } from "./parse";
+import { statsPath } from "./statsFiles";
 
 export type Load<T> =
   | { status: "loading" }
@@ -11,7 +12,7 @@ export type Load<T> =
   | { status: "error"; file: string; error: string };
 
 export function dataUrl(file: string): string {
-  return `${import.meta.env.BASE_URL}data/${file}`;
+  return `${import.meta.env.BASE_URL}data/${statsPath(file)}`;
 }
 
 export async function loadData<T>(file: string, parse: (d: unknown) => ParseResult<T>): Promise<Load<T>> {

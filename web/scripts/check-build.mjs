@@ -108,7 +108,7 @@ export function firstViewFiles() {
   for (const a of readdirSync(join(dist, "assets"))) {
     if (/\.(js|mjs|css)$/.test(a) || /^public-sans-latin-(400|600|700)-normal-.*\.woff2$/.test(a)) list.push(`assets/${a}`);
   }
-  for (const f of ["points.json", "status.json", "judge_tour.json"]) list.push(`data/${f}`);
+  for (const f of ["points.json", "status.json", "stats/judge_tour.json"]) list.push(`data/${f}`);
   return list.filter((f) => existsSync(join(dist, f)));
 }
 

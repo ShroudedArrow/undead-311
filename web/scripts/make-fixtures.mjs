@@ -5,13 +5,15 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildStatsFixtures, findBulkClosures } from "./stats-fixtures.mjs";
+import { statsPath } from "../src/lib/statsFiles.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const csvPath = join(here, "..", "..", "data", "sample", "sample_311.csv");
+/** REQ-WEB-DATA.1 (ops#101): stats files sit under stats/, the rest flat. */
+const outPath = statsPath;
 const outDir = join(here, "..", "public", "data");
 /** The detector defaults the fixtures stand in for (REQ-EXP-1.2: stats files carry params and seed). */
 const PARAMS = { WINDOW_DAYS: 60, RADIUS_M: 30, matching: "segment" };
-const overridePath = join(here, "..", "..", "data", "labels", "judge_tour_override.json");
 
 export function parseCsv(text) {
   const rows = [];
@@ -83,28 +85,16 @@ function wilson(k, n) {
 }
 
 /**
- * REQ-STAT-TOUR.1 (UX-10, ops#23): the provisional tour lists the zombies named in data/labels/judge_tour_override.json when that
- * file exists and every ID is in the fixture set (source "override"); otherwise the three headline zombies with the most
- * re-reports, ties by zombie ID (source "most_reports"). Never by confidence score.
+ * REQ-STAT-TOUR.1 (UX-10, ops#23): the provisional tour is the three headline zombies with the most re-reports, ties by
+ * zombie ID (source "most_reports"). Never by confidence score. There is no override file (owner decision, ops#36).
  */
-export function pickTour(zs, override = null) {
-  const ids = new Set(zs.map((z) => z.zombie_id));
-  if (Array.isArray(override) && override.length === 3 && override.every((id) => ids.has(id))) return { ids: [...override], source: "override" };
+export function pickTour(zs) {
   const pool = zs.filter((z) => z.tier === "headline")
     .sort((x, y) => y.reports_after - x.reports_after || (x.zombie_id < y.zombie_id ? -1 : x.zombie_id > y.zombie_id ? 1 : 0));
   return { ids: pool.slice(0, 3).map((z) => z.zombie_id), source: "most_reports" };
 }
 
-/** The owner's override file, or null when it does not exist or is not a list of IDs. Accepts a list or {zombie_ids: [...]}. */
-export function readOverride(path = overridePath) {
-  try {
-    const j = JSON.parse(readFileSync(path, "utf8"));
-    const ids = Array.isArray(j) ? j : j?.zombie_ids;
-    return Array.isArray(ids) && ids.every((x) => typeof x === "string") ? ids : null;
-  } catch { return null; }
-}
-
-export function buildFixtures(rows, override = null) {
+export function buildFixtures(rows) {
   const cases = rows
     .map((r) => ({
       id: r.id, system: r.system, open: Date.parse(r.open_time_utc), close: r.close_time_utc ? Date.parse(r.close_time_utc) : null,
@@ -227,7 +217,7 @@ export function buildFixtures(rows, override = null) {
   const dataEnd = new Date(Math.max(...cases.map((c) => c.close ?? c.open))).toISOString().slice(0, 10);
   const version = `fixture-${dataEnd}`;
   points.data_version = version;
-  const tour = pickTour(zs, override);
+  const tour = pickTour(zs);
 
   return {
     version,
@@ -245,9 +235,10 @@ export function buildFixtures(rows, override = null) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const { files, shards } = buildFixtures(parseCsv(readFileSync(csvPath, "utf8")), readOverride());
+  const { files, shards } = buildFixtures(parseCsv(readFileSync(csvPath, "utf8")));
   rmSync(join(outDir, "cards"), { recursive: true, force: true }); // no stale shards when a rule changes
   mkdirSync(join(outDir, "cards"), { recursive: true });
-  for (const [name, data] of [...Object.entries(files), ...Object.entries(shards)]) writeFileSync(join(outDir, name), JSON.stringify(data) + "\n");
+  mkdirSync(join(outDir, "stats"), { recursive: true });
+  for (const [name, data] of [...Object.entries(files), ...Object.entries(shards)]) writeFileSync(join(outDir, outPath(name)), JSON.stringify(data) + "\n");
   console.log(`wrote ${Object.keys(files).length} files and ${Object.keys(shards).length} card shards to ${outDir}`);
 }

@@ -3,11 +3,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseBulkClosures, parseCardShard, parseExcess, parseExclusions, parseFunnel, parseGroups, parseJudgeTour, parseSurvival, parseTemporaryFixes, parsePoints, parseScorecard, parseStatus, parseValidation, parseZombies } from "./parse";
 import { shardFile } from "./shard";
+import { statsPath } from "./statsFiles";
 // @ts-expect-error plain .mjs build script, no type declarations
 import { buildFixtures, canonicalHood } from "../../scripts/make-fixtures.mjs";
 
 const dir = join(__dirname, "..", "..", "public", "data");
-const read = (f: string): unknown => JSON.parse(readFileSync(join(dir, f), "utf8"));
+const read = (f: string): unknown => JSON.parse(readFileSync(join(dir, statsPath(f)), "utf8"));
 
 describe("fixture files follow the schemas (REQ-WEB-DATA.3)", () => {
   it.each([

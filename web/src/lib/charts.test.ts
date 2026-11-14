@@ -4,8 +4,9 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { tickPct, yTitle, chartDims, curveKind, curvesFor, intensityText, isUnusual, isValidCurve, leaderboard, limitAt, linePath, linear, logScale, niceTicks, unusualDirection } from "./charts";
 import { parseFunnel, parseGroups, parseSurvival, type FunnelLimit, type Group } from "./parse";
+import { statsPath } from "./statsFiles";
 
-const read = (f: string): unknown => JSON.parse(readFileSync(join(__dirname, "..", "..", "public", "data", f), "utf8"));
+const read = (f: string): unknown => JSON.parse(readFileSync(join(__dirname, "..", "..", "public", "data", statsPath(f)), "utf8"));
 
 const limit = (n: number, lo998: number, hi998: number): FunnelLimit => ({ n, lo95: lo998 + 0.01, hi95: hi998 - 0.01, lo998, hi998 });
 const LIMITS: FunnelLimit[] = [limit(1, 0, 1), limit(10, 0.02, 0.4), limit(100, 0.06, 0.2), limit(1000, 0.08, 0.12)];

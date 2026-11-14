@@ -109,6 +109,17 @@ describe("Methods page (REQ-WEB-METHODS.1)", () => {
     expect(link.getAttribute("href")).toContain("/issues/new?title=Error%20report%3A%20Methods");
     expect(screen.getByRole("link", { name: "Corrections log" }).getAttribute("href")).toBe("/corrections");
   });
+  it("shows the panel error, and no excess, shift or placebo claim, when the parser rejects the excess file (REQ-WEB-DATA.2, ops#100)", async () => {
+    stub({ "excess.json": { ...(FILES["excess.json"] as object), placebo: { excess: "x" } } });  // the schema rejects a malformed placebo
+    open();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("excess.json");
+    expect(screen.queryByTestId("excess-table")).toBeNull();
+    expect(screen.queryByTestId("placebo")).toBeNull();
+    expect(screen.queryByTestId("shift-range")).toBeNull();
+    expect(screen.queryByText("The placebo result is not part of this data yet.")).toBeNull();
+    expect(await screen.findByTestId("nightly-status")).toBeTruthy();
+  });
   it("one failed file shows an error for its panel only", async () => {
     stub({}, ["excess.json"]);
     open();
@@ -128,6 +139,7 @@ describe("What the headline leaves out (REQ-WEB-DEATHS.1)", () => {
     const ex = screen.getByTestId("exclusions");
     expect(within(ex).getByText("Mirror copies across the two systems").closest("tr")?.textContent).toContain("15");
     expect(within(ex).getByText("No usable coordinates").closest("tr")?.textContent).toContain("3");
+    expect(within(ex).getByText("Originals closed as transferred or migrated (legacy system) or as Transitioned (new system)").closest("tr")?.textContent).toContain("49");  // names both forms (ops#87)
     expect(screen.getByTestId("bulk-table").textContent).toContain("2020-03-05");
     expect(screen.getByRole("link", { name: "Mark these possible zombies on the map" }).getAttribute("href")).toBe("/?bulk=1");
   });

@@ -60,7 +60,7 @@ describe("Scorecard (REQ-WEB-SCORE.1-2)", () => {
 
 describe("fixture scorecard (REQ-WEB-DATA.3, testing.md #10, #17)", () => {
   it("has stayed-fixed at or below on-time, raw and adjusted", () => {
-    const parsed = parseScorecard(JSON.parse(readFileSync(join(__dirname, "..", "..", "public", "data", "scorecard.json"), "utf8")));
+    const parsed = parseScorecard(JSON.parse(readFileSync(join(__dirname, "..", "..", "public", "data", "stats", "scorecard.json"), "utf8")));
     if (!parsed.ok) throw new Error(parsed.error);
     for (const s of parsed.data.scorecards) {
       expect(s.stayed_fixed_raw.rate as number).toBeLessThanOrEqual(s.on_time.rate as number);
