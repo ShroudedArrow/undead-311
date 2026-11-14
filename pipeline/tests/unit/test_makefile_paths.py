@@ -43,3 +43,12 @@ def test_valid_data_dir_is_kept(tmp_path):
     """ops#9: an existing writable DATA_DIR is used as given; same for UV_CACHE_DIR."""
     assert make_value("DATA_DIR", {"DATA_DIR": str(tmp_path)}) == str(tmp_path)
     assert make_value("UV_CACHE_DIR", {"UV_CACHE_DIR": str(tmp_path)}) == str(tmp_path)
+
+
+def test_test_and_lint_install_web_deps_first():
+    """testing.md definition of done 1-2 (ops#121): `make test` and `make lint` depend on web-deps, so a fresh worktree
+    installs web/node_modules instead of failing on `vitest: command not found`."""
+    out = subprocess.run(["make", "-n", "-s", "test", "lint"], cwd=REPO, capture_output=True, text=True, check=True).stdout
+    assert out.count("npm ci") >= 1 or (REPO / "web/node_modules/vitest").is_dir()
+    mk = (REPO / "Makefile").read_text()
+    assert "\ntest: web-deps" in mk and "\nlint: web-deps" in mk

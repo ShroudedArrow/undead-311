@@ -10,7 +10,7 @@ export UV_CACHE_DIR
 UV ?= uv
 STUB = @echo "[stub] $@: not implemented yet"
 
-.PHONY: cloud-sync-check pipeline-sample validation-sample typecheck schema-check test-town setup data-download data-sample pipeline test test-fast web build e2e copy-lint validate coroner-eval snapshot channel-export trace kiro-stats capture lint
+.PHONY: web-deps cloud-sync-check pipeline-sample validation-sample typecheck schema-check test-town setup data-download data-sample pipeline test test-fast web build e2e copy-lint validate coroner-eval snapshot channel-export trace kiro-stats capture lint
 
 setup:
 	$(UV) sync
@@ -46,13 +46,17 @@ typecheck:
 schema-check:
 	$(UV) run pytest -q pipeline/tests/unit/test_schemas.py pipeline/tests/unit/test_web_data_schemas.py
 
-lint:
+# A fresh worktree has no web/node_modules; test and lint need it (ops#121). Installs the locked versions once.
+web-deps:
+	@test -d web/node_modules/vitest || (cd web && npm ci)
+
+lint: web-deps
 	$(UV) run ruff check pipeline
 	cd web && npm run typecheck
 
 # Installs the locked dependencies first (runtime + dev group: pytest, hypothesis, ruff). pytest exits non-zero when a test
 # file cannot be collected (for example a missing import), so a collection error fails this target; it is never skipped.
-test:
+test: web-deps
 	$(UV) sync --locked --group dev
 	$(UV) run pytest
 	cd web && npm test
