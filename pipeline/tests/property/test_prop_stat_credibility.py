@@ -17,10 +17,18 @@ from strategies import town
 from undead311.detect.core import detect
 from undead311.detect.model import DetectionResult, Zombie
 from undead311.stats.baseline import BaselineModel, excess_rows
-from undead311.stats.groups import build_groups, fit_kappa, funnel_limits_at, shrink
+from undead311.stats.groups import (
+    build_groups,
+    fit_kappa,
+    funnel_limits,
+    funnel_limits_at,
+    group_counts,
+    shrink,
+)
 from undead311.stats.rates import scorecards
 from undead311.stats.shift import shift_and_placebo
 from undead311.stats.survival import curves, km
+from undead311.stats.temporary import temporary_rows
 from undead311.stats.tour import build_tour
 from undead311.stats.validation import cohen_kappa, score
 
@@ -102,6 +110,34 @@ def test_prop_stat_7_headline_values_ignore_other_tiers_and_all_tiers_add_up(cas
     assert before == after
     assert rows_before == [r.to_json() for r in excess_rows(model2, 1, 30) if r.tier_set == "headline"]
     assert plus.count("headline") + plus.count("source_unknown") + plus.count("sensitivity") == len(plus.zombies)
+
+
+@given(town(), st.integers(0, 10_000))
+def test_prop_stat_7_every_other_headline_statistic_ignores_added_non_headline_zombies(cases, seed):
+    """REQ-STAT-TIER.1 (P7, every exported statistic): group counts and shrunk groups, funnel limits, survival curves and the
+    temporary-fix `after_temporary_fix` rows keep their headline values when source_unknown or sensitivity zombies are added."""
+    cases = with_on_time(cases, seed)
+    result = detect(cases)
+    assume(result.zombies)
+    has = {z.incident_id for z in result.zombies}
+    extra = [
+        replace(result.zombies[0], incident_id=inc.incident_id, resurrection_id=f"X{i}",
+                tier="source_unknown" if (seed + i) % 2 else "sensitivity", after_temporary_fix=False)
+        for i, inc in enumerate(result.incidents) if inc.incident_id not in has
+    ]  # fmt: skip
+    plus = DetectionResult(**{**result.__dict__, "zombies": result.zombies + extra})
+    assert group_counts(result, END, tier_set="headline") == group_counts(plus, END, tier_set="headline")
+    before = build_groups(group_counts(result, END, tier_set="headline"), {})
+    after = build_groups(group_counts(plus, END, tier_set="headline"), {})
+    assert before[:2] == after[:2] and [g.to_json() for g in before[2]] == [g.to_json() for g in after[2]]
+    assert funnel_limits(before[0], 30) == funnel_limits(after[0], 30)
+    assert [c.to_json() for c in curves(result, END) if c.tier_set == "headline"] == [
+        c.to_json() for c in curves(plus, END) if c.tier_set == "headline"]  # fmt: skip
+
+    def temp(res):
+        return [(r["family"], r["department"], r["n_made_safe"], r["after_temporary_fix"]) for r in temporary_rows(res, END)]
+
+    assert temp(result) == temp(plus)
 
 
 @given(

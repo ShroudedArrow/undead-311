@@ -9,6 +9,7 @@ from dataclasses import replace
 from datetime import date
 
 import duckdb
+import numpy as np
 import pytest
 from helpers import day, mk
 from test_pipeline import raw_folder
@@ -19,8 +20,9 @@ from undead311.detect.params import DEFAULT
 from undead311.export.writers import validate
 from undead311.ingest.geometry import store_neighborhood_geometry
 from undead311.pipeline import run_pipeline
-from undead311.stats.baseline import BaselineModel
+from undead311.stats.baseline import BaselineModel, excess_rows
 from undead311.stats.city import city_counts, city_only_incidents
+from undead311.stats.cohort import spot_key
 from undead311.stats.gridstats import GridMetrics, grid_payload, store_grid_metrics
 from undead311.stats.groups import (
     build_groups,
@@ -187,6 +189,90 @@ def test_req_stat_placebo_2_the_warning_is_set_exactly_when_the_interval_exclude
     assert shift_and_placebo(BaselineModel({}, detect([]), data_end=day(10)), 1, 10, 2) == (None, None)
 
 
+def null_town(gap, spots=120, span=1000, seed=5, close_after=2.0):
+    """Reports at Poisson times at every spot, each closed `close_after` days after it opens: nothing is a resurrection by cause,
+    so every statistic that compares with chance should find none."""
+    rng = np.random.default_rng(seed)
+    out = []
+    for s in range(spots):
+        t, n = 0.0, 0
+        while True:
+            t += rng.exponential(gap)
+            if t > span:
+                break
+            out.append(mk(f"S{s:03d}-{n:03d}", t, t + close_after, x=s * 1000.0, segment=f"seg{s}"))
+            n += 1
+    return out
+
+
+@pytest.mark.parametrize("gap", [200.0, 60.0])
+def test_req_stat_shift_1_and_placebo_1_on_a_town_with_no_resurrections_the_observed_count_is_inside_the_shift_interval(gap):
+    """REQ-STAT-SHIFT.1, REQ-STAT-PLACEBO.1-2 (ops#102, S29): the incident's own members are not chance hits, so a town whose
+    reports are independent of closures lands inside its shift distribution and the placebo does not warn."""
+    cs = null_town(gap)
+    res = detect(cs)
+    m = BaselineModel({c.id: c for c in cs}, res, data_end=day(1000))
+    shift, placebo = shift_and_placebo(m, 311, 200, 10)
+    assert shift.q025 <= shift.observed <= shift.q975
+    assert placebo.calibration_warning is False and placebo.lo <= 0 <= placebo.hi
+
+
+def test_req_stat_shift_1_own_member_reports_are_never_counted_when_a_closure_is_moved():
+    """REQ-STAT-SHIFT.1 (ops#102): the closure of an incident moved to before its own members must not count them, while a
+    neighbouring incident's reports still count."""
+    from undead311.stats.shift import _build, _hits
+
+    cs = [mk("Z", 5, 6), mk("A", 100, 101), mk("B", 100.5, 102)]  # A and B are one incident; Z is another at the same spot
+    res = detect(cs)
+    m = BaselineModel({c.id: c for c in cs}, res, data_end=day(400))
+    sp = _build(m)
+    assert sp is not None and sp.own_inc.size == 3  # every member is in the spot's group
+    ids = sorted(i.incident_id for i in res.incidents)
+    ab = ids.index(next(i.incident_id for i in res.incidents if set(i.member_ids) == {"A", "B"}))
+    t_min = min(float(m.groups[k][0][0]) for k in sp.keys)
+    early = np.full((len(ids), 1), day(90).timestamp())  # (90, 150] holds A and B (and not Z)
+    hits = _hits(sp, t_min, m.window_s, early)[:, 0]
+    assert hits[ab] == 0 and hits.sum() == 1  # the A+B incident does not count its own members; Z counts them
+
+
+def test_req_stat_base_2_the_excess_interval_carries_the_error_of_the_pooled_baseline_and_covers_zero_on_a_null_town():
+    """REQ-STAT-BASE.2-3, REQ-STAT-INT.1 (ops#103, S30): with a pooled fallback p estimated from few windows, resampling originals
+    alone would give a narrow interval that excludes 0 on a town where nothing resurrects by cause."""
+    cs = null_town(20.0, spots=60, span=700)
+    res = detect(cs)
+    m = BaselineModel({c.id: c for c in cs}, res, data_end=day(700))
+    rows = [r for r in excess_rows(m, 311, 300) if r.kind == "family" and r.tier_set == "headline"]
+    assert rows and m.fallback_counts(res.incidents)["citywide"] > len(res.incidents) // 2
+    assert all(r.lo <= 0 <= r.hi for r in rows)
+
+
+def test_req_stat_grid_1_a_radius_mode_run_keys_snapped_cases_by_cell_not_by_segment():
+    """REQ-STAT-GRID.1 (ops#104, S31): in radius matching segments are ignored, so a snapped case's spot is its 2 x RADIUS_M cell."""
+    radius = replace(DEFAULT, matching="radius")
+    assert spot_key("SEG-1", 42.3, -71.1, DEFAULT) == "seg:SEG-1"
+    assert spot_key("SEG-1", 42.3, -71.1, radius).startswith("cell:")
+    assert spot_key("SEG-1", 42.3, -71.1, radius) == spot_key(None, 42.3, -71.1, radius)
+    assert spot_key("SEG-1", 42.3, -71.1, replace(radius, RADIUS_M=15)) != spot_key("SEG-1", 42.3, -71.1015, radius)
+    cs = [mk("A", 0, 1, segment="SEG-1"), mk("R", 10, segment="SEG-1", x=300.0)]  # 300 m apart on one long segment
+    m = BaselineModel({c.id: c for c in cs}, detect(cs, radius), radius, day(300))
+    assert all(key[1].startswith("cell:") for key in m.groups)
+
+
+def test_req_stat_eb_1_kappa_is_fitted_per_kind_over_groups_that_partition_the_originals():
+    """REQ-STAT-EB.1 (ops#105, S32): departments vary a lot and neighborhoods hardly at all, so one kappa for both is wrong for each."""
+    counts = {}
+    for name, k in (("D1", 2), ("D2", 38), ("D3", 20), ("D4", 5), ("D5", 33)):
+        counts[("department", name)] = (k, 40)
+    for name, k in (("N1", 20), ("N2", 21), ("N3", 19), ("N4", 20), ("N5", 20)):
+        counts[("neighborhood", name)] = (k, 40)
+    for name, k in (("f1", 50), ("f2", 50)):
+        counts[("family", name)] = (k, 100)
+    mu, kappas, groups = build_groups(counts, {n: 1.0 for n in ("N1", "N2", "N3", "N4", "N5")})
+    assert mu == 0.5 and set(kappas) == {"department", "family", "neighborhood"}
+    assert kappas["neighborhood"] > 20 * kappas["department"]
+    assert {g.kind for g in groups} == {"department", "family", "neighborhood"}
+
+
 # --- temporary fixes, city, exclusions --------------------------------------------------------------------------------------------
 def test_req_stat_temp_1_share_of_made_safe_originals_that_came_back_by_hand():
     cs = [
@@ -253,7 +339,9 @@ def test_req_stat_val_labels_read_in_any_spelling():
 
 
 def test_req_stat_val_2_precision_cant_tell_share_and_kappa_by_hand():
-    """z1 both still broken; z2 still broken / fixed since; z3 can't tell / still broken; z4 both fixed since."""
+    """REQ-STAT-VAL.2, REQ-STAT-VAL.3 (the confirmed set is the zombies both raters call still broken).
+
+    z1 both still broken; z2 still broken / fixed since; z3 can't tell / still broken; z4 both fixed since."""
     labels = {"z1": {"a": "still_broken", "b": "still_broken"}, "z2": {"a": "still_broken", "b": "fixed_since"},
               "z3": {"a": "cant_tell", "b": "still_broken"}, "z4": {"a": "fixed_since", "b": "fixed_since"},
               "z5": {"a": "still_broken"}}  # fmt: skip
