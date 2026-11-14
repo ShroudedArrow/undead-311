@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 from collections import defaultdict
 from collections.abc import Callable, Mapping
@@ -302,8 +303,110 @@ def export_all(result: DetectionResult, cases: Mapping[str, Case], out_dir: Path
     return written
 
 
-def write_duckdb_atomic(final: Path, build: Callable[[duckdb.DuckDBPyConnection], None]) -> Path:
-    """Build the DuckDB file under a temporary name, then rename it, so a reader never sees a half-written file."""
+def staging_dir(target: Path) -> Path:
+    """A fresh hidden folder beside `target` (same filesystem, so `os.replace` is atomic) for one run's output."""
+    target = Path(target)
+    stage = target.parent / f".{target.name}.staging-{os.getpid()}"
+    shutil.rmtree(stage, ignore_errors=True)
+    stage.mkdir(parents=True)
+    return stage
+
+
+class Swap:
+    """Move every file under `stage` into `target` after a successful run (REQ-ING-NIGHTLY.1), with rollback.
+
+    `apply()` replaces each file atomically (`last`, with its `.gz` copy just before it, goes last, so the site never sees
+    a status newer than its data) and removes files in `target` for which `owned(relative path)` is true but that this run
+    did not produce (a stale card shard, a stats file the run no longer writes). Files that are not owned are never touched.
+    Every file it replaces or removes is first moved to `stage/.backup`, so `rollback()` (also called when `apply()` itself
+    fails part-way) puts `target` back exactly as it was. Nothing happens to `target` before `apply()`."""
+
+    def __init__(self, stage: Path, target: Path, owned: Callable[[str], bool] = lambda rel: False, last: str = "status.json"):
+        self.stage, self.target, self.owned, self.last = Path(stage), Path(target), owned, last
+        self.backup = self.stage / ".backup"
+        self.paths: list[Path] = []
+        self._undo: list[tuple[Path, Path | None]] = []  # (target file, its backup or None when it did not exist)
+
+    def _plan(self) -> tuple[list[str], list[str]]:
+        staged = sorted(
+            p.relative_to(self.stage).as_posix()
+            for p in self.stage.rglob("*")
+            if p.is_file() and p.suffix != ".tmp" and ".backup" not in p.relative_to(self.stage).parts
+        )
+        order = [r for r in staged if r not in (self.last, self.last + ".gz")]
+        order += [r for r in (self.last + ".gz", self.last) if r in staged]
+        stale = []
+        if self.target.is_dir():
+            produced = set(staged)
+            for f in sorted(p for p in self.target.rglob("*") if p.is_file()):
+                rel = f.relative_to(self.target).as_posix()
+                if rel not in produced and self.owned(rel):
+                    stale.append(rel)
+        return order, stale
+
+    def _save(self, rel: str) -> None:
+        dest = self.target / rel
+        if dest.is_file():
+            saved = self.backup / rel
+            saved.parent.mkdir(parents=True, exist_ok=True)
+            os.replace(dest, saved)
+            self._undo.append((dest, saved))
+        else:
+            self._undo.append((dest, None))
+
+    def apply(self) -> Swap:
+        order, stale = self._plan()
+        tail = [r for r in order if r in (self.last, self.last + ".gz")]
+        body = [r for r in order if r not in tail]
+        try:
+            for rel in body:
+                self._move_in(rel)
+            for rel in stale:  # a stale file goes before the status file, which therefore still ends the swap
+                self._save(rel)
+            for rel in tail:
+                self._move_in(rel)
+        except BaseException:
+            self.rollback()
+            raise
+        self.paths = [self.target / rel for rel in order]
+        return self
+
+    def _move_in(self, rel: str) -> None:
+        self._save(rel)
+        dest = self.target / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(self.stage / rel, dest)
+
+    def rollback(self) -> None:
+        """Restore `target` to its state before `apply()`."""
+        for dest, saved in reversed(self._undo):
+            if saved is not None:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                os.replace(saved, dest)
+            else:
+                dest.unlink(missing_ok=True)
+        self._undo.clear()
+        self.paths = []
+
+
+def swap_into(
+    stage: Path, target: Path, owned: Callable[[str], bool] = lambda rel: False, last: str = "status.json"
+) -> list[Path]:
+    """`Swap(...).apply().paths`: the final paths of the files moved into `target`."""
+    return Swap(stage, target, owned, last).apply().paths
+
+
+def write_duckdb_atomic(
+    final: Path,
+    build: Callable[[duckdb.DuckDBPyConnection], None],
+    commit: Callable[[], None] | None = None,
+    rollback: Callable[[], None] | None = None,
+) -> Path:
+    """Build the DuckDB file under a temporary name, then rename it, so a reader never sees a half-written file.
+
+    `commit` runs after a successful build and before the rename (the pipeline swaps its output files in there). If it or
+    the rename fails, `rollback` runs, the temporary file is removed and the error is raised: the previous DuckDB file
+    stays in place (REQ-EXP-1.4, REQ-ING-NIGHTLY.1)."""
     final = Path(final)
     final.parent.mkdir(parents=True, exist_ok=True)
     tmp = final.with_name(final.name + ".tmp")
@@ -318,5 +421,13 @@ def write_duckdb_atomic(final: Path, build: Callable[[duckdb.DuckDBPyConnection]
         tmp.unlink(missing_ok=True)
         raise
     con.close()
-    os.replace(tmp, final)
+    try:
+        if commit is not None:
+            commit()
+        os.replace(tmp, final)
+    except BaseException:
+        if rollback is not None:
+            rollback()
+        tmp.unlink(missing_ok=True)
+        raise
     return final

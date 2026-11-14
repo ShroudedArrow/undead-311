@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import shutil
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -31,12 +32,14 @@ from undead311.detect.skeptic import build_input, join_objections, write_input
 from undead311.export.writers import (
     FIRST_VIEW_BUDGET_BYTES,
     ExportContext,
+    Swap,
     canonical_json,
     data_version,
     export_all,
     exported_case_ids,
     first_view_bytes,
     snapshot_date,
+    staging_dir,
     write_duckdb_atomic,
     write_text_atomic,
 )
@@ -51,6 +54,23 @@ from undead311.paths import data_dir, worktree_root
 
 STATS_ABSENT_NAMES = ("undead311.stats", "undead311.stats.pipeline")  # the only ModuleNotFoundError names that mean "absent"
 STATS_STALE_FILES = ("scorecard.json", "judge_tour.json", "stats_status.json")
+# Files this pipeline owns in the output folder: one that a run does not produce is removed when the run is swapped in.
+ENGINE_JSON = ("zombies", "incidents", "points", "exclusions", "separate_deaths", "repeat_offenders", "bulk_closures", "status")
+PROCESSED_OWNED = ("skeptic_input.json", "coroner_templates.csv")
+
+
+def owns_output(rel: str) -> bool:
+    """True for an exported file (or its `.gz` copy) that this pipeline owns (REQ-ING-NIGHTLY.1)."""
+    name = rel.removesuffix(".gz")
+    if rel.startswith("cards/"):
+        return True
+    if name.startswith("stats/"):
+        return name.removeprefix("stats/") in STATS_STALE_FILES
+    return name in {f"{n}.json" for n in ENGINE_JSON}
+
+
+def owns_processed(rel: str) -> bool:
+    return rel in PROCESSED_OWNED
 CITY_SHARE_WARN = 0.5  # run-report anomaly when this share of headline resurrections is city-originated (ops#29)
 
 
@@ -152,7 +172,8 @@ def run_pipeline(
     snapshot_md: Path | None = None,
     grid: bool = True,
 ) -> RunReport:
-    """Run every stage and export. Raises on a stage failure; previous outputs stay in place (DuckDB: atomic)."""
+    """Run every stage and export (REQ-ING-NIGHTLY.1). Outputs are built in staging folders beside their targets and
+    swapped in only after every stage succeeded, so a stage that raises leaves the previous outputs untouched."""
     t0 = time.time()
     root = worktree_root()
     base = work_dir or data_dir()
@@ -166,6 +187,8 @@ def run_pipeline(
     labels_csv = root / "data" / "labels" / "coroner_labels.csv"
     pii = PiiCounter()
     state: dict = {}
+    processed.mkdir(parents=True, exist_ok=True)
+    stage_out, stage_proc = staging_dir(out), staging_dir(processed / "files")
 
     def build(con: duckdb.DuckDBPyConnection) -> None:
         excluded: dict[str, list[str]] = {r: [] for r in REASONS}
@@ -190,7 +213,7 @@ def run_pipeline(
             report.row_counts.update(snapped_cases=sr.snapped, unsnapped_cases=sr.unsnapped, intersections=sr.intersections)
             if not sr.available:
                 report.warnings.append(f"segments unavailable: {SEGMENTS_FILE} is not in raw/; radius matching only (REQ-ING-SNAP.2)")
-        build_templates(con, processed)
+        build_templates(con, stage_proc)
         jr: JoinReport = join_labels(con, labels_csv)
         report.label_coverage, report.unlabeled = jr.covered_share, jr.unlabeled
         if jr.labels_file_missing:
@@ -213,7 +236,7 @@ def run_pipeline(
         # Skeptic: input for the agent, then the join of its objections (REQ-SKEP)
         tour = _zombie_ids(out / "stats" / "judge_tour.json")
         sample_ids = _validation_ids(root / "data" / "labels" / "validation_sample.csv")
-        write_input(processed / "skeptic_input.json", build_input(result.zombies, by_id, version, sample_ids, tour))
+        write_input(stage_proc / "skeptic_input.json", build_input(result.zombies, by_id, version, sample_ids, tour))
         result.zombies = join_objections(result.zombies, root / "data" / "labels" / "skeptic_objections.json", p)
         report.excluded_pairs = dict(result.excluded_pairs)
         report.tier_counts = {t: result.count(t) for t in ("headline", "source_unknown", "sensitivity")}  # type: ignore[arg-type]
@@ -239,12 +262,10 @@ def run_pipeline(
         except ModuleNotFoundError as e:
             if e.name not in STATS_ABSENT_NAMES:
                 raise
-            report.stats = "not present"
-            for name in STATS_STALE_FILES:
-                (out / "stats" / name).unlink(missing_ok=True)
+            report.stats = "not present"  # the swap removes stats files an earlier run left behind
         else:
             stats_status = stats.run_stats(  # type: ignore[attr-defined]
-                con, result, by_id, out, params=p, data_version=version, labels_dir=root / "data" / "labels",
+                con, result, by_id, stage_out, params=p, data_version=version, labels_dir=root / "data" / "labels",
                 data_end=max((c.open_utc for c in cases), default=None),
                 dataset=dataset,
             )
@@ -263,7 +284,7 @@ def run_pipeline(
             city_origin=report.city_origin,
             data_end=max(c.open_utc for c in cases).strftime("%Y-%m-%d") if cases else None,
         )
-        state["files"] = export_all(result, by_id, out, ctx)
+        export_all(result, by_id, stage_out, ctx)
         # persist the detector output beside the cases for the MCP server and the stats stage
         con.execute("create table zombies(zombie_id varchar, incident_id varchar, resurrection_id varchar, tier varchar, "
                     "reports_after integer, gap_days double, chain_id varchar, times_risen integer)")  # fmt: skip
@@ -272,8 +293,24 @@ def run_pipeline(
         if rows:
             con.executemany("insert into zombies values (?,?,?,?,?,?,?,?)", rows)
 
-    write_duckdb_atomic(processed / "undead311.duckdb", build)
-    report.file_sizes = {f.relative_to(out).as_posix(): f.stat().st_size for f in sorted(set(state.get("files", [])))}
+    swaps: list[Swap] = []
+
+    def commit() -> None:
+        """Swap the staged files in (REQ-ING-NIGHTLY.1); runs after every stage succeeded, just before the DuckDB rename."""
+        swaps.append(Swap(stage_proc, processed, owns_processed).apply())
+        swaps.append(Swap(stage_out, out, owns_output).apply())
+
+    def rollback() -> None:
+        for swap in reversed(swaps):
+            swap.rollback()
+
+    try:
+        write_duckdb_atomic(processed / "undead311.duckdb", build, commit, rollback)
+    finally:
+        shutil.rmtree(stage_out, ignore_errors=True)
+        shutil.rmtree(stage_proc, ignore_errors=True)
+    files = swaps[1].paths
+    report.file_sizes = {f.relative_to(out).as_posix(): f.stat().st_size for f in sorted(set(files))}
     report.first_view_bytes = first_view_bytes(report.file_sizes)  # REQ-EXP-SIZE.2: export_all already enforced the budget
     report.seconds = time.time() - t0
     write_text_atomic(processed / "run_report.json", canonical_json(report.to_json()))

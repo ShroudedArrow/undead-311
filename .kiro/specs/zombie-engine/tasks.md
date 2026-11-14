@@ -108,7 +108,7 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
 - [x] 25. [credibility] Payload budget
   - Shard cards by neighborhood and year, write `.gz` copies, report sizes, fail over the 3 MB first-view budget.
   - _Requirements: REQ-EXP-SIZE.1–2_
-- [ ] 26. [credibility] Safe re-runs
+- [x] 26. [credibility] Safe re-runs
   - Build outputs into a temporary folder and swap only on success; a failed stage leaves the previous outputs untouched (test with an injected failure).
   - _Requirements: REQ-ING-NIGHTLY.1_
 - [ ] 27. [credibility] Full confidence score
