@@ -22,7 +22,7 @@ from undead311.ingest.geometry import store_neighborhood_geometry
 from undead311.pipeline import run_pipeline
 from undead311.stats.baseline import BaselineModel, excess_rows
 from undead311.stats.city import city_counts, city_only_incidents
-from undead311.stats.cohort import spot_key
+from undead311.stats.cohort import eligible_originals, spot_key
 from undead311.stats.gridstats import GridMetrics, grid_payload, store_grid_metrics
 from undead311.stats.groups import (
     build_groups,
@@ -244,6 +244,93 @@ def test_req_stat_base_2_the_excess_interval_carries_the_error_of_the_pooled_bas
     rows = [r for r in excess_rows(m, 311, 300) if r.kind == "family" and r.tier_set == "headline"]
     assert rows and m.fallback_counts(res.incidents)["citywide"] > len(res.incidents) // 2
     assert all(r.lo <= 0 <= r.hi for r in rows)
+
+
+@pytest.mark.parametrize("gap", [400.0, 300.0])
+def test_req_stat_base_1_and_placebo_1_sparse_null_towns_get_an_unbiased_baseline_a_covering_interval_and_no_warning(gap):
+    """REQ-STAT-BASE.1-2, REQ-STAT-PLACEBO.1-2 (ops#107, S34): 300 spots with a report every 300-400 days on average and no
+    resurrections by cause. The share-of-windows p_spot came out 0.21 against an observed 0.14 here, so the excess interval
+    excluded 0 in 5 of 8 towns and the placebo warned in 8 of 8. Seeds 5-12 are the ones the review used."""
+    p_mean, observed, covered, warned = [], [], 0, 0
+    for seed in range(5, 13):
+        cs = null_town(gap, spots=300, span=1400, seed=seed)
+        res = detect(cs)
+        m = BaselineModel({c.id: c for c in cs}, res, data_end=day(1400))
+        zs = {z.incident_id for z in res.zombies if z.tier == "headline"}
+        spot = [i for i in eligible_originals(res.incidents, m.data_end) if m.estimate(i).source == "spot"]
+        p_mean.append(np.mean([m.estimate(i).p for i in spot]))
+        observed.append(np.mean([i.incident_id in zs for i in spot]))
+        row = next(r for r in excess_rows(m, 311, 200) if r.kind == "family" and r.tier_set == "headline")
+        covered += row.lo <= 0 <= row.hi
+        warned += shift_and_placebo(m, 311, 100, 10)[1].calibration_warning
+    assert abs(np.mean(p_mean) - np.mean(observed)) < 0.02  # was 0.07 and more
+    assert covered >= 7 and warned <= 2  # nominal level 95% and 5%
+
+
+def test_req_stat_base_1_a_busy_spot_does_not_raise_its_own_baseline():
+    """REQ-STAT-BASE.1 (ops#107): leaving the incident's own reports out means five duplicate reports at one spot, all in one
+    incident, give that incident p_spot 0 (the spot's first report is never a chance report either)."""
+    own = [mk(f"O{i}", 100 + 0.1 * i, 101 + 0.1 * i) for i in range(5)]  # one incident of five duplicates
+    cs = [mk("F", 0, 1)] + own  # F is the spot's first report
+    res = detect(cs)
+    m = BaselineModel({c.id: c for c in cs}, res, data_end=day(1500))
+    inc = next(i for i in res.incidents if "O0" in i.member_ids)
+    assert set(inc.member_ids) == {f"O{i}" for i in range(5)}
+    assert m.own_after(inc).sum() == 5
+    summer = m.spot_p(inc, 2)  # days 100-101 are in June
+    assert summer is not None and summer[0] == 0.0  # F is the first report and the five duplicates are the incident's own
+    extra = [*cs, mk("X", 90)]  # one other live report in the same season changes it
+    res2 = detect(extra)
+    m2 = BaselineModel({c.id: c for c in extra}, res2, data_end=day(1500))
+    assert m2.spot_p(next(i for i in res2.incidents if "O0" in i.member_ids), 2)[0] > 0.0
+
+
+def test_req_stat_int_1_the_bootstrap_interval_holds_its_point_estimate_when_every_cell_is_0_or_1():
+    """REQ-STAT-INT.1, REQ-STAT-BASE.2 (ops#108, S35): a draw clipped to [0, 1] and re-centred left the mean draw above 0, so
+    with 2,000 non-zombie originals at zero-hit cells the interval was [-122.9, -99.8] around a point estimate of 0."""
+    from undead311.stats.intervals import bootstrap_sum_cells
+
+    n = 2000
+    for p_hat, hit in ((0.0, 0.0), (1.0, 1.0)):
+        cells = [i % 3 for i in range(n)]
+        values = [hit - p_hat] * n  # observed minus expected = 0 for every original
+        for n_eff in (4.0, 15.0, 40.0):
+            lo, hi = bootstrap_sum_cells(values, cells, [p_hat] * 3, [n_eff] * 3, np.random.default_rng(1), 200)
+            assert lo <= 0.0 <= hi
+    # a cell at 0.5 does move the interval, and it is centred on the point estimate
+    lo, hi = bootstrap_sum_cells([-0.5] * 1000, [0] * 1000, [0.5], [20.0], np.random.default_rng(1), 400)
+    assert lo < -500 < hi and hi - lo > 50
+
+
+def test_req_stat_int_1_clusters_are_resampled_whole():
+    """REQ-STAT-INT.1, REQ-STAT-BASE.2: two clusters of 10 with opposite signs. Resampling originals one by one would give a
+    narrow interval around 0; resampling the two clusters gives sums of -10 / 0 / 10."""
+    from undead311.stats.intervals import bootstrap_sum_cells
+
+    values = [1.0] * 10 + [-1.0] * 10
+    clusters = [0] * 10 + [1] * 10
+    lo, hi = bootstrap_sum_cells(values, [-1] * 20, [], [], np.random.default_rng(3), 400, clusters=clusters)
+    assert (lo, hi) == (-20.0, 20.0)
+    single = bootstrap_sum_cells(values, [-1] * 20, [], [], np.random.default_rng(3), 400)
+    assert single[1] - single[0] < hi - lo
+
+
+def test_req_stat_eb_2_every_exported_group_carries_raw_shrunk_interval_and_n():
+    """REQ-STAT-EB.2 (ops#109, S36): raw rate, shrunk rate, interval and n for every group of every kind."""
+    counts = {}
+    for name, k in (("D1", 2), ("D2", 38), ("D3", 20)):
+        counts[("department", name)] = (k, 40)
+    for name, k in (("N1", 20), ("N2", 21)):
+        counts[("neighborhood", name)] = (k, 40)
+    for name, k in (("f1", 50), ("f2", 50)):
+        counts[("family", name)] = (k, 100)
+    _mu, _kappas, groups = build_groups(counts, {"N1": 1.0, "N2": 1.0})
+    assert {g.kind for g in groups} == {"department", "family", "neighborhood"}
+    for g in groups:
+        j = g.to_json()
+        assert {"raw", "shrunk", "lo", "hi", "n"} <= set(j)
+        assert j["n"] > 0 and None not in (j["raw"], j["shrunk"], j["lo"], j["hi"])
+        assert j["lo"] <= j["shrunk"] <= j["hi"]
 
 
 def test_req_stat_grid_1_a_radius_mode_run_keys_snapped_cases_by_cell_not_by_segment():

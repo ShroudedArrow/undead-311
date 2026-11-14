@@ -20,7 +20,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from undead311.stats.baseline import MIN_WINDOWS, BaselineModel, season_array, window_counts
+from undead311.stats.baseline import BaselineModel, season_array
 from undead311.stats.cohort import eligible_originals, season_idx, spot_key
 from undead311.stats.intervals import bootstrap_sum_cells
 
@@ -75,12 +75,15 @@ class _Spots:
     is_zombie: np.ndarray
     p_fixed: np.ndarray  # baseline of the incident from the model (used for fallbacks and as the unshifted value)
     spot_based: np.ndarray  # incident used its own spot's windows
-    cell: list  # per incident: what its fixed baseline was estimated from (None when not a window share)
-    n_eff: np.ndarray  # per incident: windows behind that baseline
+    cell: list  # per incident: the pooled estimate its fixed baseline came from (None when it is not pooled)
+    n_eff: np.ndarray  # per incident: windows behind that pooled estimate
+    k_after: np.ndarray  # per incident and season: other live reports of its spot (unshifted closures)
+    days: np.ndarray  # per group and season: live days of the spot (unshifted closures)
     big: float
     opens_flat: np.ndarray  # reports of every group, encoded with the group's offset, globally sorted
     own_inc: np.ndarray  # the incident's own member reports that are in the group: incident row ...
     own_open: np.ndarray  # ... and the member's open time, encoded like opens_flat
+    own_raw: np.ndarray  # ... and the same time as epoch seconds
 
 
 def _build(model: BaselineModel) -> _Spots | None:
@@ -101,6 +104,7 @@ def _build(model: BaselineModel) -> _Spots | None:
     flat = np.concatenate([model.groups[k][0] - t_min + g * big for g, k in enumerate(keys)])
     own_inc: list[int] = []
     own_open: list[float] = []
+    own_raw: list[float] = []
     for row, inc in enumerate(incs):
         g = index[model._incident_key[inc.incident_id]]
         for cid in inc.member_ids:
@@ -109,13 +113,17 @@ def _build(model: BaselineModel) -> _Spots | None:
             if in_group:  # only members that the group's open times contain are left out of a count
                 own_inc.append(row)
                 own_open.append(c.open_utc.timestamp() - t_min + g * big)
+                own_raw.append(c.open_utc.timestamp())
+    info = [model._spot_info[k] for k in keys]
+    k_after = np.array([info[index[model._incident_key[i.incident_id]]].counts - model.own_after(i) for i in incs])
     return _Spots(
         keys, np.array([index[model._incident_key[i.incident_id]] for i in incs]),
         np.array([i.close_utc.timestamp() for i in incs]),
         np.array([season_idx(i.close_utc) for i in incs]), t0, length,
         np.array([i.incident_id in zs for i in incs]), np.array([e.p if e.p is not None else 0.0 for e in est]),
-        np.array([e.source == "spot" for e in est]), [e.cell for e in est], np.array([e.n_eff for e in est]), big, flat,
-        np.array(own_inc, dtype=int), np.array(own_open),
+        np.array([e.source == "spot" for e in est]), [e.cell for e in est], np.array([e.n_eff for e in est]),
+        k_after, np.array([i.days for i in info]), big, flat, np.array(own_inc, dtype=int), np.array(own_open),
+        np.array(own_raw),
     )  # fmt: skip
 
 
@@ -178,27 +186,37 @@ def _placebo(model: BaselineModel, sp: _Spots, delta: np.ndarray, t_min: float, 
     g = sp.group_of
     shifted = sp.t0[g][:, None] + np.mod(sp.close[:, None] - sp.t0[g][:, None] + delta[g], sp.length[g][:, None])
     hits = _hits(sp, t_min, w, shifted)
-    expected = np.tile(sp.p_fixed[:, None], (1, n_runs))
-    n_used = np.zeros((len(sp.group_of), n_runs))
+    wd = float(model.params.WINDOW_DAYS)
+    expected = np.tile(sp.p_fixed[:, None], (1, n_runs))  # fallbacks keep their unshifted value
     for gi, key in enumerate(sp.keys):
-        opens, closes = model.groups[key]
         rows = np.flatnonzero((g == gi) & sp.spot_based)
         if rows.size == 0:
             continue
+        opens, closes, _live = model.groups[key]
+        own_sel = np.flatnonzero(np.isin(sp.own_inc, rows))
+        local = np.searchsorted(rows, sp.own_inc[own_sel])  # position of each own member's incident among `rows`
+        own_t = sp.own_raw[own_sel]
+        own_s = season_array(own_t)
         for run in range(n_runs):
             moved = np.sort(sp.t0[gi] + np.mod(closes - sp.t0[gi] + delta[gi, run], sp.length[gi]))
-            n, h = window_counts(opens, moved, model.t_end, w)
-            s = season_array(shifted[rows, run])  # the season of the moved closure
-            ok = n[s] >= MIN_WINDOWS
-            expected[rows[ok], run] = h[s[ok]] / n[s[ok]]
-            n_used[rows[ok], run] = n[s[ok]]
+            live = model.live_spot(opens, moved)  # the spot's live time with its closures moved
+            mine = np.zeros((rows.size, 4))
+            ok_own = (own_t > live.t0) & live.is_live(own_t)
+            np.add.at(mine, (local[ok_own], own_s[ok_own]), 1.0)
+            # annual, not seasonal: a shifted window starts anywhere in the year whatever the season it was moved to, so the
+            # year's live rate is what it should be compared with (a seasonal rate would count the incident's own reports
+            # in a season they are not in, and busy spots would look busier than they are)
+            k = live.counts.sum() - mine.sum(axis=1)
+            days = float(live.days.sum())
+            expected[rows, run] = 1.0 - (1.0 - wd / days) ** k if days > wd else 1.0 * (k > 0)
     per_incident = (hits - expected).mean(axis=1)  # each original's mean (hit - baseline) over the shifted runs
     mean = float(per_incident.sum())
-    # the baseline's own error (ops#103): originals share the draw of the windows their baseline came from
+    # the baseline's own error (ops#103): originals share the draw of the pooled estimate their baseline came from, and
+    # the originals of one spot are resampled together
     cell_ids: dict[tuple, int] = {}
     cells = np.full(per_incident.size, -1, dtype=int)
     for row in range(per_incident.size):
-        key = ("shifted-spot", int(g[row])) if sp.spot_based[row] else sp.cell[row]
+        key = sp.cell[row]
         if key is not None:
             cells[row] = cell_ids.setdefault(key, len(cell_ids))
     cell_p = np.zeros(len(cell_ids))
@@ -206,8 +224,11 @@ def _placebo(model: BaselineModel, sp: _Spots, delta: np.ndarray, t_min: float, 
     for c in range(len(cell_ids)):
         members = np.flatnonzero(cells == c)
         cell_p[c] = float(expected[members].mean())
-        cell_n[c] = float(n_used[members].mean()) if sp.spot_based[members[0]] else float(sp.n_eff[members[0]])
-    ci = bootstrap_sum_cells(per_incident, cells, cell_p, cell_n, np.random.Generator(np.random.PCG64(seed + 1)))
+        cell_n[c] = float(sp.n_eff[members[0]])
+    clusters = np.where(sp.spot_based, g, -1)
+    ci = bootstrap_sum_cells(
+        per_incident, cells, cell_p, cell_n, np.random.Generator(np.random.PCG64(seed + 1)), clusters=clusters
+    )
     if ci is None:
         return None
     return PlaceboResult(n_runs, mean, ci[0], ci[1], bool(ci[0] > 0 or ci[1] < 0))

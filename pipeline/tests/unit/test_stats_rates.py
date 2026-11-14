@@ -119,7 +119,9 @@ def test_req_stat_exp_1_run_stats_writes_validated_files_under_stats(tmp_path):
     cs = town()
     by_id = {x.id: x for x in cs}
     status = run_stats(None, detect(cs), by_id, tmp_path, data_version="v1", data_end=END)
-    assert status["calibration_warning"] is None
+    excess = json.loads((tmp_path / "stats" / "excess.json").read_text())
+    placebo = excess["placebo"]  # six originals say nothing about calibration, but the flag must follow the interval
+    assert (status["calibration_warning"] is not None) == (placebo["lo"] > 0 or placebo["hi"] < 0)
     written = {p.name for p in (tmp_path / "stats").iterdir()}
     assert "scorecard.json" in written and "stats_status.json" in written
     assert json.loads((tmp_path / "stats" / "scorecard.json").read_text())["data_version"] == "v1"

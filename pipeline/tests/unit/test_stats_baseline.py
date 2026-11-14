@@ -7,11 +7,12 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
-from helpers import day, mk
+from helpers import at, day, mk
 
 from undead311.detect.core import detect
 from undead311.detect.params import DEFAULT
-from undead311.stats.baseline import DAY, MIN_WINDOWS, BaselineModel, excess_rows, season_array, window_counts
+from undead311.stats.baseline import DAY, MIN_WINDOWS, BaselineModel, excess_rows, season_array, thinned_p
+from undead311.stats.cohort import spot_key
 from undead311.stats.pipeline import zombie_baselines
 
 W = 60 * DAY
@@ -21,22 +22,67 @@ def ts(d):
     return day(d).timestamp()
 
 
-def test_req_stat_base_1_window_counts_by_hand():
-    """One closure on day 1; reports on days 0, 130 and 250; data end day 400. Windows start on days 60, 120, ... 300."""
-    opens = np.array([ts(0), ts(130), ts(250)])
-    closes = np.array([ts(1)])
-    n, hit = window_counts(opens, closes, ts(400), W)
-    # day 60 starts within 60 days after the closure: left out. Day 120 (summer) has the day-130 report, day 180
-    # (summer) none, day 240 (autumn) the day-250 report, day 300 (winter) none.
-    assert n.tolist() == [1, 0, 2, 1] and hit.tolist() == [0, 0, 1, 1]
+def test_req_stat_base_1_thinned_p_by_hand():
+    """3 other reports in a 240-day season, windows of 60 days: each lands in a given window with probability 1/4."""
+    p, windows = thinned_p(3, 240.0, 60.0)
+    assert windows == 4 and p == pytest.approx(1 - 0.75**3)
+    assert thinned_p(0, 240.0, 60.0) == (0.0, 4)
+    assert thinned_p(5, 59.0, 60.0) is None  # less than one window watched
     assert season_array(np.array([ts(120), ts(240), ts(300)])).tolist() == [2, 3, 0]
 
 
-def test_req_stat_base_1_the_first_report_is_never_a_hit_and_closure_adjacent_windows_are_dropped():
-    n, hit = window_counts(np.array([ts(0)]), np.array([ts(200)]), ts(400), W)
-    assert hit.sum() == 0
-    # starts 60, 120, 180, 240, 300: only 240 has the closure inside [start - 60, start] = [180, 240], so 4 remain
-    assert n.sum() == 4
+def test_req_stat_base_1_live_time_leaves_out_the_window_days_after_each_closure_and_the_reports_in_them():
+    """First report day 0, one closure on day 1, reports on days 10, 20 and 130, data end day 400. The 60 days after the closure
+    (day 1 to 61) are dead: the reports on days 10 and 20 are in them, so only the day-130 report is a live chance report."""
+    cs = [mk("A0", 0, 1), mk("R1", 10), mk("R2", 20), mk("R3", 130)]
+    m = BaselineModel({c.id: c for c in cs}, detect(cs), data_end=day(400))
+    opens = np.array([ts(0), ts(10), ts(20), ts(130)])
+    live = m.live_spot(opens, np.array([ts(1)]))
+    assert live.span.tolist() == [90.0, 127.0, 92.0, 91.0]  # winter, spring, summer, autumn: 2024-03-04 .. 2025-04-07
+    assert live.days.tolist() == [90.0, 127.0 - 60.0, 92.0, 91.0]  # 60 spring days are dead
+    assert live.counts.tolist() == [0, 0, 1, 0]  # day 130 is 2024-07-12, a summer day
+    assert live.is_live(np.array([ts(0.5), ts(1), ts(30), ts(61), ts(62)])).tolist() == [True, True, False, False, True]
+
+
+def test_req_stat_base_1_overlapping_stretches_are_merged_and_a_report_in_a_dead_stretch_starts_none():
+    """A closure on day 1 and another on day 10 make one dead stretch, day 1 to 70. A report opened on day 5 is dead, so its
+    own closure on day 6 starts no stretch of its own (REQ-STAT-BASE.1)."""
+    cs = [mk("A0", 0, 1), mk("D", 5, 6), mk("E", 8, 10)]
+    m = BaselineModel({c.id: c for c in cs}, detect(cs), data_end=day(400))
+    _opens, closes, live_closes = m.groups[next(iter(m.groups))]
+    assert closes.tolist() == [ts(1), ts(6), ts(10)] and live_closes.tolist() == [ts(1)]
+    live = m.live_spot(np.array([ts(0), ts(5), ts(8)]), np.array([ts(1), ts(10)]))
+    assert (live.dead_s.tolist(), live.dead_e.tolist()) == ([ts(1)], [ts(70)])
+
+
+def test_req_stat_base_1_own_members_are_not_chance_reports_and_a_resurrection_leaves_out_its_ancestor():
+    """Live-born incident: its own live members are left out. Born in a dead stretch: the live report that started the stretch is."""
+    cs = [mk("F", 0), mk("L1", 10, 11), mk("L1b", 10.5, 12), mk("R", 20, 21)]  # F is the first report; L1 and L1b are one incident
+    res = detect(cs)
+    m = BaselineModel({c.id: c for c in cs}, res, data_end=day(400))
+    by_member = {mid: i for i in res.incidents for mid in i.member_ids}
+    assert m.own_after(by_member["L1"]).tolist() == [0, 2, 0, 0]  # two live members, both spring
+    assert m.own_after(by_member["R"]).tolist() == [0, 1, 0, 0]  # R is dead (day 12 to 72); the live report before it is L1b
+    live = m._spot_info[next(iter(m.groups))]
+    assert live.counts.tolist() == [0, 2, 0, 0]  # L1 and L1b; F is the first report and R is dead
+    p, windows = m.spot_p(by_member["L1"], 1)
+    assert p == 0.0 and windows == 2  # no other live report in spring, and 127 spring days hold two windows
+
+
+def test_req_stat_base_1_the_first_report_is_never_a_chance_report():
+    cs = [mk("A0", 0, 1)]
+    res = detect(cs)
+    m = BaselineModel({c.id: c for c in cs}, res, data_end=day(400))
+    assert m.spot_p(res.incidents[0], 1)[0] == 0.0
+
+
+def test_req_stat_base_1_a_mirror_copy_is_not_a_second_report():
+    cs = [mk("A0", 0, 1), mk("A0M", 0, system="new", open_hours=2.0), mk("R1", 130, 131), mk("Q", 140, 141, x=900.0)]
+    res = detect(cs)
+    m = BaselineModel({c.id: c for c in cs}, res, data_end=day(400))
+    assert "A0M" in res.mirror_ids
+    live = m._spot_info[("pothole_roadway", spot_key(None, *at(0.0)[:2], DEFAULT))]
+    assert live.counts.sum() == 1  # R1; the mirror copy is the same report as A0
 
 
 def spot_town(report_every=30.0, until=2000):
@@ -57,7 +103,7 @@ def test_req_stat_base_1_p_spot_is_the_share_of_comparable_windows_with_a_report
     m = BaselineModel({c.id: c for c in cs}, res, data_end=day(2000))
     inc = next(i for i in res.incidents if i.incident_id == "A0")
     est = m.estimate(inc)
-    assert est.source == "spot" and est.windows >= MIN_WINDOWS and est.p == 1.0  # a report every 30 days: every 60-day window has two
+    assert est.source == "spot" and est.windows >= MIN_WINDOWS and est.p > 0.8  # a report every 30 days: two per window, 1 - e^-2 = 0.86
     sparse = [mk("A0", 0, 1), mk("Z", 1999)]
     res2 = detect(sparse)
     m2 = BaselineModel({c.id: c for c in sparse}, res2, data_end=day(2000))
