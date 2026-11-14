@@ -194,7 +194,7 @@
     },
     "all_tiers": {
       "type": "object",
-      "description": "the same statistic with source_unknown and sensitivity zombies added (REQ-STAT-TIER.1)"
+      "description": "the same statistic with source_unknown, city_rereport and sensitivity zombies added (REQ-STAT-TIER.1)"
     },
     "dataset": {
       "enum": [

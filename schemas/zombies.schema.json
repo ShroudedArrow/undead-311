@@ -172,6 +172,7 @@
           "after_temporary_fix",
           "baseline_p",
           "chain_id",
+          "city_rereport",
           "confidence",
           "confidence_partial",
           "distance_m",

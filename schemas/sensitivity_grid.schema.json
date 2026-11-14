@@ -73,6 +73,7 @@
           }
         },
         "required": [
+          "city_rereport",
           "excess",
           "headline",
           "matching",

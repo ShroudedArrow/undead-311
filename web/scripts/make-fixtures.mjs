@@ -158,7 +158,7 @@ export function buildFixtures(rows, override = null) {
     zombies.push({
       zombie_id: id, incident_id: incident, resurrection_id: b.id, reports_after: 1, gap_days: round(gap, 2), match_mode: "radius",
       distance_m: round(d, 1), tier, baseline_p: round(0.02 + h * 0.2, 3), confidence: conf, confidence_partial: h > 0.93,
-      is_planned_followup: false, after_temporary_fix: label === "made_safe_temporary" && b.system === "legacy", source_unknown: unknownSource,
+      is_planned_followup: false, after_temporary_fix: label === "made_safe_temporary" && b.system === "legacy", source_unknown: unknownSource, city_rereport: false,
       chain_id: `C-${a.id}`, times_risen: 1, skeptic_verdict: verdict,
       skeptic_notes: verdict === "survives" ? "Fixture note: no objection survived review." : "Fixture note: the closure text is ambiguous about the location.",
       type_family: a.family, department: a.dept, neighborhood: a.hood, district: null, segment_id: null, coroner_label: label,
@@ -222,7 +222,7 @@ export function buildFixtures(rows, override = null) {
     nullCoords: rows.length - cases.length, mirrorPairs, transferred: labelled.filter(isTransferred).length,
   });
 
-  const tally = { headline: 0, source_unknown: 0, sensitivity: 0 };
+  const tally = { headline: 0, source_unknown: 0, city_rereport: 0, sensitivity: 0 };
   for (const z of zs) tally[z.tier]++;
   const dataEnd = new Date(Math.max(...cases.map((c) => c.close ?? c.open))).toISOString().slice(0, 10);
   const version = `fixture-${dataEnd}`;

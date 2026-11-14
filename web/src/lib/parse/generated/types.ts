@@ -14,13 +14,17 @@ export interface ZombiesFile {
     gap_days: number;
     match_mode: "segment" | "intersection" | "radius";
     distance_m: number;
-    tier: "headline" | "source_unknown" | "sensitivity";
+    tier: "headline" | "source_unknown" | "city_rereport" | "sensitivity";
     baseline_p: number | null;
     confidence: number;
     confidence_partial: boolean;
     is_planned_followup: boolean;
     after_temporary_fix: boolean;
     source_unknown: boolean;
+    /**
+     * the re-report is a legacy city-originated case that is not a planned follow-up; such a zombie is tier city_rereport, outside the headline (ZD step 6, ops#29)
+     */
+    city_rereport: boolean;
     chain_id: string;
     times_risen: number;
     skeptic_verdict: "survives" | "weakened" | "explained_away" | "not_reviewed";
@@ -95,7 +99,7 @@ export interface CardShard {
     gap_days: number;
     resurrection_date: string;
     confidence: number;
-    tier: "headline" | "source_unknown" | "sensitivity";
+    tier: "headline" | "source_unknown" | "city_rereport" | "sensitivity";
     skeptic_verdict: "survives" | "weakened" | "explained_away" | "not_reviewed";
     skeptic_notes: string;
     reports_after?: number;
@@ -116,7 +120,7 @@ export interface PointsFile {
   id: string[];
   lat: number[];
   lon: number[];
-  tier: ("headline" | "source_unknown" | "sensitivity")[];
+  tier: ("headline" | "source_unknown" | "city_rereport" | "sensitivity")[];
   family: string[];
   department: (string | null)[];
   neighborhood: (string | null)[];
@@ -167,6 +171,7 @@ export interface ScorecardFile {
     headline: number;
     source_unknown: number;
     sensitivity: number;
+    city_rereport: number;
     [k: string]: unknown;
   };
   params: {
@@ -213,17 +218,29 @@ export interface StatusFile {
    */
   planned_followup_count?: number;
   /**
-   * Headline resurrections that are legacy city-originated cases; REQ-DET-PF
+   * Zombies in the city_rereport tier: legacy city-originated re-reports that are not planned follow-ups, outside the headline; ZD step 6, REQ-DET-TIER.3
+   */
+  city_rereport_count?: number;
+  /**
+   * DEPRECATED, no longer written: the headline holds no city-originated re-report (see city_rereport_count)
    */
   headline_city_originated_count?: number;
   /**
-   * Of those, opened under 1 h after the closure; REQ-DET-PF
+   * Of the city_rereport zombies, those opened under 1 h after the closure; REQ-DET-TIER.3
+   */
+  city_rereport_under_1h_count?: number;
+  /**
+   * DEPRECATED, no longer written (see city_rereport_under_1h_count)
    */
   headline_city_originated_under_1h_count?: number;
   /**
    * Whether the run read the committed sample or the full data; a sample rate is not a citywide figure. REQ-STAT-EXP.1
    */
   dataset?: "sample" | "full";
+  /**
+   * Later copies of cross-system pairs opened within MIRROR_WINDOW_HOURS: one report filed twice, so the later copy joins no incident and every denominator counts the pair once (ZD step 9, ops#30, ops#46)
+   */
+  mirror_copies_merged?: number;
   [k: string]: unknown;
 }
 
@@ -338,7 +355,7 @@ export interface FunnelFile {
     [k: string]: unknown;
   }[];
   /**
-   * the same statistic with source_unknown and sensitivity zombies added (REQ-STAT-TIER.1)
+   * the same statistic with source_unknown, city_rereport and sensitivity zombies added (REQ-STAT-TIER.1)
    */
   all_tiers?: {};
   dataset?: "sample" | "full";
@@ -381,7 +398,7 @@ export interface GroupsFile {
     [k: string]: unknown;
   }[];
   /**
-   * the same statistic with source_unknown and sensitivity zombies added (REQ-STAT-TIER.1)
+   * the same statistic with source_unknown, city_rereport and sensitivity zombies added (REQ-STAT-TIER.1)
    */
   all_tiers?: {};
   dataset?: "sample" | "full";
@@ -612,6 +629,7 @@ export interface SensitivityGridFile {
     window_days: 30 | 60 | 90;
     headline: number;
     source_unknown: number;
+    city_rereport: number;
     sensitivity: number;
     excess: number | null;
     stayed_fixed_rate: number | null;

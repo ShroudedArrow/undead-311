@@ -2,7 +2,7 @@
  * Filtering and aggregation (REQ-WEB-MAP.2-4, REQ-WEB-TABLE.1). Pure functions; the map, the table and the count all call
  * `visibleSet`, so they can never disagree (property W4).
  */
-export type Tier = "headline" | "source_unknown" | "sensitivity";
+export type Tier = "headline" | "source_unknown" | "city_rereport" | "sensitivity";
 /** "headline" shows the headline tier only (REQ-WEB-MAP.4); "all" adds the other tiers (REQ-WEB-TIER). */
 export type TierMode = "headline" | "all";
 

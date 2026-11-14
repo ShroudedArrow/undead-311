@@ -50,3 +50,19 @@ def test_excess_schema_accepts_the_shift_and_placebo_results_and_rejects_a_malfo
     assert list(validator.iter_errors({**ok, "placebo": {"excess": "x", "lo": 0, "hi": 0}}))
     assert list(validator.iter_errors({**ok, "shift": 5})) and list(validator.iter_errors({**ok, "placebo": "none"}))
 
+
+
+def _schema(name: str) -> dict:
+    return json.loads((REPO / "schemas" / f"{name}.schema.json").read_text())
+
+
+def test_city_rereport_is_promised_by_every_file_that_carries_a_tier_count():
+    """REQ-EXP-1.1, REQ-DET-TIER.3, ZD step 6 (ops#126): the fourth tier is required wherever source_unknown is, so the
+    web app's tier toggle can rely on it."""
+    zombie = _schema("zombies")["properties"]["zombies"]["items"]
+    assert "city_rereport" in zombie["required"] and zombie["properties"]["city_rereport"]["type"] == "boolean"
+    counts = _schema("scorecard")["properties"]["counts"]
+    assert "city_rereport" in counts["required"] and "city_rereport" in counts["properties"]
+    assert "city_rereport" in _schema("sensitivity_grid")["properties"]["points"]["items"]["required"]
+    for name in ("funnel", "groups"):
+        assert "city_rereport" in _schema(name)["properties"]["all_tiers"]["description"]

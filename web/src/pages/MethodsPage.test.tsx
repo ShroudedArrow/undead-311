@@ -8,7 +8,7 @@ const V = "v";
 const rate = (rate: number | null, k: number, n: number) => (n === 0 ? { rate: null, lo: null, hi: null, k, n, reason: "no cases" } : { rate, lo: Math.max(0, (rate as number) - 0.05), hi: (rate as number) + 0.05, k, n });
 const FILES: Record<string, unknown> = {
   "status.json": { data_version: V, last_run: "2026-11-11T02:00:00Z", ok: true, row_counts: { cases: 100, zombies: 7 }, anomalies: ["66% of headline resurrections are legacy city-originated cases"], segments: "missing", calibration_warning: null, source_unknown_count: 49, data_end: "2026-11-11" },
-  "scorecard.json": { data_version: V, scorecards: [], counts: { headline: 1, source_unknown: 1, sensitivity: 0 }, params: { WINDOW_DAYS: 60, RADIUS_M: 30, matching: "segment" }, seed: null },
+  "scorecard.json": { data_version: V, scorecards: [], counts: { headline: 1, source_unknown: 1, city_rereport: 0, sensitivity: 0 }, params: { WINDOW_DAYS: 60, RADIUS_M: 30, matching: "segment" }, seed: null },
   "excess.json": {
     data_version: V,
     rows: [
