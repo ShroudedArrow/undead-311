@@ -1,4 +1,4 @@
-"""One neighborhood name per area across the two systems (REQ-ING-2.1, ops#63, ops#91).
+"""One neighborhood name per area across the two systems (REQ-ING-NBR.1, ops#63, ops#91).
 
 The legacy system reports 17 coarse names and the new system 26 finer ones (the City's neighborhood boundaries).
 Both systems are reported under the legacy-style names, so an area has one name whichever system a case came from.
@@ -64,7 +64,7 @@ def load_boundaries(path: Path) -> list[tuple[str, object]]:
 
 
 def area_names(areas: list[tuple[str, object]], lat: np.ndarray, lon: np.ndarray) -> np.ndarray:
-    """The polygon name containing each point (REQ-ING-2.1, ops#91), or None; the first polygon by name wins."""
+    """The polygon name containing each point (REQ-ING-NBR.1, ops#91), or None; the first polygon by name wins."""
     out = np.full(len(lat), None, dtype=object)
     for name, poly in areas:
         hit = pd.isna(out) & contains_xy(poly, lon, lat)  # one numpy mask per polygon (ops#97)
@@ -79,7 +79,7 @@ def _folded(values: pd.Series) -> np.ndarray:
 
 
 def canonicalize(con: duckdb.DuckDBPyConnection, table: str = "cases_clean", boundaries: Path | None = None) -> int:
-    """Rewrite `neighborhood` on `table`; returns the number of rows whose value changed (REQ-ING-2.1).
+    """Rewrite `neighborhood` on `table`; returns the number of rows whose value changed (REQ-ING-NBR.1).
 
     With a boundaries file, every row with a point is named by point in polygon (the same rule for both systems);
     other rows, or all rows when there is no file, keep their own name folded through `ALIASES`. The new names are

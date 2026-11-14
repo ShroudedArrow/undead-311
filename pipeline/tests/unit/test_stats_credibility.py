@@ -562,3 +562,18 @@ def test_req_stat_exp_2_two_runs_on_the_same_input_write_identical_stats_files(t
     a = {p.name: p.read_bytes() for p in (tmp_path / "o1" / "stats").iterdir()}
     b = {p.name: p.read_bytes() for p in (tmp_path / "o2" / "stats").iterdir()}
     assert a == b and len(a) > 10
+
+
+def test_req_stat_val_1_the_committed_owner_config_names_four_neighborhoods_that_the_export_uses():
+    """REQ-STAT-VAL.1 (ops#101): data/labels/validation_config.json holds the owner's four neighborhoods, seed 311 and n 50,
+    each a name the pipeline's neighborhood rule can produce."""
+    from pathlib import Path
+
+    from undead311.ingest.neighborhoods import canonical_neighborhood
+
+    cfg = read_config(Path(__file__).resolve().parents[3] / "data" / "labels" / "validation_config.json")
+    assert cfg is not None and cfg["seed"] == 311 and cfg["n"] == 50
+    assert cfg["neighborhoods"] == sorted(
+        ["Fenway / Kenmore / Audubon Circle / Longwood", "Mission Hill", "Roxbury", "South End"]
+    )
+    assert all(canonical_neighborhood(n) == n for n in cfg["neighborhoods"])

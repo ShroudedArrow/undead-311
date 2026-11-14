@@ -238,14 +238,14 @@ def run_pipeline(
             if not sr.available:
                 report.warnings.append(f"segments unavailable: {SEGMENTS_FILE} is not in raw/; radius matching only (REQ-ING-SNAP.2)")
         nbr_file = None if sample else (raw_dir or base / "raw") / BOUNDARIES_FILE
-        report.row_counts["neighborhood_renamed"] = canonicalize_neighborhoods(con, boundaries=nbr_file)  # REQ-ING-2.1
+        report.row_counts["neighborhood_renamed"] = canonicalize_neighborhoods(con, boundaries=nbr_file)  # REQ-ING-NBR.1
         store_neighborhood_geometry(  # REQ-STAT-NBR.2, REQ-STAT-REP.1: areas and street km for the stats stage
             con, nbr_file, None if sample else (raw_dir or base / "raw") / SEGMENTS_FILE
         )
         if nbr_file is not None and not nbr_file.is_file():
             report.warnings.append(
                 f"neighborhood boundaries unavailable: {BOUNDARIES_FILE} is not in raw/; neighborhoods come from each "
-                "case's own name (REQ-ING-2.1)")
+                "case's own name (REQ-ING-NBR.1)")
         build_templates(con, stage_proc)
         jr: JoinReport = join_labels(con, labels_csv)
         report.label_coverage, report.unlabeled = jr.covered_share, jr.unlabeled

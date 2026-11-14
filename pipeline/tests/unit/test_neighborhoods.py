@@ -1,4 +1,4 @@
-"""REQ-ING-2.1 (ops#63, ops#91): one neighborhood name per area across the legacy and new systems."""
+"""REQ-ING-NBR.1 (ops#63, ops#91): one neighborhood name per area across the legacy and new systems."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from undead311.ingest.neighborhoods import ALIASES, canonical_neighborhood, cano
 from undead311.pipeline import run_pipeline
 
 
-def test_req_ing_2_1_nbr_paired_names_become_one_and_boston_is_not_a_neighborhood():
+def test_req_ing_nbr_1_paired_names_become_one_and_boston_is_not_a_neighborhood():
     assert canonical_neighborhood("Allston") == canonical_neighborhood("Brighton") == "Allston / Brighton"
     assert canonical_neighborhood("Mattapan") == "Greater Mattapan"
     assert canonical_neighborhood("Downtown") == "Downtown / Financial District"
@@ -24,7 +24,7 @@ def test_req_ing_2_1_nbr_paired_names_become_one_and_boston_is_not_a_neighborhoo
     assert canonical_neighborhood("Roxbury") == "Roxbury"
 
 
-def test_req_ing_2_1_nbr_areas_with_no_legacy_name_fold_into_their_legacy_parent():
+def test_req_ing_nbr_1_areas_with_no_legacy_name_fold_into_their_legacy_parent():
     """ops#91: the five new-system areas the legacy system never names no longer stay split by system."""
     for name in ("North End", "West End", "Chinatown", "Leather District", "Downtown"):
         assert canonical_neighborhood(name) == "Downtown / Financial District"
@@ -32,13 +32,13 @@ def test_req_ing_2_1_nbr_areas_with_no_legacy_name_fold_into_their_legacy_parent
 
 
 @given(st.text(max_size=30))
-def test_req_ing_2_1_nbr_canonicalizing_twice_changes_nothing(name):
+def test_req_ing_nbr_1_canonicalizing_twice_changes_nothing(name):
     once = canonical_neighborhood(name)
     assert canonical_neighborhood(once) == once
     assert set(ALIASES.values()).isdisjoint(ALIASES)  # no alias chains
 
 
-def test_req_ing_2_1_nbr_canonicalize_rewrites_the_table_and_counts_changed_rows():
+def test_req_ing_nbr_1_canonicalize_rewrites_the_table_and_counts_changed_rows():
     con = duckdb.connect()
     con.execute("create table cases_clean(id varchar, system varchar, neighborhood varchar, lat double, lon double)")
     names = [("1", "Allston"), ("2", "Allston / Brighton"), ("3", "Boston"), ("4", None), ("5", "Roxbury")]
@@ -48,7 +48,7 @@ def test_req_ing_2_1_nbr_canonicalize_rewrites_the_table_and_counts_changed_rows
         "1": "Allston / Brighton", "2": "Allston / Brighton", "3": None, "4": None, "5": "Roxbury"}  # fmt: skip
 
 
-def test_req_ing_2_1_nbr_the_export_carries_one_name_per_area(tmp_path):
+def test_req_ing_nbr_1_the_export_carries_one_name_per_area(tmp_path):
     raw, snap = raw_folder(tmp_path)
     out = tmp_path / "out"
     run_pipeline(out_dir=out, raw_dir=raw, work_dir=tmp_path / "d", snapshot_md=snap, run_time="2026-11-13T00:00:00Z")
@@ -68,7 +68,7 @@ def _boundaries(tmp_path):
     return path
 
 
-def test_req_ing_2_1_nbr_point_in_polygon_names_both_systems_alike(tmp_path):
+def test_req_ing_nbr_1_point_in_polygon_names_both_systems_alike(tmp_path):
     """ops#91: legacy 'Boston' gets its area, and a legacy and a new case at one point get one name."""
     con = duckdb.connect()
     con.execute("create table cases_clean(id varchar, system varchar, neighborhood varchar, lat double, lon double)")
@@ -88,7 +88,7 @@ def test_req_ing_2_1_nbr_point_in_polygon_names_both_systems_alike(tmp_path):
     assert changed == 6
 
 
-def test_req_ing_2_1_nbr_overlap_goes_to_the_first_name_whatever_the_file_order(tmp_path):
+def test_req_ing_nbr_1_overlap_goes_to_the_first_name_whatever_the_file_order(tmp_path):
     path = _boundaries(tmp_path)
     data = json.loads(path.read_text())
     data["features"].reverse()
@@ -102,7 +102,7 @@ def test_req_ing_2_1_nbr_overlap_goes_to_the_first_name_whatever_the_file_order(
         assert con.execute("select neighborhood from cases_clean").fetchone()[0].startswith("Allston")
 
 
-def test_req_ing_2_1_nbr_no_name_in_the_sample_belongs_to_one_system_only():
+def test_req_ing_nbr_1_no_name_in_the_sample_belongs_to_one_system_only():
     """ops#91: with no boundaries file, folding each case's own name still leaves one name set for both systems."""
     import csv
     from pathlib import Path
@@ -117,7 +117,7 @@ def test_req_ing_2_1_nbr_no_name_in_the_sample_belongs_to_one_system_only():
     assert by_system["legacy"] and by_system["legacy"] == by_system["new"]
 
 
-def test_req_ing_2_1_nbr_the_run_reads_boundaries_from_raw_and_warns_when_they_are_missing(tmp_path):
+def test_req_ing_nbr_1_the_run_reads_boundaries_from_raw_and_warns_when_they_are_missing(tmp_path):
     raw, snap = raw_folder(tmp_path)
     kw = {"raw_dir": raw, "snapshot_md": snap, "run_time": "2026-11-13T00:00:00Z"}
     plain = run_pipeline(out_dir=tmp_path / "o1", work_dir=tmp_path / "d1", **kw)
@@ -147,7 +147,7 @@ LEGACY_NAMES = frozenset({
 })  # fmt: skip
 
 
-def test_req_ing_2_1_nbr_every_boundary_name_maps_into_the_legacy_names_except_harbor_islands():
+def test_req_ing_nbr_1_every_boundary_name_maps_into_the_legacy_names_except_harbor_islands():
     """ops#98: Harbor Islands is kept as its own name (no legacy case sits there); the other 25 fold into the 17 legacy names."""
     assert len(BOUNDARY_NAMES) == 26 and len(LEGACY_NAMES) == 17
     mapped = {n: canonical_neighborhood(n) for n in BOUNDARY_NAMES}
@@ -157,7 +157,7 @@ def test_req_ing_2_1_nbr_every_boundary_name_maps_into_the_legacy_names_except_h
     assert set(ALIASES) <= set(BOUNDARY_NAMES)  # no alias for a name the file does not have
 
 
-def test_req_ing_2_1_nbr_the_committed_boundary_names_match_the_raw_file_when_present():
+def test_req_ing_nbr_1_the_committed_boundary_names_match_the_raw_file_when_present():
     from undead311.ingest.neighborhoods import BOUNDARIES_FILE, load_boundaries
     from undead311.paths import data_dir
 
@@ -169,7 +169,7 @@ def test_req_ing_2_1_nbr_the_committed_boundary_names_match_the_raw_file_when_pr
     assert tuple(n for n, _ in load_boundaries(path)) == BOUNDARY_NAMES
 
 
-def test_req_ing_2_1_nbr_canonicalize_scales_without_a_python_loop_over_rows(tmp_path):
+def test_req_ing_nbr_1_canonicalize_scales_without_a_python_loop_over_rows(tmp_path):
     """ops#97: 200,000 rows and the join write-back finish in seconds (the old executemany path ran ~6,000 rows/s)."""
     import time
 

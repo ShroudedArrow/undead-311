@@ -1,0 +1,10 @@
+{
+  "neighborhoods": [
+    "Fenway / Kenmore / Audubon Circle / Longwood",
+    "Mission Hill",
+    "Roxbury",
+    "South End"
+  ],
+  "seed": 311,
+  "n": 50
+}
