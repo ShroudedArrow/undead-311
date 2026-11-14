@@ -183,6 +183,19 @@ add("G3", "PASS" if any("build-undead-311" in w.name for w in wf) else "FAIL", "
 add("G3", "PASS" if any("smoke" in w.name for w in wf) else "WARN", "Smoke-test recipe exists", "", "Create and run the smoke test first.")
 add("G3", "PASS" if not (ROOT / ".kiro/STOP").exists() else "FAIL", "Kill-switch file absent", "", "Delete .kiro/STOP when ready.")
 
+# Cloud copies must equal the repo copies on main (Kiro Web runs the cloud copies; see scripts/cloud_sync.py).
+sys.path.insert(0, str(ROOT / "scripts"))
+import cloud_sync  # noqa: E402
+_cloud = cloud_sync.find_cloud_dir()
+if _cloud is None:
+    add("G3", "WARN", "Cloud copies match the repo on main", "no cloud-cache folder found, not compared",
+        "Run on Kiro Web, or set CLOUD_CONFIG_DIR to the cloud-cache folder.")
+else:
+    _diffs = [p for ps in cloud_sync.compare(_cloud, cloud_sync.default_ref(ROOT)).values() for p in ps]
+    add("G3", "FAIL" if _diffs else "PASS", "Cloud copies match the repo on main (workflows, agents, hooks, steering)",
+        "; ".join(_diffs) or "identical",
+        "RE-SYNC NEEDED: upload the repo copies in Kiro Web (Settings, Configuration Sync), then re-run `make cloud-sync-check`.")
+
 # ---------- report ----------
 order = {"FAIL": 0, "WARN": 1, "PASS": 2}
 gate_reached = "G3"
