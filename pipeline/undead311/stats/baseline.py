@@ -19,7 +19,10 @@ within WINDOW_DAYS of a closure by coincidence?
 
 Excess (REQ-STAT-BASE.2): observed possible zombies minus the sum of the baseline over the same eligible originals,
 by department, family and neighborhood, each with a seeded bootstrap interval (REQ-STAT-INT.1). Observed and expected
-use the same cohort (fully observed originals), so the two are comparable.
+use the same cohort (fully observed originals), so the two are comparable. The interval also carries the error of the
+baseline itself: each replicate draws every window-based p again from its windows (originals that share a spot and
+season, or one pooled fallback, share the draw), because a pooled p from a few hundred windows applied to thousands of
+originals is otherwise treated as exact (ops#103).
 """
 
 from __future__ import annotations
@@ -35,7 +38,7 @@ import numpy as np
 from undead311.detect.model import Case, DetectionResult, Incident, Zombie
 from undead311.detect.params import DEFAULT, Params
 from undead311.stats.cohort import COS_BOSTON, M_PER_DEG, eligible_originals, season_idx, spot_key
-from undead311.stats.intervals import bootstrap_sum
+from undead311.stats.intervals import bootstrap_sum_cells
 
 DAY = 86_400.0
 MIN_WINDOWS = 4  # REQ-STAT-BASE.3
@@ -82,6 +85,8 @@ class Estimate:
     windows: int  # comparable windows at the spot in the incident's season
     p_nbr: float | None
     expected_nbr: float | None
+    cell: tuple | None = None  # what the estimate was computed from; originals sharing a cell share its error
+    n_eff: int = 0  # windows behind the estimate (0: not a window share, so its error is not drawn)
 
 
 class BaselineModel:
@@ -218,14 +223,17 @@ class BaselineModel:
         nbr = self.nbr(inc)
         p_nbr, e_nbr = (nbr if nbr else (None, None))
         if windows >= MIN_WINDOWS:
-            est = Estimate(int(gh[s]) / windows, "spot", windows, p_nbr, e_nbr)
+            est = Estimate(int(gh[s]) / windows, "spot", windows, p_nbr, e_nbr, ("spot", *key, s), windows)
         elif p_nbr is not None:
             est = Estimate(p_nbr, "neighborhood", windows, p_nbr, e_nbr)
         else:
+            season_key = s
             n, h = self._pooled.get((inc.type_family, s), (0, 0))
             if n < POOLED_MIN:  # too few windows for one season: pool all seasons of the family
+                season_key = -1
                 n, h = self._pooled.get((inc.type_family, -1), (0, 0))
-            est = Estimate(h / n if n else None, "citywide" if n else "none", windows, p_nbr, e_nbr)
+            est = Estimate(h / n if n else None, "citywide" if n else "none", windows, p_nbr, e_nbr,
+                           ("pool", inc.type_family, season_key), n)  # fmt: skip
         self._estimates[inc.incident_id] = est
         return est
 
@@ -291,12 +299,12 @@ def excess_rows(
     rows: list[ExcessRow] = []
     for tier_set in ("headline", "all"):
         zs = zombie_by_incident(model.result.zombies, tier_set)
-        groups: dict[tuple[str, str], list[tuple[float, float, float | None, bool]]] = defaultdict(list)
+        groups: dict[tuple[str, str], list[tuple[float, float, float | None, bool, tuple | None, int]]] = defaultdict(list)
         for inc in eligible_originals(model.result.incidents, model.data_end, model.params, all_tiers=tier_set == "all"):
             est = model.estimate(inc)
             if est.p is None:
                 continue
-            row = (1.0 if inc.incident_id in zs else 0.0, est.p, est.expected_nbr, est.source != "spot")
+            row = (1.0 if inc.incident_id in zs else 0.0, est.p, est.expected_nbr, est.source != "spot", est.cell, est.n_eff)
             for kind, name in (("department", inc.department or UNKNOWN), ("family", inc.type_family),
                                ("neighborhood", inc.neighborhood or UNKNOWN)):  # fmt: skip
                 groups[(kind, name)].append(row)
@@ -306,7 +314,14 @@ def excess_rows(
             exp = sum(v[1] for v in vals)
             nbr = [v[2] for v in vals]
             e_nbr = None if any(x is None for x in nbr) else float(sum(nbr))  # type: ignore[arg-type]
-            ci = bootstrap_sum([v[0] - v[1] for v in vals], rng, boot)
+            cell_ids: dict[tuple, int] = {}
+            cells = [-1 if v[4] is None else cell_ids.setdefault(v[4], len(cell_ids)) for v in vals]
+            cell_p = [0.0] * len(cell_ids)
+            cell_n = [0.0] * len(cell_ids)
+            for v, c in zip(vals, cells, strict=True):
+                if c >= 0:
+                    cell_p[c], cell_n[c] = v[1], float(v[5])
+            ci = bootstrap_sum_cells([v[0] - v[1] for v in vals], cells, cell_p, cell_n, rng, boot)
             assert ci is not None
             rows.append(ExcessRow(kind, name, tier_set, int(obs), exp, obs - exp, ci[0], ci[1], len(vals), e_nbr,
                                   None if e_nbr is None else obs - e_nbr, sum(1 for v in vals if v[3])))  # fmt: skip

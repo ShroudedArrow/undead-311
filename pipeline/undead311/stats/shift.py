@@ -3,7 +3,7 @@
 Shift test: each spot's closure times are moved by one random offset (circularly, inside the spot's observed span, with
 locations fixed), the candidate count is redone, and this is repeated `runs` times (default 1,000) with a fixed seed. The
 count is the number of eligible headline-scope originals that have at least one same-family report (not a mirror copy) opened
-within WINDOW_DAYS after the closure. It is the detector's candidate rule without
+within WINDOW_DAYS after the closure (the incident's own member reports are never counted, ops#102). It is the detector's candidate rule without
 attribution, tiers or planned follow-ups, so `observed` (the same count with no shift) is the number the shifted counts
 are comparable with. The detector's own headline count is exported beside it as `headline_zombies`.
 
@@ -21,8 +21,8 @@ from dataclasses import dataclass
 import numpy as np
 
 from undead311.stats.baseline import MIN_WINDOWS, BaselineModel, season_array, window_counts
-from undead311.stats.cohort import eligible_originals, season_idx
-from undead311.stats.intervals import bootstrap_sum
+from undead311.stats.cohort import eligible_originals, season_idx, spot_key
+from undead311.stats.intervals import bootstrap_sum_cells
 
 SHIFT_RUNS = 1000
 PLACEBO_RUNS = 10
@@ -75,8 +75,12 @@ class _Spots:
     is_zombie: np.ndarray
     p_fixed: np.ndarray  # baseline of the incident from the model (used for fallbacks and as the unshifted value)
     spot_based: np.ndarray  # incident used its own spot's windows
+    cell: list  # per incident: what its fixed baseline was estimated from (None when not a window share)
+    n_eff: np.ndarray  # per incident: windows behind that baseline
     big: float
     opens_flat: np.ndarray  # reports of every group, encoded with the group's offset, globally sorted
+    own_inc: np.ndarray  # the incident's own member reports that are in the group: incident row ...
+    own_open: np.ndarray  # ... and the member's open time, encoded like opens_flat
 
 
 def _build(model: BaselineModel) -> _Spots | None:
@@ -95,24 +99,42 @@ def _build(model: BaselineModel) -> _Spots | None:
     length = np.maximum((t_end - t0) - model.window_s, 1.0)
     est = [model.estimate(i) for i in incs]
     flat = np.concatenate([model.groups[k][0] - t_min + g * big for g, k in enumerate(keys)])
+    own_inc: list[int] = []
+    own_open: list[float] = []
+    for row, inc in enumerate(incs):
+        g = index[model._incident_key[inc.incident_id]]
+        for cid in inc.member_ids:
+            c = model.cases[cid]
+            in_group = cid not in model.mirror and (c.type_family, spot_key(c.segment_id, c.lat, c.lon, model.params)) == keys[g]
+            if in_group:  # only members that the group's open times contain are left out of a count
+                own_inc.append(row)
+                own_open.append(c.open_utc.timestamp() - t_min + g * big)
     return _Spots(
         keys, np.array([index[model._incident_key[i.incident_id]] for i in incs]),
         np.array([i.close_utc.timestamp() for i in incs]),
         np.array([season_idx(i.close_utc) for i in incs]), t0, length,
         np.array([i.incident_id in zs for i in incs]), np.array([e.p if e.p is not None else 0.0 for e in est]),
-        np.array([e.source == "spot" for e in est]), big, flat,
+        np.array([e.source == "spot" for e in est]), [e.cell for e in est], np.array([e.n_eff for e in est]), big, flat,
+        np.array(own_inc, dtype=int), np.array(own_open),
     )  # fmt: skip
 
 
 def _hits(sp: _Spots, t_min: float, window_s: float, shifted_close: np.ndarray) -> np.ndarray:
-    """Per incident and run: 1 when a report opens in (close, close + WINDOW_DAYS]. Shape (incidents, runs).
+    """Per incident and run: 1 when another report opens in (close, close + WINDOW_DAYS]. Shape (incidents, runs).
 
-    The incident's own members are not excluded: unshifted they open before the closure, so they never fall in the window;
-    shifted, the closure is just a random time, and counting every report is the null the baseline windows also use."""
+    The incident's own members are left out (REQ-STAT-SHIFT.1, REQ-STAT-PLACEBO.1). Unshifted they open before the
+    closure, so they never fall in the window; a shifted closure moved ahead of them would count the very reports that
+    made the incident and push the chance count up by 13-17% in sparse spots (ops#102, S29)."""
     base = sp.group_of[:, None] * sp.big - t_min
     lo = np.searchsorted(sp.opens_flat, base + shifted_close, side="right")
     hi = np.searchsorted(sp.opens_flat, base + shifted_close + window_s, side="right")
-    return ((hi - lo) > 0).astype(int)
+    found = (hi - lo).astype(float)
+    if sp.own_inc.size:
+        q = base[sp.own_inc] + shifted_close[sp.own_inc]
+        inside = (sp.own_open[:, None] > q) & (sp.own_open[:, None] <= q + window_s)
+        for r in range(found.shape[1]):
+            found[:, r] -= np.bincount(sp.own_inc, weights=inside[:, r], minlength=found.shape[0])
+    return (found > 0.5).astype(int)
 
 
 def shift_and_placebo(
@@ -157,6 +179,7 @@ def _placebo(model: BaselineModel, sp: _Spots, delta: np.ndarray, t_min: float, 
     shifted = sp.t0[g][:, None] + np.mod(sp.close[:, None] - sp.t0[g][:, None] + delta[g], sp.length[g][:, None])
     hits = _hits(sp, t_min, w, shifted)
     expected = np.tile(sp.p_fixed[:, None], (1, n_runs))
+    n_used = np.zeros((len(sp.group_of), n_runs))
     for gi, key in enumerate(sp.keys):
         opens, closes = model.groups[key]
         rows = np.flatnonzero((g == gi) & sp.spot_based)
@@ -168,9 +191,23 @@ def _placebo(model: BaselineModel, sp: _Spots, delta: np.ndarray, t_min: float, 
             s = season_array(shifted[rows, run])  # the season of the moved closure
             ok = n[s] >= MIN_WINDOWS
             expected[rows[ok], run] = h[s[ok]] / n[s[ok]]
+            n_used[rows[ok], run] = n[s[ok]]
     per_incident = (hits - expected).mean(axis=1)  # each original's mean (hit - baseline) over the shifted runs
     mean = float(per_incident.sum())
-    ci = bootstrap_sum(per_incident, np.random.Generator(np.random.PCG64(seed + 1)))
+    # the baseline's own error (ops#103): originals share the draw of the windows their baseline came from
+    cell_ids: dict[tuple, int] = {}
+    cells = np.full(per_incident.size, -1, dtype=int)
+    for row in range(per_incident.size):
+        key = ("shifted-spot", int(g[row])) if sp.spot_based[row] else sp.cell[row]
+        if key is not None:
+            cells[row] = cell_ids.setdefault(key, len(cell_ids))
+    cell_p = np.zeros(len(cell_ids))
+    cell_n = np.zeros(len(cell_ids))
+    for c in range(len(cell_ids)):
+        members = np.flatnonzero(cells == c)
+        cell_p[c] = float(expected[members].mean())
+        cell_n[c] = float(n_used[members].mean()) if sp.spot_based[members[0]] else float(sp.n_eff[members[0]])
+    ci = bootstrap_sum_cells(per_incident, cells, cell_p, cell_n, np.random.Generator(np.random.PCG64(seed + 1)))
     if ci is None:
         return None
     return PlaceboResult(n_runs, mean, ci[0], ci[1], bool(ci[0] > 0 or ci[1] < 0))

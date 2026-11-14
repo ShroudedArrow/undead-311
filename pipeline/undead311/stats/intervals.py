@@ -106,3 +106,51 @@ def bootstrap_sum(
         totals[lo:hi] = arr[rng.integers(0, arr.size, size=(hi - lo, arr.size))].sum(axis=1)
     tail = (1 - level) / 2
     return float(np.quantile(totals, tail)), float(np.quantile(totals, 1 - tail))
+
+
+def bootstrap_sum_cells(
+    values: Sequence[float],
+    cells: Sequence[int],
+    cell_p: Sequence[float],
+    cell_n: Sequence[float],
+    rng: np.random.Generator,
+    B: int = 1000,
+    level: float = 0.95,
+) -> tuple[float, float] | None:
+    """Bootstrap interval of a SUM whose terms each subtract an estimated chance probability (REQ-STAT-INT.1, REQ-STAT-BASE.2).
+
+    `values[i]` is `observed_i - p_hat(cell_i)`. Resampling originals alone holds every p fixed, so a pooled fallback p
+    (one number estimated from a few hundred windows and applied to thousands of originals) would carry no error into the
+    interval (ops#103, S30). Here each replicate also draws every cell's p again from Beta(p n + 1, (1 - p) n + 1), the
+    posterior of its `cell_n` comparable windows, re-centred on the estimate and clipped to [0, 1], and the replicate's sum
+    becomes `sum(resampled values) + sum_c count_c * (p_hat_c - p_c)`. Cells with `cell_n <= 0` (and `cells[i] < 0`) stay
+    fixed. Reproducible for the caller's generator; None for an empty sample.
+    """
+    arr = np.asarray(values, dtype=float)
+    if arr.size == 0:
+        return None
+    cell_arr = np.asarray(cells, dtype=int)
+    p_hat = np.asarray(cell_p, dtype=float)
+    n_eff = np.asarray(cell_n, dtype=float)
+    drawn = np.flatnonzero(n_eff > 0)
+    if drawn.size == 0 or not (cell_arr >= 0).any():
+        return bootstrap_sum(arr, rng, B, level)
+    a = p_hat[drawn] * n_eff[drawn] + 1.0
+    b = (1.0 - p_hat[drawn]) * n_eff[drawn] + 1.0
+    centre = a / (a + b)
+    slot = np.full(p_hat.size + 1, -1, dtype=int)  # the last entry answers for cell -1 (fixed)
+    slot[drawn] = np.arange(drawn.size)
+    totals = np.empty(B)
+    step = max(1, min(200, 4_000_000 // arr.size))
+    for lo in range(0, B, step):
+        hi = min(B, lo + step)
+        idx = rng.integers(0, arr.size, size=(hi - lo, arr.size))
+        totals[lo:hi] = arr[idx].sum(axis=1)
+        p_draw = np.clip(rng.beta(a, b, size=(hi - lo, drawn.size)) - centre + p_hat[drawn], 0.0, 1.0)
+        for r in range(hi - lo):
+            sl = slot[cell_arr[idx[r]]]  # the drawn-cell slot of each resampled original (-1 when fixed)
+            sl = sl[sl >= 0]
+            count = np.bincount(sl, minlength=drawn.size)
+            totals[lo + r] += float((count * (p_hat[drawn] - p_draw[r])).sum())
+    tail = (1 - level) / 2
+    return float(np.quantile(totals, tail)), float(np.quantile(totals, 1 - tail))
