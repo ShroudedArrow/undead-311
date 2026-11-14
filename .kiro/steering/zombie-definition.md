@@ -75,3 +75,4 @@ Always "possible zombie". Measured counts are a floor (a zombie only appears if 
 | 2026-11-13 | Clarification: a closed case that would join an incident except that it breaks INCIDENT_MAX_SPAN_DAYS forms its own incident. | Answer-key review (S12, S17) |
 | 2026-11-13 | Clarification: unlinked catch-all cases (sensitivity tier) use their type_families.csv family (streetlight for Street Light Other) for matching. | Answer-key review (S18) |
 | 2026-11-13 | Clarification: a closed mirror copy forms its own incident and can be an original for later re-reports; only the mirror pair itself is not a resurrection. | Answer-key review (S14) |
+     - **City re-reports (separate tier):** a legacy R that is city-originated but is not a planned follow-up is a possible zombie in the `city_rereport` tier, outside the headline. The headline counts resident-originated legacy re-reports and new-system re-reports (whose origin is unknown; see source_unknown above).
