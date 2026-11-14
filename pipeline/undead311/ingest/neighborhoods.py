@@ -21,6 +21,7 @@ from pathlib import Path
 
 import duckdb
 import numpy as np
+import pandas as pd
 from shapely import contains_xy
 from shapely.geometry import shape
 
@@ -66,32 +67,40 @@ def area_names(areas: list[tuple[str, object]], lat: np.ndarray, lon: np.ndarray
     """The polygon name containing each point (REQ-ING-2.1, ops#91), or None; the first polygon by name wins."""
     out = np.full(len(lat), None, dtype=object)
     for name, poly in areas:
-        todo = np.array([o is None for o in out], dtype=bool)
-        hit = todo & contains_xy(poly, lon, lat)
+        hit = pd.isna(out) & contains_xy(poly, lon, lat)  # one numpy mask per polygon (ops#97)
         out[hit] = name
     return out
+
+
+def _folded(values: pd.Series) -> np.ndarray:
+    """`canonical_neighborhood` of every value, computed once per distinct value."""
+    names = {v: canonical_neighborhood(v) for v in values.dropna().unique()}
+    return values.map(names).astype(object).where(values.notna(), None).to_numpy()
 
 
 def canonicalize(con: duckdb.DuckDBPyConnection, table: str = "cases_clean", boundaries: Path | None = None) -> int:
     """Rewrite `neighborhood` on `table`; returns the number of rows whose value changed (REQ-ING-2.1).
 
     With a boundaries file, every row with a point is named by point in polygon (the same rule for both systems);
-    other rows, or all rows when there is no file, keep their own name folded through `ALIASES`."""
+    other rows, or all rows when there is no file, keep their own name folded through `ALIASES`. The new names are
+    computed with numpy masks and written back with one `update ... from` join (ops#97)."""
     areas = load_boundaries(boundaries) if boundaries is not None and boundaries.is_file() else []
-    rows = con.execute(f"select id, system, neighborhood, lat, lon from {table}").fetchall()
-    changes: list[tuple[str | None, str, str]] = []
+    df = con.execute(f"select id, system, neighborhood, lat, lon from {table}").df()
+    if df.empty:
+        return 0
+    old = df["neighborhood"].astype(object).where(df["neighborhood"].notna(), None).to_numpy()
+    new = _folded(df["neighborhood"])
     if areas:
-        lat = np.array([r[3] if r[3] is not None else np.nan for r in rows], dtype=float)
-        lon = np.array([r[4] if r[4] is not None else np.nan for r in rows], dtype=float)
-        found = area_names(areas, lat, lon)
-    for i, (cid, system, name, _la, _lo) in enumerate(rows):
-        polygon = found[i] if areas else None
-        new = canonical_neighborhood(polygon) if polygon is not None else canonical_neighborhood(name)
-        if new != name:
-            changes.append((new, cid, system))
-    if changes:
-        con.execute("create temp table nbr_new(nbr varchar, id varchar, system varchar)")
-        con.executemany("insert into nbr_new values (?,?,?)", changes)
+        found = area_names(areas, df["lat"].to_numpy(dtype=float), df["lon"].to_numpy(dtype=float))
+        polygon = pd.Series(found, dtype=object)
+        by_polygon = _folded(polygon)
+        new = np.where(pd.notna(found), by_polygon, new)
+    changed = pd.notna(new) != pd.notna(old)
+    both = pd.notna(new) & pd.notna(old)
+    changed = changed | (both & (new != old))
+    if changed.any():
+        changes = pd.DataFrame({"id": df["id"][changed], "system": df["system"][changed], "nbr": new[changed]})
+        con.register("nbr_new", changes)
         con.execute(f"update {table} t set neighborhood = r.nbr from nbr_new r where t.id = r.id and t.system = r.system")
-        con.execute("drop table nbr_new")
-    return len(changes)
+        con.unregister("nbr_new")
+    return int(changed.sum())
