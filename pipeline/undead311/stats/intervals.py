@@ -14,6 +14,7 @@ import numpy as np
 
 Z95 = 1.96
 NO_CASES = "no_cases"
+MIN_CLUSTERS = 10  # fewer independent spots (or pooled cells) than this and a cluster bootstrap has too few distinct resamples (ops#115)
 
 
 def wilson(k: int, n: int, z: float = Z95) -> tuple[float, float] | None:
@@ -108,6 +109,14 @@ def bootstrap_sum(
     return float(np.quantile(totals, tail)), float(np.quantile(totals, 1 - tail))
 
 
+def _bernoulli_variance(values: np.ndarray) -> float:
+    """Variance of sum(observed_i) when each outcome is Bernoulli(p_i), from `values_i = observed_i - p_i`.
+
+    A positive value means observed 1 (p = 1 - v), a negative one observed 0 (p = -v); a value of 0 is a certain outcome."""
+    p = np.where(values > 0, 1.0 - values, -values)
+    return float(np.sum(p * (1.0 - p)))
+
+
 def bootstrap_sum_cells(
     values: Sequence[float],
     cells: Sequence[int],
@@ -168,4 +177,9 @@ def bootstrap_sum_cells(
             p_draw = rng.binomial(nn, ph, size=(hi - lo, drawn.size)) / nn
             totals[lo:hi] += (cl_cnt[idx].sum(axis=1) * (ph - p_draw)).sum(axis=1)
     tail = (1 - level) / 2
-    return float(np.quantile(totals, tail)), float(np.quantile(totals, 1 - tail))
+    lo, hi = float(np.quantile(totals, tail)), float(np.quantile(totals, 1 - tail))
+    if n_cl < MIN_CLUSTERS:  # too few spots to resample: never narrower than the Bernoulli noise of the outcomes (ops#115)
+        half = Z95 * math.sqrt(_bernoulli_variance(arr))
+        centre = float(arr.sum())
+        lo, hi = min(lo, centre - half), max(hi, centre + half)
+    return lo, hi

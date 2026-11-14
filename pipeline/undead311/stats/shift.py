@@ -22,7 +22,7 @@ import numpy as np
 
 from undead311.stats.baseline import BaselineModel, season_array, season_integrated_p
 from undead311.stats.cohort import eligible_originals, season_idx, spot_key
-from undead311.stats.intervals import bootstrap_sum_cells
+from undead311.stats.intervals import MIN_CLUSTERS, bootstrap_sum_cells
 
 SHIFT_RUNS = 1000
 PLACEBO_RUNS = 10
@@ -191,7 +191,7 @@ def _placebo(model: BaselineModel, sp: _Spots, delta: np.ndarray, t_min: float, 
         rows = np.flatnonzero((g == gi) & sp.spot_based)
         if rows.size == 0:
             continue
-        opens, _closes, closes = model.groups[key]  # the live closures, as in the baseline (ops#112)
+        opens, closes = model.groups[key]  # every closure starts a dead stretch, as in the baseline (ops#112, ops#113)
         own_sel = np.flatnonzero(np.isin(sp.own_inc, rows))
         local = np.searchsorted(rows, sp.own_inc[own_sel])  # position of each own member's incident among `rows`
         own_t = sp.own_raw[own_sel]
@@ -228,4 +228,6 @@ def _placebo(model: BaselineModel, sp: _Spots, delta: np.ndarray, t_min: float, 
     )
     if ci is None:
         return None
-    return PlaceboResult(n_runs, mean, ci[0], ci[1], bool(ci[0] > 0 or ci[1] < 0))
+    n_clusters = len(set(clusters[clusters >= 0].tolist())) + int((clusters < 0).sum())
+    # a handful of spots says nothing about calibration: no warning below MIN_CLUSTERS (ops#115)
+    return PlaceboResult(n_runs, mean, ci[0], ci[1], bool((ci[0] > 0 or ci[1] < 0) and n_clusters >= MIN_CLUSTERS))

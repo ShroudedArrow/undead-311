@@ -31,7 +31,6 @@ replicate draws every pooled p again from its windows (originals that share a po
 
 from __future__ import annotations
 
-import heapq
 import math
 from collections import defaultdict
 from collections.abc import Mapping
@@ -181,12 +180,11 @@ class BaselineModel:
         self.fallbacks: dict[str, int] = {"spot": 0, "neighborhood": 0, "citywide": 0, "none": 0}
 
     # --- same spot -------------------------------------------------------------------------------------------------
-    def _groups(self) -> dict[tuple[str, str], tuple[np.ndarray, np.ndarray, np.ndarray]]:
-        """(family, spot) -> (sorted open times, sorted close times, sorted close times of live reports) of every non-mirror case,
-        for the spots that have an incident.
+    def _groups(self) -> dict[tuple[str, str], tuple[np.ndarray, np.ndarray]]:
+        """(family, spot) -> (sorted open times, sorted close times) of every non-mirror case, for the spots that have an incident.
 
-        A report is live when it does not open inside the WINDOW_DAYS that follow the closure of an earlier live report
-        (a report in that stretch is a possible resurrection, and its own closure does not start a new stretch)."""
+        The WINDOW_DAYS after every same-family closure at the spot are dead time, whether or not the closed case was itself
+        a resurrection (REQ-STAT-BASE.1, ops#113): the next link of a chain is not a chance report either."""
         needed = set(self._incident_key.values())
         rows: dict[tuple[str, str], list[tuple[float, float]]] = defaultdict(list)
         for cid in sorted(self.cases):
@@ -200,21 +198,9 @@ class BaselineModel:
         out = {}
         for key in sorted(rows):
             pairs = sorted(rows[key])
-            pending: list[tuple[float, float]] = []  # (start, end) of the stretches that have not started yet
-            dead_end = -math.inf  # the latest end among the stretches that started before the current report
-            live_closes: list[float] = []
-            for o, cl in pairs:
-                while pending and pending[0][0] < o:
-                    dead_end = max(dead_end, heapq.heappop(pending)[1])
-                if o <= dead_end:  # opened inside a dead stretch: a resurrection, which starts no stretch
-                    continue
-                if cl != math.inf:
-                    heapq.heappush(pending, (cl, cl + self.window_s))
-                    live_closes.append(cl)
             out[key] = (
                 np.array([p[0] for p in pairs]),
                 np.sort(np.array([p[1] for p in pairs if p[1] != math.inf])),
-                np.sort(np.array(live_closes)),
             )
         return out
 
@@ -271,7 +257,7 @@ class BaselineModel:
         return LiveSpot(t0, counts, days, dead_s, dead_e, edge[:, 1] - edge[:, 0], after, all_counts)
 
     def _spots(self) -> dict[tuple[str, str], LiveSpot]:
-        return {key: self.live_spot(opens, live_closes) for key, (opens, _closes, live_closes) in self.groups.items()}
+        return {key: self.live_spot(opens, closes) for key, (opens, closes) in self.groups.items()}
 
     def own_after(self, inc: Incident) -> np.ndarray:
         """Live reports of the spot to leave out of the incident's baseline, per season (REQ-STAT-BASE.1).
@@ -333,13 +319,27 @@ class BaselineModel:
     def _pool(self) -> dict[tuple[str, int], tuple[int, float]]:
         """Windows and pooled p of every family and season (season -1: all seasons), for the fallback (REQ-STAT-BASE.3).
 
-        The pooled p is the mean, over the incidents of that family and season, of the chance that one of the spot's other
-        reports (live or not, so resurrections count as well) falls in a window, taken over the spot's whole watched span.
-        Taking every report is cautious: a real resurrection can only raise the pooled p. Dead stretches are left out
-        here because the spots that fall back are the ones watched for a short time, where the live time is too short to
-        give a usable rate (a null town fell 35% short with it).
+        The pooled rate of a family and season is the live reports over the live days of every watched spot of the family
+        (`sum K_s / sum T_s`): the WINDOW_DAYS after every same-family closure are left out of both, so a real resurrection
+        and a link of a chain are not chance reports (REQ-STAT-BASE.1, ops#113). Adding up over all spots keeps the live time
+        long enough for a rate, which a spot that falls back (watched for a short time) cannot give alone; a per-spot p
+        averaged over such spots came out 30% high on a null town (ops#114). An incident's pooled p is
+        `1 - exp(-sum_s rate_s * d_s)` over the days d_s its window has in each season (a season without live time takes the
+        all-season rate), and the pooled p of a family and season is the mean of these over its incidents. One rate for the
+        family treats its spots alike: on a town whose spots differ 10-fold it runs low for the busy ones, which is why only
+        the spots watched for less than MIN_WINDOWS windows use it (ops#114).
         """
         w = self.params.WINDOW_DAYS
+        k_sum: dict[str, np.ndarray] = defaultdict(lambda: np.zeros(4))
+        t_sum: dict[str, np.ndarray] = defaultdict(lambda: np.zeros(4))
+        for key in sorted(self._spot_info):
+            k_sum[key[0]] += self._spot_info[key].counts
+            t_sum[key[0]] += self._spot_info[key].days
+        rate: dict[str, np.ndarray] = {}
+        for fam, k_f in k_sum.items():
+            t_f = t_sum[fam]
+            all_rate = k_f.sum() / t_f.sum() if t_f.sum() > 0 else 0.0
+            rate[fam] = np.array([k_f[x] / t_f[x] if t_f[x] > 0 else all_rate for x in range(4)])
         total: dict[tuple[str, int], float] = defaultdict(float)
         count: dict[tuple[str, int], int] = defaultdict(int)
         windows: dict[tuple[str, int], int] = defaultdict(int)
@@ -353,9 +353,8 @@ class BaselineModel:
             n_win = int(float(live.span[s]) // w)
             if n_win < 1:
                 continue
-            k = np.maximum(live.all_counts - self.own_all(inc), 0)[None, :]
-            d = self.window_season_days(np.array([inc.close_utc.timestamp()]))
-            p_inc = float(season_integrated_p(k, live.span, d)[0])
+            d = self.window_season_days(np.array([inc.close_utc.timestamp()]))[0]
+            p_inc = float(1.0 - math.exp(-float((rate[key[0]] * d).sum())))
             for ps in (s, -1):
                 total[(key[0], ps)] += p_inc
                 count[(key[0], ps)] += 1

@@ -216,16 +216,30 @@ def null_town(gap, spots=120, span=1000, seed=5, close_after=2.0):
     return out
 
 
-@pytest.mark.parametrize("gap", [200.0, 60.0])
-def test_req_stat_shift_1_and_placebo_1_on_a_town_with_no_resurrections_the_observed_count_is_inside_the_shift_interval(gap):
+def test_req_stat_shift_1_and_placebo_1_on_a_town_with_no_resurrections_the_observed_count_is_inside_the_shift_interval():
     """REQ-STAT-SHIFT.1, REQ-STAT-PLACEBO.1-2 (ops#102, S29): the incident's own members are not chance hits, so a town whose
     reports are independent of closures lands inside its shift distribution and the placebo does not warn."""
-    cs = null_town(gap)
+    cs = null_town(200.0)
     res = detect(cs)
     m = BaselineModel({c.id: c for c in cs}, res, data_end=day(1000))
     shift, placebo = shift_and_placebo(m, 311, 200, 10)
     assert shift.q025 <= shift.observed <= shift.q975
     assert placebo.calibration_warning is False and placebo.lo <= 0 <= placebo.hi
+
+
+def test_req_stat_base_1_a_dense_null_town_never_manufactures_an_excess_and_the_shift_test_still_holds():
+    """REQ-STAT-BASE.1-2, REQ-STAT-SHIFT.1 (ops#114): a report every 60 days at 120 spots, nothing resurrecting by cause. Every
+    closure leaves out the 60 days after it, so about two thirds of the time is out and each spot's live time is a few windows.
+    The estimate then runs 3-7 points high (p 0.67-0.70 against 0.63-0.66 observed), so the excess is zero or below and
+    never positive: the direction that understates resurrections. The placebo does warn here, because it shifts closures
+    independently of the reports and so cannot reproduce that dependence. Both facts are in docs/METHODS.md (Limits)."""
+    cs = null_town(60.0)
+    res = detect(cs)
+    m = BaselineModel({c.id: c for c in cs}, res, data_end=day(1000))
+    shift, _placebo = shift_and_placebo(m, 311, 200, 10)
+    assert shift.q025 <= shift.observed <= shift.q975
+    row = next(r for r in excess_rows(m, 311, 200) if r.kind == "family" and r.tier_set == "headline")
+    assert row.lo <= 0.0 and row.excess <= row.hi  # the interval does not sit above 0: no excess is manufactured
 
 
 def test_req_stat_shift_1_own_member_reports_are_never_counted_when_a_closure_is_moved():
@@ -614,3 +628,99 @@ def test_req_stat_placebo_1_a_shift_of_zero_reproduces_the_excess_with_the_same_
                    if m._incident_key[i.incident_id] in sp.keys)  # fmt: skip
     assert got is not None and shift is not None
     assert got.excess == pytest.approx(shift.observed - expected, abs=1e-6)
+
+
+def causal_town(q, bg=300.0, spots=300, span=1400, seed=5):
+    """Background reports at Poisson times (a report every `bg` days per spot), each closed 2 days after it opens. After every
+    closure a causal re-report follows 5-40 days later with probability q, and it can start a chain itself."""
+    rng = np.random.default_rng(seed)
+    out = []
+    for s in range(spots):
+        times, t = [], 0.0
+        while True:
+            t += rng.exponential(bg)
+            if t > span:
+                break
+            times.append(t)
+        i = 0
+        while i < len(times):
+            if rng.random() < q and times[i] + 2.0 + 40.0 < span:
+                times.append(times[i] + 2.0 + rng.uniform(5.0, 40.0))
+            i += 1
+        out += [mk(f"S{s:03d}-{k:03d}", o, o + 2.0, x=s * 1000.0, segment=f"seg{s}") for k, o in enumerate(sorted(times))]
+    return out
+
+
+@pytest.mark.parametrize("q", [0.2, 0.4])
+def test_req_stat_base_1_a_causal_resurrection_town_has_an_expected_count_close_to_the_true_chance(q):
+    """REQ-STAT-BASE.1, REQ-STAT-BASE.2 (ops#113): real resurrections, and the links of a chain, are not chance reports. 300 spots
+    with a background report every 300 days and a causal re-report 5-40 days after each closure with probability q: the true
+    chance of a window holding a background report is 1 - exp(-60/300) = 0.181 per original. The expected count ran 1.5 times
+    that before the 60 days after a resurrection's own closure were left out as well; it is now within 1.0-1.25."""
+    ratios, observed_over_true = [], []
+    for seed in (5, 6):
+        cs = causal_town(q, seed=seed)
+        res = detect(cs)
+        m = BaselineModel({c.id: c for c in cs}, res, data_end=day(1400))
+        el = list(eligible_originals(res.incidents, m.data_end))
+        expected = sum(m.estimate(i).p or 0.0 for i in el)
+        true_chance = len(el) * (1.0 - np.exp(-60.0 / 300.0))
+        zs = {z.incident_id for z in res.zombies if z.tier == "headline"}
+        ratios.append(expected / true_chance)
+        observed_over_true.append(sum(i.incident_id in zs for i in el) / true_chance)
+    assert all(1.0 <= r <= 1.25 for r in ratios), ratios
+    assert all(o > 1.5 for o in observed_over_true)  # the causal re-reports are far above the chance count
+
+
+def test_req_stat_base_1_a_mixed_gap_null_town_has_an_excess_interval_that_covers_zero():
+    """REQ-STAT-BASE.1-2 (ops#114): 300 spots whose reports come every 30, 60, 120, 250 or 400 days, nothing resurrecting by
+    cause. Busy and quiet spots together: the excess interval holds 0 in every seeded town (seeds 5-8)."""
+    from helpers import mk as _mk
+
+    for seed in (5, 6, 7, 8):
+        rng = np.random.default_rng(seed)
+        cs = []
+        for s in range(300):
+            gap = (30.0, 60.0, 120.0, 250.0, 400.0)[int(rng.integers(5))]
+            t, n = 0.0, 0
+            while True:
+                t += rng.exponential(gap)
+                if t > 1400:
+                    break
+                cs.append(_mk(f"S{s:03d}-{n:03d}", t, t + 2.0, x=s * 1000.0, segment=f"seg{s}"))
+                n += 1
+        res = detect(cs)
+        m = BaselineModel({c.id: c for c in cs}, res, data_end=day(1400))
+        row = next(r for r in excess_rows(m, 311, 200) if r.kind == "family" and r.tier_set == "headline")
+        assert row.lo <= 0 <= row.hi, (seed, row)
+
+
+def test_req_stat_int_1_a_group_whose_originals_share_one_spot_gets_an_interval_with_width_and_no_placebo_warning():
+    """REQ-STAT-INT.1, REQ-STAT-PLACEBO.2 (ops#115): 12 originals at one spot (a report about every 100 days) used to give an
+    excess of 0.99 [0.99, 0.99]. With fewer than MIN_CLUSTERS spots the interval is never narrower than the Bernoulli noise
+    of the outcomes, and the placebo never warns on so few spots."""
+    from undead311.stats.intervals import MIN_CLUSTERS
+
+    cs = [mk(f"A{n:02d}", 100.0 * n, 100.0 * n + 2.0) for n in range(12)]
+    res = detect(cs)
+    m = BaselineModel({c.id: c for c in cs}, res, data_end=day(1400))
+    rows = [r for r in excess_rows(m, 311, 200) if r.kind == "family"]
+    assert rows and all(r.hi - r.lo > 0.1 for r in rows)
+    assert all(r.lo <= r.excess <= r.hi for r in rows)
+    _shift, placebo = shift_and_placebo(m, 311, 50, 5)
+    assert placebo is not None and placebo.calibration_warning is False and MIN_CLUSTERS >= 2
+
+
+def test_req_stat_int_1_the_floor_is_the_bernoulli_noise_when_few_spots_and_not_applied_when_many():
+    """REQ-STAT-INT.1 (ops#115): `bootstrap_sum_cells` with one cluster holds the +-1.96 sd of sum(p(1-p)); with many clusters
+    it is the plain bootstrap."""
+    from undead311.stats.intervals import bootstrap_sum_cells
+
+    rng = np.random.default_rng(1)
+    vals = [1.0 - 0.5, -0.5, 1.0 - 0.5, -0.5]  # four originals with p = 0.5: two observed, two not
+    lo, hi = bootstrap_sum_cells(vals, [-1] * 4, [], [], rng, 200, clusters=[0, 0, 0, 0])
+    half = 1.96 * np.sqrt(4 * 0.25)
+    assert lo <= -half + 1e-9 and hi >= half - 1e-9  # one spot: the sum of values is 0, the floor gives +-1.96
+    many = [0.5, -0.5] * 50
+    lo2, hi2 = bootstrap_sum_cells(many, [-1] * 100, [], [], np.random.default_rng(1), 500, clusters=list(range(100)))
+    assert hi2 - lo2 < 2 * 1.96 * np.sqrt(100 * 0.25) * 1.2  # a plain bootstrap of 100 clusters, near the Bernoulli width

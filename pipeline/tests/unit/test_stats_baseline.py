@@ -52,15 +52,21 @@ def test_req_stat_base_1_live_time_leaves_out_the_window_days_after_each_closure
     assert live.is_live(np.array([ts(0.5), ts(1), ts(30), ts(61), ts(62)])).tolist() == [True, True, False, False, True]
 
 
-def test_req_stat_base_1_overlapping_stretches_are_merged_and_a_report_in_a_dead_stretch_starts_none():
-    """A closure on day 1 and another on day 10 make one dead stretch, day 1 to 70. A report opened on day 5 is dead, so its
-    own closure on day 6 starts no stretch of its own (REQ-STAT-BASE.1)."""
+def test_req_stat_base_1_overlapping_stretches_are_merged_and_every_closure_starts_one():
+    """A closure on day 1 and another on day 10 make one dead stretch, day 1 to 70. A report opened on day 5 is dead, but its
+    own closure on day 6 starts a stretch too (REQ-STAT-BASE.1, ops#113): here it is inside the first one, so the stretch
+    is the same, and the closure on day 10 extends it to day 70."""
     cs = [mk("A0", 0, 1), mk("D", 5, 6), mk("E", 8, 10)]
     m = BaselineModel({c.id: c for c in cs}, detect(cs), data_end=day(400))
-    _opens, closes, live_closes = m.groups[next(iter(m.groups))]
-    assert closes.tolist() == [ts(1), ts(6), ts(10)] and live_closes.tolist() == [ts(1)]
-    live = m.live_spot(np.array([ts(0), ts(5), ts(8)]), np.array([ts(1), ts(10)]))
+    _opens, closes = m.groups[next(iter(m.groups))]
+    assert closes.tolist() == [ts(1), ts(6), ts(10)]
+    live = m.live_spot(np.array([ts(0), ts(5), ts(8)]), closes)
     assert (live.dead_s.tolist(), live.dead_e.tolist()) == ([ts(1)], [ts(70)])
+    # a report that is itself dead still starts a stretch beyond the first one
+    cs2 = [mk("A0", 0, 1), mk("D", 50, 55), mk("L", 100)]  # D opens in the stretch (1, 61]; its closure on day 55 runs it to day 115
+    m2 = BaselineModel({c.id: c for c in cs2}, detect(cs2), data_end=day(400))
+    live2 = m2._spot_info[next(iter(m2.groups))]
+    assert live2.dead_e.tolist() == [ts(115)] and live2.counts.sum() == 0  # L (day 100) is inside it: not a chance report
 
 
 def test_req_stat_base_1_own_members_are_not_chance_reports_and_a_resurrection_leaves_out_its_ancestor():
