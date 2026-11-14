@@ -6,16 +6,17 @@
 # -> deterministic validate gate (scripts/validate_gate.py) -> reviewer on a DIFFERENT, stronger model -> loop file
 # (scripts/loop_status.py). Stop conditions are files; the channel (ShroudedArrow/undead-311-ops) is the audit trail.
 # Prerequisites: specs approved; pipeline/tests/fixtures/expected_zombies.json hand-written by the owner; docs/PREFLIGHT.md A done.
-# Launch input: run_id (e.g. build-2026-11-14a). Worktrees are created under /projects/sandbox/worktrees/<run_id> (branch worktrees add -engine / -web siblings).
+# Launch inputs: run_id (e.g. build-2026-11-14a), base_branch, start_at, carry_from (a previous run id whose -engine and -web branches setup merges in). Worktrees are created under /projects/sandbox/worktrees/<run_id> (branch worktrees add -engine / -web siblings).
 # Model IDs are set here only; change them in one place if the account lists different IDs.
 name: build-undead-311
 description: Implement the approved specs layer by layer (demo-critical, credibility, delight) with test gates, cross-model reviews, a design gate, a preview, a retro and a report.
 inputs:
   run_id: string
-  # Inputs have no defaults in the recipe format, so pass both at launch. An empty value (or the literal text {{name}}
-  # left by a launcher that passed nothing) means the default: base_branch main, start_at the beginning.
+  # Inputs have no defaults in the recipe format, so pass every input at launch. An empty value (or the literal text {{name}}
+  # left by a launcher that passed nothing) means the default: base_branch main, start_at the beginning, carry_from none.
   base_branch: "string (branch the run worktree starts from; default main)"
   start_at: "string (loop or step id to start from, e.g. durability-stats-credibility-loop; earlier nodes are skipped; default empty = from the beginning)"
+  carry_from: "string (a previous run id, e.g. build-2: setup merges origin/build/<carry_from>-engine and origin/build/<carry_from>-web into this run's branches; default empty = no carry-over)"
 modelId: claude-sonnet-5.5
 steps:
   - type: step
@@ -34,9 +35,10 @@ steps:
          never edit it). If it is missing: write .kiro/workflow-runs/{{run_id}}/setup.json with {"ok": false, "reason": "..."},
          post to the run log, and call send_message with severity error.
       1b. Launch inputs. BASE = "{{base_branch}}", or `main` when that is empty or still the literal text {{base_branch}}. START = "{{start_at}}",
-         or empty when that is empty or still the literal text {{start_at}}. Run `python3 /projects/sandbox/undead-311/scripts/skip_check.py --start-at "<START>" --validate`;
+         or empty when that is empty or still the literal text {{start_at}}. CARRY = "{{carry_from}}", or empty when that is empty or still the literal
+         text {{carry_from}} (empty means no carry-over). Run `python3 /projects/sandbox/undead-311/scripts/skip_check.py --start-at "<START>" --validate`;
          on a non-zero exit write setup.json with {"ok": false, "reason": "..."}, post to the run log and send_message severity error.
-         Write .kiro/workflow-runs/{{run_id}}/start_at.json as {"start_at": "<START>", "base_branch": "<BASE>"}. Every later step reads it through
+         Write .kiro/workflow-runs/{{run_id}}/start_at.json as {"start_at": "<START>", "base_branch": "<BASE>", "carry_from": "<CARRY>"}. Every later step reads it through
          scripts/skip_check.py (docs/RUN_PROTOCOL.md, step 1b): a node that comes before START in the recipe is skipped, setup is never skipped.
       2. Create the run worktree (`mkdir -p /projects/sandbox/worktrees` first): `git worktree add -b build/{{run_id}} /projects/sandbox/worktrees/{{run_id}} <BASE>`
          (prefer origin/<BASE> when it is newer than the local branch; run `git fetch origin` first). When START is empty and BASE is main this is the old behavior.
@@ -48,11 +50,13 @@ steps:
       4. Create the two branch worktrees from that commit:
          `git worktree add -b build/{{run_id}}-engine /projects/sandbox/worktrees/{{run_id}}-engine build/{{run_id}}` and
          `git worktree add -b build/{{run_id}}-web /projects/sandbox/worktrees/{{run_id}}-web build/{{run_id}}`.
-      4b. Carry-over for a restarted run (START not empty only): in the -engine worktree run `git fetch origin` and
-         `git merge --no-edit origin/build/build-1-engine`. That branch holds the durability-stats commits that build-1 left unapproved (ops#116);
-         the durability-stats loop continues from them. Merge only (never rebase or force). If the merge conflicts, stop: write setup.json with
-         {"ok": false, "reason": "carry-over conflict", "files": [...]} and send_message severity error. Record the merged sha in setup.json as "carry_over".
-      5. Write .kiro/workflow-runs/{{run_id}}/setup.json: {"ok": true, "base": "<sha>", "base_branch": "<BASE>", "start_at": "<START>", "worktrees": {...},
+      4b. Carry-over (CARRY not empty only; when CARRY is empty skip this step and record "carry_over": null). In the -engine worktree run `git fetch origin` and
+         `git merge --no-edit origin/build/<CARRY>-engine`; in the -web worktree run `git merge --no-edit origin/build/<CARRY>-web`. Those branches hold the
+         commits the earlier run <CARRY> left unintegrated; the loops continue from them. If a branch is missing on origin, stop with the same error shape and reason "carry-over branch missing".
+         Merge only (never rebase or force). If a merge conflicts, stop: write setup.json with
+         {"ok": false, "reason": "carry-over conflict", "files": [...]} and send_message severity error. Record the merged shas in setup.json as
+         "carry_over": {"from": "<CARRY>", "engine": "<sha>", "web": "<sha>"}.
+      5. Write .kiro/workflow-runs/{{run_id}}/setup.json: {"ok": true, "base": "<sha>", "base_branch": "<BASE>", "start_at": "<START>", "carry_from": "<CARRY>", "worktrees": {...},
          "ownership": {"engine": ["pipeline/", "schemas/", "data/sample/", ".github/", ".devcontainer/", "Makefile", "pyproject.toml",
          "uv.lock", "docs/METHODS.md", "docs/VALIDATION.md", "data/SNAPSHOT.md", "netlify.toml", "docs/DEPLOY.md",
          "data/labels/validation_config.json"], "web": ["web/", "docs/screenshots/"]}}.
@@ -339,7 +343,7 @@ steps:
                   `python3 /projects/sandbox/undead-311/scripts/loop_status.py --gate /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-gate.json --review /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/review-stats-zombie-engine-credibility.json --out /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-loop.json`. This step owns the loop's stop file /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/zombie-engine-credibility-loop.json: loop_status.py writes done: true only when the gate file says PASS and your verdict is APPROVED, otherwise done: false. Always run it, even when the verdict is CHANGES_REQUESTED.
           - type: repeat
             id: durability-stats-credibility-loop
-            maxIterations: 5
+            maxIterations: 4
             onMaxIterations: abort
             stopCondition:
               fileCheck:

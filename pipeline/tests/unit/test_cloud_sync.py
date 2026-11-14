@@ -63,22 +63,22 @@ def test_compares_the_ref_not_the_working_tree(tmp_path):
     assert cloud_sync.compare(cloud, None, root)["workflows"]
 
 
-def test_cli_exit_codes(tmp_path):
+def test_cli_exit_codes(tmp_path, monkeypatch, capsys):
+    """Exit codes of cloud_sync.main, independent of the sandbox: no real cloud-cache folder is ever read.
+
+    The default cache folders and CLOUD_CONFIG_DIR are cleared, so only temporary folders under tmp_path can be found.
+    """
+    monkeypatch.setattr(cloud_sync, "CLOUD_CANDIDATES", ())
+    monkeypatch.delenv("CLOUD_CONFIG_DIR", raising=False)
     cloud = make_cloud(tmp_path)
-    script = str(REPO / "scripts" / "cloud_sync.py")
-    missing = subprocess.run(
-        [sys.executable, script, "--cloud", str(tmp_path / "none")],
-        capture_output=True,
-        text=True,
-        check=False,
-        env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path)},
-    )
-    assert missing.returncode in (1, 2)  # 2 = no cache found; 1 only if a default cache exists and differs
+
+    assert cloud_sync.main(["--cloud", str(tmp_path / "none")]) == 2  # no cache found
+    assert "cloud-cache folder not found" in capsys.readouterr().out
+
+    monkeypatch.setenv("CLOUD_CONFIG_DIR", str(cloud))  # the env var is found too
+    assert cloud_sync.find_cloud_dir() == cloud
+    monkeypatch.delenv("CLOUD_CONFIG_DIR")
+
     (cloud / "hooks" / "a.txt").write_text("changed\n")
-    differ = subprocess.run(
-        [sys.executable, script, "--cloud", str(cloud), "--working-tree"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert differ.returncode == 1 and "RE-SYNC NEEDED" in differ.stdout
+    assert cloud_sync.main(["--cloud", str(cloud), "--working-tree"]) == 1
+    assert "RE-SYNC NEEDED" in capsys.readouterr().out
