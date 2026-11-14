@@ -1,0 +1,66 @@
+# Pull-request checks: CI is the independent judge (testing.md). REQ-OPS-CI.1, REQ-OPS-CI.4.
+# Every action is pinned to a tag and every job sets its own least-privilege `permissions:` (checked by
+# pipeline/tests/unit/test_workflows_pinned.py, check O1). The copy-lint, axe, bundle budget, audit and channel-post
+# jobs arrive with the credibility layer (REQ-OPS-CI.2, REQ-OPS-CI.3).
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# No job gets a token by default; each job asks for what it needs.
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: python (make test, golden check, schemas, ruff)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install Python and Node dependencies
+        run: make setup
+      # `make test` runs pytest (unit, property, and the test-town golden check in test_golden.py) and vitest.
+      - name: Tests (includes the test-town golden check)
+        run: make test
+      - name: Schema validation (every schema, and the answer key against its schema)
+        run: make schema-check
+      - name: Ruff
+        run: uv run ruff check pipeline
+
+  web:
+    name: web (npm ci, tsc, vitest)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: TypeScript compile
+        run: npx tsc --noEmit
+      - name: Vitest
+        run: npm test
