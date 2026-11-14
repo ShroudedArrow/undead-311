@@ -81,6 +81,22 @@ export function budgetVerdict(totalBytes, strictMode) {
   return { over, fail: over && strictMode };
 }
 
+/**
+ * REQ-WEB-FRESH.3 (UX-21, ops#70): the "Report an error" link must be a real https address, never a placeholder. The build cannot
+ * check that the repository is public (it runs offline); the owner confirms that. Returns a list of problems.
+ */
+export function reportUrlProblems(url) {
+  if (typeof url !== "string" || url.trim() === "") return ["links.report_error_url is empty"];
+  const probe = url.replace(/\{[a-z_]+\}/g, "x");
+  let u;
+  try { u = new URL(probe); } catch { return [`links.report_error_url is not a URL: ${url}`]; }
+  const problems = [];
+  if (u.protocol !== "https:") problems.push("links.report_error_url must use https");
+  if (/(^|\.)(example\.(com|org|net)|localhost|invalid|test)$/i.test(u.hostname)) problems.push(`links.report_error_url host is a placeholder: ${u.hostname}`);
+  if (/todo|changeme|your[-_]?(org|repo|name)|<[^>]*>|\bowner\b\/\brepo\b/i.test(url)) problems.push("links.report_error_url still holds placeholder text");
+  return problems;
+}
+
 function gz(path) {
   return gzipSync(readFileSync(path)).length;
 }
@@ -108,6 +124,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (problems.length) {
     console.error("check-build: origin check FAILED (REQ-WEB-PERF.2)");
     for (const p of problems) console.error(`  - ${p}`);
+    process.exit(1);
+  }
+  const copyPath = join(here, "..", "src", "copy", "en.json");
+  const reportProblems = reportUrlProblems(JSON.parse(readFileSync(copyPath, "utf8")).links?.report_error_url);
+  if (reportProblems.length) {
+    console.error("check-build: Report an error link FAILED (REQ-WEB-FRESH.3)");
+    for (const p of reportProblems) console.error(`  - ${p}`);
     process.exit(1);
   }
   console.log(`check-build: origin check ok (${files.length} text files, same-origin only)`);

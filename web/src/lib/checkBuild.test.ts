@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error plain .mjs build script, no type declarations
-import { budgetVerdict, checkOrigins, findFetchRefs, findHosts, INERT_HOSTS } from "../../scripts/check-build.mjs";
+import { budgetVerdict, checkOrigins, findFetchRefs, findHosts, INERT_HOSTS, reportUrlProblems } from "../../scripts/check-build.mjs";
 
 type Files = [string, string][];
 const check = checkOrigins as (files: Files) => string[];
@@ -44,5 +44,21 @@ describe("first-view budget gate (REQ-WEB-PERF.1)", () => {
     const pkg = JSON.parse(readFileSync(join(__dirname, "..", "..", "package.json"), "utf8")) as { scripts: Record<string, string> };
     expect(pkg.scripts.build).toContain("check-build.mjs --strict");
     expect(pkg.scripts.build).toContain("write-headers.ts");
+  });
+});
+
+describe("Report an error link is never a placeholder (REQ-WEB-FRESH.3, UX-21)", () => {
+  const problems = reportUrlProblems as (u: unknown) => string[];
+  it("accepts the address in en.json", () => {
+    const en = JSON.parse(readFileSync(join(__dirname, "..", "copy", "en.json"), "utf8")) as { links: { report_error_url: string } };
+    expect(problems(en.links.report_error_url)).toEqual([]);
+  });
+  it("rejects an empty, non-https, example or placeholder address", () => {
+    expect(problems("")).not.toEqual([]);
+    expect(problems(undefined)).not.toEqual([]);
+    expect(problems("http://github.com/a/b/issues/new")).not.toEqual([]);
+    expect(problems("https://example.com/issues/new")).not.toEqual([]);
+    expect(problems("https://github.com/TODO-COPY/issues/new")).not.toEqual([]);
+    expect(problems("not a url")).not.toEqual([]);
   });
 });
