@@ -30,6 +30,7 @@ from undead311.stats.groups import (
     funnel_limits,
     funnel_limits_at,
     funnel_ns,
+    intensity_by_family,
     intensity_by_neighborhood,
     shrink,
 )
@@ -137,6 +138,16 @@ def test_req_stat_funnel_2_unusual_only_outside_the_998_limits_and_neighborhoods
 def test_req_stat_rep_1_reports_per_km_by_neighborhood():
     cs = {c.id: replace(c, neighborhood="Roxbury") for c in [mk("A", 0, 1), mk("B", 1), mk("C", 2)]}
     assert intensity_by_neighborhood(cs, {"Roxbury": 1.5, "Nowhere": 2.0, "Empty": 0.0}) == {"Roxbury": 2.0}
+
+
+def test_req_stat_rep_1_a_mirror_copy_is_counted_once_in_reports_per_km():
+    """ZD step 9, REQ-STAT-REP.1 (ops#127): the later copy of a cross-system mirror pair is one report, so it adds nothing."""
+    cs = {c.id: replace(c, neighborhood="Roxbury") for c in [mk("A", 0, 1), mk("B", 1), mk("C", 2)]}
+    km = {"Roxbury": 1.5}
+    assert intensity_by_neighborhood(cs, km, frozenset({"C"})) == {"Roxbury": pytest.approx(2 / 1.5)}
+    rows = intensity_by_family(cs, km, frozenset({"B", "C"}))
+    assert [r["reports"] for r in rows] == [1]
+    assert intensity_by_family(cs, km) != rows  # without the skip every case counts
 
 
 # --- adjusted rate, tiers ---------------------------------------------------------------------------------------------------

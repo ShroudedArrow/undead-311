@@ -114,7 +114,7 @@ def build_stats(
     payloads["scorecard.json"] = payload
 
     # excess, shift test, placebo, neighborhood check (REQ-STAT-BASE, -NBR, -SHIFT, -PLACEBO, -REP.2)
-    intensity = intensity_by_neighborhood(cases, street_km)
+    intensity = intensity_by_neighborhood(cases, street_km, result.mirror_ids)
     rows = []
     for r in excess_rows(model, seed):
         row = r.to_json()

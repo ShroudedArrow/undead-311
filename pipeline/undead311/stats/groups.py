@@ -184,20 +184,25 @@ def build_groups(
     return mu, kappas, out
 
 
-def intensity_by_neighborhood(cases: Mapping[str, Case], street_km: Mapping[str, float]) -> dict[str, float]:
-    """In-scope reports opened per km of street, by neighborhood (REQ-STAT-REP.1). Missing or zero street length: absent."""
+def intensity_by_neighborhood(
+    cases: Mapping[str, Case], street_km: Mapping[str, float], skip: frozenset[str] = frozenset()
+) -> dict[str, float]:
+    """In-scope reports opened per km of street, by neighborhood (REQ-STAT-REP.1). Missing or zero street length: absent.
+    `skip` holds the later copies of cross-system mirror pairs, which are one report counted once (ZD step 9)."""
     n: dict[str, int] = defaultdict(int)
     for c in cases.values():
-        if c.neighborhood:
+        if c.neighborhood and c.id not in skip:
             n[c.neighborhood] += 1
     return {name: n[name] / km for name, km in sorted(street_km.items()) if km and km > 0 and name in n}
 
 
-def intensity_by_family(cases: Mapping[str, Case], street_km: Mapping[str, float]) -> list[dict]:
-    """Reports per km of street per neighborhood and family (REQ-STAT-REP.1)."""
+def intensity_by_family(
+    cases: Mapping[str, Case], street_km: Mapping[str, float], skip: frozenset[str] = frozenset()
+) -> list[dict]:
+    """Reports per km of street per neighborhood and family (REQ-STAT-REP.1); `skip` as in `intensity_by_neighborhood`."""
     n: dict[tuple[str, str], int] = defaultdict(int)
     for c in cases.values():
-        if c.neighborhood:
+        if c.neighborhood and c.id not in skip:
             n[(c.neighborhood, c.type_family)] += 1
     return [
         {"neighborhood": nb, "family": fam, "reports": cnt, "reports_per_km": cnt / street_km[nb]}
@@ -214,7 +219,7 @@ def groups_payload(
     (REQ-STAT-TIER.1)."""
     from undead311.stats.meta import params_json
 
-    intensity = intensity_by_neighborhood(cases, street_km or {})
+    intensity = intensity_by_neighborhood(cases, street_km or {}, result.mirror_ids)
     head: dict = {"data_version": data_version, "dataset": dataset, "params": params_json(params), "seed": None}
     sets = {}
     for tier_set in ("headline", "all"):
@@ -226,7 +231,7 @@ def groups_payload(
     groups_file = {
         **head, "citywide": mu, "kappa": kappas.get("family"), "kappas": kappas, "groups": groups, "all_tiers": {
             "citywide": mu_all, "kappa": kappas_all.get("family"), "kappas": kappas_all, "groups": groups_all},
-        "intensity": intensity_by_family(cases, street_km or {}), "intensity_note": note,
+        "intensity": intensity_by_family(cases, street_km or {}, result.mirror_ids), "intensity_note": note,
     }  # fmt: skip
     n_max = max((g["n"] for g in groups + groups_all), default=0)
     funnel_file = {
