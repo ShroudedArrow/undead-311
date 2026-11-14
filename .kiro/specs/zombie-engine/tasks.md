@@ -96,7 +96,7 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
 - [x] 21. [credibility] SAM segments and snapping
   - Extend `pipeline/scripts/download.py` to fetch Boston Street Segments and neighborhood boundaries into `$DATA_DIR/raw/` and record them in `data/SNAPSHOT.md`; `ingest/snap.py` (DuckDB spatial, or shapely fallback); the `intersections` table and `near_node_ids` (REQ-ING-SNAP.4); `segments: unavailable` status when missing; a test that checks the intersection count against the downloaded file.
   - _Requirements: REQ-ING-SNAP.1–6_
-- [ ] 22. [credibility] Bulk-closure detector
+- [x] 22. [credibility] Bulk-closure detector
   - `detect/bulk.py`: groups by department, close date and template; the separate `bulk_closure` flag (the label is never overwritten); `bulk_closures.json` and schema; BULK_MIN_CASES = 50 and BULK_RATIO = 10 come from `detect/params.py` (zombie-definition.md step 10).
   - _Requirements: REQ-BULK.1–2_
 - [x] 23. [credibility] Coroner evaluation

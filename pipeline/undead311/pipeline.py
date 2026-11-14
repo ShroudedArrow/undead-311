@@ -20,6 +20,7 @@ import duckdb
 
 from undead311.coroner.join import JoinReport, join_labels
 from undead311.coroner.templates import build_templates
+from undead311.detect.bulk import bulk_closures, flag_cases
 from undead311.detect.cases import cases_from_table
 from undead311.detect.core import city_origin_summary, detect
 from undead311.detect.edges import sql_edges
@@ -187,6 +188,10 @@ def run_pipeline(
         report.label_coverage, report.unlabeled = jr.covered_share, jr.unlabeled
         if jr.labels_file_missing:
             report.warnings.append("data/labels/coroner_labels.csv is missing: every closure is labeled `other`")
+        bulk = bulk_closures(con, p)  # REQ-BULK.1: a flag on cases_clean; the Coroner label is never overwritten
+        report.row_counts["bulk_closure_groups"] = len(bulk)
+        report.row_counts["bulk_closure_cases"] = flag_cases(con, bulk)
+        state["bulk"] = [g.to_json() for g in bulk]
         report.warnings += on_time_anomalies(on_time_coverage(con))  # REQ-STAT-SF.1 (ops#49)
         cases = cases_from_table(con, "cases_clean")
         report.row_counts["in_scope_cases"] = len(cases)
@@ -242,6 +247,7 @@ def run_pipeline(
             exclusion_counts=dict(report.exclusions),
             excluded_ids=excluded,
             stats_status=stats_status,
+            bulk_closures=state.get("bulk", []),
             dataset=dataset,
             city_origin=report.city_origin,
             data_end=max(c.open_utc for c in cases).strftime("%Y-%m-%d") if cases else None,
