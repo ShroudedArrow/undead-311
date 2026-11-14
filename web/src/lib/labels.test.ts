@@ -15,6 +15,8 @@ describe("one filter key per department across both systems (REQ-WEB-MAP.2, UX-1
 
   it("gives INFO a readable label instead of the bare code", () => {
     expect(departmentLabel("INFO")).not.toBe("INFO");
+    // UX-15: no unsourced claim about the city, no nested parentheses
+    expect(departmentLabel("INFO")).not.toMatch(/city|\(/i);
   });
 
   it("a department filter keeps cases from both systems (REQ-WEB-MAP.2)", () => {

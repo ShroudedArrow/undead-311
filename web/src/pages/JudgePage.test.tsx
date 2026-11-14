@@ -17,7 +17,7 @@ function setup(opts: { provisional?: boolean; reduced?: boolean } = {}) {
   vi.stubGlobal("matchMedia", (q: string) => ({ matches: !!opts.reduced && q.includes("reduce"), addEventListener() {}, removeEventListener() {}, media: q }));
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
     const u = String(url);
-    const body = u.endsWith("judge_tour.json") ? { data_version: "v", provisional: opts.provisional ?? true, zombie_ids: IDS, source: "most_reports" } : u.endsWith("points.json") ? POINTS : u.includes("cards/") ? SHARD : STATUS;
+    const body = u.endsWith("judge_tour.json") ? { data_version: "v", provisional: opts.provisional ?? true, zombie_ids: IDS, source: "most_reports", params: { WINDOW_DAYS: 60, RADIUS_M: 30, matching: "segment" }, seed: null } : u.endsWith("points.json") ? POINTS : u.includes("cards/") ? SHARD : STATUS;
     return { ok: true, status: 200, json: async () => body } as Response;
   }));
   render(<MemoryRouter initialEntries={["/judge"]}><App /></MemoryRouter>);

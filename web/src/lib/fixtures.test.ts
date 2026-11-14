@@ -38,6 +38,22 @@ describe("fixture files follow the schemas (REQ-WEB-DATA.3)", () => {
     }
   });
 
+  it("one neighborhood name per area: no Downtown or Mattapan split across systems (UX-14, REQ-WEB-MAP.2)", () => {
+    const pts = parsePoints(read("points.json"));
+    if (!pts.ok) throw new Error("fixture does not parse");
+    const names = new Set(pts.data.neighborhood);
+    expect(names.has("Downtown")).toBe(false);
+    expect(names.has("Mattapan")).toBe(false);
+  });
+
+  it("stats files carry params and a seed (REQ-EXP-1.2, REQ-OPS-CI.1)", () => {
+    for (const f of ["judge_tour.json", "scorecard.json"]) {
+      const j = read(f) as { params?: { WINDOW_DAYS: number }; seed?: unknown };
+      expect(j.params?.WINDOW_DAYS).toBe(60);
+      expect(j.seed).toBeNull();
+    }
+  });
+
   it("the provisional tour names three zombies that exist", () => {
     const tour = parseJudgeTour(read("judge_tour.json"));
     const ids = new Set((parsePoints(read("points.json")) as { data: { id: string[] } }).data.id);

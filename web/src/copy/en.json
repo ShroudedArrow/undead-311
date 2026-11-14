@@ -96,7 +96,7 @@
     "ISD": "Inspectional Services Department (ISD)",
     "PARK": "Parks and Recreation Department (PARK)",
     "PROP": "Property Management Department (PROP)",
-    "INFO": "Department code INFO (the city does not publish its name)"
+    "INFO": "Department code INFO"
   },
   "department_aliases": {
     "Public Works Department (PWD)": "PWDx",

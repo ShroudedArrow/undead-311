@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const csvPath = join(here, "..", "..", "data", "sample", "sample_311.csv");
 const outDir = join(here, "..", "public", "data");
+/** The detector defaults the fixtures stand in for (REQ-EXP-1.2: stats files carry params and seed). */
+const PARAMS = { WINDOW_DAYS: 60, RADIUS_M: 30, matching: "segment" };
 const overridePath = join(here, "..", "..", "data", "labels", "judge_tour_override.json");
 
 export function parseCsv(text) {
@@ -45,7 +47,7 @@ const cleanText = (s) => (s || "").replace(/&amp;/g, "&").replace(/\s+/g, " ").t
 const scrubStreet = (s) => cleanText(s).replace(/^INTERSECTION\s+/i, "").replace(/^\d+[A-Za-z-]*\s+/, "") || null;
 // UX-11 (ops#24): the two systems spell a few neighborhoods differently; the fixture groups the split ones.
 // The engine should normalize this in the export (handoff to:engine); the web app does not guess neighborhood names.
-const HOOD_ALIASES = { Allston: "Allston / Brighton", Brighton: "Allston / Brighton" };
+const HOOD_ALIASES = { Allston: "Allston / Brighton", Brighton: "Allston / Brighton", Downtown: "Downtown / Financial District", Mattapan: "Greater Mattapan" };
 const canonicalHood = (h) => (h ? (HOOD_ALIASES[h] ?? h) : null);
 const slug = (s) => (s || "unknown").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
@@ -214,9 +216,9 @@ export function buildFixtures(rows, override = null) {
     files: {
       "zombies.json": { data_version: version, zombies: zs },
       "points.json": points,
-      "scorecard.json": { data_version: version, scorecards, counts: tally },
+      "scorecard.json": { data_version: version, params: PARAMS, scorecards, counts: tally, seed: null },
       "status.json": { data_version: version, last_run: `${dataEnd}T02:00:00Z`, ok: true, row_counts: { cases: rows.length, zombies: zs.length }, anomalies: [], segments: "missing", headline_count: tally.headline, source_unknown_count: tally.source_unknown, sensitivity_count: tally.sensitivity, data_end: dataEnd },
-      "judge_tour.json": { data_version: version, provisional: true, zombie_ids: tour.ids, source: tour.source },
+      "judge_tour.json": { data_version: version, params: PARAMS, provisional: true, zombie_ids: tour.ids, source: tour.source, seed: null },
       "validation.json": { data_version: version, status: "awaiting_field_labels", precision: null, cant_tell_share: null, kappa: null, confirmed: [], sample_ids: [] },
     },
     shards: Object.fromEntries([...shards.entries()].sort().map(([k, v]) => [`cards/${k}.json`, { data_version: version, shard: k, cards: v.sort((x, y) => (x.zombie_id < y.zombie_id ? -1 : 1)) }])),
