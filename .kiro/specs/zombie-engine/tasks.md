@@ -93,7 +93,7 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
 
 ## Credibility
 
-- [ ] 21. [credibility] SAM segments and snapping
+- [x] 21. [credibility] SAM segments and snapping
   - Extend `pipeline/scripts/download.py` to fetch Boston Street Segments and neighborhood boundaries into `$DATA_DIR/raw/` and record them in `data/SNAPSHOT.md`; `ingest/snap.py` (DuckDB spatial, or shapely fallback); the `intersections` table and `near_node_ids` (REQ-ING-SNAP.4); `segments: unavailable` status when missing; a test that checks the intersection count against the downloaded file.
   - _Requirements: REQ-ING-SNAP.1–6_
 - [ ] 22. [credibility] Bulk-closure detector
