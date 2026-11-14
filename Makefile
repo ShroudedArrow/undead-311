@@ -76,7 +76,7 @@ validate:
 	$(STUB)
 
 coroner-eval:
-	$(STUB)
+	PYTHONPATH=pipeline $(UV) run python -m undead311 coroner-eval
 
 snapshot:
 	$(STUB)

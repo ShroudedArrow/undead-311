@@ -99,7 +99,7 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
 - [ ] 22. [credibility] Bulk-closure detector
   - `detect/bulk.py`: groups by department, close date and template; the separate `bulk_closure` flag (the label is never overwritten); `bulk_closures.json` and schema; BULK_MIN_CASES = 50 and BULK_RATIO = 10 come from `detect/params.py` (zombie-definition.md step 10).
   - _Requirements: REQ-BULK.1–2_
-- [ ] 23. [credibility] Coroner evaluation
+- [x] 23. [credibility] Coroner evaluation
   - `make coroner-eval`: accuracy, Wilson interval and top confusions into `docs/VALIDATION.md`; exits 0 with a message when the hand labels are missing.
   - _Requirements: REQ-COR-EVAL.1–2_
 - [ ] 24. [credibility] Sensitivity runs
