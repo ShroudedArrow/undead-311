@@ -23,53 +23,53 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 
 ## Credibility
 
-- [ ] 5. [credibility] Same-spot baseline and excess
+- [x] 5. [credibility] Same-spot baseline and excess
   - `stats/baseline.py`: comparable windows, `p_spot`, neighborhood fallback below 4 windows (counted), expected, excess with bootstrap intervals by department, family and neighborhood; write `baseline_p` per zombie.
   - _Requirements: REQ-STAT-BASE.1–4_
-- [ ] 6. [credibility] Neighborhood Poisson check
+- [x] 6. [credibility] Neighborhood Poisson check
   - λ per neighborhood, season and family with the exclusion buffer; P and expected; boundary file from task 21 of zombie-engine.
   - _Requirements: REQ-STAT-NBR.1–2_
-- [ ] 7. [credibility] Shift test and placebo
+- [x] 7. [credibility] Shift test and placebo
   - `stats/shift.py`: 1,000 seeded circular shifts per spot; the distribution; placebo excess; `calibration_warning` into `stats_status.json`.
-  - [ ] 7.1 Property P3: identical results for a fixed seed and input (excess, shift, placebo). _testing.md #7_
+  - [x] 7.1 Property P3: identical results for a fixed seed and input (excess, shift, placebo). _testing.md #7_
   - _Requirements: REQ-STAT-SHIFT.1–2, REQ-STAT-PLACEBO.1–2_
-- [ ] 8. [credibility] Adjusted stayed-fixed rate
+- [x] 8. [credibility] Adjusted stayed-fixed rate
   - Add back expected coincidences among on-time originals; clamp to on-time.
-  - [ ] 8.1 Property P6: raw ≤ adjusted ≤ on-time. _REQ-STAT-SF.3; testing.md #17_
+  - [x] 8.1 Property P6: raw ≤ adjusted ≤ on-time. _REQ-STAT-SF.3; testing.md #17_
   - _Requirements: REQ-STAT-SF.3_
-- [ ] 9. [credibility] Tier toggle values
+- [x] 9. [credibility] Tier toggle values
   - Headline and all-tier values side by side for every statistic, plus `source_unknown` and `sensitivity` counts.
-  - [ ] 9.1 Property P7: headline values don't change when non-headline zombies are added; all-tier = sum of tiers. _REQ-STAT-TIER.1–2_
+  - [x] 9.1 Property P7: headline values don't change when non-headline zombies are added; all-tier = sum of tiers. _REQ-STAT-TIER.1–2_
   - _Requirements: REQ-STAT-TIER.1–2_
-- [ ] 10. [credibility] Survival curves
+- [x] 10. [credibility] Survival curves
   - `stats/survival.py`: events from `detect()` with the window set to SURVIVAL_HORIZON_DAYS; lifelines KM by department and family; Greenwood intervals; 7/30/90 shares; half-life; headline and all tiers.
-  - [ ] 10.1 Property P2: curves start at 1 and never increase; bounds within [0, 1]. _testing.md #6_
+  - [x] 10.1 Property P2: curves start at 1 and never increase; bounds within [0, 1]. _testing.md #6_
   - _Requirements: REQ-STAT-KM.1–3_
-- [ ] 11. [credibility] Empirical-Bayes shrinkage
+- [x] 11. [credibility] Empirical-Bayes shrinkage
   - Beta-binomial with the prior mean fixed at the citywide rate; κ by maximum marginal likelihood, method-of-moments fallback.
-  - [ ] 11.1 Property P4: each shrunk rate lies between raw and citywide. _testing.md #8_
+  - [x] 11.1 Property P4: each shrunk rate lies between raw and citywide. _testing.md #8_
   - _Requirements: REQ-STAT-EB.1–2_
-- [ ] 12. [credibility] Funnel plot data
+- [x] 12. [credibility] Funnel plot data
   - Exact binomial 95% and 99.8% limits; `unusual` only outside 99.8%.
-  - [ ] 12.1 Property P8: limits are nested and narrow as n grows. _REQ-STAT-FUNNEL.1_
+  - [x] 12.1 Property P8: limits are nested and narrow as n grows. _REQ-STAT-FUNNEL.1_
   - _Requirements: REQ-STAT-FUNNEL.1–2_
-- [ ] 13. [credibility] Reporting intensity
+- [x] 13. [credibility] Reporting intensity
   - Reports per km of street per neighborhood and family; attached to every neighborhood rate.
   - _Requirements: REQ-STAT-REP.1–2_
-- [ ] 14. [credibility] With and without city-originated re-reports
+- [x] 14. [credibility] With and without city-originated re-reports
   - _Requirements: REQ-STAT-CITY.1_
-- [ ] 15. [credibility] Sensitivity grid file
+- [x] 15. [credibility] Sensitivity grid file
   - `sensitivity_grid.json` plus schema from `grid_runs`, including the run without Street Light Other.
   - _Requirements: REQ-STAT-GRID.1_
-- [ ] 16. [credibility] Temporary fixes, separate deaths, exclusions
+- [x] 16. [credibility] Temporary fixes, separate deaths, exclusions
   - `temporary_fixes.json` plus schema.
   - _Requirements: REQ-STAT-TEMP.1–2_
-- [ ] 17. [credibility] Validation sample, precision and confirmed tour
+- [x] 17. [credibility] Validation sample, precision and confirmed tour
   - `make validation-sample` (fixed seed, blind to confidence; owner config of neighborhoods), `make validate` (precision with Wilson interval, can't-tell share, Cohen's kappa; `docs/VALIDATION.md`, `validation.json`), the confirmed set, and `judge_tour.json` with `provisional: false` when confirmed.
-  - [ ] 17.1 Property P9: the precision interval contains the estimate; kappa is in [−1, 1]. _REQ-STAT-VAL.2_
-  - [ ] 17.2 Property P10 (part 2): a non-provisional tour contains only confirmed IDs. _REQ-STAT-TOUR.2_
+  - [x] 17.1 Property P9: the precision interval contains the estimate; kappa is in [−1, 1]. _REQ-STAT-VAL.2_
+  - [x] 17.2 Property P10 (part 2): a non-provisional tour contains only confirmed IDs. _REQ-STAT-TOUR.2_
   - _Requirements: REQ-STAT-VAL.1–4, REQ-STAT-TOUR.2_
-- [ ] 18. [credibility] All stats exports
+- [x] 18. [credibility] All stats exports
   - Schemas, `data_version`, determinism test for a fixed seed.
   - _Requirements: REQ-STAT-EXP.1–2_
 

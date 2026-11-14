@@ -144,6 +144,30 @@
                 "type": "null"
               }
             ]
+          },
+          "raw_lo": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "raw_hi": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -159,6 +183,29 @@
         ],
         "additionalProperties": true
       }
+    },
+    "all_tiers": {
+      "type": "object",
+      "description": "the same statistic with source_unknown and sensitivity zombies added (REQ-STAT-TIER.1)"
+    },
+    "dataset": {
+      "enum": [
+        "sample",
+        "full"
+      ]
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "params": {
+      "type": "object"
     }
   },
   "required": [

@@ -10,21 +10,25 @@ unknown are left out of both rates and counted in `n_closed - n_on_time_known` (
 
 `tier_set` "headline" counts only headline zombies and core-scope incidents; "all" counts zombies of every tier and
 adds sensitivity-scope incidents. The headline never includes `source_unknown` or `sensitivity` (REQ-STAT-TIER.2).
-The adjusted rate (REQ-STAT-SF.3) needs the baseline and is exported as null until it exists.
+The adjusted rate (REQ-STAT-SF.3) adds back the expected coincidences among on-time originals that are zombies of the
+tier set: `adj_k = raw_k + min(E, Z)`, with `Z` the on-time cases in zombie incidents and `E` the sum of each such
+incident's baseline `p` over its on-time cases (an original without a baseline adds nothing). `raw_k + Z` is the on-time
+count, so the adjusted rate is at most the on-time rate; `min(adj, on_time)` is applied anyway as the clamp the method
+requires. It is null when no baseline is given.
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
-from undead311.detect.model import Case, DetectionResult
+from undead311.detect.model import Case, DetectionResult, Incident
 from undead311.detect.params import DEFAULT, Params
 from undead311.stats.cohort import eligible_originals
-from undead311.stats.intervals import Rate, make_rate
+from undead311.stats.intervals import Rate, make_rate, wilson_p
 from undead311.stats.meta import params_json
 
 TierSet = Literal["headline", "all"]
@@ -55,21 +59,43 @@ def zombie_incident_ids(result: DetectionResult, tier_set: TierSet) -> frozenset
     return frozenset(z.incident_id for z in result.zombies if tier_set == "all" or z.tier == "headline")
 
 
+def adjusted_rate(stayed: int, on_time: int, known: int, expected: float) -> Rate | None:
+    """Adjusted stayed-fixed rate: `stayed + expected` coincidences added back, clamped to the on-time rate (REQ-STAT-SF.3).
+
+    `expected` is capped at the on-time cases that were resurrected (`on_time - stayed`), so the result lies between the
+    raw and the on-time rate. `k` is the rounded effective count; the interval is Wilson around the fractional rate.
+    """
+    if known <= 0:
+        return make_rate(0, 0)
+    add = min(max(expected, 0.0), float(on_time - stayed))
+    rate = min((stayed + add) / known, on_time / known)  # the clamp: never above the on-time rate
+    lo, hi = wilson_p(rate, known)
+    return Rate(k=round(rate * known), n=known, rate=rate, lo=lo, hi=hi)
+
+
 def scorecards(
     result: DetectionResult,
     cases: Mapping[str, Case],
     data_end: datetime,
     params: Params = DEFAULT,
+    baseline: Callable[[Incident], float | None] | None = None,
+    skip_resurrections: frozenset[str] = frozenset(),
 ) -> list[Scorecard]:
-    """Per family and citywide, for both tier sets, sorted by (family, tier set) (REQ-STAT-SF.1, .2, .4)."""
+    """Per family and citywide, for both tier sets, sorted by (family, tier set) (REQ-STAT-SF.1-.4).
+
+    `baseline` maps an incident to its coincidence probability; without it the adjusted rate is null.
+    `skip_resurrections` lists incident IDs whose zombie is not counted (REQ-STAT-CITY.1).
+    """
     out: list[Scorecard] = []
     for tier_set in ("headline", "all"):
-        zombies = zombie_incident_ids(result, tier_set)  # type: ignore[arg-type]
+        zombies = zombie_incident_ids(result, tier_set) - skip_resurrections  # type: ignore[arg-type]
+        expected: dict[str, float] = defaultdict(float)
         counts: dict[str, list[int]] = defaultdict(
             lambda: [0, 0, 0, 0]
         )  # closed, known, on time, stayed fixed
         for inc in eligible_originals(result.incidents, data_end, params, all_tiers=tier_set == "all"):
             resurrected = inc.incident_id in zombies
+            p = baseline(inc) if baseline and resurrected else None
             for cid in inc.member_ids:
                 c = cases[cid]
                 for key in (inc.type_family, CITYWIDE):
@@ -81,12 +107,15 @@ def scorecards(
                     if c.on_time:
                         row[2] += 1
                         row[3] += 0 if resurrected else 1
+                        if p is not None and resurrected:
+                            expected[key] += p
         counts.setdefault(CITYWIDE, [0, 0, 0, 0])
         for family in sorted(counts):
             closed, known, on_time, stayed = counts[family]
+            adj = adjusted_rate(stayed, on_time, known, expected[family]) if baseline else None
             out.append(
                 Scorecard(
-                    family, tier_set, closed, known, make_rate(on_time, known), make_rate(stayed, known)
+                    family, tier_set, closed, known, make_rate(on_time, known), make_rate(stayed, known), adj
                 )  # type: ignore[arg-type]
             )
     return sorted(out, key=lambda s: (s.family, s.tier_set))

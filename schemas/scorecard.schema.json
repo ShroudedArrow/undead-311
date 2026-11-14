@@ -306,6 +306,22 @@
         "full"
       ],
       "description": "Whether the run read the committed sample or the full data; a sample rate is not a citywide figure. REQ-STAT-EXP.1"
+    },
+    "without_city_originated": {
+      "type": "object",
+      "description": "REQ-STAT-CITY.1: the headline scorecards and counts with city-originated re-reports removed",
+      "properties": {
+        "scorecards": {
+          "type": "array"
+        },
+        "counts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
     }
   },
   "required": [

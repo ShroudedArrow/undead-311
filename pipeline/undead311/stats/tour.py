@@ -49,17 +49,29 @@ def read_override(path: Path) -> list[str] | None:
     return ids
 
 
-def build_tour(zombies: Iterable[Zombie], override: list[str] | None = None) -> JudgeTour | None:
-    """The provisional tour, or None when fewer than three headline zombies exist (REQ-STAT-TOUR.1).
+def build_tour(
+    zombies: Iterable[Zombie], override: list[str] | None = None, confirmed: Iterable[str] | None = None
+) -> JudgeTour | None:
+    """The tour, or None when fewer than three headline zombies exist (REQ-STAT-TOUR.1, .2).
+
+    With at least three confirmed zombie IDs (REQ-STAT-VAL.3) the tour is `provisional: false` and uses only confirmed
+    zombies: the owner's override if every listed ID is confirmed, else the confirmed ones with the most re-reports.
+    Fewer than three confirmed IDs leaves the tour provisional (a tour needs three).
 
     An override is used only if it lists exactly three distinct headline zombies; otherwise it is ignored. A zombie the
     Skeptic explained away is never featured, in the override or the ranking (REQ-SKEP, ops#45).
     """
     headline = {z.zombie_id: z for z in zombies if z.tier == "headline" and z.skeptic_verdict != "explained_away"}
+    sure = {i for i in (confirmed or ()) if i in headline}
+    if len(sure) >= TOUR_SIZE:
+        headline = {i: z for i, z in headline.items() if i in sure}
+        provisional = False
+    else:
+        provisional = True
     named = override is not None and len(override) == TOUR_SIZE and len(set(override)) == TOUR_SIZE
     if named and all(i in headline for i in override):  # type: ignore[union-attr]
-        return JudgeTour(True, tuple(override), "override")  # type: ignore[arg-type]
+        return JudgeTour(provisional, tuple(override), "override")  # type: ignore[arg-type]
     if len(headline) < TOUR_SIZE:
         return None
     ranked = sorted(headline.values(), key=lambda z: (-z.reports_after, z.zombie_id))
-    return JudgeTour(True, tuple(z.zombie_id for z in ranked[:TOUR_SIZE]), "most_reports")
+    return JudgeTour(provisional, tuple(z.zombie_id for z in ranked[:TOUR_SIZE]), "most_reports")

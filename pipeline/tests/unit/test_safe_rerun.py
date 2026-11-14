@@ -130,7 +130,7 @@ def test_req_ing_nightly_1_swap_never_removes_a_file_it_does_not_own(tmp_path):
 
 @pytest.mark.parametrize("rel,owned", [
     ("zombies.json", True), ("zombies.json.gz", True), ("cards/x-2020.json", True), ("stats/scorecard.json.gz", True),
-    ("stats/survival.json", False), ("sensitivity_grid.json", False), (".gitkeep", False), ("notes.txt", False),
+    ("stats/survival.json", True), ("stats/notes.json", False), ("sensitivity_grid.json", False), (".gitkeep", False), ("notes.txt", False),
 ])  # fmt: skip
 def test_req_ing_nightly_1_ownership_rules(rel, owned):
     assert owns_output(rel) is owned
