@@ -12,11 +12,12 @@ from undead311.detect.core import detect
 
 @given(town())
 def test_prop_p7_incidents_partition_the_closed_in_scope_cases(cases):
-    """REQ-DET-1.1: every closed in-scope case is in exactly one incident, and nothing else is."""
+    """REQ-DET-1.1: every closed in-scope case is in exactly one incident, and nothing else is. The one exception is the
+    later copy of a cross-system pair (ZD step 9, ops#30): it attaches to no incident, so a pair counts once."""
     result = detect(cases)
     members = [m for i in result.incidents for m in i.member_ids]
     assert len(members) == len(set(members))
-    assert set(members) == {c.id for c in cases if c.is_closed}
+    assert set(members) == {c.id for c in cases if c.is_closed} - set(result.mirror_ids)
     for i in result.incidents:
         assert i.incident_id == min(i.member_ids)
 

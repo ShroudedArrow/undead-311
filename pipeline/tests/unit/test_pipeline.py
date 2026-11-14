@@ -85,6 +85,7 @@ def test_req_ing_sample_1_sample_run_needs_no_raw_data_and_writes_valid_files(tm
     assert status["city_rereport_count"] == co["city_rereport"]
     assert status["city_rereport_under_1h_count"] == co["city_rereport_under_1h"]
     assert "headline_city_originated_count" not in status
+    assert status["mirror_copies_merged"] == rep.mirror_copies_merged  # ops#46
     assert status["planned_followup_count"] == rep.planned_followups
     if co["city_rereport_share"] >= 0.5:
         assert any("city re-reports" in a for a in status["anomalies"])

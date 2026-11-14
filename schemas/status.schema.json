@@ -89,6 +89,11 @@
         "full"
       ],
       "description": "Whether the run read the committed sample or the full data; a sample rate is not a citywide figure. REQ-STAT-EXP.1"
+    },
+    "mirror_copies_merged": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Later copies of cross-system pairs opened within MIRROR_WINDOW_HOURS: one report filed twice, so the later copy joins no incident and every denominator counts the pair once (ZD step 9, ops#30, ops#46)"
     }
   },
   "required": [

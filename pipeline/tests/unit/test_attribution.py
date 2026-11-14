@@ -60,10 +60,37 @@ def test_req_det_3_2_a_re_report_that_closes_starts_its_own_incident_and_chains(
 
 
 def test_req_det_2_4_cross_system_copy_within_six_hours_is_a_mirror_not_a_zombie():
-    """REQ-DET-2.4: legacy original and a new-system copy opened 3 h later attach to nothing."""
+    """REQ-DET-2.4: legacy original and a new-system copy opened 3 h later attach to nothing; only the later copy is the
+    mirror (ZD step 9, ops#30)."""
     r = detect([mk("A", 0, 0, close_hours=1), mk("N", 0, system="new", open_hours=3)])
     assert r.zombies == [] and r.attribution == {} and r.excluded_pairs["mirror"] == 1
-    assert r.mirror_ids == {"A", "N"} or "N" in r.mirror_ids
+    assert r.mirror_ids == {"N"}
+
+
+def test_req_det_2_4_the_earlier_copy_can_resurrect_another_incident_and_the_later_copy_is_dropped():
+    """REQ-DET-2.4, ops#30: one report filed in both systems resurrects an older closure once, through its earlier copy."""
+    r = detect([mk("P", 0, 1), mk("O", 40, 41), mk("N", 40, 42, system="new", open_hours=1)])
+    assert [(z.incident_id, z.resurrection_id, z.reports_after) for z in r.zombies] == [("P", "O", 1)]
+    assert r.mirror_ids == {"N"} and r.attribution == {"O": "P"}
+
+
+def test_req_det_2_4_a_mirror_copy_is_in_no_incident_and_so_counts_once():
+    """REQ-DET-1.1, REQ-DET-2.4, ops#30/#46: a closed later copy forms no incident of its own, so the pair is one original."""
+    r = detect([mk("O", 0, 1), mk("N", 0, 2, system="new", open_hours=1)])
+    assert [i.member_ids for i in r.incidents] == [("O",)] and r.mirror_ids == {"N"}
+
+
+def test_req_det_2_4_a_copy_of_a_mirror_is_not_a_mirror_itself():
+    """REQ-DET-2.4: A (legacy), B (new, +1 h), C (legacy, +2 h): B mirrors A; C is the same system as A, so it is a normal
+    case that can resurrect A's incident."""
+    r = detect([mk("A", 0, 0, close_hours=0.5), mk("B", 0, system="new", open_hours=1), mk("C", 0, open_hours=2)])
+    assert r.mirror_ids == {"B"} and r.attribution == {"C": "A"}
+
+
+def test_req_det_2_4_an_open_earlier_copy_still_makes_the_later_copy_a_mirror():
+    """REQ-DET-2.4: the pair is one report whether or not the earlier copy has closed."""
+    r = detect([mk("O", 0), mk("N", 0, 5, system="new", open_hours=1)])
+    assert r.mirror_ids == {"N"} and r.incidents == []
 
 
 def test_req_det_2_4_same_system_fast_re_report_is_a_zombie():
@@ -77,10 +104,12 @@ def test_req_det_2_4_cross_system_pair_after_six_hours_is_a_zombie():
     assert "A" in zs([mk("A", 0, 0, close_hours=1), mk("N", 0, system="new", open_hours=7)])
 
 
-def test_req_det_2_4_a_closed_mirror_copy_is_still_an_original_for_later_reports():
-    """Clarification S14: the mirror copy forms its own incident and can be resurrected."""
+def test_req_det_2_4_a_closed_mirror_copy_is_never_an_original():
+    """ZD step 9 (ops#30, supersedes clarification S14): the later copy is never an original, so a later report resurrects
+    only the earlier copy's incident."""
     cs = [mk("A", 0, 0, close_hours=1), mk("N", 0, 2, system="new", open_hours=3), mk("R", 10, system="new")]
-    assert list(zs(cs)) == ["N"]
+    assert list(zs(cs)) == ["A"]
+    assert detect(cs).zombies[0].reports_after == 1
 
 
 def test_req_det_2_2_transferred_original_is_never_a_zombie():

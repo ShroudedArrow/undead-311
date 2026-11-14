@@ -27,6 +27,10 @@ Each term is in [0, 1]:
 
 Weights, the intersection factor (0.9, raised from the 0.7 in design.md so that segment > intersection > radius holds at equal distance) and the radius factor (0.8) are proposals and are not validated against the hand-checked sample yet.
 
+## Mirror pairs (REQ-DET-2.4; zombie-definition step 9)
+
+A cross-system pair (legacy and new) of the same family and location, opened within `MIRROR_WINDOW_HOURS` = 6, is one report filed twice. The earlier-opened copy (ties by case ID) is processed normally: it can be a re-report of another incident and, if closed, an original. The later copy is the mirror: it joins no incident, is never an original and attaches to no incident as a re-report, so the pair counts once in every denominator. A copy of a mirror is not itself the original report (A legacy, B new 1 h later, C legacy 2 h later: only B is a mirror). The run report and `status.json` carry `mirror_copies_merged`. Same-system pairs never use this rule. The partition rule of testing.md #12 (every closed in-scope case is in one incident) therefore holds for closed cases that are not mirror copies; steering still words it without the exception.
+
 ## Closed on time vs stayed fixed (demo-critical part)
 
 The scorecard (`stats/scorecard.json`) counts closed cases that belong to an eligible original: not a transfer or a new-system Transitioned closure, and closed at least `WINDOW_DAYS` before the data ends. The on-time rate is on-time cases over cases whose `on_time` flag is known (legacy `on_time` ONTIME or OVERDUE; new-system `on_time`). The raw stayed-fixed rate is on-time cases whose incident has no possible zombie, over the same denominator, so it is never above the on-time rate. Both carry Wilson 95% intervals. Planned follow-ups and separate deaths count as not resurrected. The headline set counts headline zombies only; the "all" set counts every tier. The adjusted rate is described under "Durability statistics" below.

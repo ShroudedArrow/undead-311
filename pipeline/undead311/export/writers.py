@@ -260,7 +260,8 @@ def build_status(result: DetectionResult, ctx: ExportContext) -> dict:
         "row_counts": dict(sorted(ctx.row_counts.items())), "anomalies": sorted(ctx.anomalies),
         "segments": ctx.segments, "calibration_warning": stats.get("calibration_warning"),
         "headline_count": result.headline_count, "source_unknown_count": result.count("source_unknown"),
-        "city_rereport_count": result.count("city_rereport"), "sensitivity_count": result.count("sensitivity"),
+        "city_rereport_count": result.count("city_rereport"), "mirror_copies_merged": len(result.mirror_ids),
+        "sensitivity_count": result.count("sensitivity"),
     }  # fmt: skip
     status["planned_followup_count"] = len(result.planned_followups)
     if ctx.city_origin:

@@ -89,6 +89,7 @@ class RunReport:
     row_counts: dict[str, int] = field(default_factory=dict)
     exclusions: dict[str, int] = field(default_factory=dict)
     excluded_pairs: dict[str, int] = field(default_factory=dict)
+    mirror_copies_merged: int = 0  # later copies of cross-system pairs, counted once with their earlier copy (ZD step 9)
     normalization_issues: dict[str, int] = field(default_factory=dict)
     candidate_placeholders: list[dict] = field(default_factory=list)
     label_coverage: float = 1.0
@@ -118,6 +119,7 @@ class RunReport:
             f"  rows: {self.row_counts}",
             f"  exclusions: {self.exclusions}",
             f"  excluded pairs: {self.excluded_pairs}",
+            f"  mirror copies merged into their earlier copy: {self.mirror_copies_merged}",
             f"  Coroner label coverage: {self.label_coverage:.1%} ({self.unlabeled} unlabeled)",
             "  zombies: " + ", ".join(f"{k} {t.get(k, 0)}" for k in ZOMBIE_TIERS),
             (
@@ -283,6 +285,7 @@ def run_pipeline(
         write_input(stage_proc / "skeptic_input.json", build_input(result.zombies, by_id, version, sample_ids, tour))
         result.zombies = join_objections(result.zombies, root / "data" / "labels" / "skeptic_objections.json", p)
         report.excluded_pairs = dict(result.excluded_pairs)
+        report.mirror_copies_merged = len(result.mirror_ids)
         report.tier_counts = {t: result.count(t) for t in ZOMBIE_TIERS}  # type: ignore[arg-type]
         report.confidence_partial = sum(z.confidence_partial for z in result.zombies)
         report.city_origin = city_origin_summary(result, by_id)

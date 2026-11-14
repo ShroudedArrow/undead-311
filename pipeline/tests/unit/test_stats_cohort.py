@@ -27,6 +27,14 @@ def test_req_stat_sf_1_only_fully_observed_incidents_are_eligible():
     assert first_members(eligible_originals(incidents, edge)) == {"A", "B"}
 
 
+def test_req_stat_sf_1_a_mirror_pair_is_one_original_in_the_denominator():
+    """REQ-STAT-SF.1, ZD step 9 (ops#46): the same report filed in both systems within 6 h counts once; the later copy
+    forms no incident."""
+    r = detect([mk("L", 0, 0, close_hours=1), mk("N", 0, 1, system="new", open_hours=3), mk("B", 0, 1, x=500.0)])
+    assert first_members(eligible_originals(r.incidents, END)) == {"L", "B"}
+    assert r.mirror_ids == {"N"}
+
+
 def test_req_stat_sf_1_a_transferred_incident_is_never_eligible():
     incidents = detect([mk("A", 0, 1, text="Resubmitted as BCS-123"), mk("B", 0, 1, x=500.0)]).incidents
     assert first_members(eligible_originals(incidents, END)) == {"B"}

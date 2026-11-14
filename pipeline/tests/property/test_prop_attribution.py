@@ -78,24 +78,27 @@ def test_prop_p14_mirror_and_transfer_pairs_never_survive(cases):
             assert not is_transferred_original(
                 {"system": c.system, "closure_text": c.closure_text, "closure_code": c.closure_code}
             )
-    # independent of the detector's own mirror_ids: no attached R has a closed same-family cross-system case that
-    # matches it by location and opened within MIRROR_WINDOW_HOURS (REQ-DET-2.4, testing.md #20)
+    # independent of the detector's own mirror_ids: an attached R has no EARLIER-opened same-family cross-system case that
+    # matches it by location and opened within MIRROR_WINDOW_HOURS, unless that case is itself a later copy (ZD step 9:
+    # the earlier-opened copy is processed normally, REQ-DET-2.4, testing.md #20)
     window = timedelta(hours=DEFAULT.MIRROR_WINDOW_HOURS)
     for rid in r.attribution:
         c = by_id[rid]
         for o in cases:
-            cross = o.id != rid and o.is_closed and o.system != c.system and o.type_family == c.type_family
-            if cross and abs(o.open_utc - c.open_utc) <= window:
+            cross = o.id != rid and o.system != c.system and o.type_family == c.type_family and o.id not in r.mirror_ids
+            if cross and (o.open_utc, o.id) < (c.open_utc, c.id) and c.open_utc - o.open_utc <= window:
                 assert match(c, o, DEFAULT) is None, (rid, o.id)
-    # same-system pairs are never mirrors: every mirror has a closed cross-system partner within 6 h and an edge
+    # same-system pairs are never mirrors: every mirror has an earlier-opened cross-system partner within 6 h and an edge
     edges = brute_edges([c for c in cases], DEFAULT)
     for mid in r.mirror_ids:
         c = by_id[mid]
         assert any(
-            by_id[o].is_closed and by_id[o].system != c.system
-            and abs((by_id[o].open_utc - c.open_utc).total_seconds()) <= 6 * 3600
+            by_id[o].system != c.system and (by_id[o].open_utc, o) < (c.open_utc, mid)
+            and (c.open_utc - by_id[o].open_utc).total_seconds() <= 6 * 3600
             for a, b in edges if mid in (a, b) for o in (a if b == mid else b,)
         )
+    # a mirror copy joins no incident and is never an original (ZD step 9, ops#30)
+    assert not {m for i in r.incidents for m in i.member_ids} & set(r.mirror_ids)
 
 
 def test_prop_p14_generator_does_produce_mirrors():

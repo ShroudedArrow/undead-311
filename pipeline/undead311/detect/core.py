@@ -6,8 +6,8 @@ Steps (each cites its requirement):
    within INCIDENT_MAX_SPAN_DAYS. Otherwise they start a new incident. The incident's close time is its latest member
    close, its Coroner label is that member's label (ties by smallest member ID), its ID is its smallest member ID.
 2. Candidate pairs (REQ-DET-2): (incident I, case R) with R opening strictly after I's close and within WINDOW_DAYS,
-   same family, R matching a member, R not a member. Excluded by reason: `mirror` (R is a cross-system copy of a
-   closed case opened within MIRROR_WINDOW_HOURS), `transferred_original` (a member is a transfer closure or a
+   same family, R matching a member, R not a member. Excluded by reason: `mirror` (R is the later copy of a
+   cross-system pair opened within MIRROR_WINDOW_HOURS), `transferred_original` (a member is a transfer closure or a
    Transitioned closure), `linked_successor` (R continues a member as its linked successor).
 3. Attribution (REQ-DET-3): R in (open UTC, ID) order attaches to the eligible incident with the latest close
    (ties by smallest incident ID). The earliest attached R is the resurrection.
@@ -107,12 +107,15 @@ def _adjacency(edges: Edges) -> dict[str, list[tuple[str, Match]]]:
     return adj
 
 
-def build_incidents(cases: list[Case], adj: dict[str, list[tuple[str, Match]]], p: Params) -> tuple[list[_Inc], dict[str, _Inc]]:
-    """Greedy incident pass (REQ-DET-1.1-1.4). Returns incidents and member id -> incident."""
+def build_incidents(
+    cases: list[Case], adj: dict[str, list[tuple[str, Match]]], p: Params, mirrors: frozenset[str] = frozenset()
+) -> tuple[list[_Inc], dict[str, _Inc]]:
+    """Greedy incident pass (REQ-DET-1.1-1.4). Returns incidents and member id -> incident. A mirror copy (the later copy
+    of a cross-system pair, ZD step 9) joins no incident and is never an original (REQ-DET-2.4)."""
     span = timedelta(days=p.INCIDENT_MAX_SPAN_DAYS)
     incs: list[_Inc] = []
     of: dict[str, _Inc] = {}
-    for c in sorted((c for c in cases if c.is_closed), key=lambda c: (c.open_utc, c.id)):
+    for c in sorted((c for c in cases if c.is_closed and c.id not in mirrors), key=lambda c: (c.open_utc, c.id)):
         best: _Inc | None = None
         for nid, _m in adj.get(c.id, ()):
             inc = of.get(nid)
@@ -157,13 +160,19 @@ def _finalize_incident(inc: _Inc) -> Incident:
 
 
 def mirror_ids(cases: list[Case], adj: dict[str, list[tuple[str, Match]]], p: Params) -> frozenset[str]:
-    """Cases that are a cross-system copy of a closed in-scope case opened within MIRROR_WINDOW_HOURS (REQ-DET-2.4)."""
+    """The later-opened copy of every cross-system report filed twice (ZD step 9, REQ-DET-2.4, ops#30).
+
+    A cross-system pair of the same family and location, opened within MIRROR_WINDOW_HOURS, is ONE report. The earlier-opened
+    copy (ties by case ID) is processed normally; the later copy is a mirror: it joins no incident, is never an original and
+    attaches to no incident as a re-report. Cases are taken in (open, ID) order and a copy of a mirror is not itself the
+    original report, so a chain A (legacy), B (new, 1 h later), C (legacy, 2 h later) mirrors B only: C is a same-system
+    re-report of A and keeps its normal status."""
     by_id = {c.id: c for c in cases}
-    out = set()
-    for c in cases:
+    out: set[str] = set()
+    for c in sorted(cases, key=lambda c: (c.open_utc, c.id)):
         for nid, _ in adj.get(c.id, ()):
             n = by_id[nid]
-            if n.is_closed and _mirror(c, n, p):
+            if (n.open_utc, n.id) < (c.open_utc, c.id) and nid not in out and _mirror(c, n, p):
                 out.add(c.id)
                 break
     return frozenset(out)
@@ -202,15 +211,15 @@ def detect(cases: list[Case], p: Params = DEFAULT, edges: Edges | None = None) -
     edges = brute_edges(cases, p) if edges is None else edges
     adj = _adjacency(edges)
 
-    # 1. incidents
-    incs, of = build_incidents(cases, adj, p)
+    # 1. incidents (a mirror copy, the later of a cross-system pair, is in none)
+    mirrors = mirror_ids(cases, adj, p)
+    result.mirror_ids = mirrors
+    incs, of = build_incidents(cases, adj, p, mirrors)
     incs.sort(key=lambda i: i.id)
     result.incidents = [_finalize_incident(i) for i in incs]
     final = {i.incident_id: i for i in result.incidents}
 
     # 2-3. candidate pairs and attribution
-    mirrors = mirror_ids(cases, adj, p)
-    result.mirror_ids = mirrors
     win = timedelta(days=p.WINDOW_DAYS)
     attached: dict[str, list[Case]] = defaultdict(list)
     best_match: dict[tuple[str, str], Match] = {}
