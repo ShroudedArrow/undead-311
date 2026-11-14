@@ -61,11 +61,59 @@
     },
     "shift": {
       "type": "object",
-      "description": "REQ-STAT-SHIFT: observed count against the distribution of counts under random time shifts. Fields: runs, seed, observed, mean, q025, q975 (numbers). Inner fields are not type-checked so the methods page can say a result is missing instead of failing the whole file (ops#64)."
+      "description": "REQ-STAT-SHIFT: observed count against the distribution of counts under random time shifts.",
+      "properties": {
+        "runs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "observed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mean": {
+          "type": "number"
+        },
+        "q025": {
+          "type": "number"
+        },
+        "q975": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "runs",
+        "seed",
+        "observed",
+        "mean",
+        "q025",
+        "q975"
+      ],
+      "additionalProperties": true
     },
     "placebo": {
       "type": "object",
-      "description": "REQ-STAT-PLACEBO: excess for a placebo outcome that should be about zero. Fields: excess, lo, hi (numbers). Inner fields are not type-checked, see `shift`."
+      "description": "REQ-STAT-PLACEBO: excess for a placebo outcome that should be about zero, with its interval.",
+      "properties": {
+        "excess": {
+          "type": "number"
+        },
+        "lo": {
+          "type": "number"
+        },
+        "hi": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "excess",
+        "lo",
+        "hi"
+      ],
+      "additionalProperties": true
     }
   },
   "required": [
