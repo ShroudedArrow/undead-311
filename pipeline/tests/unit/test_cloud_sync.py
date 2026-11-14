@@ -73,7 +73,10 @@ def test_cli_exit_codes(tmp_path):
         check=False,
         env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path)},
     )
-    assert missing.returncode in (1, 2)  # 2 = no cache found; 1 only if a default cache exists and differs
+    # 2 = no cache found. An absolute default cache (Kiro Web mounts /projects/.kiro/...) is found even with a fake HOME,
+    # so the "no cache" exit code can only be asserted where none exists.
+    absolute_cache = any(Path(c).is_dir() for c in cloud_sync.CLOUD_CANDIDATES if not c.startswith("~"))
+    assert missing.returncode in ((0, 1) if absolute_cache else (2,))
     (cloud / "hooks" / "a.txt").write_text("changed\n")
     differ = subprocess.run(
         [sys.executable, script, "--cloud", str(cloud), "--working-tree"],
