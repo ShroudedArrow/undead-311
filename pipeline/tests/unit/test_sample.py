@@ -91,3 +91,11 @@ def test_street_light_other_only_when_linked_to_core(rows):
         assert r["predecessor_ids"]
         assert r["type_family"] != "streetlight"
     assert all(r["predecessor_ids"] == "" for r in rows if r["type_raw"] != "Street Light Other")
+
+
+def test_req_stat_sf_1_on_time_column_is_known_for_nearly_every_row(rows):
+    """REQ-STAT-SF.1, .4: the committed sample carries `on_time` (true, false or empty) so the scorecard can be shown."""
+    assert "on_time" in rows[0]
+    assert {r["on_time"] for r in rows} <= {"true", "false", ""}
+    assert sum(r["on_time"] != "" for r in rows) > 0.95 * len(rows)
+    assert {r["system"] for r in rows if r["on_time"] == "true"} == {"legacy", "new"}

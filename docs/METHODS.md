@@ -24,3 +24,9 @@ Each term is in [0, 1]:
 `confidence_partial` is `true` exactly when a neutral term was used (no `baseline_p`, or Skeptic `not_reviewed`). The score is never used to choose judge-mode zombies or the validation sample; raters are blind to it.
 
 Weights, the intersection factor (0.9, raised from the 0.7 in design.md so that segment > intersection > radius holds at equal distance) and the radius factor (0.8) are proposals and are not validated against the hand-checked sample yet.
+
+## Closed on time vs stayed fixed (demo-critical part)
+
+The scorecard (`stats/scorecard.json`) counts closed cases that belong to an eligible original: not a transfer or a new-system Transitioned closure, and closed at least `WINDOW_DAYS` before the data ends. The on-time rate is on-time cases over cases whose `on_time` flag is known (legacy `on_time` ONTIME or OVERDUE; new-system `on_time`). The raw stayed-fixed rate is on-time cases whose incident has no possible zombie, over the same denominator, so it is never above the on-time rate. Both carry Wilson 95% intervals. Planned follow-ups and separate deaths count as not resurrected. The headline set counts headline zombies only; the "all" set counts every tier. The adjusted rate stays null until the baseline exists (credibility layer).
+
+Sample caveat: `data/sample/sample_311.csv` is built to hold many re-report pairs, so its rates (about 70% on time, 49% stayed fixed) show that the scorecard works and are not citywide figures. The raw legacy files name the columns `on_time` and `sla_target_dt`; the pipeline also accepts the older spellings `ontime` and `target_dt`.

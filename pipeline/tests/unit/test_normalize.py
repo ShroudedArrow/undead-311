@@ -104,3 +104,22 @@ def test_req_ing_tz_time_udf_contract():
     assert time_udf("legacy", "garbage") == "!ERR"
     assert time_udf("legacy", "2024-07-01 12:00:00") == "2024-07-01 16:00:00|2024-07-01 12:00:00|"
     assert time_udf("new", "2024-11-03 01:15:00+00").endswith("|local_ambiguous")
+
+
+def test_req_stat_sf_1_legacy_on_time_and_target_are_read_under_either_header_spelling():
+    """REQ-STAT-SF.1: the yearly legacy files say `on_time` and `sla_target_dt`; an older header said `ontime`, `target_dt`."""
+    for on_col, target_col in (("on_time", "sla_target_dt"), ("ontime", "target_dt")):
+        con = duckdb.connect()
+        con.execute(
+            f"create table raw_legacy(case_enquiry_id varchar, open_dt varchar, {target_col} varchar, closed_dt varchar, "
+            f"{on_col} varchar, case_status varchar, type varchar, filename varchar)"
+        )
+        con.execute(
+            "insert into raw_legacy values ('1', '2024-03-04 09:12:00', '2024-03-08 09:12:00', '2024-03-06 14:30:00', "
+            "'ONTIME', 'Closed', 'Sign Repair', 'f'), ('2', '2024-03-04 09:12:00', NULL, '2024-03-20 14:30:00', "
+            "'OVERDUE', 'Closed', 'Sign Repair', 'f')"
+        )
+        con.execute(NEW_DDL)
+        normalize(con)
+        got = con.execute("select id, on_time, target_time_utc is not null from cases_norm order by id").fetchall()
+        assert got == [("1", True, True), ("2", False, False)]

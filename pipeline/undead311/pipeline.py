@@ -120,6 +120,7 @@ def _load_sample(con: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
                try_cast(close_time_utc as timestamp) as close_time_utc, status, closure_text,
                nullif(closure_code, '') as closure_code, type_raw, type_family, scope_tier,
                lower(city_originated_type) = 'true' as city_originated_type, false as catch_all,
+               case on_time when 'true' then true when 'false' then false end as on_time,
                predecessor_ids, nullif(department, '') as department, nullif(neighborhood, '') as neighborhood,
                NULL::varchar as district, nullif(street, '') as street, try_cast(lat as double) as lat,
                try_cast(lon as double) as lon, nullif(source, '') as source, NULL::varchar as segment_id,

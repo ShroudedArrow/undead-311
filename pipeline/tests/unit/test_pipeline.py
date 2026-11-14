@@ -138,3 +138,16 @@ def test_req_stat_exp_1_an_absent_stats_package_is_not_present(tmp_path, monkeyp
     rep = run_pipeline(out_dir=out, raw_dir=raw, work_dir=tmp_path / "data", snapshot_md=snap, run_time="2026-11-13T00:00:00Z")
     assert rep.stats == "not present"
     assert json.loads((out / "status.json").read_text())["calibration_warning"] is None
+
+
+def test_req_stat_sf_4_sample_scorecard_has_on_time_rates(tmp_path):
+    """REQ-STAT-SF.1, .4: on the committed sample the citywide two-number scorecard has known on-time cases, not no_cases."""
+    out = tmp_path / "out"
+    run_pipeline(sample=True, out_dir=out, work_dir=tmp_path / "data", run_time="2026-11-13T00:00:00Z")
+    cards = json.loads((out / "stats" / "scorecard.json").read_text())["scorecards"]
+    city = {c["tier_set"]: c for c in cards if c["family"] == "citywide"}
+    for tier_set in ("headline", "all"):
+        c = city[tier_set]
+        assert c["n_on_time_known"] > 0 and c["on_time"]["rate"] is not None and c["on_time"]["reason"] is None
+        assert c["stayed_fixed_raw"]["rate"] is not None
+        assert c["stayed_fixed_raw"]["rate"] <= c["on_time"]["rate"]

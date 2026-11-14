@@ -65,6 +65,15 @@ def _col(cols: set[str], name: str) -> str:
     return f"nullif(trim({name}), '')" if name in cols else "NULL::VARCHAR"
 
 
+def _first_col(cols: set[str], *names: str) -> str:
+    """The first of `names` that the table has, else NULL. The legacy yearly files spell two columns `sla_target_dt`
+    and `on_time` (a documented older header said `target_dt` and `ontime`); both spellings are read (REQ-STAT-SF.1)."""
+    for name in names:
+        if name in cols:
+            return _col(cols, name)
+    return "NULL::VARCHAR"
+
+
 def normalize(con: duckdb.DuckDBPyConnection) -> NormReport:
     """Build `cases_norm` and `norm_issues` from `raw_legacy` and `raw_new` (REQ-ING-2.1-3)."""
     con.execute("select 1").fetchall()  # a half-read result from an earlier stage would block UDF registration
@@ -78,7 +87,8 @@ def normalize(con: duckdb.DuckDBPyConnection) -> NormReport:
     con.execute(f"""
         create table norm_stage as
         select {lg('case_enquiry_id')} as id, 'legacy' as system, {lg('open_dt')} as open_raw, {lg('closed_dt')} as close_raw,
-               {lg('target_dt')} as target_raw, {lg('ontime')} as on_time_raw, {lg('case_status')} as status,
+               {_first_col(lc, 'sla_target_dt', 'target_dt')} as target_raw,
+               {_first_col(lc, 'on_time', 'ontime')} as on_time_raw, {lg('case_status')} as status,
                {lg('closure_reason')} as closure_text, NULL::VARCHAR as closure_code, {lg('type')} as type_raw,
                {lg('queue')} as queue, {lg('department')} as department, {lg('neighborhood')} as neighborhood,
                {lg('pwd_district')} as district, {lg('location_street_name')} as street,
