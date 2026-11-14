@@ -24,7 +24,7 @@ from datetime import datetime, timedelta
 
 from undead311.detect.confidence import rescore
 from undead311.detect.edges import brute_edges
-from undead311.detect.match import better
+from undead311.detect.match import better, is_snapped
 from undead311.detect.model import (
     Case,
     Chain,
@@ -142,7 +142,7 @@ def _finalize_incident(inc: _Inc) -> Incident:
         department=rep.department,
         neighborhood=rep.neighborhood,
         district=rep.district,
-        segment_id=rep.segment_id,
+        segment_id=rep.segment_id if is_snapped(rep) else None,  # only a snapped case has a segment (REQ-ING-SNAP.1)
         bulk_closure=closer.bulk_closure,
         has_transferred_member=any(
             is_transferred_original(

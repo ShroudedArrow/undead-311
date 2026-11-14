@@ -42,6 +42,7 @@ from undead311.ingest.load import load
 from undead311.ingest.normalize import normalize
 from undead311.ingest.pii import PiiCounter
 from undead311.ingest.quality import on_time_anomalies, on_time_coverage
+from undead311.ingest.snap import SEGMENTS_FILE, snap_cases
 from undead311.paths import data_dir, worktree_root
 
 STATS_ABSENT_NAMES = ("undead311.stats", "undead311.stats.pipeline")  # the only ModuleNotFoundError names that mean "absent"
@@ -175,6 +176,12 @@ def run_pipeline(
             report.candidate_placeholders = cr.candidate_placeholders
             report.row_counts["cases_clean"] = cr.kept
             excluded = ids_by_reason(con)
+        if not sample:  # REQ-ING-SNAP.1-2: the sample is radius-only; a full run snaps when the SAM file is in raw/
+            sr = snap_cases(con, (raw_dir or base / "raw") / SEGMENTS_FILE, p)
+            state["segments"] = "available" if sr.available else "missing"
+            report.row_counts.update(snapped_cases=sr.snapped, unsnapped_cases=sr.unsnapped, intersections=sr.intersections)
+            if not sr.available:
+                report.warnings.append(f"segments unavailable: {SEGMENTS_FILE} is not in raw/; radius matching only (REQ-ING-SNAP.2)")
         build_templates(con, processed)
         jr: JoinReport = join_labels(con, labels_csv)
         report.label_coverage, report.unlabeled = jr.covered_share, jr.unlabeled
@@ -231,7 +238,7 @@ def run_pipeline(
             run_time=run_time or datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             row_counts=dict(report.row_counts),
             anomalies=list(report.warnings),
-            segments="missing",
+            segments=state.get("segments", "missing"),
             exclusion_counts=dict(report.exclusions),
             excluded_ids=excluded,
             stats_status=stats_status,

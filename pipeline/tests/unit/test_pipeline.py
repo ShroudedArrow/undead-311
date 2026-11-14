@@ -140,6 +140,28 @@ def test_req_stat_exp_1_an_absent_stats_package_is_not_present(tmp_path, monkeyp
     assert json.loads((out / "status.json").read_text())["calibration_warning"] is None
 
 
+def test_req_ing_snap_2_status_says_segments_available_only_when_the_sam_file_is_in_raw(tmp_path):
+    """REQ-ING-SNAP.1-2: with the SAM file the full run snaps and status says available; without it, missing plus an anomaly."""
+    raw, snap = raw_folder(tmp_path)
+    out = tmp_path / "out"
+    run_pipeline(out_dir=out, raw_dir=raw, work_dir=tmp_path / "d1", snapshot_md=snap, run_time="2026-11-13T00:00:00Z")
+    st = json.loads((out / "status.json").read_text())
+    assert st["segments"] == "missing" and any("segments unavailable" in a for a in st["anomalies"])
+    street = {"type": "FeatureCollection", "features": [
+        {"type": "Feature", "properties": {"SEGMENT_ID": 7, "F_ZLEV": 0, "T_ZLEV": 0},
+         "geometry": {"type": "LineString", "coordinates": [[-71.1405, 42.27], [-71.1395, 42.27]]}},
+        {"type": "Feature", "properties": {"SEGMENT_ID": 8, "F_ZLEV": 0, "T_ZLEV": 0},
+         "geometry": {"type": "LineString", "coordinates": [[-71.1395, 42.27], [-71.1395, 42.2709]]}}]}  # fmt: skip
+    (raw / "street_segments_sam.geojson").write_text(json.dumps(street))
+    out2 = tmp_path / "out2"
+    rep = run_pipeline(out_dir=out2, raw_dir=raw, work_dir=tmp_path / "d2", snapshot_md=snap, run_time="2026-11-13T00:00:00Z")
+    st2 = json.loads((out2 / "status.json").read_text())
+    assert st2["segments"] == "available" and not any("segments unavailable" in a for a in st2["anomalies"])
+    assert rep.row_counts["intersections"] == 1 and rep.row_counts["snapped_cases"] >= 2
+    assert [z["zombie_id"] for z in json.loads((out2 / "zombies.json").read_text())["zombies"]] == ["1001:1002"]
+    assert json.loads((out2 / "zombies.json").read_text())["zombies"][0]["match_mode"] == "segment"
+
+
 def test_req_stat_exp_1_a_missing_stats_submodule_fails_and_absent_stats_removes_stale_files(tmp_path, monkeypatch):
     """REQ-STAT-EXP.1 (ops#48): a missing module inside the stats package is an error; "not present" removes old stats files."""
     import importlib
