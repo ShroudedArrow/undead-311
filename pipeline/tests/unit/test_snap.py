@@ -198,3 +198,29 @@ def test_req_ing_snap_1_points_on_real_segments_snap_to_them_and_distant_points_
     # a segment's chord midpoint is within 15 m of its own line unless the segment bends strongly
     assert sum(v is not None and v <= 15 for v in got.values()) > 0.9 * len(segs)
     assert distance_m(42.33, -71.08, 42.34, -71.08) > 1000  # sanity of the helper used above
+
+
+def bridge(path: Path) -> Path:
+    """A ground street (id 10) under a bridge (id 20, z-level 1 at both ends), 6 m apart in plan view."""
+    return write_grid(path, [
+        feature(10, [(-200, 0), (200, 0)], 0, 0), feature(20, [(-200, 6), (200, 6)], 1, 1),
+        feature(30, [(200, 0), (400, 0)], 0, 0),
+    ])  # fmt: skip
+
+
+def test_req_ing_snap_1_a_case_under_a_bridge_snaps_to_the_ground_street_not_the_road_above(tmp_path):
+    """ops#83: the elevated segment is nearer (1 m vs 5 m) but the ground segment is within SEGMENT_SNAP_M, so it wins."""
+    con = cases_table([("under", 0, 5), ("under2", 50, 5), ("far", 0, 25)])
+    rep = snap_cases(con, bridge(tmp_path / "b.geojson"))
+    assert row(con, "under")[0] == "10" and row(con, "under2")[0] == "10"
+    assert rep.z_preferred == 2 and rep.snapped == 2
+    assert row(con, "far")[0] == "20" and row(con, "far")[1] > DEFAULT.SEGMENT_SNAP_M  # nothing on the ground within 15 m
+    by = {c.id: c for c in cases_from_table(con)}
+    assert match(by["under"], by["under2"]) is not None  # same ground segment, 50 m apart
+
+
+def test_req_ing_snap_1_an_elevated_segment_is_used_when_no_ground_segment_is_within_snap_distance(tmp_path):
+    con = cases_table([("ramp", 0, 7)])
+    only_ramp = write_grid(tmp_path / "r.geojson", [feature(20, [(-200, 0), (200, 0)], 1, 1)])
+    rep = snap_cases(con, only_ramp)
+    assert row(con, "ramp")[0] == "20" and rep.snapped == 1 and rep.z_preferred == 0

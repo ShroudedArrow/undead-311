@@ -224,7 +224,8 @@ def run_pipeline(
         if not sample:  # REQ-ING-SNAP.1-2: the sample is radius-only; a full run snaps when the SAM file is in raw/
             sr = snap_cases(con, (raw_dir or base / "raw") / SEGMENTS_FILE, p)
             state["segments"] = "available" if sr.available else "missing"
-            report.row_counts.update(snapped_cases=sr.snapped, unsnapped_cases=sr.unsnapped, intersections=sr.intersections)
+            report.row_counts.update(snapped_cases=sr.snapped, unsnapped_cases=sr.unsnapped, intersections=sr.intersections,
+                                     z_preferred_cases=sr.z_preferred)
             if not sr.available:
                 report.warnings.append(f"segments unavailable: {SEGMENTS_FILE} is not in raw/; radius matching only (REQ-ING-SNAP.2)")
         build_templates(con, stage_proc)

@@ -9,6 +9,11 @@
   (`detect.match.is_snapped`). Rows that already carry a `segment_id` (the test town) are left as they are, and so is
   `near_nodes` for them (REQ-ING-SNAP.3, .5). Without the segments file nothing is snapped (REQ-ING-SNAP.2).
 
+Z-level (REQ-ING-SNAP.1, ops#83): a segment is "ground" when `F_ZLEV` and `T_ZLEV` are both 0. A case snaps to the nearest
+ground segment within SEGMENT_SNAP_M when there is one; otherwise to the nearest segment of any level. So a case under a
+bridge or ramp does not snap to the road above it, and a ground-snapped case records only ground-level (z = 0) nodes in
+`near_nodes`. `SnapReport.z_preferred` counts the cases whose snap changed because of this rule.
+
 Known limitation (REQ-ING-SNAP.6, stated in METHODS.md): a shared endpoint is a segment break, and not every break is a
 cross street, so the intersection rule can also join two cases on consecutive segments of one street.
 """
@@ -68,6 +73,7 @@ class SnapReport:
     pre_snapped: int = 0
     near_node_cases: int = 0
     intersections: int = 0
+    z_preferred: int = 0  # snapped to a ground segment although an elevated one was nearer (REQ-ING-SNAP.1)
 
 
 def node_id(lat: float, lon: float, zlev: int) -> str:
@@ -161,9 +167,19 @@ def snap_cases(
     lines = [LineString([_xy(lo, la) for lo, la in s.coords]) for s in segs]
     seg_tree = STRtree(lines)
     ids = [s.segment_id for s in segs]
+    ground = [i for i, s in enumerate(segs) if s.f_zlev == 0 and s.t_zlev == 0]
+    ground_ids = [ids[i] for i in ground]
+    ground_tree = STRtree([lines[i] for i in ground]) if ground else None
+    ground_set = set(ground_ids)
     xs = np.array([_xy(r[3], r[2])[0] for r in rows])
     ys = np.array([_xy(r[3], r[2])[1] for r in rows])
     nearest = _nearest(seg_tree, ids, xs, ys)
+    if ground_tree is not None:  # prefer a ground segment within SEGMENT_SNAP_M over a nearer elevated one
+        on_ground = _nearest(ground_tree, ground_ids, xs, ys)
+        for i, g in enumerate(on_ground):
+            if g is not None and g[1] <= p.SEGMENT_SNAP_M and g != nearest[i]:
+                report.z_preferred += nearest[i] is not None and nearest[i][0] not in ground_set
+                nearest[i] = g
     node_ids = list(inter.nodes)
     node_tree = STRtree([Point(_xy(lo, la)) for la, lo, _ in inter.nodes.values()]) if node_ids else None
     near: dict[int, list[tuple[str, float]]] = defaultdict(list)
@@ -171,7 +187,10 @@ def snap_cases(
         pts = [Point(x, y) for x, y in zip(xs, ys, strict=True)]
         pi, ni = node_tree.query(pts, predicate="dwithin", distance=p.INTERSECTION_M + 1.0)
         for i, j in zip(pi, ni, strict=True):
-            la, lo, _ = inter.nodes[node_ids[int(j)]]
+            la, lo, z = inter.nodes[node_ids[int(j)]]
+            hit = nearest[int(i)]
+            if z != 0 and hit is not None and hit[0] in ground_set:
+                continue  # a ground-snapped case is not at an elevated node
             d = distance_m(rows[int(i)][2], rows[int(i)][3], la, lo)
             if d <= p.INTERSECTION_M:
                 near[int(i)].append((node_ids[int(j)], round(d, 3)))
