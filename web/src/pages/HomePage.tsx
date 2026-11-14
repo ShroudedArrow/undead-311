@@ -71,7 +71,7 @@ export default function HomePage() {
                 <span>{t("filters.bulk_toggle")}</span>
               </label>
               <p className="count-note" id={bulkNoteId} data-testid="bulk-note">
-                {state.bulk && bulkSet && zombies.status === "ok" ? t("filters.bulk_count", { count: bulkSet.size }) : t("filters.bulk_note")}
+                {state.bulk && bulkSet && zombies.status === "ok" ? (bulkSet.size === 0 ? t("filters.bulk_none") : t("filters.bulk_count", { count: bulkSet.size })) : t("filters.bulk_note")}
               </p>
               <Filters rows={optionRows} filters={state.filters} onChange={(filters) => update({ ...state, filters })} />
             </div>
