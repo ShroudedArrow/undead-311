@@ -24,6 +24,7 @@ from undead311.detect.bulk import bulk_closures, flag_cases
 from undead311.detect.cases import cases_from_table
 from undead311.detect.core import city_origin_summary, detect
 from undead311.detect.edges import sql_edges
+from undead311.detect.grid import run_grid, store_grid
 from undead311.detect.model import DetectionResult
 from undead311.detect.params import DEFAULT, Params
 from undead311.detect.skeptic import build_input, join_objections, write_input
@@ -144,6 +145,7 @@ def run_pipeline(
     raw_dir: Path | None = None,
     work_dir: Path | None = None,
     snapshot_md: Path | None = None,
+    grid: bool = True,
 ) -> RunReport:
     """Run every stage and export. Raises on a stage failure; previous outputs stay in place (DuckDB: atomic)."""
     t0 = time.time()
@@ -199,6 +201,10 @@ def run_pipeline(
         report.row_counts["edges"] = len(edges)
         result: DetectionResult = detect(cases, p, edges)
         by_id = {c.id: c for c in cases}
+        if grid:  # REQ-SENS-RUN.1-2: 18 grid points plus the run without Street Light Other, into `grid_runs`
+            runs = run_grid(con, cases, p)
+            store_grid(con, runs)
+            report.row_counts["grid_runs"] = len(runs)
         # Skeptic: input for the agent, then the join of its objections (REQ-SKEP)
         tour = _zombie_ids(out / "stats" / "judge_tour.json")
         sample_ids = _validation_ids(root / "data" / "labels" / "validation_sample.csv")

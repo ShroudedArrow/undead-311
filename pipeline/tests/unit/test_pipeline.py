@@ -195,7 +195,7 @@ def test_req_stat_exp_1_a_missing_stats_submodule_fails_and_absent_stats_removes
 def test_req_stat_exp_1_stats_files_and_status_say_sample_or_full(tmp_path):
     """REQ-STAT-EXP.1 (ops#51): scorecard.json, judge_tour.json and status.json carry `dataset`, so the web can label it."""
     out = tmp_path / "out"
-    run_pipeline(sample=True, out_dir=out, work_dir=tmp_path / "data", run_time="2026-11-13T00:00:00Z")
+    run_pipeline(sample=True, out_dir=out, work_dir=tmp_path / "data", run_time="2026-11-13T00:00:00Z", grid=False)
     assert json.loads((out / "status.json").read_text())["dataset"] == "sample"
     assert json.loads((out / "stats" / "scorecard.json").read_text())["dataset"] == "sample"
     assert json.loads((out / "stats" / "stats_status.json").read_text())["dataset"] == "sample"
@@ -216,14 +216,14 @@ def test_req_stat_sf_1_a_missing_on_time_column_is_a_status_anomaly(tmp_path):
     anomalies = json.loads((out / "status.json").read_text())["anomalies"]
     assert any("on_time is known for 0 of 1 closed in-scope legacy-system cases" in a for a in anomalies)
     sample_out = tmp_path / "s"
-    run_pipeline(sample=True, out_dir=sample_out, work_dir=tmp_path / "data3", run_time="2026-11-13T00:00:00Z")
+    run_pipeline(sample=True, out_dir=sample_out, work_dir=tmp_path / "data3", run_time="2026-11-13T00:00:00Z", grid=False)
     assert not any("on_time is known" in a for a in json.loads((sample_out / "status.json").read_text())["anomalies"])
 
 
 def test_req_stat_sf_4_sample_scorecard_has_on_time_rates(tmp_path):
     """REQ-STAT-SF.1, .4: on the committed sample the citywide two-number scorecard has known on-time cases, not no_cases."""
     out = tmp_path / "out"
-    run_pipeline(sample=True, out_dir=out, work_dir=tmp_path / "data", run_time="2026-11-13T00:00:00Z")
+    run_pipeline(sample=True, out_dir=out, work_dir=tmp_path / "data", run_time="2026-11-13T00:00:00Z", grid=False)
     cards = json.loads((out / "stats" / "scorecard.json").read_text())["scorecards"]
     city = {c["tier_set"]: c for c in cards if c["family"] == "citywide"}
     for tier_set in ("headline", "all"):

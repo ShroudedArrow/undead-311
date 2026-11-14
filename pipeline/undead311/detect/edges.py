@@ -81,14 +81,20 @@ def sql_edges(
     cell_lat = (p.max_match_dist_m + COARSE_MARGIN_M) / M_PER_DEG_LAT
     cell_lon = (p.max_match_dist_m + COARSE_MARGIN_M) / (M_PER_DEG_LAT * GRID_COS_LAT)
     con.execute(f"drop table if exists {table}")
-    con.execute(
-        f"create temp table {table}(id varchar, fam varchar, sys varchar, lat double, lon double, "
-        "o bigint, c bigint)"
-    )
-    con.executemany(
-        f"insert into {table} values (?,?,?,?,?,?,?)",
-        [(c.id, c.type_family, c.system, c.lat, c.lon, c.open_us, c.close_us) for c in cases],
-    )
+    # One bulk load through numpy columns: row-by-row `executemany` took about 0.3 ms per case (minutes on the full data).
+    columns = {  # noqa: F841  (read by name through the DuckDB replacement scan below)
+        "id": np.array([c.id for c in cases], dtype=object),
+        "fam": np.array([c.type_family for c in cases], dtype=object),
+        "sys": np.array([c.system for c in cases], dtype=object),
+        "lat": np.array([c.lat for c in cases], dtype=np.float64),
+        "lon": np.array([c.lon for c in cases], dtype=np.float64),
+        "o": np.array([c.open_us for c in cases], dtype=np.int64),
+        "c": np.ma.masked_array(
+            np.array([c.close_us or 0 for c in cases], dtype=np.int64), mask=[c.close_us is None for c in cases]
+        ),
+    }
+    con.execute(f"create temp table {table} as select id::varchar as id, fam::varchar as fam, sys::varchar as sys, "
+                "lat::double as lat, lon::double as lon, o::bigint as o, c::bigint as c from columns")  # fmt: skip
     span, mir = _us(p.INCIDENT_MAX_SPAN_DAYS), _us(hours=p.MIRROR_WINDOW_HOURS)
     win = _us(p.WINDOW_DAYS + p.INCIDENT_MAX_SPAN_DAYS)
     maxd = p.max_match_dist_m + COARSE_MARGIN_M

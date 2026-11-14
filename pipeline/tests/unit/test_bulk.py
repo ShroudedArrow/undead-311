@@ -145,7 +145,7 @@ def test_req_bulk_2_the_pipeline_exports_groups_and_the_flag_reaches_cards(tmp_p
     from undead311.pipeline import run_pipeline
 
     out = tmp_path / "out"
-    rep = run_pipeline(sample=True, out_dir=out, work_dir=tmp_path / "d", run_time="2026-11-13T00:00:00Z")
+    rep = run_pipeline(sample=True, out_dir=out, work_dir=tmp_path / "d", run_time="2026-11-13T00:00:00Z", grid=False)
     doc = json.loads((out / "bulk_closures.json").read_text())
     validate("bulk_closures", doc)
     assert rep.row_counts["bulk_closure_groups"] == len(doc["bulk_closures"])

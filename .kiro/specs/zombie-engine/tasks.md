@@ -102,7 +102,7 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
 - [x] 23. [credibility] Coroner evaluation
   - `make coroner-eval`: accuracy, Wilson interval and top confusions into `docs/VALIDATION.md`; exits 0 with a message when the hand labels are missing.
   - _Requirements: REQ-COR-EVAL.1–2_
-- [ ] 24. [credibility] Sensitivity runs
+- [x] 24. [credibility] Sensitivity runs
   - `detect/grid.py`: 18 grid points plus the run without Street Light Other into the `grid_runs` table.
   - _Requirements: REQ-SENS-RUN.1–2_
 - [ ] 25. [credibility] Payload budget

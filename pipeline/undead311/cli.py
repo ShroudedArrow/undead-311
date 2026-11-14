@@ -15,6 +15,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("pipeline", help="ingest -> detect -> export")
     p.add_argument("--sample", action="store_true", help="run on data/sample/ (no network, no raw data needed)")
+    p.add_argument("--skip-grid", action="store_true", help="skip the 19 sensitivity runs (grid_runs); for quick local runs")
     p.add_argument("--out", default=None, help="export folder (default web/public/data in the repo checkout)")
     c = sub.add_parser("coroner-eval", help="Coroner accuracy vs. the hand labels, written to docs/VALIDATION.md")
     c.add_argument("--labels-dir", default=None, help="folder with coroner_labels.csv (default data/labels in the checkout)")
@@ -27,7 +28,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "pipeline":
         from undead311.pipeline import run_pipeline
 
-        report = run_pipeline(sample=args.sample, out_dir=args.out)
+        report = run_pipeline(sample=args.sample, out_dir=args.out, grid=not args.skip_grid)
         print(report.summary())
         return 0 if report.ok else 1
     if args.command == "coroner-eval":
