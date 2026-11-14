@@ -43,6 +43,10 @@ Sample caveat: `data/sample/sample_311.csv` is built to hold many re-report pair
 
 **When the segments file is missing.** No case is snapped, matching falls back to the radius rule only, and `status.json` records `segments: missing` with an anomaly line. The committed sample run (`make pipeline-sample`) never snaps: it needs no raw files.
 
+## Neighborhood names (REQ-EXP-1.1)
+
+The two systems name some areas differently. The pipeline rewrites them to the new system's names before export: Allston and Brighton to "Allston / Brighton", Downtown to "Downtown / Financial District", Mattapan to "Greater Mattapan", Fenway and Longwood to "Fenway / Kenmore / Audubon Circle / Longwood", South Boston and South Boston Waterfront to "South Boston / South Boston Waterfront". "Boston" is the city, not a neighborhood, so those cases carry no neighborhood and stay out of neighborhood rankings. The run report counts the renamed rows (`neighborhood_renamed`).
+
 ## Bulk closures (credibility; REQ-BULK)
 
 A (department, close date, template) group is a bulk closure when it has at least 50 closed in-scope cases and at least 10 times the department's usual daily count for that template. The usual daily count is the median daily closure count of that department and template over the days that have closures. The close date is the Boston local date; the template is the closure text with timestamps, dates, case IDs and numbers masked (the same key the Coroner labels use); a case with no department is grouped under "(unknown)". The flag is stored in its own `bulk_closure` field on the case, the incident and the zombie. It never replaces the Coroner label, which the planned-follow-up rule reads. It caps the label term of the confidence score at 0.5 and shows on the card. `bulk_closures.json` lists the flagged groups with their counts and ratio.
