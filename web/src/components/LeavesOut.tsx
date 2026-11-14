@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { isFixtureData } from "../lib/dataAsOf";
 import { useData } from "../lib/data";
 import { familyLabel } from "../lib/labels";
 import { parseBulkClosures, parseExclusions, parseStatus, parseTemporaryFixes, type Rate } from "../lib/parse";
@@ -68,6 +69,7 @@ export function LeavesOut() {
 
       <h3>{t("deaths.excl_heading")}</h3>
       {excl.status === "error" && <PanelError file={excl.file} error={excl.error} />}
+      {excl.status === "ok" && status.status === "ok" && isFixtureData(status.data) ? <p className="count-note" data-testid="excl-fixture-note">{t("deaths.excl_fixture_note")}</p> : null}
       {excl.status === "ok" && (
         <div className="table-wrap chart-table" tabIndex={0} role="region" aria-label={t("deaths.excl_caption")}>
           <table className="zombie-table" data-testid="exclusions">
@@ -131,9 +133,11 @@ export function LeavesOut() {
             </table>
           </div>
         ))}
-      <p>
-        <Link to="/?bulk=1">{t("deaths.bulk_layer_link")}</Link>
-      </p>
+      {bulk.status === "ok" && bulk.data.bulk_closures.length > 0 ? (
+        <p>
+          <Link to="/?bulk=1">{t("deaths.bulk_layer_link")}</Link>
+        </p>
+      ) : null}
     </section>
   );
 }

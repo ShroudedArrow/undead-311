@@ -129,6 +129,7 @@ describe("What the headline leaves out (REQ-WEB-DEATHS.1)", () => {
     expect(within(ex).getByText("Mirror copies across the two systems").closest("tr")?.textContent).toContain("15");
     expect(within(ex).getByText("No usable coordinates").closest("tr")?.textContent).toContain("3");
     expect(screen.getByTestId("bulk-table").textContent).toContain("2020-03-05");
+    expect(screen.getByRole("link", { name: "Mark these possible zombies on the map" }).getAttribute("href")).toBe("/?bulk=1");
   });
   it("explains source unknown with its count and says it is never added to the headline", async () => {
     stub();
@@ -141,5 +142,16 @@ describe("What the headline leaves out (REQ-WEB-DEATHS.1)", () => {
     stub({ "bulk_closures.json": { data_version: V, bulk_closures: [] } });
     open();
     expect(await screen.findByTestId("bulk-none")).toBeTruthy();
+  });
+  it("offers no map-layer link when there are no bulk-closure days (UX-18)", async () => {
+    stub({ "bulk_closures.json": { data_version: V, bulk_closures: [] } });
+    open();
+    await screen.findByTestId("bulk-none");
+    expect(screen.queryByRole("link", { name: "Mark these possible zombies on the map" })).toBeNull();
+  });
+  it("explains zero exclusion counts on preview data, and not on real data (UX-25)", async () => {
+    stub({ "status.json": { data_version: "fixture-2026-11-11", last_run: "2026-11-11T00:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" } });
+    open();
+    expect(await screen.findByTestId("excl-fixture-note")).toBeTruthy();
   });
 });

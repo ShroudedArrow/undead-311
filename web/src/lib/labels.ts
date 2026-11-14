@@ -25,7 +25,7 @@ export function departmentLabel(key: string): string {
 }
 
 export function groupLabel(by: "neighborhood" | "department" | "family" | "year", key: string): string {
-  if (key === UNKNOWN) return t("filters.unknown");
+  if (key === UNKNOWN) return t(by === "neighborhood" ? "filters.unknown_neighborhood" : "filters.unknown");
   if (by === "department") return departmentLabel(key);
   return by === "family" ? familyLabel(key) : key;
 }

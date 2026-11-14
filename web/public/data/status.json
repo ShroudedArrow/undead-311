@@ -1,1 +1,1 @@
-{"data_version":"fixture-2026-11-11","last_run":"2026-11-11T02:00:00Z","ok":true,"row_counts":{"cases":15361,"zombies":400},"anomalies":[],"segments":"missing","headline_count":385,"source_unknown_count":2,"sensitivity_count":13,"data_end":"2026-11-11"}
+{"data_version":"fixture-2026-11-11","last_run":"2026-11-11T02:00:00Z","ok":true,"row_counts":{"cases":15361,"zombies":1182},"anomalies":[],"segments":"missing","headline_count":1087,"source_unknown_count":45,"sensitivity_count":50,"data_end":"2026-11-11"}

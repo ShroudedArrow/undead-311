@@ -91,6 +91,30 @@ function wilson(k, n) {
 const median = (xs) => { const s = [...xs].sort((a, b) => a - b); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 
 /**
+ * Bulk closures (ZD step 10): (department, close day, closure text) groups of at least 50 cases and at least 10 times the
+ * department's usual daily count for that text (the median over the days it has closures). The same groups mark `bulk_closure`
+ * on fixture zombies, so the bulk table and the map layer agree (UX-18, ops#67).
+ */
+export function findBulkClosures(subjects) {
+  const days = new Map();
+  for (const c of subjects) {
+    if (!c.dept || !c.text) continue;
+    const key = `${c.dept}\u0000${c.text}`;
+    const day = new Date(c.close).toISOString().slice(0, 10);
+    const t = days.get(key) ?? days.set(key, new Map()).get(key);
+    t.set(day, (t.get(day) ?? 0) + 1);
+  }
+  const bulk = [];
+  for (const [key, perDay] of days) {
+    const usual = median([...perDay.values()]);
+    for (const [day, n] of perDay) {
+      if (n >= 50 && n >= 10 * usual) { const [department, template] = key.split("\u0000"); bulk.push({ department, close_date: day, template, n_cases: n, usual_daily: usual, ratio: round(n / usual, 1) }); }
+    }
+  }
+  return bulk.sort((a, b) => byName(a.close_date + a.department + a.template, b.close_date + b.department + b.template));
+}
+
+/**
  * @param {object} x
  * @param {Array} x.closed   closed cases with label: {id, system, open, close, family, dept, hood, text, lat, lon, label}
  * @param {Array} x.zombies  every crude pair before the size cut: {incident_id, tier, gap_days, baseline_p, after_temporary_fix, coroner_label, type_family, department, neighborhood}
@@ -204,23 +228,7 @@ export function buildStatsFixtures({ closed, zombies, dataEnd, version, nullCoor
   const exclusionCounts = { excluded_type: 0, null_coords: nullCoords, null_open_time: 0, out_of_bounds: 0, placeholder: 0, unlisted_type: 0 };
   const excludedPairs = { linked_successor: 0, mirror: mirrorPairs, transferred_original: transferred };
 
-  // bulk closures: (department, close day, closure text) groups of at least 50 cases and 10 times the usual daily count
-  const days = new Map();
-  for (const c of subjects) {
-    if (!c.dept || !c.text) continue;
-    const key = `${c.dept}\u0000${c.text}`;
-    const day = new Date(c.close).toISOString().slice(0, 10);
-    const t = days.get(key) ?? days.set(key, new Map()).get(key);
-    t.set(day, (t.get(day) ?? 0) + 1);
-  }
-  const bulk = [];
-  for (const [key, perDay] of days) {
-    const usual = median([...perDay.values()]);
-    for (const [day, n] of perDay) {
-      if (n >= 50 && n >= 10 * usual) { const [department, template] = key.split("\u0000"); bulk.push({ department, close_date: day, template, n_cases: n, usual_daily: usual, ratio: round(n / usual, 1) }); }
-    }
-  }
-  bulk.sort((a, b) => byName(a.close_date + a.department + a.template, b.close_date + b.department + b.template));
+  const bulk = findBulkClosures(subjects);
 
   return {
     "survival.json": { data_version: version, curves },
