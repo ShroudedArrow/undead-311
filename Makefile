@@ -40,9 +40,10 @@ validation-sample:
 typecheck:
 	cd web && npm run typecheck
 
-# Validates every file in schemas/ against the JSON Schema meta-schema, and the golden answer key against its schema.
+# Validates every file in schemas/ against the JSON Schema meta-schema, the golden answer key against its schema, and every
+# committed web/public/data file against its schema (REQ-OPS-CI.1).
 schema-check:
-	$(UV) run pytest -q pipeline/tests/unit/test_schemas.py
+	$(UV) run pytest -q pipeline/tests/unit/test_schemas.py pipeline/tests/unit/test_web_data_schemas.py
 
 lint:
 	$(UV) run ruff check pipeline
