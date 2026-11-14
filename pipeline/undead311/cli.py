@@ -20,6 +20,13 @@ def build_parser() -> argparse.ArgumentParser:
     c = sub.add_parser("coroner-eval", help="Coroner accuracy vs. the hand labels, written to docs/VALIDATION.md")
     c.add_argument("--labels-dir", default=None, help="folder with coroner_labels.csv (default data/labels in the checkout)")
     c.add_argument("--validation", default=None, help="markdown file to update (default docs/VALIDATION.md)")
+    v = sub.add_parser("validation-sample", help="draw the field-validation sample (REQ-STAT-VAL.1)")
+    v.add_argument("--labels-dir", default=None, help="folder with validation_config.json (default data/labels in the checkout)")
+    v.add_argument("--data", default=None, help="folder with zombies.json and status.json (default web/public/data)")
+    f = sub.add_parser("validate", help="score the field labels into docs/VALIDATION.md and validation.json (REQ-STAT-VAL.2)")
+    f.add_argument("--labels-dir", default=None, help="folder with validation_labels.csv (default data/labels in the checkout)")
+    f.add_argument("--validation", default=None, help="markdown file to update (default docs/VALIDATION.md)")
+    f.add_argument("--out", default=None, help="validation.json to write (default web/public/data/stats/validation.json)")
     return parser
 
 
@@ -41,6 +48,35 @@ def main(argv: Sequence[str] | None = None) -> int:
         labels_dir = Path(args.labels_dir) if args.labels_dir else root / "data" / "labels"
         validation = Path(args.validation) if args.validation else root / "docs" / "VALIDATION.md"
         code, message = run(labels_dir, validation)
+        print(message)
+        return code
+    if args.command in ("validation-sample", "validate"):
+        import json
+        from datetime import date
+        from pathlib import Path
+
+        from undead311.paths import worktree_root
+        from undead311.stats import validation as val
+
+        root = worktree_root()
+        labels_dir = Path(args.labels_dir) if args.labels_dir else root / "data" / "labels"
+        if args.command == "validation-sample":
+            data = Path(args.data) if args.data else root / "web" / "public" / "data"
+            end = date.today()
+            try:
+                end = date.fromisoformat(json.loads((data / "status.json").read_text())["data_end"])
+            except (OSError, ValueError, KeyError):
+                pass  # no status yet: the sample window ends today
+            code, message = val.run_validation_sample(labels_dir, data / "zombies.json", end)
+        else:
+            md = Path(args.validation) if args.validation else root / "docs" / "VALIDATION.md"
+            out = Path(args.out) if args.out else root / "web" / "public" / "data" / "stats" / "validation.json"
+            version = "unknown"
+            try:
+                version = json.loads((out.parent.parent / "status.json").read_text())["data_version"]
+            except (OSError, ValueError, KeyError):
+                pass
+            code, message = val.run_validate(labels_dir, md, out, version)
         print(message)
         return code
     return 2

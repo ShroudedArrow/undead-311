@@ -46,6 +46,7 @@ from undead311.export.writers import (
 )
 from undead311.ingest.clean import REASONS, clean, ids_by_reason
 from undead311.ingest.crosswalk import apply_crosswalk
+from undead311.ingest.geometry import store_neighborhood_geometry
 from undead311.ingest.load import load
 from undead311.ingest.neighborhoods import BOUNDARIES_FILE
 from undead311.ingest.neighborhoods import canonicalize as canonicalize_neighborhoods
@@ -56,7 +57,10 @@ from undead311.ingest.snap import SEGMENTS_FILE, snap_cases
 from undead311.paths import data_dir, worktree_root
 
 STATS_ABSENT_NAMES = ("undead311.stats", "undead311.stats.pipeline")  # the only ModuleNotFoundError names that mean "absent"
-STATS_STALE_FILES = ("scorecard.json", "judge_tour.json", "stats_status.json")
+STATS_STALE_FILES = (
+    "scorecard.json", "judge_tour.json", "excess.json", "survival.json", "funnel.json", "groups.json",
+    "sensitivity_grid.json", "temporary_fixes.json", "validation.json", "stats_status.json",
+)  # fmt: skip
 # Files this pipeline owns in the output folder: one that a run does not produce is removed when the run is swapped in.
 ENGINE_JSON = ("zombies", "incidents", "points", "exclusions", "separate_deaths", "repeat_offenders", "bulk_closures", "status")
 PROCESSED_OWNED = ("skeptic_input.json", "coroner_templates.csv")
@@ -232,6 +236,9 @@ def run_pipeline(
                 report.warnings.append(f"segments unavailable: {SEGMENTS_FILE} is not in raw/; radius matching only (REQ-ING-SNAP.2)")
         nbr_file = None if sample else (raw_dir or base / "raw") / BOUNDARIES_FILE
         report.row_counts["neighborhood_renamed"] = canonicalize_neighborhoods(con, boundaries=nbr_file)  # REQ-ING-2.1
+        store_neighborhood_geometry(  # REQ-STAT-NBR.2, REQ-STAT-REP.1: areas and street km for the stats stage
+            con, nbr_file, None if sample else (raw_dir or base / "raw") / SEGMENTS_FILE
+        )
         if nbr_file is not None and not nbr_file.is_file():
             report.warnings.append(
                 f"neighborhood boundaries unavailable: {BOUNDARIES_FILE} is not in raw/; neighborhoods come from each "
@@ -252,11 +259,15 @@ def run_pipeline(
         report.row_counts["edges"] = len(edges)
         result: DetectionResult = detect(cases, p, edges)
         by_id = {c.id: c for c in cases}
-        if grid:  # REQ-SENS-RUN.1-2: 18 grid points plus the run without Street Light Other, into `grid_runs`
-            runs = run_grid(con, cases, p)
-            store_grid(con, runs)
-            report.row_counts["grid_runs"] = len(runs)
         stats = _stats_module()
+        if grid:  # REQ-SENS-RUN.1-2: 18 grid points plus the run without Street Light Other, into `grid_runs`
+            make_metrics = getattr(stats, "make_grid_metrics", None)  # REQ-STAT-GRID.1: excess and stayed-fixed per run
+            metrics = make_metrics(con) if callable(make_metrics) else None
+            runs = run_grid(con, cases, p, metrics)
+            store_grid(con, runs)
+            if metrics is not None:
+                stats.store_grid_metrics(con, metrics)  # type: ignore[union-attr]
+            report.row_counts["grid_runs"] = len(runs)
         hook = getattr(stats, "zombie_baselines", None)  # REQ-STAT-BASE.4: optional until the same-spot baseline exists
         baselines = hook(con, result, by_id, p) if callable(hook) else None
         result.zombies = apply_baselines(result.zombies, baselines, p)  # REQ-CONF.1-2: baseline term, else neutral
@@ -296,7 +307,7 @@ def run_pipeline(
             stats_status = stats.run_stats(  # type: ignore[attr-defined]
                 con, result, by_id, stage_out, params=p, data_version=version, labels_dir=root / "data" / "labels",
                 data_end=max((c.open_utc for c in cases), default=None),
-                dataset=dataset,
+                dataset=dataset, exclusions=report.exclusions,
             )
             report.stats = "ran"
         ctx = ExportContext(

@@ -19,13 +19,14 @@ Tables written by `store_grid`:
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 
 import duckdb
 
 from undead311.detect.core import detect
 from undead311.detect.edges import sql_edges, time_related
-from undead311.detect.model import Case, Match
+from undead311.detect.model import Case, DetectionResult, Match
 from undead311.detect.params import DEFAULT, Params
 
 GRID_MATCHING = ("segment", "radius")
@@ -63,8 +64,17 @@ def run_id(p: Params, without_street_light_other: bool = False) -> str:
     return base + ("-no-street-light-other" if without_street_light_other else "")
 
 
-def _count(cases: list[Case], p: Params, edges: dict[tuple[str, str], Match], without: bool) -> GridRun:
+#: called once per run with (params, the run's cases, its detection result, without Street Light Other); lets the stats
+#: stage compute per-run excess and stayed-fixed rate without a second detector pass (REQ-STAT-GRID.1)
+Observer = Callable[[Params, list[Case], DetectionResult, bool], None]
+
+
+def _count(
+    cases: list[Case], p: Params, edges: dict[tuple[str, str], Match], without: bool, observer: Observer | None = None
+) -> GridRun:
     result = detect(cases, p, edges)
+    if observer is not None:
+        observer(p, cases, result, without)
     counts = Counter((z.tier, z.type_family, z.department or UNKNOWN) for z in result.zombies)
     return GridRun(
         run_id(p, without), p.matching, p.RADIUS_M, p.WINDOW_DAYS, without, len(cases),
@@ -79,7 +89,9 @@ def edges_for_window(
     return {k: m for k, m in wide.items() if time_related(by_id[k[0]], by_id[k[1]], p)}
 
 
-def run_grid(con: duckdb.DuckDBPyConnection, cases: list[Case], base: Params = DEFAULT) -> list[GridRun]:
+def run_grid(
+    con: duckdb.DuckDBPyConnection, cases: list[Case], base: Params = DEFAULT, observer: Observer | None = None
+) -> list[GridRun]:
     """All 19 sensitivity runs, in a fixed order (REQ-SENS-RUN.1-2)."""
     cases = sorted((c for c in cases if c.scope_tier in ("core", "sensitivity")), key=lambda c: c.id)
     by_id = {c.id: c for c in cases}
@@ -90,14 +102,14 @@ def run_grid(con: duckdb.DuckDBPyConnection, cases: list[Case], base: Params = D
             wide = sql_edges(con, cases, replace(base, matching=matching, RADIUS_M=radius, WINDOW_DAYS=widest))  # type: ignore[arg-type]
             for window in GRID_WINDOW_DAYS:
                 p = replace(base, matching=matching, RADIUS_M=radius, WINDOW_DAYS=window)  # type: ignore[arg-type]
-                runs.append(_count(cases, p, edges_for_window(wide, by_id, p), False))
+                runs.append(_count(cases, p, edges_for_window(wide, by_id, p), False, observer))
     kept = [c for c in cases if c.type_raw != CATCH_ALL_TYPE]  # REQ-SENS-RUN.2: default parameters, all tiers
     keep_ids = {c.id for c in kept}
     default_edges = edges_for_window(
         sql_edges(con, kept, replace(base, WINDOW_DAYS=widest)), {c.id: c for c in kept}, base
     ) if len(kept) > 1 else {}  # fmt: skip
     assert all(a in keep_ids and b in keep_ids for a, b in default_edges)
-    runs.append(_count(kept, base, default_edges, True))
+    runs.append(_count(kept, base, default_edges, True, observer))
     return runs
 
 

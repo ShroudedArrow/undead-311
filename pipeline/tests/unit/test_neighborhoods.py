@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 import duckdb
+import pandas as pd
 from hypothesis import given
 from hypothesis import strategies as st
 from test_pipeline import raw_folder
@@ -129,3 +130,62 @@ def test_req_ing_2_1_nbr_the_run_reads_boundaries_from_raw_and_warns_when_they_a
     assert not any("neighborhood boundaries unavailable" in w for w in full.warnings)
     names = {z["neighborhood"] for z in json.loads((tmp_path / "o2" / "zombies.json").read_text())["zombies"]}
     assert names == {"Roxbury"}  # the files said Dorchester; the point lies in the Roxbury polygon
+
+
+#: The 26 area names in the City's neighborhood boundaries file (committed so the check needs no raw data) and the 17
+#: names the legacy system reports (ops#98).
+BOUNDARY_NAMES = (
+    "Allston", "Back Bay", "Bay Village", "Beacon Hill", "Brighton", "Charlestown", "Chinatown", "Dorchester", "Downtown",
+    "East Boston", "Fenway", "Harbor Islands", "Hyde Park", "Jamaica Plain", "Leather District", "Longwood", "Mattapan",
+    "Mission Hill", "North End", "Roslindale", "Roxbury", "South Boston", "South Boston Waterfront", "South End", "West End",
+    "West Roxbury",
+)  # fmt: skip
+LEGACY_NAMES = frozenset({
+    "Allston / Brighton", "Back Bay", "Beacon Hill", "Charlestown", "Dorchester", "Downtown / Financial District",
+    "East Boston", "Fenway / Kenmore / Audubon Circle / Longwood", "Greater Mattapan", "Hyde Park", "Jamaica Plain",
+    "Mission Hill", "Roslindale", "Roxbury", "South Boston / South Boston Waterfront", "South End", "West Roxbury",
+})  # fmt: skip
+
+
+def test_req_ing_2_1_nbr_every_boundary_name_maps_into_the_legacy_names_except_harbor_islands():
+    """ops#98: Harbor Islands is kept as its own name (no legacy case sits there); the other 25 fold into the 17 legacy names."""
+    assert len(BOUNDARY_NAMES) == 26 and len(LEGACY_NAMES) == 17
+    mapped = {n: canonical_neighborhood(n) for n in BOUNDARY_NAMES}
+    assert {n for n, m in mapped.items() if m not in LEGACY_NAMES} == {"Harbor Islands"}
+    assert mapped["Harbor Islands"] == "Harbor Islands"
+    assert set(mapped.values()) - {"Harbor Islands"} == LEGACY_NAMES  # every legacy name is reached
+    assert set(ALIASES) <= set(BOUNDARY_NAMES)  # no alias for a name the file does not have
+
+
+def test_req_ing_2_1_nbr_the_committed_boundary_names_match_the_raw_file_when_present():
+    from undead311.ingest.neighborhoods import BOUNDARIES_FILE, load_boundaries
+    from undead311.paths import data_dir
+
+    path = data_dir() / "raw" / BOUNDARIES_FILE
+    if not path.is_file():
+        import pytest
+
+        pytest.skip("neighborhood boundaries are not downloaded")
+    assert tuple(n for n, _ in load_boundaries(path)) == BOUNDARY_NAMES
+
+
+def test_req_ing_2_1_nbr_canonicalize_scales_without_a_python_loop_over_rows(tmp_path):
+    """ops#97: 200,000 rows and the join write-back finish in seconds (the old executemany path ran ~6,000 rows/s)."""
+    import time
+
+    import numpy as np
+
+    n = 200_000
+    rng = np.random.default_rng(311)
+    lon = rng.uniform(0.0, 3.0, n)
+    lat = rng.uniform(0.0, 2.0, n)
+    con = duckdb.connect()
+    con.execute("create table cases_clean(id varchar, system varchar, neighborhood varchar, lat double, lon double)")
+    con.execute("insert into cases_clean select 'c' || i, 'legacy', 'Boston', 0.0, 0.0 from range(?) t(i)", [n])
+    df = pd.DataFrame({"id": [f"c{i}" for i in range(n)], "la": lat, "lo": lon})
+    con.register("ptsdf", df)
+    con.execute("update cases_clean t set lat = d.la, lon = d.lo from ptsdf d where t.id = d.id")
+    started = time.perf_counter()
+    changed = canonicalize(con, boundaries=_boundaries(tmp_path))
+    assert time.perf_counter() - started < 20
+    assert changed == con.execute("select count(*) from cases_clean where neighborhood is not null").fetchone()[0] > 0

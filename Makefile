@@ -34,8 +34,9 @@ pipeline:
 pipeline-sample:
 	PYTHONPATH=pipeline $(UV) run python -m undead311 pipeline --sample
 
+# REQ-STAT-VAL.1: draws data/labels/validation_sample.csv once (needs the owner's data/labels/validation_config.json)
 validation-sample:
-	$(STUB)
+	PYTHONPATH=pipeline $(UV) run python -m undead311 validation-sample
 
 typecheck:
 	cd web && npm run typecheck
@@ -72,8 +73,9 @@ e2e:
 copy-lint:
 	python3 scripts/copy_lint.py
 
+# REQ-STAT-VAL.2: scores data/labels/validation_labels.csv into docs/VALIDATION.md and stats/validation.json
 validate:
-	$(STUB)
+	PYTHONPATH=pipeline $(UV) run python -m undead311 validate
 
 coroner-eval:
 	PYTHONPATH=pipeline $(UV) run python -m undead311 coroner-eval

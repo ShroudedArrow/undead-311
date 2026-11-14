@@ -179,6 +179,15 @@ export interface ScorecardFile {
    * Whether the run read the committed sample or the full data; a sample rate is not a citywide figure. REQ-STAT-EXP.1
    */
   dataset?: "sample" | "full";
+  /**
+   * REQ-STAT-CITY.1: the headline scorecards and counts with city-originated re-reports removed
+   */
+  without_city_originated?: {
+    scorecards?: unknown[];
+    counts?: {
+      [k: string]: number;
+    };
+  };
   [k: string]: unknown;
 }
 
@@ -262,6 +271,8 @@ export interface ValidationFile {
   kappa?: number | null;
   confirmed: string[];
   sample_ids?: string[];
+  kappa_still_broken?: number | null;
+  n_paired?: number;
   [k: string]: unknown;
 }
 
@@ -281,8 +292,19 @@ export interface SurvivalFile {
     at_30: number | null;
     at_90: number | null;
     half_life: number | null;
+    n?: number;
+    events?: number;
+    at_7_lo?: number | null;
+    at_7_hi?: number | null;
+    at_30_lo?: number | null;
+    at_30_hi?: number | null;
+    at_90_lo?: number | null;
+    at_90_hi?: number | null;
     [k: string]: unknown;
   }[];
+  dataset?: "sample" | "full";
+  seed?: number | null;
+  params?: {};
   [k: string]: unknown;
 }
 
@@ -311,8 +333,17 @@ export interface FunnelFile {
     hi: number | null;
     unusual: boolean;
     reports_per_km?: number | null;
+    raw_lo?: number | null;
+    raw_hi?: number | null;
     [k: string]: unknown;
   }[];
+  /**
+   * the same statistic with source_unknown and sensitivity zombies added (REQ-STAT-TIER.1)
+   */
+  all_tiers?: {};
+  dataset?: "sample" | "full";
+  seed?: number | null;
+  params?: {};
   [k: string]: unknown;
 }
 
@@ -322,7 +353,18 @@ export interface FunnelFile {
 export interface GroupsFile {
   data_version: string;
   citywide: number | null;
+  /**
+   * the concentration of the family groups (the kind whose groups give the citywide rate); every kind's value is in `kappas`
+   */
   kappa: number | null;
+  /**
+   * beta-binomial concentration fitted per kind over groups that partition the eligible originals (REQ-STAT-EB.1)
+   */
+  kappas?: {
+    department?: number | null;
+    family?: number | null;
+    neighborhood?: number | null;
+  };
   groups: {
     kind: "department" | "neighborhood" | "family";
     name: string;
@@ -334,8 +376,24 @@ export interface GroupsFile {
     hi: number | null;
     unusual: boolean;
     reports_per_km?: number | null;
+    raw_lo?: number | null;
+    raw_hi?: number | null;
     [k: string]: unknown;
   }[];
+  /**
+   * the same statistic with source_unknown and sensitivity zombies added (REQ-STAT-TIER.1)
+   */
+  all_tiers?: {};
+  dataset?: "sample" | "full";
+  seed?: number | null;
+  params?: {};
+  intensity?: {
+    neighborhood: string;
+    family: string;
+    reports: number;
+    reports_per_km: number;
+  }[];
+  intensity_note?: string | null;
   [k: string]: unknown;
 }
 
@@ -353,6 +411,17 @@ export interface ExcessFile {
     lo: number;
     hi: number;
     tier_set: "headline" | "all";
+    /**
+     * eligible originals behind the row
+     */
+    n_originals?: number;
+    expected_nbr?: number | null;
+    excess_nbr?: number | null;
+    /**
+     * originals whose baseline fell back from the same spot (REQ-STAT-BASE.3)
+     */
+    n_fallback?: number;
+    reports_per_km?: number | null;
     [k: string]: unknown;
   }[];
   /**
@@ -365,6 +434,7 @@ export interface ExcessFile {
     mean: number;
     q025: number;
     q975: number;
+    headline_zombies?: number;
     [k: string]: unknown;
   };
   /**
@@ -374,8 +444,20 @@ export interface ExcessFile {
     excess: number;
     lo: number;
     hi: number;
+    runs?: number;
+    calibration_warning?: boolean;
     [k: string]: unknown;
   };
+  baseline_sources?: {
+    [k: string]: number;
+  };
+  neighborhood_check?: "ran" | "skipped";
+  counts?: {
+    [k: string]: number;
+  };
+  dataset?: "sample" | "full";
+  seed?: number | null;
+  params?: {};
   [k: string]: unknown;
 }
 

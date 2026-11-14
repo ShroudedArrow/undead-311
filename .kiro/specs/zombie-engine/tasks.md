@@ -111,7 +111,7 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
 - [x] 26. [credibility] Safe re-runs
   - Build outputs into a temporary folder and swap only on success; a failed stage leaves the previous outputs untouched (test with an injected failure).
   - _Requirements: REQ-ING-NIGHTLY.1_
-- [ ] 27. [credibility] Full confidence score (BLOCKED on durability-stats task 5: no zombie gets a `baseline_p` until `stats.pipeline.zombie_baselines` exists; the engine side and its tests are done, ops#82)
+- [x] 27. [credibility] Full confidence score (unblocked by durability-stats task 5: `stats.pipeline.zombie_baselines` gives every zombie a `baseline_p`; ops#82)
   - Use `baseline_p` from durability-stats and Skeptic verdicts; `confidence_partial` turns false; update METHODS.md.
   - _Requirements: REQ-CONF.1–2, REQ-SKEP.2_
 

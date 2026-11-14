@@ -1,0 +1,497 @@
+"""Same-spot baseline, neighborhood Poisson check and excess resurrections (REQ-STAT-BASE, REQ-STAT-NBR).
+
+`BaselineModel` answers one question per incident: how likely is it that a same-family report appears at the same place
+within WINDOW_DAYS of a closure by coincidence?
+
+* Same spot (REQ-STAT-BASE.1): the spot (segment, or a 60 m cell) is watched from its first same-family report to the data
+  end. Its other same-family reports (mirror copies are one report, the incident's own members and the first report are not
+  counted) in the incident's season, K, fall in a window of WINDOW_DAYS by chance with probability `c = WINDOW_DAYS / T`,
+  where T is the number of days of that season in the watched span. `p_spot = 1 - (1 - c)^K`. This is the share of the
+  spot's windows of that season that contain a report, estimated so that it is unbiased (a count of the other reports of
+  the same spot, as opposed to a share of windows that a hit makes unusable, which came out 40% too high at sparse spots,
+  ops#107). Leaving the incident's own reports out is what keeps a busy spot from raising the baseline of its own originals.
+  Counting every other report is the cautious choice: a real resurrection at the spot can only raise `p_spot`.
+* Fewer than MIN_WINDOWS windows of the season in the watched span (REQ-STAT-BASE.3): the neighborhood estimate (`P` below)
+  is used, and when there is no neighborhood area, the pooled p of the same family and season (at least POOLED_MIN windows,
+  else of any season: "citywide"). The pooled p is the mean of the spot p of every incident of that family and season. The
+  number of incidents that fell back, and to what, is exported. The choice depends on the spot's first report only, never on
+  whether anything was re-reported.
+* Neighborhood Poisson check (REQ-STAT-NBR.1): lambda = same-family reports per m2 per day in the neighborhood and
+  season, leaving out reports within RADIUS_M and +-WINDOW_DAYS of the case; expected = lambda * pi * RADIUS_M^2 *
+  WINDOW_DAYS, P = 1 - exp(-expected). It is computed for every incident as a second, independent baseline.
+
+Excess (REQ-STAT-BASE.2): observed possible zombies minus the sum of the baseline over the same eligible originals,
+by department, family and neighborhood, each with a seeded bootstrap interval (REQ-STAT-INT.1). Observed and expected
+use the same cohort (fully observed originals), so the two are comparable. The interval carries the error of the baseline
+itself: spots are resampled as whole clusters (an original's p and outcome both come from its spot's reports), and each
+replicate draws every pooled p again from its windows (originals that share a pooled fallback share the draw, ops#103).
+"""
+
+from __future__ import annotations
+
+import heapq
+import math
+from collections import defaultdict
+from collections.abc import Mapping
+from dataclasses import dataclass
+from datetime import datetime
+
+import numpy as np
+
+from undead311.detect.model import Case, DetectionResult, Incident, Zombie
+from undead311.detect.params import DEFAULT, Params
+from undead311.stats.cohort import COS_BOSTON, M_PER_DEG, eligible_originals, season_idx, spot_key
+from undead311.stats.intervals import bootstrap_sum_cells
+
+DAY = 86_400.0
+MIN_WINDOWS = 4  # REQ-STAT-BASE.3
+POOLED_MIN = 100  # pooled windows needed before the citywide fallback is taken for one season, else all seasons
+_SEASON_OF_MONTH = np.array([0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 0])  # Jan..Dec -> winter, spring, summer, autumn
+UNKNOWN = "(unknown)"
+TierSet = str
+
+
+def season_array(ts: np.ndarray) -> np.ndarray:
+    """Season index (0 winter .. 3 autumn) of epoch-second timestamps."""
+    months = np.asarray(ts, dtype="int64").astype("datetime64[s]").astype("datetime64[M]").astype("int64") % 12
+    return _SEASON_OF_MONTH[months]
+
+
+def thinned_p(k: int, live_days: float, window_days: float, span_days: float | None = None) -> tuple[float, int] | None:
+    """(p, windows) that at least one of `k` other live reports falls in a window of `window_days` (REQ-STAT-BASE.1).
+
+    Each other live report lands in a given window with probability `c = window_days / live_days`, so the chance that none
+    does is `(1 - c)^k`; unbiased for the Poisson chance of a report in a window. `windows` counts the windows of the whole
+    watched span (`span_days`, default the live days), so whether a spot is trusted never depends on what was reported
+    there. None when that span holds less than one window.
+    """
+    windows = int((live_days if span_days is None else span_days) // window_days)
+    if windows < 1:
+        return None
+    if live_days <= window_days:  # (almost) no live time: every other live report is in the window
+        return (1.0 if k > 0 else 0.0), windows
+    return 1.0 - (1.0 - window_days / live_days) ** max(k, 0), windows
+
+
+@dataclass(frozen=True)
+class LiveSpot:
+    """A spot's live time: first report, live reports and live days per season, and the merged dead stretches."""
+
+    t0: float
+    counts: np.ndarray
+    days: np.ndarray
+    dead_s: np.ndarray
+    dead_e: np.ndarray
+    span: np.ndarray = None  # type: ignore[assignment]  # days of each season in the whole watched span
+    live_opens: np.ndarray = None  # type: ignore[assignment]  # the live reports after the first, sorted
+    all_counts: np.ndarray = None  # type: ignore[assignment]  # every report after the first, per season
+
+    def is_live(self, ts: np.ndarray) -> np.ndarray:
+        """True for each time that is outside every dead stretch (start, end]."""
+        ts = np.asarray(ts, dtype=float)
+        if not self.dead_s.size:
+            return np.ones(ts.shape, dtype=bool)
+        j = np.searchsorted(self.dead_s, ts, side="left") - 1
+        return ~((j >= 0) & (ts <= self.dead_e[np.maximum(j, 0)]))
+
+
+def ancestor_counts(live: LiveSpot, first_open: float) -> np.ndarray:
+    """One live report, in its season: the latest live report before `first_open` (none when it is the spot's first)."""
+    j = int(np.searchsorted(live.live_opens, first_open, side="left")) - 1
+    out = np.zeros(4, dtype=int)
+    if j >= 0:
+        out[season_array(live.live_opens[j : j + 1])[0]] = 1
+    return out
+
+
+@dataclass(frozen=True)
+class Estimate:
+    """The baseline for one incident. `p` is the value used (None when no estimate could be made)."""
+
+    p: float | None
+    source: str  # "spot" | "neighborhood" | "citywide" | "none"
+    windows: int  # windows of the incident's season in the spot's watched span
+    p_nbr: float | None
+    expected_nbr: float | None
+    cell: tuple | None = None  # a pooled estimate: originals sharing a cell share its error
+    n_eff: int = 0  # windows behind a pooled estimate (0: not pooled, so no error is drawn for it)
+    cluster: tuple | None = None  # a spot estimate: originals of one spot are resampled together
+
+
+class BaselineModel:
+    """Baseline estimates for the incidents of one detection result (REQ-STAT-BASE, REQ-STAT-NBR)."""
+
+    def __init__(
+        self,
+        cases: Mapping[str, Case],
+        result: DetectionResult,
+        params: Params = DEFAULT,
+        data_end: datetime | None = None,
+        areas_m2: Mapping[str, float] | None = None,
+    ) -> None:
+        self.cases, self.result, self.params = cases, result, params
+        ends = [c.open_utc for c in cases.values()]
+        self.data_end = data_end or (max(ends) if ends else None)
+        self.t_end = self.data_end.timestamp() if self.data_end else 0.0
+        self.t_start = min((c.open_utc.timestamp() for c in cases.values()), default=0.0)
+        self.window_s = params.WINDOW_DAYS * DAY
+        self.areas_m2 = dict(areas_m2 or {})
+        self.mirror = result.mirror_ids
+        self._incident_key: dict[str, tuple[str, str]] = {}
+        self._incident_of_case: dict[str, Case] = {}
+        for inc in sorted(result.incidents, key=lambda i: i.incident_id):
+            first = cases[min(inc.member_ids)]
+            self._incident_of_case[inc.incident_id] = first
+            self._incident_key[inc.incident_id] = (inc.type_family, spot_key(first.segment_id, first.lat, first.lon, params))
+        self.groups = self._groups()
+        self._build_season_days()
+        self._spot_info = self._spots()
+        self._own: dict[str, np.ndarray] = {}
+        self._pooled = self._pool()
+        self._estimates: dict[str, Estimate] = {}
+        self._nbr_data: dict[tuple[str, str], dict] | None = None
+        self.fallbacks: dict[str, int] = {"spot": 0, "neighborhood": 0, "citywide": 0, "none": 0}
+
+    # --- same spot -------------------------------------------------------------------------------------------------
+    def _groups(self) -> dict[tuple[str, str], tuple[np.ndarray, np.ndarray, np.ndarray]]:
+        """(family, spot) -> (sorted open times, sorted close times, sorted close times of live reports) of every non-mirror case,
+        for the spots that have an incident.
+
+        A report is live when it does not open inside the WINDOW_DAYS that follow the closure of an earlier live report
+        (a report in that stretch is a possible resurrection, and its own closure does not start a new stretch)."""
+        needed = set(self._incident_key.values())
+        rows: dict[tuple[str, str], list[tuple[float, float]]] = defaultdict(list)
+        for cid in sorted(self.cases):
+            c = self.cases[cid]
+            if cid in self.mirror:
+                continue
+            key = (c.type_family, spot_key(c.segment_id, c.lat, c.lon, self.params))
+            if key not in needed:
+                continue
+            rows[key].append((c.open_utc.timestamp(), c.close_utc.timestamp() if c.is_closed else math.inf))  # type: ignore[union-attr]
+        out = {}
+        for key in sorted(rows):
+            pairs = sorted(rows[key])
+            pending: list[tuple[float, float]] = []  # (start, end) of the stretches that have not started yet
+            dead_end = -math.inf  # the latest end among the stretches that started before the current report
+            live_closes: list[float] = []
+            for o, cl in pairs:
+                while pending and pending[0][0] < o:
+                    dead_end = max(dead_end, heapq.heappop(pending)[1])
+                if o <= dead_end:  # opened inside a dead stretch: a resurrection, which starts no stretch
+                    continue
+                if cl != math.inf:
+                    heapq.heappush(pending, (cl, cl + self.window_s))
+                    live_closes.append(cl)
+            out[key] = (
+                np.array([p[0] for p in pairs]),
+                np.sort(np.array([p[1] for p in pairs if p[1] != math.inf])),
+                np.sort(np.array(live_closes)),
+            )
+        return out
+
+    def _build_season_days(self) -> None:
+        """Cumulative days of each season from the first report, by day, so any stretch of time is two lookups."""
+        n = max(int((self.t_end - self.t_start) // DAY) + 2, 1)
+        self._day_season = season_array(self.t_start + DAY * np.arange(n))
+        self._cum = np.zeros((4, n + 1))
+        for s in range(4):
+            self._cum[s, 1:] = np.cumsum(self._day_season == s)
+
+    def _season_days_upto(self, ts: np.ndarray) -> np.ndarray:
+        """Days of each season from the first report to each time in `ts` (shape (4, len(ts)), fractional days)."""
+        x = np.clip((np.asarray(ts, dtype=float) - self.t_start) / DAY, 0.0, self._cum.shape[1] - 2.0)
+        i = np.floor(x).astype(int)
+        frac = x - i
+        out = self._cum[:, i].copy()
+        out[self._day_season[i], np.arange(i.size)] += frac  # the part of day i that has passed counts for its season
+        return out
+
+    def live_spot(self, opens: np.ndarray, closes: np.ndarray) -> LiveSpot:
+        """The watched time of a spot with the `WINDOW_DAYS` that follow each closure taken out (REQ-STAT-BASE.1).
+
+        The spot is watched from its first report to the data end. A stretch that follows a closure is where a
+        resurrection would show, so it is neither counted as time nor are its reports counted as chance reports (this is
+        what keeps real resurrections out of the baseline). What is left is the live time, and the live reports in it.
+        """
+        t0, t1 = float(opens[0]), self.t_end
+        dead_s = np.empty(0)
+        dead_e = np.empty(0)
+        if closes.size:
+            ends = closes + self.window_s
+            new = np.r_[True, closes[1:] > np.maximum.accumulate(ends)[:-1]]
+            first = np.flatnonzero(new)
+            dead_s, dead_e = closes[first], np.maximum.reduceat(ends, first)
+        a = np.clip(np.r_[t0, dead_e], t0, t1)
+        b = np.clip(np.r_[dead_s, t1], t0, t1)
+        keep = b > a
+        a, b = a[keep], b[keep]
+        days = (self._season_days_upto(b) - self._season_days_upto(a)).sum(axis=1) if a.size else np.zeros(4)
+        live = LiveSpot(t0, np.zeros(4, dtype=int), days, dead_s, dead_e)
+        after = opens[opens > t0]
+        after = after[live.is_live(after)]
+        counts = np.bincount(season_array(after), minlength=4) if after.size else np.zeros(4, dtype=int)
+        edge = self._season_days_upto(np.array([t0, t1]))
+        every = opens[opens > t0]
+        all_counts = np.bincount(season_array(every), minlength=4) if every.size else np.zeros(4, dtype=int)
+        return LiveSpot(t0, counts, days, dead_s, dead_e, edge[:, 1] - edge[:, 0], after, all_counts)
+
+    def _spots(self) -> dict[tuple[str, str], LiveSpot]:
+        return {key: self.live_spot(opens, live_closes) for key, (opens, _closes, live_closes) in self.groups.items()}
+
+    def own_after(self, inc: Incident) -> np.ndarray:
+        """Live reports of the spot to leave out of the incident's baseline, per season (REQ-STAT-BASE.1).
+
+        These are the incident's own member reports that are live (never chance reports). An incident whose members all
+        opened in a dead stretch (a resurrection of an earlier incident) leaves out the live report that started the
+        stretch: a spot is only seen to have such an incident because it has that report, so it looks busier than it is
+        (a null town with 300 spots gave p 0.38 for these incidents against an observed 0.26 without it).
+        """
+        got = self._own.get(inc.incident_id)
+        if got is not None:
+            return got
+        key = self._incident_key[inc.incident_id]
+        live = self._spot_info[key]
+        opens = []
+        for mid in inc.member_ids:
+            c = self.cases[mid]
+            if mid in self.mirror or (c.type_family, spot_key(c.segment_id, c.lat, c.lon, self.params)) != key:
+                continue
+            opens.append(c.open_utc.timestamp())
+        arr = np.array(opens)
+        arr = arr[(arr > live.t0) & live.is_live(arr)] if arr.size else arr
+        got = np.bincount(season_array(arr), minlength=4) if arr.size else np.zeros(4, dtype=int)
+        if not got.any() and opens:  # born in a dead stretch: leave out the live report that started the stretch
+            got = ancestor_counts(live, min(opens))
+        self._own[inc.incident_id] = got
+        return got
+
+    def own_all(self, inc: Incident) -> np.ndarray:
+        """The incident's member reports after the spot's first report, per season, live or not."""
+        key = self._incident_key[inc.incident_id]
+        t0 = self._spot_info[key].t0
+        opens = [
+            self.cases[mid].open_utc.timestamp()
+            for mid in inc.member_ids
+            if mid not in self.mirror and self.cases[mid].open_utc.timestamp() > t0
+            and (self.cases[mid].type_family, spot_key(self.cases[mid].segment_id, self.cases[mid].lat,
+                                                      self.cases[mid].lon, self.params)) == key
+        ]  # fmt: skip
+        return np.bincount(season_array(np.array(opens)), minlength=4) if opens else np.zeros(4, dtype=int)
+
+    def spot_p(self, inc: Incident, s: int) -> tuple[float, int] | None:
+        """(p_spot, windows) of the incident's spot in season `s`; None when its live time holds less than one window."""
+        live = self._spot_info.get(self._incident_key[inc.incident_id])
+        if live is None:  # only mirror copies at the spot: nothing to watch
+            return None
+        return thinned_p(
+            int(live.counts[s] - self.own_after(inc)[s]), float(live.days[s]), self.params.WINDOW_DAYS, float(live.span[s])
+        )
+
+    def _pool(self) -> dict[tuple[str, int], tuple[int, float]]:
+        """Windows and pooled p of every family and season (season -1: all seasons), for the fallback (REQ-STAT-BASE.3).
+
+        The pooled p is the mean, over the incidents of that family and season, of the chance that one of the spot's other
+        reports (live or not, so resurrections count as well) falls in a window, taken over the spot's whole watched span.
+        Taking every report is cautious: a real resurrection can only raise the pooled p. Dead stretches are left out
+        here because the spots that fall back are the ones watched for a short time, where the live time is too short to
+        give a usable rate (a null town fell 35% short with it).
+        """
+        w = self.params.WINDOW_DAYS
+        total: dict[tuple[str, int], float] = defaultdict(float)
+        count: dict[tuple[str, int], int] = defaultdict(int)
+        windows: dict[tuple[str, int], int] = defaultdict(int)
+        seen: set[tuple[tuple[str, str], int]] = set()
+        for inc in sorted(self.result.incidents, key=lambda i: i.incident_id):
+            s = season_idx(inc.close_utc)
+            key = self._incident_key[inc.incident_id]
+            live = self._spot_info.get(key)
+            if live is None:
+                continue
+            got = thinned_p(int(live.all_counts[s] - self.own_all(inc)[s]), float(live.span[s]), w, float(live.span[s]))
+            if got is None:
+                continue
+            for ps in (s, -1):
+                total[(key[0], ps)] += got[0]
+                count[(key[0], ps)] += 1
+                if (key, ps) not in seen:
+                    seen.add((key, ps))
+                    windows[(key[0], ps)] += got[1] if ps == s else sum(int(live.span[x] // w) for x in range(4))
+        return {k: (windows[k], total[k] / count[k]) for k in count}
+
+    # --- neighborhood ------------------------------------------------------------------------------------------------
+    def _nbr_arrays(self) -> dict[tuple[str, str], dict]:
+        if self._nbr_data is not None:
+            return self._nbr_data
+        from scipy.spatial import cKDTree
+
+        rows: dict[tuple[str, str], list[tuple[float, float, float]]] = defaultdict(list)
+        for cid in sorted(self.cases):
+            c = self.cases[cid]
+            if cid in self.mirror or not c.neighborhood:
+                continue
+            rows[(c.neighborhood, c.type_family)].append(
+                (c.open_utc.timestamp(), c.lon * M_PER_DEG * COS_BOSTON, c.lat * M_PER_DEG)
+            )
+        data: dict[tuple[str, str], dict] = {}
+        for key, vals in rows.items():
+            arr = np.array(sorted(vals))
+            seasons = season_array(arr[:, 0])
+            data[key] = {
+                "t": arr[:, 0], "season": seasons, "tree": cKDTree(arr[:, 1:3]),
+                "by_season": np.bincount(seasons, minlength=4),
+            }  # fmt: skip
+        self._nbr_data = data
+        self._season_days = self._days_per_season()
+        return data
+
+    def _days_per_season(self) -> np.ndarray:
+        """Days of each season inside the observation span (first report to data end)."""
+        n_days = int((self.t_end - self.t_start) // DAY) + 1
+        days = self.t_start + DAY * np.arange(max(n_days, 0))
+        days = days[days <= self.t_end]
+        return np.bincount(season_array(days), minlength=4).astype(float) if days.size else np.zeros(4)
+
+    def nbr(self, inc: Incident) -> tuple[float, float] | None:
+        """(P, expected) for the neighborhood Poisson check, or None without a neighborhood area (REQ-STAT-NBR.1)."""
+        area = self.areas_m2.get(inc.neighborhood or "")
+        if not area or not inc.neighborhood:
+            return None
+        data = self._nbr_arrays().get((inc.neighborhood, inc.type_family))
+        s = season_idx(inc.close_utc)
+        days = self._season_days[s]
+        if days <= 0:
+            return None
+        if data is None:
+            return 0.0, 0.0  # no same-family report in the neighborhood at all
+        first = self._incident_of_case[inc.incident_id]
+        point = (first.lon * M_PER_DEG * COS_BOSTON, first.lat * M_PER_DEG)
+        near = data["tree"].query_ball_point(point, r=self.params.RADIUS_M)
+        t_close = inc.close_utc.timestamp()
+        idx = np.asarray(near, dtype=int)
+        excluded = 0
+        if idx.size:
+            excluded = int(((np.abs(data["t"][idx] - t_close) <= self.window_s) & (data["season"][idx] == s)).sum())
+        lam = max(0, int(data["by_season"][s]) - excluded) / (area * days)
+        expected = lam * math.pi * self.params.RADIUS_M**2 * self.params.WINDOW_DAYS
+        return 1.0 - math.exp(-expected), expected
+
+    # --- estimates ---------------------------------------------------------------------------------------------------
+    def estimate(self, inc: Incident) -> Estimate:
+        """The baseline of one incident, with the fallback chain of REQ-STAT-BASE.3 (cached)."""
+        got = self._estimates.get(inc.incident_id)
+        if got is not None:
+            return got
+        key = self._incident_key[inc.incident_id]
+        s = season_idx(inc.close_utc)
+        got = self.spot_p(inc, s)
+        windows = got[1] if got else 0
+        nbr = self.nbr(inc)
+        p_nbr, e_nbr = (nbr if nbr else (None, None))
+        if got is not None and windows >= MIN_WINDOWS:
+            est = Estimate(got[0], "spot", windows, p_nbr, e_nbr, None, 0, ("spot", *key))
+        elif p_nbr is not None:
+            est = Estimate(p_nbr, "neighborhood", windows, p_nbr, e_nbr)
+        else:
+            season_key = s
+            n, pool_p = self._pooled.get((inc.type_family, s), (0, 0.0))
+            if n < POOLED_MIN:  # too few windows for one season: pool all seasons of the family
+                season_key = -1
+                n, pool_p = self._pooled.get((inc.type_family, -1), (0, 0.0))
+            est = Estimate(pool_p if n else None, "citywide" if n else "none", windows, p_nbr, e_nbr,
+                           ("pool", inc.type_family, season_key), n)  # fmt: skip
+        self._estimates[inc.incident_id] = est
+        return est
+
+    def p(self, inc: Incident) -> float | None:
+        return self.estimate(inc).p
+
+    def fallback_counts(self, incidents: list[Incident]) -> dict[str, int]:
+        """How many of `incidents` used each source (REQ-STAT-BASE.3: the fallback is counted)."""
+        out = {"spot": 0, "neighborhood": 0, "citywide": 0, "none": 0}
+        for inc in incidents:
+            out[self.estimate(inc).source] += 1
+        return out
+
+    def zombie_baselines(self) -> dict[str, float]:
+        """`baseline_p` per zombie for the engine's confidence score (REQ-STAT-BASE.4)."""
+        by_inc = {i.incident_id: i for i in self.result.incidents}
+        out: dict[str, float] = {}
+        for z in self.result.zombies:
+            p = self.p(by_inc[z.incident_id])
+            if p is not None:
+                out[z.zombie_id] = min(1.0, max(0.0, p))
+        return out
+
+
+@dataclass(frozen=True)
+class ExcessRow:
+    kind: str
+    name: str
+    tier_set: TierSet
+    observed: int
+    expected: float
+    excess: float
+    lo: float
+    hi: float
+    n_originals: int
+    expected_nbr: float | None
+    excess_nbr: float | None
+    n_fallback: int
+
+    def to_json(self) -> dict:
+        return {
+            "kind": self.kind, "name": self.name, "tier_set": self.tier_set, "observed": self.observed,
+            "expected": self.expected, "excess": self.excess, "lo": self.lo, "hi": self.hi,
+            "n_originals": self.n_originals, "expected_nbr": self.expected_nbr, "excess_nbr": self.excess_nbr,
+            "n_fallback": self.n_fallback,
+        }  # fmt: skip
+
+
+def zombie_by_incident(zombies: list[Zombie], tier_set: TierSet) -> dict[str, Zombie]:
+    """Each incident's resurrection in the tier set: headline only, or every tier (REQ-STAT-TIER.2)."""
+    return {z.incident_id: z for z in zombies if tier_set == "all" or z.tier == "headline"}
+
+
+def excess_rows(
+    model: BaselineModel, seed: int = 311, boot: int = 1000
+) -> list[ExcessRow]:
+    """Observed, expected and excess by department, family and neighborhood, headline and all tiers (REQ-STAT-BASE.2).
+
+    Originals without an estimate (no spot, neighborhood or pooled windows) are left out of the cohort and counted
+    nowhere in `observed` either, so observed and expected always cover the same originals.
+    """
+    rng = np.random.Generator(np.random.PCG64(seed))
+    rows: list[ExcessRow] = []
+    for tier_set in ("headline", "all"):
+        zs = zombie_by_incident(model.result.zombies, tier_set)
+        groups: dict[tuple[str, str], list[tuple]] = defaultdict(list)
+        for inc in eligible_originals(model.result.incidents, model.data_end, model.params, all_tiers=tier_set == "all"):
+            est = model.estimate(inc)
+            if est.p is None:
+                continue
+            row = (1.0 if inc.incident_id in zs else 0.0, est.p, est.expected_nbr, est.source != "spot", est.cell, est.n_eff,
+                   est.cluster)
+            for kind, name in (("department", inc.department or UNKNOWN), ("family", inc.type_family),
+                               ("neighborhood", inc.neighborhood or UNKNOWN)):  # fmt: skip
+                groups[(kind, name)].append(row)
+        for (kind, name) in sorted(groups):
+            vals = groups[(kind, name)]
+            obs = sum(v[0] for v in vals)
+            exp = sum(v[1] for v in vals)
+            nbr = [v[2] for v in vals]
+            e_nbr = None if any(x is None for x in nbr) else float(sum(nbr))  # type: ignore[arg-type]
+            cell_ids: dict[tuple, int] = {}
+            cells = [-1 if v[4] is None else cell_ids.setdefault(v[4], len(cell_ids)) for v in vals]
+            cell_p = [0.0] * len(cell_ids)
+            cell_n = [0.0] * len(cell_ids)
+            for v, c in zip(vals, cells, strict=True):
+                if c >= 0:
+                    cell_p[c], cell_n[c] = v[1], float(v[5])
+            cluster_ids: dict[tuple, int] = {}
+            clusters = [-1 if v[6] is None else cluster_ids.setdefault(v[6], len(cluster_ids)) for v in vals]
+            ci = bootstrap_sum_cells([v[0] - v[1] for v in vals], cells, cell_p, cell_n, rng, boot, clusters=clusters)
+            assert ci is not None
+            rows.append(ExcessRow(kind, name, tier_set, int(obs), exp, obs - exp, ci[0], ci[1], len(vals), e_nbr,
+                                  None if e_nbr is None else obs - e_nbr, sum(1 for v in vals if v[3])))  # fmt: skip
+    return rows

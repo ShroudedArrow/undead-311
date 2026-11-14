@@ -85,13 +85,14 @@ def test_req_stat_tour_1_exported_tour_validates_and_a_missing_tour_is_a_warning
     result = detect(cs)
     payloads, status = build_stats(result, {c.id: c for c in cs}, "v1", day(300), labels_dir=tmp_path)
     validate("judge_tour", payloads["judge_tour.json"])
-    assert payloads["judge_tour.json"]["provisional"] is True and status["warnings"] == []
+    assert payloads["judge_tour.json"]["provisional"] is True
+    assert not any("judge_tour" in w or "override" in w for w in status["warnings"])
     (tmp_path / "judge_tour_override.json").write_text(json.dumps(["x", "y", "z"]))
     _, status = build_stats(result, {c.id: c for c in cs}, "v1", day(300), labels_dir=tmp_path)
-    assert "ignored" in status["warnings"][0]
+    assert any("ignored" in w for w in status["warnings"])
     few = detect([mk("A", 0, 1), mk("R", 5)])
     payloads, status = build_stats(few, {"A": mk("A", 0, 1), "R": mk("R", 5)}, "v1", day(300))
-    assert "judge_tour.json" not in payloads and "fewer than 3" in status["warnings"][0]
+    assert "judge_tour.json" not in payloads and any("fewer than 3" in w for w in status["warnings"])
 
 
 def test_req_stat_tour_1_an_explained_away_zombie_is_never_featured():

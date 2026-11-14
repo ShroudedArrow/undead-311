@@ -44,6 +44,47 @@
               "headline",
               "all"
             ]
+          },
+          "n_originals": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "eligible originals behind the row"
+          },
+          "expected_nbr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "excess_nbr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "n_fallback": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "originals whose baseline fell back from the same spot (REQ-STAT-BASE.3)"
+          },
+          "reports_per_km": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -82,6 +123,10 @@
         },
         "q975": {
           "type": "number"
+        },
+        "headline_zombies": {
+          "type": "integer",
+          "minimum": 0
         }
       },
       "required": [
@@ -106,6 +151,13 @@
         },
         "hi": {
           "type": "number"
+        },
+        "runs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "calibration_warning": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -114,6 +166,45 @@
         "hi"
       ],
       "additionalProperties": true
+    },
+    "baseline_sources": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "neighborhood_check": {
+      "enum": [
+        "ran",
+        "skipped"
+      ]
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "dataset": {
+      "enum": [
+        "sample",
+        "full"
+      ]
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "params": {
+      "type": "object"
     }
   },
   "required": [
