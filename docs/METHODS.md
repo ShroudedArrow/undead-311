@@ -23,6 +23,8 @@ Each term is in [0, 1]:
 
 `confidence_partial` is `true` exactly when a neutral term was used (no `baseline_p`, or Skeptic `not_reviewed`). The score is never used to choose judge-mode zombies or the validation sample; raters are blind to it.
 
+**Where the two evidence terms come from.** `baseline_p` comes from the stats stage: `undead311.stats.pipeline.zombie_baselines(con, result, cases, params)` returns `{zombie_id: baseline_p}` (REQ-STAT-BASE.4), each value a number in [0, 1]. The engine stores it on the zombie and rescores; a value outside [0, 1] fails the run instead of being clamped, and a zombie missing from the mapping keeps the neutral 0.5 and is reported as an anomaly. The same value goes into `skeptic_input.json` as evidence for the Skeptic. The Skeptic verdict comes from `data/labels/skeptic_objections.json`, joined by (incident ID, resurrection ID). A score is complete (`confidence_partial = false`) when the zombie has both a `baseline_p` and a Skeptic verdict other than `not_reviewed`. Until the same-spot baseline exists in the stats stage (durability-stats task 5), no zombie has a `baseline_p`, so every score is still partial; the run report counts both (`baseline_zombies`, `confidence_partial`).
+
 Weights, the intersection factor (0.9, raised from the 0.7 in design.md so that segment > intersection > radius holds at equal distance) and the radius factor (0.8) are proposals and are not validated against the hand-checked sample yet.
 
 ## Closed on time vs stayed fixed (demo-critical part)

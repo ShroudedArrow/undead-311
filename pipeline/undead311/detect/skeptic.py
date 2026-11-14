@@ -82,6 +82,7 @@ def build_input(
                 "distance_m": round(z.distance_m, 2),
                 "reports_after": z.reports_after,
                 "coroner_label": z.coroner_label,
+                "baseline_p": z.baseline_p,  # the local chance of coincidence, when the stats stage supplied it (REQ-SKEP.1)
                 "original": [_case_view(cases[m]) for m in z.member_ids if m in cases],
                 "rereport": _case_view(cases[z.resurrection_id]) if z.resurrection_id in cases else None,
             }

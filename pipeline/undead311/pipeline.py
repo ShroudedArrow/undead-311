@@ -21,6 +21,7 @@ import duckdb
 
 from undead311.coroner.join import JoinReport, join_labels
 from undead311.coroner.templates import build_templates
+from undead311.detect.baseline import apply_baselines
 from undead311.detect.bulk import bulk_closures, flag_cases
 from undead311.detect.cases import cases_from_table
 from undead311.detect.core import city_origin_summary, detect
@@ -90,6 +91,8 @@ class RunReport:
     tier_counts: dict[str, int] = field(default_factory=dict)
     city_origin: dict[str, float | int] = field(default_factory=dict)
     planned_followups: int = 0
+    baseline_zombies: int = 0  # zombies with a baseline_p from the stats stage (REQ-CONF.2)
+    confidence_partial: int = 0  # zombies whose score used a neutral term
     file_sizes: dict[str, int] = field(default_factory=dict)
     first_view_bytes: int = 0
     first_view_budget_bytes: int = FIRST_VIEW_BUDGET_BYTES
@@ -116,6 +119,7 @@ class RunReport:
                 f"({co.get('city_originated_share', 0.0):.1%}), {co.get('city_originated_under_1h', 0)} opened under "
                 f"1 h after closure; planned follow-ups kept out: {self.planned_followups}"
             ),
+            f"  confidence: {self.baseline_zombies} zombies with a baseline_p, {self.confidence_partial} partial scores",
             f"  PII replacements: {self.pii_counts}",
             f"  stats: {self.stats}",
             f"  files: {len(self.file_sizes)}, {sum(self.file_sizes.values()):,} bytes; "
@@ -123,6 +127,16 @@ class RunReport:
         ]
         lines += [f"  warning: {w}" for w in self.warnings]
         return "\n".join(lines)
+
+
+def _stats_module():
+    """`undead311.stats.pipeline`, or None when the stats package or its pipeline module is absent (REQ-STAT-EXP.1)."""
+    try:
+        return importlib.import_module("undead311.stats.pipeline")
+    except ModuleNotFoundError as e:
+        if e.name not in STATS_ABSENT_NAMES:
+            raise
+        return None
 
 
 def _zombie_ids(path: Path, key: str = "zombie_ids") -> list[str]:
@@ -233,6 +247,15 @@ def run_pipeline(
             runs = run_grid(con, cases, p)
             store_grid(con, runs)
             report.row_counts["grid_runs"] = len(runs)
+        stats = _stats_module()
+        hook = getattr(stats, "zombie_baselines", None)  # REQ-STAT-BASE.4: optional until the same-spot baseline exists
+        baselines = hook(con, result, by_id, p) if callable(hook) else None
+        result.zombies = apply_baselines(result.zombies, baselines, p)  # REQ-CONF.1-2: baseline term, else neutral
+        report.baseline_zombies = sum(z.baseline_p is not None for z in result.zombies)
+        if baselines and report.baseline_zombies < len(result.zombies):
+            report.warnings.append(
+                f"baseline_p is missing for {len(result.zombies) - report.baseline_zombies} of {len(result.zombies)} zombies"
+            )
         # Skeptic: input for the agent, then the join of its objections (REQ-SKEP)
         tour = _zombie_ids(out / "stats" / "judge_tour.json")
         sample_ids = _validation_ids(root / "data" / "labels" / "validation_sample.csv")
@@ -240,6 +263,7 @@ def run_pipeline(
         result.zombies = join_objections(result.zombies, root / "data" / "labels" / "skeptic_objections.json", p)
         report.excluded_pairs = dict(result.excluded_pairs)
         report.tier_counts = {t: result.count(t) for t in ("headline", "source_unknown", "sensitivity")}  # type: ignore[arg-type]
+        report.confidence_partial = sum(z.confidence_partial for z in result.zombies)
         report.city_origin = city_origin_summary(result, by_id)
         report.planned_followups = len(result.planned_followups)
         co = report.city_origin
@@ -257,11 +281,7 @@ def run_pipeline(
         # "not present": a dependency missing inside the package (even undead311.stats.rates), or any error in run_stats,
         # fails the run. The "not present" branch also removes stats files an earlier run left behind (ops#48).
         stats_status = None
-        try:
-            stats = importlib.import_module("undead311.stats.pipeline")
-        except ModuleNotFoundError as e:
-            if e.name not in STATS_ABSENT_NAMES:
-                raise
+        if stats is None:
             report.stats = "not present"  # the swap removes stats files an earlier run left behind
         else:
             stats_status = stats.run_stats(  # type: ignore[attr-defined]

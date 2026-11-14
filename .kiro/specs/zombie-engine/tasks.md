@@ -111,7 +111,7 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
 - [x] 26. [credibility] Safe re-runs
   - Build outputs into a temporary folder and swap only on success; a failed stage leaves the previous outputs untouched (test with an injected failure).
   - _Requirements: REQ-ING-NIGHTLY.1_
-- [ ] 27. [credibility] Full confidence score
+- [x] 27. [credibility] Full confidence score
   - Use `baseline_p` from durability-stats and Skeptic verdicts; `confidence_partial` turns false; update METHODS.md.
   - _Requirements: REQ-CONF.1–2, REQ-SKEP.2_
 
