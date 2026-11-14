@@ -48,11 +48,12 @@ describe("AutopsyCard content (REQ-WEB-CARD.1, .3, .6)", () => {
     expect(within(card).getByText("4 hours")).toBeTruthy();
     expect(within(card).queryByText(/^0 days?$/)).toBeNull();
   });
-  it("links both case IDs to the city's public pages", () => {
+  it("links an earlier-system case ID to the city's page and shows a new-system ID as text, because that link is not verified (REQ-WEB-CARD.1, ops#13)", () => {
     render(<AutopsyCard card={CARD} />);
     const link = screen.getByRole("link", { name: "View case 101001 on the city's site" });
-    expect(link.getAttribute("href")).toBe("https://311.boston.gov/tickets/101001");
-    expect(screen.getByRole("link", { name: "View case BCS-2 on the city's site" })).toBeTruthy();
+    expect(link.getAttribute("href")).toBe("https://311.boston.gov/reports/101001");
+    expect(screen.queryByRole("link", { name: /View case BCS-2/ })).toBeNull();
+    expect(screen.getByText("BCS-2")).toBeTruthy();
   });
   it("notes partial confidence only when flagged", () => {
     const { rerender } = render(<AutopsyCard card={CARD} />);

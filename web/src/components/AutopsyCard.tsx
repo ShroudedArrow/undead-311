@@ -13,9 +13,14 @@ function CaseBlock({ heading, rec }: { heading: string; rec: CaseRecord }) {
       <dl>
         <dt>{t("card.case_id")}</dt>
         <dd>
-          <a href={t("card.case_url", { id: rec.id })} target="_blank" rel="noreferrer" aria-label={t("card.view_case", { id: rec.id })}>
-            {rec.id}
-          </a>{" "}
+          {rec.system === "legacy" ? (
+            <a href={t("card.case_url", { id: rec.id })} target="_blank" rel="noreferrer" aria-label={t("card.view_case", { id: rec.id })}>
+              {rec.id}
+            </a>
+          ) : (
+            // Owner decision (ops#13): a new-system case gets no link until the city's page for it is verified.
+            <span>{rec.id}</span>
+          )}{" "}
           ({rec.system === "legacy" ? t("card.system_legacy") : t("card.system_new")})
         </dd>
         <dt>{t("card.type")}</dt>
