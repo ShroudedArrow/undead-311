@@ -175,6 +175,10 @@ export interface ScorecardFile {
     matching: string;
   };
   seed: number | null;
+  /**
+   * Whether the run read the committed sample or the full data; a sample rate is not a citywide figure. REQ-STAT-EXP.1
+   */
+  dataset?: "sample" | "full";
   [k: string]: unknown;
 }
 
@@ -207,6 +211,10 @@ export interface StatusFile {
    * Of those, opened under 1 h after the closure; REQ-DET-PF
    */
   headline_city_originated_under_1h_count?: number;
+  /**
+   * Whether the run read the committed sample or the full data; a sample rate is not a citywide figure. REQ-STAT-EXP.1
+   */
+  dataset?: "sample" | "full";
   [k: string]: unknown;
 }
 
@@ -228,6 +236,10 @@ export interface JudgeTourFile {
     matching: string;
   };
   seed: number | null;
+  /**
+   * Whether the run read the committed sample or the full data; a sample rate is not a citywide figure. REQ-STAT-EXP.1
+   */
+  dataset?: "sample" | "full";
   [k: string]: unknown;
 }
 
@@ -328,7 +340,7 @@ export interface GroupsFile {
 }
 
 /**
- * REQ-STAT-BASE, REQ-STAT-SHIFT, REQ-STAT-PLACEBO.
+ * REQ-STAT-BASE, REQ-STAT-SHIFT, REQ-STAT-PLACEBO. `shift` is the time-shift permutation result and `placebo` the placebo-outcome excess; both optional (ops#64).
  */
 export interface ExcessFile {
   data_version: string;
@@ -343,6 +355,14 @@ export interface ExcessFile {
     tier_set: "headline" | "all";
     [k: string]: unknown;
   }[];
+  /**
+   * REQ-STAT-SHIFT: observed count against the distribution of counts under random time shifts. Fields: runs, seed, observed, mean, q025, q975 (numbers). Inner fields are not type-checked so the methods page can say a result is missing instead of failing the whole file (ops#64).
+   */
+  shift?: {};
+  /**
+   * REQ-STAT-PLACEBO: excess for a placebo outcome that should be about zero. Fields: excess, lo, hi (numbers). Inner fields are not type-checked, see `shift`.
+   */
+  placebo?: {};
   [k: string]: unknown;
 }
 
