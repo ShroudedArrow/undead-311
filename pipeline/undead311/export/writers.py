@@ -9,6 +9,7 @@ so a failed run never leaves a status that claims success. Free text goes throug
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 import os
@@ -30,10 +31,48 @@ from undead311.paths import repo_root
 
 SCHEMA_DIR = Path(__file__).resolve().parents[3] / "schemas"
 EXCLUDED_ID_CAP = 5000
+# REQ-EXP-SIZE.1: the files the first view loads (status, map points, the two-number scorecard, the judge tour), by path
+# relative to the output folder. Their total, before compression, must stay under the budget.
+FIRST_VIEW_FILES = ("status.json", "points.json", "stats/scorecard.json", "stats/judge_tour.json")
+FIRST_VIEW_BUDGET_BYTES = 3_000_000  # "about 3 MB" (tech.md), taken as 3,000,000 bytes so the check is not generous
 
 
 class ContractError(ValueError):
     """A payload does not validate against its JSON Schema (REQ-EXP-1.1)."""
+
+
+class PayloadBudgetExceeded(RuntimeError):
+    """The first-view files are larger than FIRST_VIEW_BUDGET_BYTES (REQ-EXP-SIZE.2)."""
+
+
+def gzip_bytes(data: bytes) -> bytes:
+    """Deterministic gzip (no timestamp, no file name), so two runs write identical `.gz` files (REQ-EXP-1.3)."""
+    return gzip.compress(data, compresslevel=9, mtime=0)
+
+
+def write_gz_copy(path: Path, data: bytes | None = None) -> Path:
+    """Write `<path>.gz` beside `path` (atomically). It decompresses to exactly the bytes of `path` (REQ-EXP-SIZE.1);
+    `data` lets a caller write the copy before `path` itself exists (status.json must be the last file written)."""
+    gz = path.with_name(path.name + ".gz")
+    gz.parent.mkdir(parents=True, exist_ok=True)
+    tmp = gz.with_name(gz.name + ".tmp")
+    tmp.write_bytes(gzip_bytes(path.read_bytes() if data is None else data))
+    os.replace(tmp, gz)
+    return gz
+
+
+def first_view_bytes(sizes: Mapping[str, int]) -> int:
+    """Total raw size of the first-view files present in `sizes` (name relative to the output folder -> bytes)."""
+    return sum(n for name, n in sizes.items() if name in FIRST_VIEW_FILES)
+
+
+def check_first_view_budget(sizes: Mapping[str, int], budget: int = FIRST_VIEW_BUDGET_BYTES) -> int:
+    """Raise PayloadBudgetExceeded when the first-view files exceed `budget` bytes; return their total (REQ-EXP-SIZE.2)."""
+    total = first_view_bytes(sizes)
+    if total > budget:
+        parts = ", ".join(f"{n} {sizes[n]:,} B" for n in FIRST_VIEW_FILES if n in sizes)
+        raise PayloadBudgetExceeded(f"first-view files total {total:,} B, over the {budget:,} B budget ({parts})")
+    return total
 
 
 def load_schema(name: str) -> dict:
@@ -240,12 +279,26 @@ def export_all(result: DetectionResult, cases: Mapping[str, Case], out_dir: Path
         validate("card" if name.startswith("cards/") else name.removesuffix(".json"), payload)
     validate("status", status)
     out_dir = Path(out_dir)
+    texts = {name: canonical_json(payloads[name]) for name in sorted(payloads)}
+    texts["status.json"] = canonical_json(status)
+    sizes = {name: len(t.encode("utf-8")) for name, t in texts.items()}
+    for name in FIRST_VIEW_FILES:  # stats files are written before the export; their size counts too (REQ-EXP-SIZE.2)
+        f = out_dir / name
+        if name not in sizes and f.is_file():
+            sizes[name] = f.stat().st_size
+    check_first_view_budget(sizes)  # before anything is written: an over-budget run leaves the old files in place
     written = []
-    for name in sorted(payloads):
-        write_text_atomic(out_dir / name, canonical_json(payloads[name]))
-        written.append(out_dir / name)
-    write_text_atomic(out_dir / "status.json", canonical_json(status))
-    written.append(out_dir / "status.json")
+    for name in sorted(texts):
+        if name == "status.json":
+            continue
+        write_text_atomic(out_dir / name, texts[name])
+        written += [out_dir / name, write_gz_copy(out_dir / name)]
+    for stats_file in sorted((out_dir / "stats").glob("*.json")) if (out_dir / "stats").is_dir() else []:
+        written += [stats_file, write_gz_copy(stats_file)]
+    status_path = out_dir / "status.json"
+    written.append(write_gz_copy(status_path, texts["status.json"].encode("utf-8")))
+    write_text_atomic(status_path, texts["status.json"])  # the last file written (REQ-EXP-1.1)
+    written.append(status_path)
     return written
 
 

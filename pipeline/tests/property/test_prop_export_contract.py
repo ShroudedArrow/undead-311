@@ -26,7 +26,7 @@ def test_prop_p11_every_exported_file_validates_against_its_schema(cases):
     by_id = {c.id: c for c in cases}
     with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
         for folder in (a, b):
-            for path in export_all(result, by_id, Path(folder), CTX):
+            for path in (p for p in export_all(result, by_id, Path(folder), CTX) if p.suffix == ".json"):
                 payload = json.loads(path.read_text())
                 name = "card" if path.parent.name == "cards" else path.stem
                 validate(name, payload)

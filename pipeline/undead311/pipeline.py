@@ -29,11 +29,13 @@ from undead311.detect.model import DetectionResult
 from undead311.detect.params import DEFAULT, Params
 from undead311.detect.skeptic import build_input, join_objections, write_input
 from undead311.export.writers import (
+    FIRST_VIEW_BUDGET_BYTES,
     ExportContext,
     canonical_json,
     data_version,
     export_all,
     exported_case_ids,
+    first_view_bytes,
     snapshot_date,
     write_duckdb_atomic,
     write_text_atomic,
@@ -69,6 +71,8 @@ class RunReport:
     city_origin: dict[str, float | int] = field(default_factory=dict)
     planned_followups: int = 0
     file_sizes: dict[str, int] = field(default_factory=dict)
+    first_view_bytes: int = 0
+    first_view_budget_bytes: int = FIRST_VIEW_BUDGET_BYTES
     warnings: list[str] = field(default_factory=list)
     stats: str = "not present"
     seconds: float = 0.0
@@ -94,7 +98,8 @@ class RunReport:
             ),
             f"  PII replacements: {self.pii_counts}",
             f"  stats: {self.stats}",
-            f"  files: {len(self.file_sizes)}, {sum(self.file_sizes.values()):,} bytes",
+            f"  files: {len(self.file_sizes)}, {sum(self.file_sizes.values()):,} bytes; "
+            + f"first view {self.first_view_bytes:,} of {self.first_view_budget_bytes:,} bytes",
         ]
         lines += [f"  warning: {w}" for w in self.warnings]
         return "\n".join(lines)
@@ -268,7 +273,8 @@ def run_pipeline(
             con.executemany("insert into zombies values (?,?,?,?,?,?,?,?)", rows)
 
     write_duckdb_atomic(processed / "undead311.duckdb", build)
-    report.file_sizes = {str(f.relative_to(out)): f.stat().st_size for f in state.get("files", [])}
+    report.file_sizes = {f.relative_to(out).as_posix(): f.stat().st_size for f in sorted(set(state.get("files", [])))}
+    report.first_view_bytes = first_view_bytes(report.file_sizes)  # REQ-EXP-SIZE.2: export_all already enforced the budget
     report.seconds = time.time() - t0
     write_text_atomic(processed / "run_report.json", canonical_json(report.to_json()))
     return report
