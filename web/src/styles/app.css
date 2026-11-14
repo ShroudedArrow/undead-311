@@ -1,0 +1,367 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--concrete);
+  color: var(--asphalt);
+  font-family: var(--font-ui);
+  font-size: var(--step-0);
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+  margin: 0 0 var(--space-2);
+}
+h1 { font-size: var(--step-2); }
+h2 { font-size: var(--step-1); }
+h3 { font-size: var(--step-0); }
+
+p { max-width: var(--measure); margin: 0 0 var(--space-3); }
+
+a { color: var(--asphalt); text-underline-offset: 0.15em; }
+
+/* REQ-WEB-A11Y.1: visible focus on every interactive element. The ring is Asphalt on light, Crew white on dark. */
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+.on-dark :focus-visible {
+  outline-color: var(--crew-white);
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--space-2);
+  top: -4rem;
+  background: var(--crew-white);
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--asphalt);
+  z-index: 100;
+}
+.skip-link:focus { top: var(--space-2); }
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+button,
+select,
+input {
+  font: inherit;
+  color: var(--asphalt);
+}
+
+button {
+  background: var(--crew-white);
+  border: 2px solid var(--asphalt);
+  border-radius: 2px;
+  padding: var(--space-2) var(--space-3);
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+button[aria-pressed="true"],
+button[aria-current="true"] {
+  background: var(--asphalt);
+  color: var(--crew-white);
+}
+button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
+
+.shell {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100%;
+}
+.shell-main { min-width: 0; }
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  background: var(--asphalt);
+  color: var(--crew-white);
+}
+.site-header a { color: var(--crew-white); }
+.site-title { font-size: var(--step-1); font-weight: 700; margin: 0; }
+.site-title a { text-decoration: none; }
+.site-nav { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.site-nav a[aria-current="page"] { font-weight: 700; text-decoration-thickness: 3px; }
+.site-header .data-status { margin-left: auto; font-size: var(--step--1); max-width: 34rem; }
+.site-header .data-status p { margin: 0; max-width: none; }
+.site-header .fixture-notice { border: 2px dashed var(--crew-white); padding: var(--space-1) var(--space-2); margin-top: var(--space-1); font-weight: 600; }
+
+.site-footer {
+  padding: var(--space-3);
+  background: var(--crew-white);
+  border-top: 2px solid var(--asphalt);
+  font-size: var(--step--1);
+}
+.site-footer { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); }
+.site-footer p { margin: 0; max-width: none; }
+
+.panel-error {
+  border: 2px dashed var(--asphalt);
+  background: var(--crew-white);
+  padding: var(--space-3);
+  max-width: var(--measure);
+}
+
+/* Map page layout (REQ-WEB-MAP) */
+.home {
+  display: grid;
+  grid-template-columns: minmax(16rem, 20rem) 1fr;
+  height: 100%;
+  min-height: 0;
+  position: relative;
+}
+.filters-panel {
+  background: var(--crew-white);
+  border-right: 2px solid var(--asphalt);
+  padding: var(--space-3);
+  overflow-y: auto;
+}
+.filters-panel h2 { margin-top: var(--space-3); }
+.tagline { font-size: var(--step--1); }
+.stage { position: relative; min-width: 0; min-height: 24rem; display: flex; flex-direction: column; }
+.view-switch { display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--concrete); }
+.map-host { flex: 1; min-height: 24rem; width: 100%; }
+.shell-main { display: flex; flex-direction: column; }
+.shell-main > .home { flex: 1; }
+
+.filter-group { border: 2px solid var(--asphalt); background: var(--concrete); margin: 0 0 var(--space-2); }
+.filter-group summary { padding: var(--space-2) var(--space-3); cursor: pointer; font-weight: 600; min-height: 2.75rem; display: flex; align-items: center; gap: var(--space-2); }
+.filter-group summary::-webkit-details-marker { display: none; }
+.filter-group ul { list-style: none; margin: 0; padding: 0 var(--space-3) var(--space-2); max-height: 14rem; overflow-y: auto; }
+.filter-group li label { display: flex; gap: var(--space-2); align-items: center; padding: var(--space-1) 0; min-height: 2rem; }
+.filter-group input[type="checkbox"] { width: 1.25rem; height: 1.25rem; accent-color: var(--asphalt); }
+.count-line { font-weight: 600; }
+.count-note { font-size: var(--step--1); }
+
+@media (max-width: 640px) {
+  .home { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .filters-panel { border-right: 0; border-bottom: 2px solid var(--asphalt); max-height: 14rem; }
+}
+
+/* Table view (REQ-WEB-TABLE) */
+.table-wrap { flex: 1; overflow: auto; padding: var(--space-3); background: var(--concrete); }
+.zombie-table { border-collapse: collapse; width: 100%; background: var(--crew-white); }
+.zombie-table caption { text-align: left; font-weight: 600; padding: var(--space-2) 0; }
+.zombie-table th, .zombie-table td { border: 1px solid var(--asphalt); padding: var(--space-2); text-align: left; vertical-align: top; }
+.zombie-table th button { background: transparent; border: 0; padding: 0; min-height: 2.75rem; font-weight: 700; text-align: left; }
+.zombie-table th[aria-sort="ascending"] button, .zombie-table th[aria-sort="descending"] button { text-decoration: underline; text-decoration-thickness: 3px; }
+.table-empty { padding: var(--space-3); }
+
+/* Autopsy card: a triplicate city form (REQ-WEB-CARD). The typewriter face lives only inside .autopsy-form. */
+.card-host {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  bottom: var(--space-3);
+  width: min(34rem, calc(100% - 2 * var(--space-3)));
+  overflow-y: auto;
+  z-index: 20;
+  background: var(--concrete);
+  border: 2px solid var(--asphalt);
+  padding: var(--space-3);
+}
+.card-bar { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+.card-bar h2 { margin: 0; }
+
+.autopsy { position: relative; margin: 0 var(--space-3) var(--space-3) 0; }
+.autopsy::before,
+.autopsy::after { content: ""; position: absolute; inset: 0; border: 2px solid var(--asphalt); z-index: 0; }
+.autopsy::before { background: var(--canary-copy); transform: translate(6px, 6px); }
+.autopsy::after { background: var(--survey-pink); transform: translate(12px, 12px); z-index: -1; }
+.autopsy-form {
+  position: relative;
+  z-index: 1;
+  background: var(--crew-white);
+  border: 2px solid var(--asphalt);
+  padding: var(--space-3);
+  font-family: var(--font-form);
+  font-size: var(--step-0);
+  line-height: 1.45;
+}
+.autopsy-form h3 { font-family: var(--font-form); font-size: var(--step-0); font-weight: 700; border-bottom: 2px solid var(--asphalt); padding-bottom: var(--space-1); }
+.autopsy-form p { max-width: none; }
+.autopsy-head { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: space-between; align-items: flex-start; }
+.stamps { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; }
+.stamp { display: inline-block; border: 3px solid var(--asphalt); padding: var(--space-1) var(--space-2); font-weight: 700; font-size: var(--step-1); }
+.stamp-closed { text-decoration: line-through; text-decoration-thickness: 3px; }
+.stamp-again { background: var(--survey-pink); transform: rotate(-3deg); }
+.autopsy-facts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin: var(--space-3) 0; }
+.autopsy-facts > div { border: 2px solid var(--asphalt); padding: var(--space-2); background: var(--canary-copy); }
+.autopsy-facts dt { font-weight: 700; }
+.autopsy-facts dd { margin: 0; }
+.partial-note { display: block; font-size: var(--step--1); }
+.bulk-warning { border: 2px solid var(--asphalt); border-left: 12px solid var(--cone-orange); background: var(--crew-white); padding: var(--space-2) var(--space-3); font-weight: 700; }
+.tier-note { border: 2px dashed var(--asphalt); padding: var(--space-2); }
+.case-pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.case-record dl { margin: 0; }
+.case-record dt { font-weight: 700; margin-top: var(--space-2); }
+.case-record dd { margin: 0; overflow-wrap: anywhere; }
+.autopsy-form a { color: var(--asphalt); }
+
+/* Phones: one readable copy in a bottom sheet; the offset copies appear only on wider screens. */
+@media (max-width: 640px) {
+  .card-host {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 85vh;
+    border-width: 2px 0 0;
+  }
+  .autopsy { margin: 0; }
+  .autopsy::before, .autopsy::after { display: none; }
+  .autopsy-facts, .case-pair { grid-template-columns: 1fr; }
+}
+
+/* Pages and scorecard (REQ-WEB-SCORE) */
+.page { padding: var(--space-3); max-width: 60rem; }
+.score-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-3); }
+.score-row { background: var(--crew-white); border: 2px solid var(--asphalt); padding: var(--space-3); }
+.score-pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.rate-label { font-weight: 600; margin: 0; }
+.rate-value { font-size: var(--step-3); font-weight: 700; margin: 0; line-height: 1.2; }
+.rate-interval-text, .rate-n { font-size: var(--step--1); margin: 0; }
+.rate-bar { width: 100%; height: 0.75rem; display: block; margin: var(--space-1) 0; }
+.rate-track { fill: var(--concrete); }
+.rate-interval { fill: var(--asphalt); }
+.rate-point { fill: var(--asphalt); stroke: var(--crew-white); stroke-width: 0.4; }
+.score-detail { margin-top: var(--space-2); }
+.score-detail summary { cursor: pointer; min-height: 2.75rem; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--crew-white); border: 2px solid var(--asphalt); border-radius: 2px; font-weight: 600; }
+.score-detail summary::-webkit-details-marker { display: none; }
+@media (max-width: 640px) { .score-pair { grid-template-columns: 1fr; } }
+
+/* Judge mode (REQ-WEB-JUDGE) */
+.judge-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0; align-items: center; }
+.button-link { display: inline-flex; align-items: center; min-height: 2.75rem; padding: var(--space-2) var(--space-3); background: var(--crew-white); border: 2px solid var(--asphalt); border-radius: 2px; }
+.provisional-notice { border: 2px dashed var(--asphalt); background: var(--crew-white); padding: var(--space-2) var(--space-3); }
+.tour-progress { font-weight: 600; }
+.judge .autopsy { max-width: 40rem; }
+.judge h2:focus-visible { outline: var(--focus-ring); }
+
+/* REQ-WEB-A11Y.1: nothing animates for people who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* UX-6 (ops#19): a drawn disclosure marker in Asphalt, pointing right when closed and down when open. No icon pack. */
+.filter-group summary::before,
+.score-detail summary::before {
+  content: "";
+  flex: none;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0.4rem 0 0.4rem 0.65rem;
+  border-color: transparent transparent transparent var(--asphalt);
+}
+.filter-group[open] > summary::before,
+.score-detail[open] > summary::before {
+  border-width: 0.65rem 0.4rem 0 0.4rem;
+  border-color: var(--asphalt) transparent transparent transparent;
+}
+
+/* UX-7 (ops#20): on phones the count stays in full and the filters sit behind a button, not in a clipped scroll box. */
+.filters-toggle { display: none; margin-bottom: var(--space-3); }
+@media (max-width: 640px) {
+  .filters-panel { max-height: none; overflow-y: visible; }
+  .filters-toggle { display: inline-flex; align-items: center; }
+  .filters-body:not(.filters-open) { display: none; }
+  .filters-body.filters-open { max-height: 60vh; overflow-y: auto; }
+}
+
+/* UX-2 (ops#15): MapLibre's own controls restyled to the palette: square, no shadow, Public Sans, drawn + and - marks. */
+.map-host.maplibregl-map { font-family: var(--font-ui); font-size: var(--step--1); line-height: 1.4; }
+.map-host .maplibregl-ctrl-group:not(:empty) {
+  background: var(--crew-white);
+  border: 2px solid var(--asphalt);
+  border-radius: 0;
+  box-shadow: none;
+}
+.map-host .maplibregl-ctrl-group button {
+  width: 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--crew-white);
+  position: relative;
+}
+.map-host .maplibregl-ctrl-group button + button { border-top: 2px solid var(--asphalt); }
+.map-host .maplibregl-ctrl-group button .maplibregl-ctrl-icon { background-image: none !important; }
+.map-host .maplibregl-ctrl-group button .maplibregl-ctrl-icon::before,
+.map-host .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1.1rem;
+  height: 3px;
+  margin: -1.5px 0 0 -0.55rem;
+  background: var(--asphalt);
+}
+.map-host .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon::after {
+  width: 3px;
+  height: 1.1rem;
+  margin: -0.55rem 0 0 -1.5px;
+}
+.map-host .maplibregl-ctrl-attrib.maplibregl-compact,
+.map-host .maplibregl-ctrl.maplibregl-ctrl-attrib {
+  background: var(--crew-white);
+  border-top: 2px solid var(--asphalt);
+  border-left: 2px solid var(--asphalt);
+  box-shadow: none;
+  color: var(--asphalt);
+  font-family: var(--font-ui);
+}
+.map-host .maplibregl-ctrl-attrib a { color: var(--asphalt); }
+
+/*
+ * UX-12 (ops#25): on phones the map is the hero. The filters panel stops being a box (display: contents) so its parts
+ * and the map share one column: title, count, Show filters, the filters when open, the map, then the two hero lines.
+ */
+@media (max-width: 640px) {
+  .home { display: flex; flex-direction: column; height: auto; }
+  .filters-panel { display: contents; }
+  .filters-panel > * { margin-inline: var(--space-3); }
+  .filters-panel > h1 { order: 0; margin-block: var(--space-3) var(--space-1); }
+  .filters-panel > div:not(.hero-text):not(.filters-body) { order: 1; }
+  .filters-panel > .filters-toggle { order: 2; align-self: flex-start; }
+  .filters-panel > .filters-body { order: 3; }
+  .stage { order: 4; flex: 0 0 auto; border-top: 2px solid var(--asphalt); }
+  .filters-panel > .hero-text { order: 5; margin-block: var(--space-3); }
+}
+
+/* UX-13 (ops#26): the card repeats a short preview notice, because the phone sheet can cover the header notice. */
+.card-fixture-notice { border: 2px dashed var(--asphalt); padding: var(--space-1) var(--space-2); margin: 0 0 var(--space-3); font-weight: 600; max-width: none; }

@@ -4,43 +4,43 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 
 ## Demo-critical
 
-- [ ] 1. [demo-critical] App scaffold, tokens, fonts and copy
+- [x] 1. [demo-critical] App scaffold, tokens, fonts and copy
   - Vite + React + TS in `web/` (pinned in `package-lock.json`), `npm test` = vitest, `make build`, `make e2e` wiring; `styles/tokens.css` with the six palette colors only; self-hosted Public Sans and Courier Prime; `copy/en.json` plus typed `t()`; footer text, OSM credit, data licenses; "Data as of" from `status.json`.
   - _Requirements: REQ-WEB-COPY.1–3, REQ-WEB-DESIGN.1–3, REQ-WEB-FRESH.1_
-- [ ] 2. [demo-critical] Schema-derived parsers and fixtures
+- [x] 2. [demo-critical] Schema-derived parsers and fixtures
   - Generate types from `/schemas/`; ajv standalone validators (CSP-safe); per-panel error states; fixture files from `data/sample/` that follow the schemas until real exports exist.
-  - [ ] 2.1 Property W1: parsers accept every schema-valid generated file and reject files missing a required field. _REQ-WEB-DATA.1; testing.md #16_
+  - [x] 2.1 Property W1: parsers accept every schema-valid generated file and reject files missing a required field. _REQ-WEB-DATA.1; testing.md #16_
   - _Requirements: REQ-WEB-DATA.1–3_
-- [ ] 3. [demo-critical] Filtering and aggregation library
+- [x] 3. [demo-critical] Filtering and aggregation library
   - `lib/filter.ts` (`applyFilters`, `aggregate`), `TierMode`.
-  - [ ] 3.1 Property W2: the filter result is a subset; empty filters with `all` return the input. _REQ-WEB-MAP.2_
-  - [ ] 3.2 Property W3: filters commute and are idempotent. _REQ-WEB-MAP.3_
-  - [ ] 3.3 Property W5: aggregate counts sum to the filtered total and are never negative. _REQ-WEB-MAP.2_
+  - [x] 3.1 Property W2: the filter result is a subset; empty filters with `all` return the input. _REQ-WEB-MAP.2_
+  - [x] 3.2 Property W3: filters commute and are idempotent. _REQ-WEB-MAP.3_
+  - [x] 3.3 Property W5: aggregate counts sum to the filtered total and are never negative. _REQ-WEB-MAP.2_
   - _Requirements: REQ-WEB-MAP.2–4_
-- [ ] 4. [demo-critical] Haunted map
+- [x] 4. [demo-critical] Haunted map
   - MapLibre with a self-hosted Boston PMTiles extract restyled to the palette (no default dark style); deck.gl IconLayer with a 3–5 sprite atlas (placeholder sprites until the owner's spray-paint scans exist; record that in the PR); filters UI; count; OSM attribution.
   - _Requirements: REQ-WEB-MAP.1–5_
-- [ ] 5. [demo-critical] Table view
+- [x] 5. [demo-critical] Table view
   - Sortable table with the same set as the map; each row opens the card.
-  - [ ] 5.1 Property W4: map set = table set = counted set for any filters and tier mode. _REQ-WEB-MAP.3, REQ-WEB-TABLE.1_
+  - [x] 5.1 Property W4: map set = table set = counted set for any filters and tier mode. _REQ-WEB-MAP.3, REQ-WEB-TABLE.1_
   - _Requirements: REQ-WEB-TABLE.1_
-- [ ] 6. [demo-critical] Autopsy card
+- [x] 6. [demo-critical] Autopsy card
   - Triplicate form, stamps, typewriter face inside the form only, both case records, Skeptic section, `partial` confidence note, bulk-closure warning, phone bottom sheet, lazy shard loading.
   - _Requirements: REQ-WEB-CARD.1–6_
-- [ ] 7. [demo-critical] Two-number scorecard
+- [x] 7. [demo-critical] Two-number scorecard
   - On-time next to stayed-fixed with intervals and n; label says raw or adjusted.
   - _Requirements: REQ-WEB-SCORE.1–2_
-- [ ] 8. [demo-critical] Judge mode
+- [x] 8. [demo-critical] Judge mode
   - 60-second tour from `judge_tour.json`: skip, pause, keyboard, reduced motion; provisional notice; `scripts/check-tour.ts` enforced by `make build JUDGING=1`.
-  - [ ] 8.1 Property W8: a judging build accepts a tour only if every ID is confirmed. _REQ-WEB-JUDGE.2_
+  - [x] 8.1 Property W8: a judging build accepts a tour only if every ID is confirmed. _REQ-WEB-JUDGE.2_
   - _Requirements: REQ-WEB-JUDGE.1–4_
-- [ ] 9. [demo-critical] Accessibility floor
+- [x] 9. [demo-critical] Accessibility floor
   - Focus styles, keyboard paths, contrast rules (no pink or orange text), color never the only signal, reduced motion; axe scan inside `make e2e`.
   - _Requirements: REQ-WEB-A11Y.1–2_
-- [ ] 10. [demo-critical] Payload and origin checks
+- [x] 10. [demo-critical] Payload and origin checks
   - Build script that measures first-view transfer size (warning for now) and fails on any non-same-origin URL in the built output.
   - _Requirements: REQ-WEB-PERF.1–2_
-- [ ] 11. [demo-critical] End-to-end judge-mode test
+- [x] 11. [demo-critical] End-to-end judge-mode test
   - Playwright on phone and desktop viewports, keyboard only, reduced motion on and off; screenshots for reviewer-ux.
   - _Requirements: REQ-WEB-TEST.1–2_
 

@@ -9,8 +9,12 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "check-build": "node scripts/check-build.mjs",
+    "check-tour": "node scripts/check-tour.ts",
+    "build": "node scripts/check-tour.ts && tsc --noEmit && vite build && node scripts/check-build.mjs",
     "typecheck": "tsc --noEmit",
+    "gen:parsers": "node scripts/gen-parsers.mjs",
+    "fixtures": "node scripts/make-fixtures.mjs",
     "test": "vitest run --passWithNoTests",
     "e2e": "playwright test"
   },
@@ -33,6 +37,7 @@
     "@playwright/test": "^1.65.1",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.10",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
