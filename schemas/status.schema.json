@@ -72,6 +72,13 @@
       "type": "integer",
       "minimum": 0,
       "description": "Of those, opened under 1 h after the closure; REQ-DET-PF"
+    },
+    "dataset": {
+      "enum": [
+        "sample",
+        "full"
+      ],
+      "description": "Whether the run read the committed sample or the full data; a sample rate is not a citywide figure. REQ-STAT-EXP.1"
     }
   },
   "required": [

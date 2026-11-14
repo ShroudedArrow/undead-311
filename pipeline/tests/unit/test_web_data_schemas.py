@@ -2,11 +2,15 @@
 
 The files Netlify serves are the JSON files committed under web/public/data. Every one must validate against its
 schema in /schemas/, and a file with no schema fails (review N2, ops#54). `cards/*.json` use card.schema.json.
+Only `*.json` files are validated. A `*.json.gz` file must decompress to the same bytes as its `.json` twin (REQ-OPS-CACHE.1,
+review S3, ops#61); a binary format is listed in BINARY_FORMATS with its contract, and any other file fails. `cards/` holds
+card shards only; a `cards/manifest.json` (or any listed index) uses its own schema via CARD_FOLDER_SCHEMAS.
 Committed means tracked by git; outside a git checkout the folder is scanned instead. `make schema-check` runs this.
 """
 
 from __future__ import annotations
 
+import gzip
 import json
 import subprocess
 from pathlib import Path
@@ -20,6 +24,11 @@ REPO = Path(__file__).resolve().parents[3]
 DATA = Path("web/public/data")
 # Internal run bookkeeping that is not a data contract, and placeholders.
 NO_SCHEMA_NEEDED = {"stats/stats_status.json", ".gitkeep"}
+# Binary formats the site may serve, by file name relative to web/public/data, each with the contract that covers it.
+# Empty until a binary map-point file exists; an unlisted non-JSON file fails the check.
+BINARY_FORMATS: dict[str, str] = {}
+# Files under cards/ that are not card shards, with their schema name (for example a shard manifest).
+CARD_FOLDER_SCHEMAS: dict[str, str] = {}
 
 
 def schema_name(rel: Path) -> str | None:
@@ -27,7 +36,7 @@ def schema_name(rel: Path) -> str | None:
 
     Stats files sit flat or under stats/ (the export has used both), so the folder is ignored for them."""
     if rel.parts[0] == "cards":
-        return "card"
+        return CARD_FOLDER_SCHEMAS.get(rel.name, "card")
     name = rel.name.removesuffix(".json")
     return name if (REPO / "schemas" / f"{name}.schema.json").exists() else None
 
@@ -49,7 +58,19 @@ def problems(files: list[Path], root: Path = REPO) -> list[str]:
     """One line per file that has no schema, is not JSON, or fails its schema."""
     found: list[str] = []
     for rel in files:
-        if rel.as_posix() in NO_SCHEMA_NEEDED:
+        if rel.as_posix() in NO_SCHEMA_NEEDED or rel.as_posix() in BINARY_FORMATS:
+            continue
+        if rel.suffix == ".gz":  # precompressed twin: the same bytes as the .json beside it
+            twin = root / DATA / rel.with_suffix("")
+            try:
+                same = twin.suffix == ".json" and gzip.decompress((root / DATA / rel).read_bytes()) == twin.read_bytes()
+            except (OSError, EOFError, gzip.BadGzipFile):
+                same = False
+            if not same:
+                found.append(f"{rel}: must decompress to the same bytes as {rel.with_suffix('').name}")
+            continue
+        if rel.suffix != ".json":
+            found.append(f"{rel}: not a .json file, a .json.gz twin or a listed binary format")
             continue
         name = schema_name(rel)
         if name is None:
@@ -104,3 +125,32 @@ def test_an_invalid_file_fails_and_a_card_shard_uses_the_card_schema(tmp_path):
 def test_stats_files_map_to_a_schema_whether_flat_or_in_stats(rel):
     """REQ-OPS-CI.1: the folder does not change which schema a stats file is checked against."""
     assert schema_name(Path(rel)) is not None
+
+
+def test_gz_twin_must_match_and_other_files_must_be_listed(tmp_path):
+    """REQ-OPS-CACHE.1 (review S3, ops#61): a .json.gz is checked against its twin; non-JSON files need a listed format."""
+    d = tmp_path / DATA
+    d.mkdir(parents=True)
+    (d / "points.json").write_text('{"a":1}\n')
+    (d / "points.json.gz").write_bytes(gzip.compress(b'{"a":1}\n'))
+    (d / "stale.json").write_text("{}\n")
+    (d / "stale.json.gz").write_bytes(gzip.compress(b'{"old":1}\n'))
+    (d / "orphan.json.gz").write_bytes(gzip.compress(b"{}\n"))
+    (d / "points.bin").write_bytes(b"\x00")
+    assert problems([Path("points.json.gz")], tmp_path) == []
+    assert any("same bytes" in p for p in problems([Path("stale.json.gz")], tmp_path))
+    assert any("same bytes" in p for p in problems([Path("orphan.json.gz")], tmp_path))
+    assert any("not a .json file" in p for p in problems([Path("points.bin")], tmp_path))
+
+
+def test_a_listed_binary_format_is_not_validated_as_json(tmp_path, monkeypatch):
+    """REQ-OPS-CACHE.1 (review S3): a binary format listed with its contract passes; cards/ extras use their own schema."""
+    import sys
+
+    mod = sys.modules[__name__]
+    (tmp_path / DATA / "cards").mkdir(parents=True)
+    (tmp_path / DATA / "points.bin").write_bytes(b"\x00")
+    monkeypatch.setitem(mod.BINARY_FORMATS, "points.bin", "points.schema.json (columnar)")
+    assert problems([Path("points.bin")], tmp_path) == []
+    monkeypatch.setitem(mod.CARD_FOLDER_SCHEMAS, "manifest.json", "points")
+    assert schema_name(Path("cards/manifest.json")) == "points"

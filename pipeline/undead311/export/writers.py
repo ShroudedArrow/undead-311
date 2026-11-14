@@ -94,6 +94,7 @@ class ExportContext:
     stats_status: Mapping[str, Any] | None = None
     data_end: str | None = None
     city_origin: Mapping[str, Any] | None = None
+    dataset: str | None = None  # "sample" or "full" (REQ-STAT-EXP.1)
     ok: bool = True
 
 
@@ -224,6 +225,8 @@ def build_status(result: DetectionResult, ctx: ExportContext) -> dict:
     if ctx.city_origin:
         status["headline_city_originated_count"] = int(ctx.city_origin["city_originated"])
         status["headline_city_originated_under_1h_count"] = int(ctx.city_origin["city_originated_under_1h"])
+    if ctx.dataset:
+        status["dataset"] = ctx.dataset
     if ctx.data_end:
         status["data_end"] = ctx.data_end
     return status

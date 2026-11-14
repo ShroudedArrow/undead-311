@@ -41,8 +41,11 @@ from undead311.ingest.crosswalk import apply_crosswalk
 from undead311.ingest.load import load
 from undead311.ingest.normalize import normalize
 from undead311.ingest.pii import PiiCounter
+from undead311.ingest.quality import on_time_anomalies, on_time_coverage
 from undead311.paths import data_dir, worktree_root
 
+STATS_ABSENT_NAMES = ("undead311.stats", "undead311.stats.pipeline")  # the only ModuleNotFoundError names that mean "absent"
+STATS_STALE_FILES = ("scorecard.json", "judge_tour.json", "stats_status.json")
 CITY_SHARE_WARN = 0.5  # run-report anomaly when this share of headline resurrections is city-originated (ops#29)
 
 
@@ -147,6 +150,7 @@ def run_pipeline(
     processed = base / ("processed-sample" if sample else "processed")
     out = Path(out_dir) if out_dir else root / "web" / "public" / "data"
     report = RunReport(sample=sample)
+    dataset = "sample" if sample else "full"  # REQ-STAT-EXP.1 (ops#51)
     snap = snapshot_date(root / "data" / "SNAPSHOT.md")
     version = data_version(snap, p, root)
     report.data_version = version
@@ -176,6 +180,7 @@ def run_pipeline(
         report.label_coverage, report.unlabeled = jr.covered_share, jr.unlabeled
         if jr.labels_file_missing:
             report.warnings.append("data/labels/coroner_labels.csv is missing: every closure is labeled `other`")
+        report.warnings += on_time_anomalies(on_time_coverage(con))  # REQ-STAT-SF.1 (ops#49)
         cases = cases_from_table(con, "cases_clean")
         report.row_counts["in_scope_cases"] = len(cases)
         edges = sql_edges(con, cases, p)
@@ -202,19 +207,23 @@ def run_pipeline(
                 pii.scrub(by_id[cid].closure_text)
                 pii.scrub(by_id[cid].street)
         report.pii_counts = dict(sorted(pii.counts.items()))
-        # stats (durability-stats), when present (REQ-STAT-EXP.1). Only an absent stats package means "not present":
-        # a dependency missing inside it, or any error in run_stats, fails the run instead of passing as absent.
+        # stats (durability-stats), when present (REQ-STAT-EXP.1). Only an absent stats package or its pipeline module means
+        # "not present": a dependency missing inside the package (even undead311.stats.rates), or any error in run_stats,
+        # fails the run. The "not present" branch also removes stats files an earlier run left behind (ops#48).
         stats_status = None
         try:
             stats = importlib.import_module("undead311.stats.pipeline")
         except ModuleNotFoundError as e:
-            if e.name is None or not e.name.startswith("undead311.stats"):
+            if e.name not in STATS_ABSENT_NAMES:
                 raise
             report.stats = "not present"
+            for name in STATS_STALE_FILES:
+                (out / "stats" / name).unlink(missing_ok=True)
         else:
             stats_status = stats.run_stats(  # type: ignore[attr-defined]
                 con, result, by_id, out, params=p, data_version=version, labels_dir=root / "data" / "labels",
                 data_end=max((c.open_utc for c in cases), default=None),
+                dataset=dataset,
             )
             report.stats = "ran"
         ctx = ExportContext(
@@ -226,6 +235,7 @@ def run_pipeline(
             exclusion_counts=dict(report.exclusions),
             excluded_ids=excluded,
             stats_status=stats_status,
+            dataset=dataset,
             city_origin=report.city_origin,
             data_end=max(c.open_utc for c in cases).strftime("%Y-%m-%d") if cases else None,
         )

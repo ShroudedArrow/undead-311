@@ -28,9 +28,9 @@ class JudgeTour:
     zombie_ids: tuple[str, ...]
     source: Literal["override", "most_reports"]
 
-    def to_json(self, data_version: str, params: Params = DEFAULT) -> dict:
+    def to_json(self, data_version: str, params: Params = DEFAULT, dataset: str = "full") -> dict:
         return {
-            "data_version": data_version, "params": params_json(params), "provisional": self.provisional,
+            "data_version": data_version, "dataset": dataset, "params": params_json(params), "provisional": self.provisional,
             "seed": None, "zombie_ids": list(self.zombie_ids), "source": self.source,
         }  # fmt: skip
 

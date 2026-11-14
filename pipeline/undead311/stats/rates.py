@@ -98,11 +98,12 @@ def counts_by_tier(result: DetectionResult) -> dict[str, int]:
 
 
 def scorecard_payload(
-    cards: list[Scorecard], result: DetectionResult, data_version: str, params: Params = DEFAULT
+    cards: list[Scorecard], result: DetectionResult, data_version: str, params: Params = DEFAULT, dataset: str = "full"
 ) -> dict:
     """The `scorecard.json` payload (schema `scorecard`, REQ-STAT-EXP.1)."""
     return {
         "data_version": data_version,
+        "dataset": dataset,  # "sample" or "full": a sample rate is not a citywide figure (ops#51)
         "params": params_json(params),
         "seed": None,  # Wilson intervals only; nothing is resampled in this file
         "scorecards": [c.to_json() for c in cards],

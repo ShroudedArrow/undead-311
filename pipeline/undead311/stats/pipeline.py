@@ -28,20 +28,21 @@ def build_stats(
     data_end: datetime,
     params: Params = DEFAULT,
     labels_dir: Path | None = None,
+    dataset: str = "full",
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """(payloads by file name, status) for the stats stage, unvalidated."""
     payloads: dict[str, Any] = {
         "scorecard.json": scorecard_payload(
-            scorecards(result, cases, data_end, params), result, data_version, params
+            scorecards(result, cases, data_end, params), result, data_version, params, dataset
         )
     }
-    status: dict[str, Any] = {"calibration_warning": None, "warnings": []}
+    status: dict[str, Any] = {"calibration_warning": None, "warnings": [], "dataset": dataset}
     override = read_override(labels_dir / OVERRIDE_FILE) if labels_dir else None
     tour = build_tour(result.zombies, override)
     if tour is None:
         status["warnings"].append("judge_tour.json not written: fewer than 3 headline zombies")
     else:
-        payloads["judge_tour.json"] = tour.to_json(data_version, params)
+        payloads["judge_tour.json"] = tour.to_json(data_version, params, dataset)
         if override is not None and tour.source != "override":
             status["warnings"].append(f"{OVERRIDE_FILE} ignored: it must list 3 distinct headline zombie IDs")
     return payloads, status
@@ -57,15 +58,16 @@ def run_stats(
     data_version: str = "unknown",
     data_end: datetime | None = None,
     labels_dir: Path | None = None,
+    dataset: str = "full",
 ) -> dict[str, Any]:
     """Validate, then write the stats files under `<out>/stats/` (REQ-STAT-EXP.1). Returns the stats status."""
     end = data_end or max((c.open_utc for c in by_id.values()), default=None)
     folder = Path(out) / "stats"
     if end is None:
         payloads: dict[str, Any] = {}
-        status: dict[str, Any] = {"calibration_warning": None, "warnings": ["no cases"]}
+        status: dict[str, Any] = {"calibration_warning": None, "warnings": ["no cases"], "dataset": dataset}
     else:
-        payloads, status = build_stats(result, by_id, data_version, end, params, labels_dir)
+        payloads, status = build_stats(result, by_id, data_version, end, params, labels_dir, dataset)
         for name, payload in payloads.items():
             validate(name.removesuffix(".json"), payload)
     for name in sorted(payloads):

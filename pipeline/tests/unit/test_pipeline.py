@@ -140,6 +140,64 @@ def test_req_stat_exp_1_an_absent_stats_package_is_not_present(tmp_path, monkeyp
     assert json.loads((out / "status.json").read_text())["calibration_warning"] is None
 
 
+def test_req_stat_exp_1_a_missing_stats_submodule_fails_and_absent_stats_removes_stale_files(tmp_path, monkeypatch):
+    """REQ-STAT-EXP.1 (ops#48): a missing module inside the stats package is an error; "not present" removes old stats files."""
+    import importlib
+
+    real = importlib.import_module
+
+    def absent(name, *a, **k):
+        if name == "undead311.stats.pipeline":
+            raise ModuleNotFoundError("No module named 'undead311.stats.pipeline'", name="undead311.stats.pipeline")
+        return real(name, *a, **k)
+
+    def inner(name, *a, **k):
+        if name == "undead311.stats.pipeline":
+            raise ModuleNotFoundError("No module named 'undead311.stats.credibility'", name="undead311.stats.credibility")
+        return real(name, *a, **k)
+
+    raw, snap = raw_folder(tmp_path)
+    out = tmp_path / "out"
+    monkeypatch.setattr(importlib, "import_module", inner)
+    with pytest.raises(ModuleNotFoundError, match="credibility"):
+        run_pipeline(out_dir=out, raw_dir=raw, work_dir=tmp_path / "data", snapshot_md=snap)
+    (out / "stats").mkdir(parents=True, exist_ok=True)
+    for name in ("scorecard.json", "judge_tour.json", "stats_status.json"):
+        (out / "stats" / name).write_text("{}")
+    monkeypatch.setattr(importlib, "import_module", absent)
+    rep = run_pipeline(out_dir=out, raw_dir=raw, work_dir=tmp_path / "data", snapshot_md=snap, run_time="2026-11-13T00:00:00Z")
+    assert rep.stats == "not present"
+    assert not any((out / "stats" / n).exists() for n in ("scorecard.json", "judge_tour.json", "stats_status.json"))
+
+
+def test_req_stat_exp_1_stats_files_and_status_say_sample_or_full(tmp_path):
+    """REQ-STAT-EXP.1 (ops#51): scorecard.json, judge_tour.json and status.json carry `dataset`, so the web can label it."""
+    out = tmp_path / "out"
+    run_pipeline(sample=True, out_dir=out, work_dir=tmp_path / "data", run_time="2026-11-13T00:00:00Z")
+    assert json.loads((out / "status.json").read_text())["dataset"] == "sample"
+    assert json.loads((out / "stats" / "scorecard.json").read_text())["dataset"] == "sample"
+    assert json.loads((out / "stats" / "stats_status.json").read_text())["dataset"] == "sample"
+    if (out / "stats" / "judge_tour.json").exists():
+        assert json.loads((out / "stats" / "judge_tour.json").read_text())["dataset"] == "sample"
+    raw, snap = raw_folder(tmp_path)
+    full = tmp_path / "full"
+    run_pipeline(out_dir=full, raw_dir=raw, work_dir=tmp_path / "data2", snapshot_md=snap, run_time="2026-11-13T00:00:00Z")
+    assert json.loads((full / "status.json").read_text())["dataset"] == "full"
+    assert json.loads((full / "stats" / "scorecard.json").read_text())["dataset"] == "full"
+
+
+def test_req_stat_sf_1_a_missing_on_time_column_is_a_status_anomaly(tmp_path):
+    """REQ-STAT-SF.1 (ops#49): the tiny raw folder has no on_time column, so status.json says so; the sample has it."""
+    raw, snap = raw_folder(tmp_path)
+    out = tmp_path / "out"
+    run_pipeline(out_dir=out, raw_dir=raw, work_dir=tmp_path / "data", snapshot_md=snap, run_time="2026-11-13T00:00:00Z")
+    anomalies = json.loads((out / "status.json").read_text())["anomalies"]
+    assert any("on_time is known for 0 of 1 closed in-scope legacy-system cases" in a for a in anomalies)
+    sample_out = tmp_path / "s"
+    run_pipeline(sample=True, out_dir=sample_out, work_dir=tmp_path / "data3", run_time="2026-11-13T00:00:00Z")
+    assert not any("on_time is known" in a for a in json.loads((sample_out / "status.json").read_text())["anomalies"])
+
+
 def test_req_stat_sf_4_sample_scorecard_has_on_time_rates(tmp_path):
     """REQ-STAT-SF.1, .4: on the committed sample the citywide two-number scorecard has known on-time cases, not no_cases."""
     out = tmp_path / "out"
