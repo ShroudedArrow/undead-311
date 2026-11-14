@@ -6,7 +6,7 @@ import random
 from dataclasses import replace
 
 from helpers import day
-from hypothesis import HealthCheck, given, settings
+from hypothesis import given
 from hypothesis import strategies as st
 from strategies import town
 
@@ -15,7 +15,6 @@ from undead311.export.writers import validate
 from undead311.stats.rates import scorecard_payload, scorecards
 
 END = day(400)
-SLOW = settings(max_examples=60, deadline=None, suppress_health_check=[HealthCheck.too_slow])
 
 
 def with_on_time(cases, seed):
@@ -23,7 +22,6 @@ def with_on_time(cases, seed):
     return [replace(c, on_time=rng.choice([True, False, None])) for c in cases]
 
 
-@SLOW
 @given(town(), st.integers(0, 10_000))
 def test_prop_stat_5_raw_stayed_fixed_is_at_most_on_time_in_every_group(cases, seed):
     """REQ-STAT-SF.2, testing.md #10 (P5)."""
@@ -36,7 +34,6 @@ def test_prop_stat_5_raw_stayed_fixed_is_at_most_on_time_in_every_group(cases, s
             assert c.stayed_fixed_raw.rate <= c.on_time.rate
 
 
-@SLOW
 @given(town(), st.integers(0, 10_000))
 def test_prop_stat_1_every_exported_rate_is_in_zero_one_or_null_with_a_reason(cases, seed):
     """REQ-STAT-INT.1-2, REQ-STAT-EXP.1, testing.md #3 (P1 part 2): the payload validates and bounds nest."""
@@ -53,7 +50,6 @@ def test_prop_stat_1_every_exported_rate_is_in_zero_one_or_null_with_a_reason(ca
                 assert 0 <= r["lo"] <= r["rate"] <= r["hi"] <= 1 and r["reason"] is None
 
 
-@SLOW
 @given(town(), st.integers(0, 10_000))
 def test_prop_stat_1_headline_rows_are_invariant_to_input_order(cases, seed):
     """REQ-STAT-EXP.2: the same cases in another order give the same scorecards."""

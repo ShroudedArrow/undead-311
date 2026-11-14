@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 from dataclasses import replace
 
-from hypothesis import given, settings
+from hypothesis import given
 from hypothesis import strategies as st
 
 from undead311.detect.model import Zombie
@@ -28,7 +28,6 @@ zombies = st.lists(
 ).map(lambda rows: [zombie(i, r, t, c) for i, (r, t, c) in enumerate(rows)])  # fmt: skip
 
 
-@settings(max_examples=100, deadline=None)
 @given(zombies, st.integers(0, 10_000))
 def test_prop_stat_10_tour_does_not_change_when_confidence_is_permuted(zs, seed):
     """REQ-STAT-TOUR.1 (P10 part 1): same tour after shuffling confidence scores among the zombies."""
@@ -38,7 +37,6 @@ def test_prop_stat_10_tour_does_not_change_when_confidence_is_permuted(zs, seed)
     assert build_tour(zs) == build_tour(permuted)
 
 
-@settings(max_examples=100, deadline=None)
 @given(zombies, st.integers(0, 10_000))
 def test_prop_stat_10_tour_is_headline_only_three_distinct_and_order_invariant(zs, seed):
     """REQ-STAT-TOUR.1: three distinct headline IDs with the most re-reports; input order does not matter."""
