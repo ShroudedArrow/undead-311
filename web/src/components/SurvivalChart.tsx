@@ -1,4 +1,4 @@
-import { bandPath, chartDims, curveKind, linePath, linear, niceTicks } from "../lib/charts";
+import { bandPath, tickPct, yTitle, yTitleAttrs, chartDims, curveKind, linePath, linear, niceTicks } from "../lib/charts";
 import { groupLabel } from "../lib/labels";
 import type { Curve } from "../lib/parse";
 import { pct } from "../lib/rates";
@@ -42,7 +42,7 @@ export function SurvivalChart({ curve, baseline, tierLabel }: { curve: Curve; ba
       {ticksY.map((v) => (
         <g key={v}>
           <line className="chart-grid" x1={M.l} x2={W - M.r} y1={y(v)} y2={y(v)} />
-          <text className="chart-tick" x={M.l - 6} y={y(v) + 4} textAnchor="end">{pct(v)}</text>
+          <text className="chart-tick" x={M.l - 6} y={y(v) + 4} textAnchor="end">{tickPct(v)}</text>
         </g>
       ))}
       {ticksX.map((d) => (
@@ -52,7 +52,7 @@ export function SurvivalChart({ curve, baseline, tierLabel }: { curve: Curve; ba
         </g>
       ))}
       <text className="chart-axis" x={(M.l + W - M.r) / 2} y={H - 6} textAnchor="middle">{t("charts.axis_days")}</text>
-      <text className="chart-axis" transform={`translate(${narrow ? 11 : 12} ${(M.t + H - M.b) / 2}) rotate(-90)`} textAnchor="middle">{t("charts.axis_share")}</text>
+      <text className="chart-axis" data-testid="y-title" {...yTitleAttrs(yTitle({ W, H, M, narrow }))}>{t("charts.axis_share")}</text>
       <path className="chart-band" data-testid="survival-band" d={bandPath(xs, curve.lo.map(y), curve.hi.map(y))} />
       {baseline ? <path className="chart-line chart-line-base" d={linePath(baseline.times.map(x), baseline.survival.map(y))} /> : null}
       <path className="chart-line" d={linePath(xs, curve.survival.map(y))} />

@@ -127,6 +127,34 @@ export interface ChartDims {
 export const NARROW_QUERY = "(max-width: 640px)";
 export function chartDims(narrow: boolean, tall: number): ChartDims {
   return narrow
-    ? { W: 340, H: tall - 20, M: { l: 52, r: 10, t: 12, b: 48 }, narrow }
+    ? { W: 340, H: tall - 10, M: { l: 44, r: 10, t: 32, b: 48 }, narrow }
     : { W: 640, H: tall, M: { l: 64, r: 16, t: 12, b: 44 }, narrow };
+}
+
+/** Axis tick label: whole percents without a decimal ("95%", not "95.0%"), so labels stay narrow (UX-27). Other values keep one decimal. */
+export function tickPct(v: number): string {
+  const p = v * 100;
+  return Math.abs(p - Math.round(p)) < 1e-6 ? `${Math.round(p)}%` : `${p.toFixed(1)}%`;
+}
+
+export interface YTitle {
+  x: number;
+  y: number;
+  anchor: "start" | "middle";
+  /** Rotation transform on wide charts; undefined when the title is horizontal above the plot. */
+  transform?: string;
+}
+/**
+ * Placement of the y-axis title (UX-27, REQ-WEB-A11Y.1). Wide charts rotate it into the left margin. Narrow charts draw it
+ * horizontally above the plot, in the top margin, so it can never run through the tick labels.
+ */
+export function yTitle(d: ChartDims): YTitle {
+  if (d.narrow) return { x: 4, y: 16, anchor: "start" };
+  const cy = (d.M.t + d.H - d.M.b) / 2;
+  return { x: 0, y: 0, anchor: "middle", transform: `translate(12 ${cy}) rotate(-90)` };
+}
+
+/** SVG attributes for a YTitle. */
+export function yTitleAttrs(t: YTitle): { x?: number; y?: number; transform?: string; textAnchor: "start" | "middle" } {
+  return t.transform ? { transform: t.transform, textAnchor: t.anchor } : { x: t.x, y: t.y, textAnchor: t.anchor };
 }

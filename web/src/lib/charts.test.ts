@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { chartDims, curveKind, curvesFor, intensityText, isUnusual, isValidCurve, leaderboard, limitAt, linePath, linear, logScale, niceTicks, unusualDirection } from "./charts";
+import { tickPct, yTitle, chartDims, curveKind, curvesFor, intensityText, isUnusual, isValidCurve, leaderboard, limitAt, linePath, linear, logScale, niceTicks, unusualDirection } from "./charts";
 import { parseFunnel, parseGroups, parseSurvival, type FunnelLimit, type Group } from "./parse";
 
 const read = (f: string): unknown => JSON.parse(readFileSync(join(__dirname, "..", "..", "public", "data", f), "utf8"));
@@ -172,5 +172,25 @@ describe("chart ticks and phone size (REQ-WEB-CHARTS.1, REQ-WEB-A11Y.1; UX-19, U
     expect(w.W).toBe(640);
     const phoneChartWidth = 412 - 2 * 16;
     expect((phoneChartWidth / n.W) * 13).toBeGreaterThanOrEqual(12);
+  });
+  it("tick labels drop a trailing .0 on whole percents and keep one decimal otherwise (UX-27, REQ-WEB-CHARTS.1)", () => {
+    expect(tickPct(1)).toBe("100%");
+    expect(tickPct(0)).toBe("0%");
+    expect(tickPct(0.95)).toBe("95%");
+    expect(tickPct(0.875)).toBe("87.5%");
+  });
+  it("on a phone the y-axis title is horizontal in the top margin, above the first tick; on desktop it is rotated in the left margin (UX-27, REQ-WEB-A11Y.1)", () => {
+    for (const tall of [320, 360]) {
+      const n = chartDims(true, tall);
+      const t = yTitle(n);
+      expect(t.transform).toBeUndefined();
+      expect(t.anchor).toBe("start");
+      // the top tick label is centred on y = M.t with 13-unit text, so its box starts about M.t - 10; the title baseline must sit above that
+      expect(t.y + 4).toBeLessThan(n.M.t - 10 + 1);
+      // the title must fit inside the viewBox width (about 28 characters at 6.5 units)
+      expect(t.x + 28 * 6.5).toBeLessThanOrEqual(n.W + 1);
+      const w = yTitle(chartDims(false, tall));
+      expect(w.transform).toContain("rotate(-90)");
+    }
   });
 });

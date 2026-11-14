@@ -1,4 +1,4 @@
-import { chartDims, intensityText, leaderboard, linePath, linear, logScale, niceTicks, unusualDirection } from "../lib/charts";
+import { yTitleAttrs, yTitle, tickPct, chartDims, intensityText, leaderboard, linePath, linear, logScale, niceTicks, unusualDirection } from "../lib/charts";
 import { groupLabel } from "../lib/labels";
 import type { FunnelLimit, Group } from "../lib/parse";
 import { pct } from "../lib/rates";
@@ -32,7 +32,7 @@ export function FunnelChart({ groups, limits, citywide }: { groups: readonly Gro
       {yTicks.map((v) => (
         <g key={v}>
           <line className="chart-grid" x1={M.l} x2={W - M.r} y1={y(v)} y2={y(v)} />
-          <text className="chart-tick" x={M.l - 6} y={y(v) + 4} textAnchor="end">{pct(v)}</text>
+          <text className="chart-tick" x={M.l - 6} y={y(v) + 4} textAnchor="end">{tickPct(v)}</text>
         </g>
       ))}
       {xTicks.map((n) => (
@@ -42,7 +42,7 @@ export function FunnelChart({ groups, limits, citywide }: { groups: readonly Gro
         </g>
       ))}
       <text className="chart-axis" x={(M.l + W - M.r) / 2} y={H - 6} textAnchor="middle">{t("charts.funnel_axis_n")}</text>
-      <text className="chart-axis" transform={`translate(${narrow ? 11 : 12} ${(M.t + H - M.b) / 2}) rotate(-90)`} textAnchor="middle">{t("charts.funnel_axis_rate")}</text>
+      <text className="chart-axis" data-testid="y-title" {...yTitleAttrs(yTitle({ W, H, M, narrow }))}>{t("charts.funnel_axis_rate")}</text>
       <defs>
         <clipPath id="funnel-clip">
           <rect x={M.l} y={M.t} width={W - M.l - M.r} height={H - M.t - M.b} />

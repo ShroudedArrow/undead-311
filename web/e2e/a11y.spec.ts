@@ -66,6 +66,25 @@ test("chart text is at least 12 CSS px on every screen (REQ-WEB-CHARTS.1, REQ-WE
   }
 });
 
+test("axis titles never overlap tick labels (REQ-WEB-CHARTS.1, REQ-WEB-A11Y.1; UX-27)", async ({ page }) => {
+  await page.goto("/durability");
+  for (const id of ["survival-chart", "funnel-chart"]) {
+    await expect(page.getByTestId(id)).toBeVisible();
+    const boxes = await page.getByTestId(id).evaluate((svg) => {
+      const rect = (n: Element) => { const r = n.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom }; };
+      return {
+        titles: [...svg.querySelectorAll("text.chart-axis")].map(rect),
+        ticks: [...svg.querySelectorAll("text.chart-tick")].map(rect),
+      };
+    });
+    expect(boxes.titles.length).toBeGreaterThan(0);
+    for (const a of boxes.titles) for (const b of boxes.ticks) {
+      const overlap = a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+      expect(overlap, `${id} axis title overlaps a tick label`).toBe(false);
+    }
+  }
+});
+
 test("methods and corrections pages (REQ-WEB-METHODS.1, REQ-WEB-FRESH.3, REQ-WEB-A11Y.2)", async ({ page }) => {
   await page.goto("/methods");
   await expect(page.getByTestId("excess-table")).toBeVisible();
