@@ -41,7 +41,7 @@ def build_stats(
     if tour is None:
         status["warnings"].append("judge_tour.json not written: fewer than 3 headline zombies")
     else:
-        payloads["judge_tour.json"] = tour.to_json(data_version)
+        payloads["judge_tour.json"] = tour.to_json(data_version, params)
         if override is not None and tour.source != "override":
             status["warnings"].append(f"{OVERRIDE_FILE} ignored: it must list 3 distinct headline zombie IDs")
     return payloads, status

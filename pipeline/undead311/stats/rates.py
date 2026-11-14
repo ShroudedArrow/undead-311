@@ -25,6 +25,7 @@ from undead311.detect.model import Case, DetectionResult
 from undead311.detect.params import DEFAULT, Params
 from undead311.stats.cohort import eligible_originals
 from undead311.stats.intervals import Rate, make_rate
+from undead311.stats.meta import params_json
 
 TierSet = Literal["headline", "all"]
 CITYWIDE = "citywide"
@@ -102,11 +103,8 @@ def scorecard_payload(
     """The `scorecard.json` payload (schema `scorecard`, REQ-STAT-EXP.1)."""
     return {
         "data_version": data_version,
-        "params": {
-            "WINDOW_DAYS": params.WINDOW_DAYS,
-            "RADIUS_M": params.RADIUS_M,
-            "matching": params.matching,
-        },
+        "params": params_json(params),
+        "seed": None,  # Wilson intervals only; nothing is resampled in this file
         "scorecards": [c.to_json() for c in cards],
         "counts": counts_by_tier(result),
     }

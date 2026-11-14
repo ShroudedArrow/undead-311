@@ -1,7 +1,8 @@
 """Provisional judge-mode tour (REQ-STAT-TOUR.1).
 
-Three headline zombies: the owner's override (`data/labels/judge_tour_override.json`) when it names exactly three
-headline zombies, else the three headline zombies with the most re-reports, ties by zombie ID. The confidence
+Three headline zombies the Skeptic has not explained away: the owner's override
+(`data/labels/judge_tour_override.json`) when it names exactly three such zombies, else the three with the most
+re-reports, ties by zombie ID. The confidence
 score is never read, so the tour cannot be tuned by it (design property P10). `provisional` is true until the
 confirmed validation set exists (REQ-STAT-TOUR.2, a credibility task).
 """
@@ -15,6 +16,8 @@ from pathlib import Path
 from typing import Literal
 
 from undead311.detect.model import Zombie
+from undead311.detect.params import DEFAULT, Params
+from undead311.stats.meta import params_json
 
 TOUR_SIZE = 3
 
@@ -25,10 +28,10 @@ class JudgeTour:
     zombie_ids: tuple[str, ...]
     source: Literal["override", "most_reports"]
 
-    def to_json(self, data_version: str) -> dict:
+    def to_json(self, data_version: str, params: Params = DEFAULT) -> dict:
         return {
-            "data_version": data_version, "provisional": self.provisional,
-            "zombie_ids": list(self.zombie_ids), "source": self.source,
+            "data_version": data_version, "params": params_json(params), "provisional": self.provisional,
+            "seed": None, "zombie_ids": list(self.zombie_ids), "source": self.source,
         }  # fmt: skip
 
 
@@ -49,9 +52,10 @@ def read_override(path: Path) -> list[str] | None:
 def build_tour(zombies: Iterable[Zombie], override: list[str] | None = None) -> JudgeTour | None:
     """The provisional tour, or None when fewer than three headline zombies exist (REQ-STAT-TOUR.1).
 
-    An override is used only if it lists exactly three distinct headline zombies; otherwise it is ignored.
+    An override is used only if it lists exactly three distinct headline zombies; otherwise it is ignored. A zombie the
+    Skeptic explained away is never featured, in the override or the ranking (REQ-SKEP, ops#45).
     """
-    headline = {z.zombie_id: z for z in zombies if z.tier == "headline"}
+    headline = {z.zombie_id: z for z in zombies if z.tier == "headline" and z.skeptic_verdict != "explained_away"}
     named = override is not None and len(override) == TOUR_SIZE and len(set(override)) == TOUR_SIZE
     if named and all(i in headline for i in override):  # type: ignore[union-attr]
         return JudgeTour(True, tuple(override), "override")  # type: ignore[arg-type]

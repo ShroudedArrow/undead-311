@@ -24,11 +24,42 @@
         "override",
         "most_reports"
       ]
+    },
+    "params": {
+      "type": "object",
+      "properties": {
+        "WINDOW_DAYS": {
+          "type": "integer"
+        },
+        "RADIUS_M": {
+          "type": "number"
+        },
+        "matching": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "WINDOW_DAYS",
+        "RADIUS_M",
+        "matching"
+      ]
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [
     "data_version",
+    "params",
     "provisional",
+    "seed",
     "source",
     "zombie_ids"
   ],

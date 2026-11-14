@@ -92,3 +92,25 @@ def test_req_stat_tour_1_exported_tour_validates_and_a_missing_tour_is_a_warning
     few = detect([mk("A", 0, 1), mk("R", 5)])
     payloads, status = build_stats(few, {"A": mk("A", 0, 1), "R": mk("R", 5)}, "v1", day(300))
     assert "judge_tour.json" not in payloads and "fewer than 3" in status["warnings"][0]
+
+
+def test_req_stat_tour_1_an_explained_away_zombie_is_never_featured():
+    """REQ-STAT-TOUR.1, REQ-SKEP: the Skeptic's explained_away verdict removes a zombie from the ranking and the override."""
+    from dataclasses import replace
+
+    zs = [replace(z, skeptic_verdict="explained_away") if z.zombie_id == "Z1-O:Z1-R0" else z for z in detect(town_with_reports()).zombies]
+    tour = build_tour(zs)
+    assert "Z1-O:Z1-R0" not in tour.zombie_ids and tour.zombie_ids == ("Z2-O:Z2-R0", "Z3-O:Z3-R0", "Z4-O:Z4-R0")
+    assert build_tour(zs, ["Z1-O:Z1-R0", "Z2-O:Z2-R0", "Z3-O:Z3-R0"]).source == "most_reports"
+    survivors = [replace(z, skeptic_verdict="weakened") for z in zs]
+    assert "Z1-O:Z1-R0" in build_tour(survivors).zombie_ids
+
+
+def test_req_stat_exp_1_tour_carries_params_and_a_null_seed():
+    """REQ-STAT-EXP.1: every stats file has data_version, params and seed (null when nothing is resampled)."""
+    cs = town_with_reports()
+    payloads, _ = build_stats(detect(cs), {c.id: c for c in cs}, "v1", day(300))
+    for name in ("judge_tour.json", "scorecard.json"):
+        assert payloads[name]["seed"] is None
+        assert {"WINDOW_DAYS", "RADIUS_M", "matching"} <= set(payloads[name]["params"])
+        validate(name.removesuffix(".json"), payloads[name])

@@ -270,12 +270,43 @@
         "source_unknown"
       ],
       "additionalProperties": true
+    },
+    "params": {
+      "type": "object",
+      "properties": {
+        "WINDOW_DAYS": {
+          "type": "integer"
+        },
+        "RADIUS_M": {
+          "type": "number"
+        },
+        "matching": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "WINDOW_DAYS",
+        "RADIUS_M",
+        "matching"
+      ]
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [
     "counts",
     "data_version",
-    "scorecards"
+    "params",
+    "scorecards",
+    "seed"
   ],
   "additionalProperties": true
 }
