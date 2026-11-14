@@ -20,13 +20,15 @@ OTHER = "Case Noted. Closed date : 2024-05-01 10:00:00 No action"
 
 
 def table(rows) -> duckdb.DuckDBPyConnection:
-    """rows: (id, department, close datetime in UTC, closure_text)."""
+    """rows: (id, department, close datetime in UTC, closure_text[, closure_code])."""
     con = duckdb.connect()
     con.execute("create table cases_clean(id varchar, system varchar, department varchar, status varchar, "
-                "close_time_utc timestamp, closure_text varchar, scope_tier varchar, coroner_label varchar)")  # fmt: skip
+                "close_time_utc timestamp, closure_text varchar, scope_tier varchar, coroner_label varchar, "
+                "closure_code varchar)")  # fmt: skip
     if rows:
-        con.executemany("insert into cases_clean values (?,?,?,?,?,?,?,?)",
-                        [(i, "legacy", d, "Closed", c, t, "core", "resolved") for i, d, c, t in rows])  # fmt: skip
+        con.executemany("insert into cases_clean values (?,?,?,?,?,?,?,?,?)",
+                        [(r[0], "legacy", r[1], "Closed", r[2], r[3], "core", "resolved", r[4] if len(r) > 4 else None)
+                         for r in rows])  # fmt: skip
     return con
 
 
@@ -84,6 +86,26 @@ def test_req_bulk_2_the_flag_is_separate_and_never_overwrites_the_label():
     assert con.execute("select count(*) from cases_clean where bulk_closure and id like 'b%'").fetchone()[0] == 60
     assert con.execute("select count(*) from cases_clean where bulk_closure and id like 's%'").fetchone()[0] == 0
     assert flag_cases(con, []) == 0 and con.execute("select count(*) from cases_clean where bulk_closure").fetchone()[0] == 0
+
+
+def test_req_bulk_1_empty_text_is_grouped_by_closure_code_not_template():
+    """REQ-BULK.1, ZD step 10 (ops#90): 60 empty-text closures with code Resolved on one day are bulk against a steady
+    daily 3 of the same code; 60 of them split over two codes (30 each) are not, and they no longer share one template."""
+    steady = [(f"s{d}-{k}", "PWDx", day(d), "", "Resolved") for d in range(10) for k in range(3)]
+    spike = [(f"b{k}", "PWDx", day(11), "", "Resolved") for k in range(60)]
+    [g] = bulk_closures(table(steady + spike))
+    assert g.template == "code:Resolved" and g.n_cases == 60 and g.usual_daily == 3
+    split = [(f"b{k}", "PWDx", day(11), "", "Resolved" if k % 2 else "Noted") for k in range(60)]
+    assert not bulk_closures(table(steady + split))  # 30 per code: under BULK_MIN_CASES
+
+
+def test_req_bulk_1_empty_text_with_different_codes_never_pools_and_text_still_wins_over_the_code():
+    """REQ-BULK.1 (ops#90): a case with text is keyed by its template whatever its code; a text-less one by its code."""
+    rows = [("a", "PWDx", day(0), TEXT, "Noted"), ("b", "PWDx", day(0), "", "Noted"), ("c", "PWDx", day(0), "  ", None)]
+    con = table(rows)
+    bulk_closures(con)
+    keys = dict(con.execute("select id, template from bulk_input").fetchall())
+    assert keys == {"a": "case closed. case resolved", "b": "code:Noted", "c": "code:"}
 
 
 def test_req_bulk_1_open_cases_other_scopes_and_empty_departments_are_handled():

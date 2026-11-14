@@ -6,6 +6,8 @@ median daily closure count of the department and template over the days that hav
 Boston local date (America/New_York) of the closure; the template is the masked closure text (`mask_template`), the key
 the Coroner labels use. `bulk_closure` is set on `cases_clean` for every case in a flagged group; it lowers the
 confidence score and shows on the card (REQ-CONF.1), and it is separate from `coroner_label`, which ZD step 6 reads.
+A case with empty closure text (nothing left after masking) is grouped by its closure code instead of its template
+(`code:<closure_code>`; ZD step 10, owner decision ops#90), so the empty texts of one department do not share one template.
 """
 
 from __future__ import annotations
@@ -39,21 +41,26 @@ class BulkGroup:
 
 
 @lru_cache(maxsize=200_000)
-def _template(text: str | None) -> str:
-    return mask_template(text)
+def _template(text: str | None, code: str | None = None) -> str:
+    """The grouping key: the masked closure text, or `code:<closure_code>` when the text is empty (REQ-BULK.1, ops#90)."""
+    return mask_template(text) or f"code:{(code or '').strip()}"
 
 
 def _load_input(con: duckdb.DuckDBPyConnection, table: str) -> None:
+    has_code = con.execute(
+        "select count(*) from information_schema.columns where table_name = ? and column_name = 'closure_code'", [table]
+    ).fetchone()[0]  # fmt: skip
+    code = "closure_code::varchar" if has_code else "NULL::varchar"
     rows = con.execute(f"""
         select id, system, coalesce(nullif(trim(department), ''), '{UNKNOWN_DEPARTMENT}'),
-               cast((close_time_utc at time zone 'UTC') at time zone '{LOCAL_TZ}' as date)::varchar, closure_text
+               cast((close_time_utc at time zone 'UTC') at time zone '{LOCAL_TZ}' as date)::varchar, closure_text, {code}
         from {table}
         where status = 'Closed' and close_time_utc is not null and scope_tier in ('core', 'sensitivity')
     """).fetchall()  # fmt: skip
     con.execute("drop table if exists bulk_input")
     con.execute("create temp table bulk_input(id varchar, system varchar, dept varchar, day varchar, template varchar)")
     if rows:
-        con.executemany("insert into bulk_input values (?,?,?,?,?)", [(i, s, d, day, _template(t)) for i, s, d, day, t in rows])
+        con.executemany("insert into bulk_input values (?,?,?,?,?)", [(i, s, d, day, _template(t, c)) for i, s, d, day, t, c in rows])
 
 
 def bulk_closures(con: duckdb.DuckDBPyConnection, p: Params = DEFAULT, table: str = "cases_clean") -> list[BulkGroup]:
