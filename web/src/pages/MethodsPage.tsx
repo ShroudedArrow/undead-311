@@ -6,6 +6,7 @@ import { useData } from "../lib/data";
 import { formatDateTime } from "../lib/format";
 import { familyLabel } from "../lib/labels";
 import { familyExcessRows, num1, readPlacebo, readShift } from "../lib/methods";
+import { NULL_TOWNS, STRESS_ABOVE, STRESS_TOWNS, signed, sumOf } from "../lib/nullTowns";
 import { parseExcess, parseScorecard, parseStatus, parseValidation } from "../lib/parse";
 import { pct } from "../lib/rates";
 import { t } from "../lib/t";
@@ -39,6 +40,7 @@ function Baselines() {
     <section className="chart-section" aria-labelledby="base-h">
       <h2 id="base-h">{t("methods.baselines_heading")}</h2>
       <p>{t("methods.baselines_text")}</p>
+      <p data-testid="excess-floor">{t("methods.excess_floor")}</p>
       {excess.status === "error" && <PanelError file={excess.file} error={excess.error} />}
       {excess.status === "ok" ? (
         <>
@@ -79,6 +81,40 @@ function Baselines() {
   );
 }
 
+/** Results on seeded towns where the true excess is 0 (owner decision, channel issue 130). The rows are pinned to docs/METHODS.md by a test. */
+function NullTowns() {
+  const towns = NULL_TOWNS.reduce((s, r) => s + r.below + r.covers + r.above, 0);
+  return (
+    <section className="chart-section" aria-labelledby="null-h" data-testid="null-towns">
+      <h2 id="null-h">{t("methods.null_heading")}</h2>
+      <p data-testid="null-summary">{t("methods.null_text", { towns, below: sumOf("below"), covers: sumOf("covers") })}</p>
+      <div className="table-wrap chart-table" tabIndex={0} role="region" aria-label={t("methods.null_caption")}>
+        <table className="zombie-table">
+          <caption>{t("methods.null_caption")}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{t("methods.null_col_town")}</th>
+              <th scope="col">{t("methods.null_col_range")}</th>
+              <th scope="col">{t("methods.null_col_where")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {NULL_TOWNS.map((r) => (
+              <tr key={r.id}>
+                <th scope="row">{t(`methods.nt_${r.id}`)}</th>
+                <td>{t("methods.null_range", { min: signed(r.min), max: signed(r.max) })}</td>
+                <td>{t("methods.null_where", { below: r.below, n: r.below + r.covers + r.above, covers: r.covers })}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p>{t("methods.null_below_means")}</p>
+      <p data-testid="null-limits">{t("methods.null_limits", { towns: STRESS_TOWNS, fine: STRESS_TOWNS - STRESS_ABOVE, above: STRESS_ABOVE })}</p>
+    </section>
+  );
+}
+
 function ShiftAndPlacebo({ file }: { file: Parameters<typeof readShift>[0] }) {
   const shift = readShift(file);
   const placebo = readPlacebo(file);
@@ -98,7 +134,11 @@ function ShiftAndPlacebo({ file }: { file: Parameters<typeof readShift>[0] }) {
       <h3>{t("methods.placebo_heading")}</h3>
       <p>{t("methods.placebo_text")}</p>
       {placebo ? (
-        <p data-testid="placebo">{t("methods.placebo_value", { excess: num1(placebo.excess), lo: num1(placebo.lo), hi: num1(placebo.hi) })}</p>
+        <>
+          <p data-testid="placebo">{t("methods.placebo_value", { excess: num1(placebo.excess), lo: num1(placebo.lo), hi: num1(placebo.hi) })}</p>
+          {placebo.hi < 0 ? <p className="calibration-warning" role="note" data-testid="placebo-note">{t("methods.placebo_below")}</p> : null}
+          {placebo.lo > 0 ? <p className="calibration-warning" role="note" data-testid="placebo-note">{t("methods.placebo_above")}</p> : null}
+        </>
       ) : (
         <p>{t("methods.placebo_missing")}</p>
       )}
@@ -174,6 +214,7 @@ export default function MethodsPage() {
       <p data-testid="methods-intro">{t("methods.intro")}</p>
       <Definitions />
       <Baselines />
+      <NullTowns />
       <Validation />
       <section className="chart-section" aria-labelledby="limits-h">
         <h2 id="limits-h">{t("methods.limits_heading")}</h2>

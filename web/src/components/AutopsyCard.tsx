@@ -22,6 +22,11 @@ function CaseBlock({ heading, rec }: { heading: string; rec: CaseRecord }) {
             <span>{rec.id}</span>
           )}{" "}
           ({rec.system === "legacy" ? t("card.system_legacy") : t("card.system_new")})
+          {rec.system === "legacy" ? null : (
+            <p className="case-note" data-testid="new-case-note">
+              {t("card.new_case_no_link")}
+            </p>
+          )}
         </dd>
         <dt>{t("card.type")}</dt>
         <dd>{rec.type_raw}</dd>

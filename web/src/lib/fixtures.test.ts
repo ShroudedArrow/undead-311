@@ -5,7 +5,7 @@ import { parseBulkClosures, parseCardShard, parseExcess, parseExclusions, parseF
 import { shardFile } from "./shard";
 import { statsPath } from "./statsFiles";
 // @ts-expect-error plain .mjs build script, no type declarations
-import { buildFixtures, canonicalHood } from "../../scripts/make-fixtures.mjs";
+import { buildFixtures, canonicalHood, pickTour } from "../../scripts/make-fixtures.mjs";
 
 const dir = join(__dirname, "..", "..", "public", "data");
 const read = (f: string): unknown => JSON.parse(readFileSync(join(dir, statsPath(f)), "utf8"));
@@ -106,7 +106,7 @@ describe("fixture judge tour follows REQ-STAT-TOUR.1 (UX-10)", () => {
     const zs = parseZombies(read("zombies.json"));
     if (!zs.ok) throw new Error("fixture does not parse");
     const expected = zs.data.zombies
-      .filter((z) => z.tier === "headline")
+      .filter((z) => z.tier === "headline" && z.skeptic_verdict !== "explained_away" && z.gap_days * 24 >= 1 && !z.city_rereport)
       .sort((a, b) => b.reports_after - a.reports_after || (a.zombie_id < b.zombie_id ? -1 : a.zombie_id > b.zombie_id ? 1 : 0))
       .slice(0, 3)
       .map((z) => z.zombie_id);
@@ -114,6 +114,22 @@ describe("fixture judge tour follows REQ-STAT-TOUR.1 (UX-10)", () => {
     expect(tour.source).toBe("most_reports");
     expect(tour.provisional).toBe(true);
     expect(tour.zombie_ids).toEqual(expected);
+  });
+
+  it("pickTour ranks resident-reported zombies with a gap of at least 1 hour, never explained away (REQ-STAT-TOUR.1, ops#44, ops#120)", () => {
+    const z = (id: string, over: Record<string, unknown> = {}) => ({ zombie_id: id, tier: "headline", reports_after: 1, gap_days: 5, city_rereport: false, skeptic_verdict: "survives", ...over });
+    const zs = [
+      z("a-fast", { reports_after: 9, gap_days: 0.02 }),
+      z("b-city", { reports_after: 8, city_rereport: true }),
+      z("c-away", { reports_after: 7, skeptic_verdict: "explained_away" }),
+      z("d-sens", { reports_after: 6, tier: "sensitivity" }),
+      z("e-two", { reports_after: 2 }),
+      z("f-one-b", { reports_after: 1 }),
+      z("f-one-a", { reports_after: 1 }),
+      z("g-edge", { reports_after: 1, gap_days: 1 / 24 }),
+    ];
+    expect(pickTour(zs)).toEqual({ ids: ["e-two", "f-one-a", "f-one-b"], source: "most_reports" });
+    expect(pickTour([...zs].reverse())).toEqual(pickTour(zs));
   });
 
   it("no filter option appears twice for one neighborhood (UX-11)", () => {
