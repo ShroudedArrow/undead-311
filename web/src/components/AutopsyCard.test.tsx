@@ -92,7 +92,11 @@ describe("AutopsyCard content (REQ-WEB-CARD.1, .3, .6)", () => {
     expect(line(again)).toContain("BCS-2 (Current 311 system, from August 2025)");
     expect(line(again)).not.toMatch(/\([^)]*\([^)]*\)/);
     expect(within(again).queryByRole("link")).toBeNull();
-    expect(within(again).getByTestId("new-case-note").textContent).toMatch(/not linked yet.*Search this case number/);
+    const note = within(again).getByTestId("new-case-note");
+    expect(note.textContent).toMatch(/not linked yet.*Search this case number/);
+    // UX-35: the note is its own block under the case number, not an inline run-on.
+    expect(note.tagName).toBe("P");
+    expect(note.closest("span")).toBeNull();
   });
 });
 
