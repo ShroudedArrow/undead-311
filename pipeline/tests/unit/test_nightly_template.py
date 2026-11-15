@@ -293,3 +293,10 @@ def test_a_damaged_history_file_never_breaks_the_run(tmp_path, content):
     assert run_cli("record", "--history", str(hist), "--outcomes", "build=failure").returncode == 0
     entries = json.loads(hist.read_text())
     assert entries[-1]["stage"] == "build" and all(isinstance(e, dict) for e in entries)
+
+
+def test_the_nightly_build_installs_a_browser_and_requires_share_images():
+    """REQ-WEB-LINKS.2 (UX-39): the nightly build draws the share images or fails; it never ships without them."""
+    build = steps()[index("build")]
+    assert build["run"].index("playwright install") < build["run"].index("make build")
+    assert build["env"]["SHARE_IMAGES"] == "required"

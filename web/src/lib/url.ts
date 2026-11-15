@@ -44,3 +44,25 @@ export function decodeState(search: string): PageState {
     bulk: p.get("bulk") === "1",
   };
 }
+
+/** URL state of the street page (REQ-WEB-LINKS.1): the chosen street key `s` and the search distance `r` in meters. */
+export interface StreetState {
+  key: string | null;
+  radius: number;
+}
+export const STREET_RADII_M = [150, 300, 600, 1000] as const;
+export const DEFAULT_STREET_STATE: StreetState = { key: null, radius: STREET_RADII_M[0] };
+
+export function encodeStreetState(s: StreetState): string {
+  const p = new URLSearchParams();
+  if (s.key) p.set("s", s.key);
+  if (s.key && s.radius !== STREET_RADII_M[0]) p.set("r", String(s.radius));
+  return p.toString();
+}
+
+export function decodeStreetState(search: string): StreetState {
+  const p = new URLSearchParams(search);
+  const r = Number(p.get("r"));
+  const radius = (STREET_RADII_M as readonly number[]).includes(r) ? r : STREET_RADII_M[0];
+  return { key: p.get("s") || null, radius };
+}

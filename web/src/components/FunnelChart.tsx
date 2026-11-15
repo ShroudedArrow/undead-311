@@ -1,5 +1,5 @@
 import { yTitleAttrs, yTitle, tickPct, chartDims, intensityText, leaderboard, linePath, linear, logScale, niceTicks, unusualDirection } from "../lib/charts";
-import { groupLabel } from "../lib/labels";
+import { groupLabel, groupTitle } from "../lib/labels";
 import type { FunnelLimit, Group } from "../lib/parse";
 import { pct } from "../lib/rates";
 import { t } from "../lib/t";
@@ -119,7 +119,7 @@ export function Leaderboard({ groups, limits, kind }: { groups: readonly Group[]
             const intensity = intensityText(g);
             return (
               <tr key={g.name} data-unusual={g.unusualShown ? "true" : "false"} data-direction={g.direction ?? ""}>
-                <th scope="row">{groupLabel(kind === "family" ? "family" : kind, g.name)}</th>
+                <th scope="row" title={groupTitle(kind === "family" ? "family" : kind, g.name)}>{groupLabel(kind === "family" ? "family" : kind, g.name)}</th>
                 <td>{pct(g.shrunk)}</td>
                 <td>{g.lo === null || g.hi === null ? "" : t("charts.interval_text", { lo: pct(g.lo), hi: pct(g.hi) })}</td>
                 <td>{pct(g.raw)}</td>

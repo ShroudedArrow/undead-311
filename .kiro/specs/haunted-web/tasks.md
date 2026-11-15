@@ -65,20 +65,20 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 
 ## Delight
 
-- [ ] 17. [delight] Sensitivity sliders
+- [x] 17. [delight] Sensitivity sliders
   - _Requirements: REQ-WEB-SLIDERS.1_
-- [ ] 18. [delight] "Check my street"
+- [x] 18. [delight] "Check my street"
   - Build-time address index from the SAM address registry; search, zoom, nearby list, empty state.
   - _Requirements: REQ-WEB-STREET.1_
-- [ ] 19. [delight] Repeat offenders view
+- [x] 19. [delight] Repeat offenders view
   - _Requirements: REQ-WEB-REPEAT.1_
-- [ ] 20. [delight] Permalinks and share images
-  - [ ] 20.1 Property W7: URL state round-trips. _REQ-WEB-LINKS.1_
+- [x] 20. [delight] Permalinks and share images
+  - [x] 20.1 Property W7: URL state round-trips. _REQ-WEB-LINKS.1_
   - _Requirements: REQ-WEB-LINKS.1–2_
-- [ ] 21. [delight] Night of the Living 311 time-lapse
+- [x] 21. [delight] Night of the Living 311 time-lapse
   - _Requirements: REQ-WEB-TIMELAPSE.1_
-- [ ] 22. [delight] Spanish evidence cards
+- [x] 22. [delight] Spanish evidence cards
   - `es.json` drafts marked `needs-review`, hidden in production until reviewed.
   - _Requirements: REQ-WEB-ES.1_
-- [ ] 23. [delight] Open data download, district report cards, before/after display
+- [x] 23. [delight] Open data download, district report cards, before/after display
   - _Requirements: REQ-WEB-OPEN.1–3_

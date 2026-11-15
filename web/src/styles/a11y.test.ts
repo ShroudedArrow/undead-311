@@ -35,6 +35,25 @@ describe("contrast floor (REQ-WEB-A11Y.1, design-system.md contrast rules)", () 
   });
 });
 
+describe("pressed buttons stay readable (REQ-WEB-STREET.1, UX-38)", () => {
+  it("the chosen street button is Crew white on Asphalt, not Crew white on Crew white", () => {
+    const rule = rules.find((r) => r.sel === '.street-results button[aria-pressed="true"]') as { body: string };
+    expect(rule).toBeDefined();
+    const bg = /background:\s*var\(--([a-z-]+)\)/.exec(rule.body)?.[1] as string;
+    const fg = /(?:^|[;\s])color:\s*var\(--([a-z-]+)\)/.exec(rule.body)?.[1] as string;
+    expect(contrast(hex(fg), hex(bg))).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("phone header (REQ-WEB-MAP.1, UX-40)", () => {
+  it("hides the nav behind the Menu button under 640 px and shows the button only there", () => {
+    expect(rules.find((r) => r.sel === ".nav-toggle")?.body).toMatch(/display:\s*none/);
+    const phone = css.slice(css.indexOf(".site-nav[data-open=\"false\"]") - 400);
+    expect(phone).toMatch(/\.site-nav\[data-open="false"\]\s*\{\s*display:\s*none/);
+    expect(css.lastIndexOf("max-width: 640px", css.indexOf('.site-nav[data-open="false"]'))).toBeGreaterThan(css.indexOf(".nav-toggle { display: none"));
+  });
+});
+
 describe("keyboard and motion (REQ-WEB-A11Y.1)", () => {
   it("has a visible focus style and never removes outlines", () => {
     expect(css).toMatch(/:focus-visible\s*\{[^}]*outline:\s*var\(--focus-ring\)/);
@@ -56,5 +75,25 @@ describe("phone layout: the map comes before the hero text (REQ-WEB-MAP.1, desig
     expect(order(".stage")).toBeLessThan(order(".filters-panel > .hero-text"));
     expect(order(".filters-panel > h1")).toBeLessThan(order(".stage"));
     expect(order(".filters-panel > .filters-toggle")).toBeLessThan(order(".stage"));
+  });
+});
+
+describe("phone home: heading hidden visually, count and filters button share a row, map fills the view (REQ-WEB-MAP.1, UX-49)", () => {
+  const phone = css.slice(css.lastIndexOf("UX-49"));
+  const body = (sel: string) => {
+    const hit = phone.split("}").map((r) => r.split("{")).find((p) => p.length >= 2 && p[p.length - 2].trim().endsWith(sel));
+    return hit ? hit[hit.length - 1] : "";
+  };
+  it("keeps the h1 for screen readers but out of the layout", () => {
+    expect(body(".filters-panel > h1")).toMatch(/clip-path:\s*inset\(50%\)/);
+    expect(body(".filters-panel > h1")).toMatch(/position:\s*absolute/);
+    expect(body(".filters-panel > h1")).not.toMatch(/display:\s*none/);
+  });
+  it("lets the count and the Show filters button sit on one row", () => {
+    expect(body(".home")).toMatch(/flex-wrap:\s*wrap/);
+    expect(body(".filters-panel > .filters-toggle")).toMatch(/flex:\s*0 0 auto/);
+  });
+  it("gives the stage the rest of the first view", () => {
+    expect(body(".stage")).toMatch(/min-height:\s*max\(24rem,\s*calc\(100svh/);
   });
 });

@@ -104,7 +104,16 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .site-title { font-size: var(--step-1); font-weight: 700; margin: 0; }
 .site-title a { text-decoration: none; }
 .site-nav { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.nav-toggle { display: none; }
 .site-nav a[aria-current="page"] { font-weight: 700; text-decoration-thickness: 3px; }
+@media (max-width: 640px) {
+  .nav-toggle { display: inline-flex; align-items: center; margin-left: auto; min-height: 2.75rem; background: var(--asphalt); color: var(--crew-white); border-color: var(--crew-white); font: inherit; font-weight: 600; }
+  .nav-toggle[aria-expanded="true"] { background: var(--crew-white); color: var(--asphalt); }
+  .site-nav[data-open="false"] { display: none; }
+  .site-nav { flex-direction: column; flex-basis: 100%; gap: var(--space-1); }
+  .site-nav a { display: block; padding: var(--space-2) 0; }
+  .site-header .data-status { flex-basis: 100%; margin-left: 0; }
+}
 .site-header .data-status { margin-left: auto; font-size: var(--step--1); max-width: 34rem; }
 .site-header .data-status p { margin: 0; max-width: none; }
 .site-header .fixture-notice { border: 2px dashed var(--crew-white); padding: var(--space-1) var(--space-2); margin-top: var(--space-1); font-weight: 600; }
@@ -251,6 +260,37 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .rate-track { fill: var(--concrete); }
 .rate-interval { fill: var(--asphalt); }
 .rate-point { fill: var(--asphalt); stroke: var(--crew-white); stroke-width: 0.4; }
+.slider-group { margin: var(--space-3) 0; border: 0; padding: 0; }
+.slider-label { display: block; font-weight: 600; }
+.slider-stops { margin: 0; }
+.slider-group input[type="range"] { width: min(24rem, 100%); min-height: 2.75rem; accent-color: var(--asphalt); }
+.slider-radio { display: flex; align-items: center; gap: var(--space-2); min-height: 2.75rem; }
+.slider-result { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-3); }
+.slider-result dd { margin: 0; font-weight: 600; }
+.street-search { display: grid; gap: var(--space-2); max-width: 32rem; }
+.street-search input { min-height: 2.75rem; padding: 0 var(--space-2); border: 2px solid var(--asphalt); border-radius: 2px; font: inherit; }
+.street-results { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.street-results button, .street-widen { min-height: 2.75rem; padding: 0 var(--space-3); border: 2px solid var(--asphalt); border-radius: 2px; background: var(--crew-white); font: inherit; font-weight: 600; cursor: pointer; text-align: left; }
+.street-results button[aria-pressed="true"] { background: var(--asphalt); color: var(--crew-white); }
+.street-map { height: 22rem; margin: var(--space-3) 0; border: 2px solid var(--asphalt); }
+.street-map .map-host { height: 100%; min-height: 0; }
+.row-picked th, .row-picked td { font-weight: 700; border-top: 3px solid var(--asphalt); border-bottom: 3px solid var(--asphalt); }
+.copy-link { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.copy-link button, .card-share a { min-height: 2.75rem; padding: 0 var(--space-3); border: 2px solid var(--asphalt); border-radius: 2px; background: var(--crew-white); font: inherit; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; color: var(--asphalt); }
+.card-share, .filters-share { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.timelapse-controls { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin: var(--space-3) 0; }
+.timelapse-controls button { min-height: 2.75rem; padding: 0 var(--space-3); border: 2px solid var(--asphalt); border-radius: 2px; background: var(--crew-white); font: inherit; font-weight: 600; cursor: pointer; }
+.timelapse-controls button:disabled { opacity: .6; cursor: default; }
+.timelapse-controls input[type="range"] { width: min(24rem, 100%); min-height: 2.75rem; accent-color: var(--asphalt); }
+.timelapse-map { height: 32rem; margin: var(--space-3) 0; border: 2px solid var(--asphalt); }
+.timelapse-map .map-host { height: 100%; min-height: 0; }
+.lang-switch { display: flex; gap: var(--space-1); }
+.lang-switch button { min-height: 2.75rem; padding: 0 var(--space-3); border: 2px solid var(--crew-white); border-radius: 2px; background: transparent; color: var(--crew-white); font: inherit; cursor: pointer; }
+.lang-switch button[aria-pressed="true"] { background: var(--crew-white); color: var(--asphalt); font-weight: 700; }
+.street-near { display: grid; gap: var(--space-2); margin: var(--space-3) 0; }
+.score-excess { margin-top: var(--space-3); padding-top: var(--space-2); border-top: 1px solid var(--asphalt); }
+.score-excess h3 { margin: 0 0 var(--space-1); font-size: 1rem; }
+.score-excess p { margin: var(--space-1) 0; }
 .score-detail { margin-top: var(--space-2); }
 .score-detail summary { cursor: pointer; min-height: 2.75rem; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--crew-white); border: 2px solid var(--asphalt); border-radius: 2px; font-weight: 600; }
 .score-detail summary::-webkit-details-marker { display: none; }
@@ -356,12 +396,35 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
   .home { display: flex; flex-direction: column; height: auto; }
   .filters-panel { display: contents; }
   .filters-panel > * { margin-inline: var(--space-3); }
-  .filters-panel > h1 { order: 0; margin-block: var(--space-3) var(--space-1); }
+  .filters-panel > h1 { order: 0; }
   .filters-panel > div:not(.hero-text):not(.filters-body) { order: 1; }
   .filters-panel > .filters-toggle { order: 2; align-self: flex-start; }
   .filters-panel > .filters-body { order: 3; }
   .stage { order: 4; flex: 0 0 auto; border-top: 2px solid var(--asphalt); }
   .filters-panel > .hero-text { order: 5; margin-block: var(--space-3); }
+}
+
+/*
+ * UX-49 (channel issue 188): the header already names the site, so on phones the page heading stays for screen readers only, and
+ * the count and the Show filters button share one row. The stage then fills the rest of the first view, so the map gets
+ * about 60% of it instead of 45%.
+ */
+@media (max-width: 640px) {
+  .filters-panel > h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .home { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+  .home > * { flex: 1 1 100%; min-width: 0; }
+  .filters-panel > div:not(.hero-text):not(.filters-body) { flex: 1 1 8rem; margin-block: var(--space-2) 0; }
+  .filters-panel > .filters-toggle { flex: 0 0 auto; align-self: center; margin-block: var(--space-2) 0; }
+  .filters-panel > .filters-body { flex: 1 1 100%; }
+  .stage { flex: 1 1 100%; min-height: max(24rem, calc(100svh - 17rem)); }
 }
 
 /* UX-13 (ops#26): the card repeats a short preview notice, because the phone sheet can cover the header notice. */
@@ -406,3 +469,15 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .calibration-warning { border: 2px solid var(--asphalt); border-left: 0.6rem solid var(--cone-orange); padding: var(--space-2) var(--space-3); background: var(--crew-white); max-width: var(--measure); }
 .report-error { font-weight: 600; }
 .autopsy-report { margin: var(--space-3) 0 0; }
+
+/* Print: one clean page per district report card (REQ-WEB-OPEN.2). Black on white, no navigation, no controls. */
+.print-only { display: none; }
+.open-links { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.open-links a, .open-links button, .district-page button { min-height: 2.75rem; padding: 0 var(--space-3); border: 2px solid var(--asphalt); border-radius: 2px; background: var(--crew-white); color: var(--asphalt); font: inherit; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; }
+@media print {
+  .site-header, .site-footer, .skip-link, .no-print { display: none !important; }
+  .print-only { display: block; }
+  body, .shell, .shell-main, .page { background: var(--crew-white); color: var(--asphalt); }
+  .district-page .zombie-table { border-collapse: collapse; }
+  .district-page .zombie-table th, .district-page .zombie-table td { border: 1px solid var(--asphalt); padding: 4px 8px; }
+}

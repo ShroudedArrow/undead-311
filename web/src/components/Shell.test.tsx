@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
@@ -46,5 +46,26 @@ describe("Shell (REQ-WEB-DESIGN.3, REQ-WEB-FRESH.1)", () => {
     render(<MemoryRouter><App /></MemoryRouter>);
     await screen.findByText("Data as of Nov 11, 2026");
     expect(screen.queryByTestId("fixture-notice")).toBeNull();
+  });
+
+  it("keeps the phone nav behind one Menu button that opens, closes on Escape and on a link (REQ-WEB-MAP.1, UX-40)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => STATUS }) as Response));
+    render(<MemoryRouter><App /></MemoryRouter>);
+    const menu = screen.getByRole("button", { name: "Menu" });
+    const nav = screen.getByRole("navigation", { name: "Main" });
+    expect(menu.getAttribute("aria-controls")).toBe(nav.id);
+    expect(menu.getAttribute("aria-expanded")).toBe("false");
+    expect(nav.getAttribute("data-open")).toBe("false");
+    fireEvent.click(menu);
+    expect(menu.getAttribute("aria-expanded")).toBe("true");
+    expect(nav.getAttribute("data-open")).toBe("true");
+    screen.getByRole("link", { name: "Map" }).focus();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(menu.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(menu); // UX-48: focus returns to the Menu button
+    fireEvent.click(menu);
+    fireEvent.click(screen.getByRole("link", { name: "Methods" }));
+    expect(menu.getAttribute("aria-expanded")).toBe("false");
+    await screen.findByText("Data as of Nov 11, 2026");
   });
 });

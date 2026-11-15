@@ -30,7 +30,7 @@ describe("fixture files follow the schemas (REQ-WEB-DATA.3)", () => {
   });
 
   it("every card shard parses and is named by neighborhood and year", () => {
-    const shards = readdirSync(join(dir, "cards"));
+    const shards = readdirSync(join(dir, "cards")).filter((f) => f.endsWith(".json"));
     expect(shards.length).toBeGreaterThan(0);
     for (const f of shards) expect(parseCardShard(read(`cards/${f}`))).toMatchObject({ ok: true });
   });
@@ -143,7 +143,7 @@ describe("fixture judge tour follows REQ-STAT-TOUR.1 (UX-10)", () => {
 
 describe("fixtures follow the zombie definition (UX-16, UX-18, UX-20, UX-25)", () => {
   const TRANSFER = /resubmitted|see new case|transferred|migrated/i;
-  const allCards = () => readdirSync(join(dir, "cards")).flatMap((f) => {
+  const allCards = () => readdirSync(join(dir, "cards")).filter((f) => f.endsWith(".json")).flatMap((f) => {
     const sh = parseCardShard(read(`cards/${f}`));
     if (!sh.ok) throw new Error(`${f} does not parse`);
     return sh.data.cards;

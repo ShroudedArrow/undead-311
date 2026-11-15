@@ -2,16 +2,17 @@
  * Haunted map (REQ-WEB-MAP.1, .5). MapLibre draws the self-hosted PMTiles basemap; a deck.gl IconLayer draws the
  * possible zombies as spray-circle sprites. Loaded lazily from the page so the first view stays small (REQ-WEB-PERF.1).
  */
-import { IconLayer, ScatterplotLayer } from "@deck.gl/layers";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { Protocol } from "pmtiles";
 import { useEffect, useRef, useState } from "react";
+import type { PlaceLabel } from "../lib/placeLabels";
 import type { PointRow } from "../lib/points";
 import { t } from "../lib/t";
-import { iconFor, iconMapping, makeAtlasCanvas } from "./sprites";
+import { buildLayers } from "./layers";
+import { makeAtlasCanvas } from "./sprites";
 import { BOSTON_BOUNDS, BOSTON_CENTER, BOSTON_ZOOM, buildStyle, tilesUrl } from "./style";
 
 let protocolAdded = false;
@@ -23,6 +24,8 @@ function ensureProtocol(): void {
   protocolAdded = true;
 }
 
+const NO_LABELS: readonly PlaceLabel[] = [];
+
 const prefersReducedMotion = (): boolean => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 
 interface Props {
@@ -31,9 +34,13 @@ interface Props {
   onSelect: (id: string) => void;
   /** IDs to ring in Cone orange (bulk-closure layer, REQ-WEB-DEATHS.1); null when the layer is off. */
   bulkIds?: ReadonlySet<string> | null;
+  /** Zoom to this box, [west, south, east, north] ("Check my street", REQ-WEB-STREET.1). */
+  bounds?: [number, number, number, number] | null;
+  /** Neighborhood names drawn over the markers (ops#18); empty or absent draws none. */
+  labels?: readonly PlaceLabel[];
 }
 
-export default function MapView({ rows, selectedId, onSelect, bulkIds = null }: Props) {
+export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bounds = null, labels = NO_LABELS }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const overlayRef = useRef<MapboxOverlay | null>(null);
@@ -41,6 +48,7 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null }: 
   const onSelectRef = useRef(onSelect);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
+  const [fontReady, setFontReady] = useState(false);
   onSelectRef.current = onSelect;
 
   useEffect(() => {
@@ -84,45 +92,24 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null }: 
     };
   }, []);
 
+  // deck.gl draws label glyphs from the page's own self-hosted Public Sans, so wait for it before the first label is drawn
+  useEffect(() => {
+    let live = true;
+    const done = () => live && setFontReady(true);
+    if (typeof document !== "undefined" && document.fonts?.load) document.fonts.load('600 14px "Public Sans"').then(done, done);
+    else done();
+    return () => {
+      live = false;
+    };
+  }, []);
+
   useEffect(() => {
     const overlay = overlayRef.current;
     if (!overlay || !atlasRef.current) return;
     overlay.setProps({
-      layers: [
-        // Cone orange rings under the markers: a warning, never text (design-system.md). Asphalt ring beneath keeps 3:1 on Concrete.
-        ...(bulkIds && bulkIds.size > 0
-          ? [
-              new ScatterplotLayer<PointRow>({
-                id: "bulk-ring-edge", data: rows.filter((r) => bulkIds.has(r.id)), getPosition: (d) => [d.lon, d.lat], stroked: true, filled: false,
-                radiusUnits: "pixels", getRadius: 22, lineWidthUnits: "pixels", getLineWidth: 8, getLineColor: [46, 49, 52, 255],
-              }),
-              new ScatterplotLayer<PointRow>({
-                id: "bulk-ring", data: rows.filter((r) => bulkIds.has(r.id)), getPosition: (d) => [d.lon, d.lat], stroked: true, filled: false,
-                radiusUnits: "pixels", getRadius: 22, lineWidthUnits: "pixels", getLineWidth: 4, getLineColor: [242, 107, 29, 255],
-              }),
-            ]
-          : []),
-        new IconLayer<PointRow>({
-          id: "zombies",
-          data: rows,
-          pickable: true,
-          // never let loaders.gl fetch worker scripts from a CDN (REQ-WEB-PERF.2)
-          loadOptions: { worker: false },
-          iconAtlas: atlasRef.current as unknown as string,
-          iconMapping: iconMapping(),
-          getIcon: (d) => iconFor(d.id, d.tier),
-          getPosition: (d) => [d.lon, d.lat],
-          getSize: (d) => (d.id === selectedId ? 44 : 30),
-          sizeUnits: "pixels",
-          sizeMinPixels: 14,
-          updateTriggers: { getSize: [selectedId] },
-          onClick: (info) => {
-            if (info.object) onSelectRef.current(info.object.id);
-          },
-        }),
-      ],
+      layers: buildLayers({ rows, selectedId, atlas: atlasRef.current, bulkIds, labels, fontReady, onSelect: (id) => onSelectRef.current(id) }),
     });
-  }, [rows, selectedId, ready, bulkIds]);
+  }, [rows, selectedId, ready, bulkIds, labels, fontReady]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -132,6 +119,16 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null }: 
     // Only re-center when the selection changes, not when filters change the rows.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
+
+  const boundsKey = bounds ? bounds.join(",") : "";
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !bounds) return;
+    const [w, so, e, n] = bounds;
+    map.fitBounds([[w, so], [e, n]], { padding: 48, maxZoom: 17, duration: prefersReducedMotion() ? 0 : 600 });
+    // Only when the box changes; the array identity changes on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boundsKey, ready]);
 
   if (failed) return <p className="panel-error" role="status">{t("map.unsupported")}</p>;
   return (

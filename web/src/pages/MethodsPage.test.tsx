@@ -20,6 +20,7 @@ const FILES: Record<string, unknown> = {
     shift: { runs: 1000, seed: 311, observed: 60, mean: 13.3, q025: 8, q975: 19 },
     placebo: { excess: 0.4, lo: -3.1, hi: 3.9 },
   },
+  "sensitivity_grid.json": { data_version: V, params: { WINDOW_DAYS: 60, RADIUS_M: 30, matching: "segment" }, points: [{ matching: "segment", radius_m: 30, window_days: 60, headline: 1, source_unknown: 0, city_rereport: 0, sensitivity: 0, excess: 1.5, stayed_fixed_rate: 0.5 }], without_street_light_other: { headline: 1, all_tiers: 1 } },
   "validation.json": { data_version: V, status: "awaiting_field_labels", precision: null, cant_tell_share: null, kappa: null, confirmed: [], sample_ids: [] },
   "temporary_fixes.json": {
     data_version: V,
@@ -227,5 +228,14 @@ describe("What the headline leaves out (REQ-WEB-DEATHS.1)", () => {
     stub({ "status.json": { data_version: "fixture-2026-11-11", last_run: "2026-11-11T00:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" } });
     open();
     expect(await screen.findByTestId("excl-fixture-note")).toBeTruthy();
+  });
+});
+
+describe("Methods page offers the sensitivity sliders (REQ-WEB-SLIDERS.1)", () => {
+  it("shows the sliders on the methods page", async () => {
+    stub();
+    open();
+    expect(await screen.findByTestId("sliders")).toBeTruthy();
+    expect(await screen.findByTestId("slider-headline")).toBeTruthy();
   });
 });

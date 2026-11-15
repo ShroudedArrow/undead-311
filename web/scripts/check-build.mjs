@@ -31,6 +31,7 @@ export const INERT_HOSTS = new Map([
   ["www.openstreetmap.org", "OpenStreetMap copyright link in the footer (a link, not a request)"],
   ["wiki.openstreetmap.org", "documentation link in the basemap library"],
   ["deck.gl", "deck.gl documentation links in messages"],
+  ["opendatacommons.org", "ODC-PDDL license text link on the methods page (a link, not a request)"],
   ["311.boston.gov", "link text template for the city's public case pages (a link, not a request)"],
 ]);
 

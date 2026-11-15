@@ -12,7 +12,9 @@ import type {
   GroupsFile,
   JudgeTourFile,
   PointsFile,
+  RepeatOffendersFile,
   ScorecardFile,
+  SensitivityGridFile,
   StatusFile,
   SurvivalFile,
   TemporaryFixesFile,
@@ -27,7 +29,9 @@ import validateFunnel from "./generated/validators/funnel";
 import validateGroups from "./generated/validators/groups";
 import validateJudgeTour from "./generated/validators/judge_tour";
 import validatePoints from "./generated/validators/points";
+import validateRepeatOffenders from "./generated/validators/repeat_offenders";
 import validateScorecard from "./generated/validators/scorecard";
+import validateSensitivityGrid from "./generated/validators/sensitivity_grid";
 import validateStatus from "./generated/validators/status";
 import validateSurvival from "./generated/validators/survival";
 import validateTemporaryFixes from "./generated/validators/temporary_fixes";
@@ -64,13 +68,15 @@ export const parseGroups = (d: unknown) => runValidator<GroupsFile>(validateGrou
 export const parseExcess = (d: unknown) => runValidator<ExcessFile>(validateExcess, d);
 export const parseTemporaryFixes = (d: unknown) => runValidator<TemporaryFixesFile>(validateTemporaryFixes, d);
 export const parseExclusions = (d: unknown) => runValidator<ExclusionsFile>(validateExclusions, d);
+export const parseSensitivityGrid = (d: unknown) => runValidator<SensitivityGridFile>(validateSensitivityGrid, d);
+export const parseRepeatOffenders = (d: unknown) => runValidator<RepeatOffendersFile>(validateRepeatOffenders, d);
 export const parseBulkClosures = (d: unknown) => runValidator<BulkClosuresFile>(validateBulkClosures, d);
 
 export type Curve = SurvivalFile["curves"][number];
 export type Group = GroupsFile["groups"][number];
 export type FunnelLimit = FunnelFile["limits"][number];
 export type ExcessRow = ExcessFile["rows"][number];
-export type { BulkClosuresFile, ExcessFile, ExclusionsFile, FunnelFile, GroupsFile, SurvivalFile, TemporaryFixesFile };
+export type { RepeatOffendersFile, SensitivityGridFile, BulkClosuresFile, ExcessFile, ExclusionsFile, FunnelFile, GroupsFile, SurvivalFile, TemporaryFixesFile };
 
 export type Zombie = ZombiesFile["zombies"][number] & { resurrection_date?: string };
 export type Card = CardShard["cards"][number];
