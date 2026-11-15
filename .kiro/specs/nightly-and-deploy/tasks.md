@@ -39,9 +39,9 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 
 ## Delight
 
-- [ ] 9. [delight] `make capture`
+- [x] 9. [delight] `make capture`
   - Playwright video of the judge tour, screenshots of every page (desktop and phone), time-lapse GIF into `docs/media/`, logos excluded.
   - _Requirements: REQ-OPS-CAPTURE.1–2_
-- [ ] 10. [delight] Evidence commands
+- [x] 10. [delight] Evidence commands
   - `make channel-export` (read-only token at run time), `make trace`, `make kiro-stats` (from commit trailers; reuse `scripts/check_trailers.py`).
   - _Requirements: REQ-OPS-EVID.1_
