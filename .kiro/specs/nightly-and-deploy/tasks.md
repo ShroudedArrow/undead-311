@@ -32,9 +32,9 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
   - `pipeline/scripts/snapshot.py` and `make snapshot` (hashes into `data/SNAPSHOT.md` judging section; tag instructions for the owner).
   - [x] 7.1 Check O4: the same input gives the same hashes. _REQ-OPS-SNAP.1_
   - _Requirements: REQ-OPS-SNAP.1–2_
-- [ ] 8. [credibility] Codespaces dev container
+- [x] 8. [credibility] Codespaces dev container
   - `.devcontainer/devcontainer.json` (Python 3.11, uv, Node from `.nvmrc`, `DATA_DIR`, forwarded port; `make setup && make pipeline-sample && make web` works).
-  - [ ] 8.1 Check O5: the JSON validates and its versions match `.python-version` and `.nvmrc`. _REQ-OPS-DEV.1_
+  - [x] 8.1 Check O5: the JSON validates and its versions match `.python-version` and `.nvmrc`. _REQ-OPS-DEV.1_
   - _Requirements: REQ-OPS-DEV.1–2_
 
 ## Delight

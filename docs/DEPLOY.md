@@ -63,6 +63,9 @@ Copy the site URL from the top of the Netlify site page (`https://<name>.netlify
 ## Pull request checks that need nothing from you
 `.github/workflows/ci.yml` runs the tests, copy-lint, an axe scan of judge mode, the first-view budget, `pip-audit` and `npm audit --audit-level=high`, then posts one line to the channel when `CHANNEL_TOKEN` is set (it posts nothing and still passes when it is not). `.github/workflows/deep-pbt.yml` runs the property tests at ten times the examples every night.
 
+## Codespaces
+`.devcontainer/devcontainer.json` opens the repo in GitHub Codespaces with Python 3.11 and Node 22 (the versions in `.python-version` and `.nvmrc`), `uv` pinned, `DATA_DIR` set to the gitignored `.local-data/data`, and port 5173 forwarded. After the container builds, run `make pipeline-sample` (no network needed) and then `make web`. Codespaces is free for a limited number of core hours per month on a personal account (REQ-OPS-DEV.1, .2).
+
 ## Known interaction
 The nightly job deploys the whole site with fresh data from the CLI. A later push to `main` triggers Netlify's own build from the data committed in the repo. After the freeze tag no more pushes land, so the nightly deploy is the last one. Before the freeze, the next nightly run replaces such a build. The generated data files under `web/public/data/` are built by the pipeline: a Netlify build serves whatever is committed there, so commit a current export before relying on a production build from `main`.
 
