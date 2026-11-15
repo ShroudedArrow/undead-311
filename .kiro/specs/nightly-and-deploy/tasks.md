@@ -18,7 +18,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
   - Add `make copy-lint`, axe scan of judge mode, the bundle budget, `pip-audit`, `npm audit --audit-level=high`; `scripts/ci_channel.py` (standard library, always exits 0) posts the one-line result.
   - [x] 3.1 Check O2: `ci_channel.py` exits 0 for no token, 4xx, 5xx and timeout (mocked). _REQ-OPS-CI.3_
   - _Requirements: REQ-OPS-CI.2–3_
-- [ ] 4. [credibility] Nightly deep property tests
+- [x] 4. [credibility] Nightly deep property tests
   - Hypothesis `deep` profile (10× examples, database in `.hypothesis/` cached with `actions/cache`), fast-check 10× runs, finding issues on failure.
   - _Requirements: REQ-OPS-PBT.1–2_
 - [ ] 5. [credibility] Caching headers
