@@ -12,7 +12,7 @@ REPO = Path(__file__).resolve().parents[3]
 SCHEMAS = sorted((REPO / "schemas").glob("*.schema.json"))
 ENGINE = {"zombies", "incidents", "points", "card", "exclusions", "separate_deaths", "repeat_offenders", "bulk_closures",
           "status", "test_town_expected"}
-STATS = {"scorecard", "excess", "survival", "funnel", "groups", "sensitivity_grid", "temporary_fixes", "validation", "judge_tour"}
+STATS = {"scorecard", "excess", "survival", "funnel", "groups", "sensitivity_grid", "temporary_fixes", "validation", "judge_tour", "trends"}
 ANSWER_KEY = REPO / "pipeline" / "tests" / "fixtures" / "expected_zombies.json"
 
 

@@ -9,7 +9,6 @@ so a failed run never leaves a status that claims success. Free text goes throug
 
 from __future__ import annotations
 
-import gzip
 import hashlib
 import json
 import os
@@ -28,6 +27,12 @@ from jsonschema import Draft202012Validator
 
 from undead311.detect.model import Case, DetectionResult, Zombie
 from undead311.detect.params import DEFAULT, Params
+from undead311.export.privacy import (
+    SegmentInfo,
+    block_level_locations,
+    block_location_by_case,
+    colocated_block_locations,
+)
 from undead311.ingest.pii import scrub_text
 from undead311.paths import repo_root
 
@@ -45,22 +50,6 @@ class ContractError(ValueError):
 
 class PayloadBudgetExceeded(RuntimeError):
     """The first-view files are larger than FIRST_VIEW_BUDGET_BYTES (REQ-EXP-SIZE.2)."""
-
-
-def gzip_bytes(data: bytes) -> bytes:
-    """Deterministic gzip (no timestamp, no file name), so two runs write identical `.gz` files (REQ-EXP-1.3)."""
-    return gzip.compress(data, compresslevel=9, mtime=0)
-
-
-def write_gz_copy(path: Path, data: bytes | None = None) -> Path:
-    """Write `<path>.gz` beside `path` (atomically). It decompresses to exactly the bytes of `path` (REQ-EXP-SIZE.1);
-    `data` lets a caller write the copy before `path` itself exists (status.json must be the last file written)."""
-    gz = path.with_name(path.name + ".gz")
-    gz.parent.mkdir(parents=True, exist_ok=True)
-    tmp = gz.with_name(gz.name + ".tmp")
-    tmp.write_bytes(gzip_bytes(path.read_bytes() if data is None else data))
-    os.replace(tmp, gz)
-    return gz
 
 
 def first_view_bytes(sizes: Mapping[str, int]) -> int:
@@ -136,6 +125,8 @@ class ExportContext:
     data_end: str | None = None
     city_origin: Mapping[str, Any] | None = None
     dataset: str | None = None  # "sample" or "full" (REQ-STAT-EXP.1)
+    #: SAM segment ID -> midpoint and class, for block-level repeat offenders (REQ-EXP-PRIV.1); None without the SAM file
+    segment_info: Mapping[str, SegmentInfo] | None = None
     ok: bool = True
 
 
@@ -154,12 +145,15 @@ def zombie_record(z: Zombie) -> dict:
     }  # fmt: skip
 
 
-def case_record(c: Case) -> dict:
+def case_record(c: Case, block: tuple[float, float] | None = None) -> dict:
+    """One case's card fields. `block` is the (lat, lon) of a block-level repeat-offender chain: the case then carries that
+    location and no street text, so the exact address is not exported (REQ-EXP-PRIV.1, ops#167)."""
+    lat, lon = block if block is not None else (c.lat, c.lon)
     return {
         "id": c.id, "system": c.system, "open_time": c.open_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "close_time": c.close_utc.strftime("%Y-%m-%dT%H:%M:%SZ") if c.close_utc else None,
         "type_raw": c.type_raw, "status": c.status or "", "closure_text": scrub_text(c.closure_text),
-        "street": scrub_text(c.street), "lat": round(c.lat, 6), "lon": round(c.lon, 6),
+        "street": None if block is not None else scrub_text(c.street), "lat": round(lat, 6), "lon": round(lon, 6),
     }  # fmt: skip
 
 
@@ -196,12 +190,21 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
             if i.incident_id in with_reports
         ],
     }  # fmt: skip
+    # block-level repeat-offender chains: every row that touches the chain's cases carries the block location (REQ-EXP-PRIV.1, ops#167)
+    locations = block_level_locations(result, cases, ctx.segment_info)
+    block_of = block_location_by_case(result, locations)  # every case that touches a block-level chain (ops#180)
+    block_of = {**colocated_block_locations(result, cases, block_of), **block_of}  # a zombie at the same spot (ops#185)
+
+    def blk(z: Zombie) -> tuple[float, float] | None:
+        return block_of.get(z.resurrection_id)
+
     reps = {z.zombie_id: closing_member(z, cases) for z in zombies}  # the card's original (ops#40)
+    spot = {z.zombie_id: blk(z) or (reps[z.zombie_id].lat, reps[z.zombie_id].lon) for z in zombies}
     out["points.json"] = {
         "data_version": dv, "n": len(zombies),
         "id": [z.zombie_id for z in zombies],
-        "lat": [round(reps[z.zombie_id].lat, 6) for z in zombies],
-        "lon": [round(reps[z.zombie_id].lon, 6) for z in zombies],
+        "lat": [round(spot[z.zombie_id][0], 6) for z in zombies],
+        "lon": [round(spot[z.zombie_id][1], 6) for z in zombies],
         "tier": [z.tier for z in zombies], "family": [z.type_family for z in zombies],
         "department": [z.department for z in zombies], "neighborhood": [z.neighborhood for z in zombies],
         "year": [int(z.resurrection_date[:4]) for z in zombies],
@@ -211,7 +214,8 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
         res = cases[z.resurrection_id]
         shards[f"{slug(z.neighborhood)}-{z.resurrection_date[:4]}"].append(
             {
-                "zombie_id": z.zombie_id, "original": case_record(closing_member(z, cases)), "rereport": case_record(res),
+                "zombie_id": z.zombie_id, "original": case_record(closing_member(z, cases), blk(z)),
+                "rereport": case_record(res, blk(z)),
                 "cause_of_death": z.coroner_label, "gap_days": round(z.gap_days, 6),
                 "resurrection_date": z.resurrection_date, "confidence": round(z.confidence, 6),
                 "confidence_partial": z.confidence_partial,
@@ -240,12 +244,12 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
     offenders = []
     for c in sorted(result.repeat_offenders, key=lambda c: c.chain_id):
         first = by_inc[c.chain_id]
-        rep = min((cases[m] for m in first.member_ids), key=lambda x: (x.open_utc, x.id))
+        lat, lon, block = locations[c.chain_id]
         offenders.append(
             {
                 "chain_id": c.chain_id, "times_risen": c.times_risen, "headline_count": c.headline_count,
-                "incident_ids": sorted(c.incident_ids), "lat": round(rep.lat, 6), "lon": round(rep.lon, 6),
-                "block_level": False, "type_family": first.type_family, "neighborhood": first.neighborhood,
+                "incident_ids": sorted(c.incident_ids), "lat": round(lat, 6), "lon": round(lon, 6),
+                "block_level": block, "type_family": first.type_family, "neighborhood": first.neighborhood,
             }
         )  # fmt: skip
     out["repeat_offenders.json"] = {"data_version": dv, "repeat_offenders": offenders}
@@ -294,11 +298,10 @@ def export_all(result: DetectionResult, cases: Mapping[str, Case], out_dir: Path
         if name == "status.json":
             continue
         write_text_atomic(out_dir / name, texts[name])
-        written += [out_dir / name, write_gz_copy(out_dir / name)]
-    for stats_file in sorted((out_dir / "stats").glob("*.json")) if (out_dir / "stats").is_dir() else []:
-        written += [stats_file, write_gz_copy(stats_file)]
+        written.append(out_dir / name)
+    if (out_dir / "stats").is_dir():
+        written += sorted((out_dir / "stats").glob("*.json"))
     status_path = out_dir / "status.json"
-    written.append(write_gz_copy(status_path, texts["status.json"].encode("utf-8")))
     write_text_atomic(status_path, texts["status.json"])  # the last file written (REQ-EXP-1.1)
     written.append(status_path)
     return written
@@ -377,7 +380,7 @@ def staging_dir(target: Path) -> Path:
 class Swap:
     """Move every file under `stage` into `target` after a successful run (REQ-ING-NIGHTLY.1), with rollback.
 
-    `apply()` replaces each file atomically (`last`, with its `.gz` copy just before it, goes last, so the site never sees
+    `apply()` replaces each file atomically (`last` goes last, so the site never sees
     a status newer than its data) and removes files in `target` for which `owned(relative path)` is true but that this run
     did not produce (a stale card shard, a stats file the run no longer writes). Files that are not owned are never touched.
     Every file it replaces or removes is first moved to `stage/.backup`, so `rollback()` (also called when `apply()` itself
@@ -395,8 +398,8 @@ class Swap:
             for p in self.stage.rglob("*")
             if p.is_file() and p.suffix != ".tmp" and ".backup" not in p.relative_to(self.stage).parts
         )
-        order = [r for r in staged if r not in (self.last, self.last + ".gz")]
-        order += [r for r in (self.last + ".gz", self.last) if r in staged]
+        order = [r for r in staged if r != self.last]
+        order += [r for r in (self.last,) if r in staged]
         stale = []
         if self.target.is_dir():
             produced = set(staged)
@@ -418,7 +421,7 @@ class Swap:
 
     def apply(self) -> Swap:
         order, stale = self._plan()
-        tail = [r for r in order if r in (self.last, self.last + ".gz")]
+        tail = [r for r in order if r == self.last]
         body = [r for r in order if r not in tail]
         try:
             for rel in body:

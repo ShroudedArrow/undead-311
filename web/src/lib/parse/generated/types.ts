@@ -504,13 +504,17 @@ export interface ExcessFile {
   seed?: number | null;
   params?: {};
   /**
-   * REQ-STAT-BASE.2: spots and headline-scope originals by burstiness flag (dispersion above 2, or reports in fewer than a quarter of the observed months)
+   * REQ-STAT-BASE.2: spots and headline-scope originals by burstiness flag (spots with at least 8 reports: dispersion above 2, or reports in fewer than half the distinct months a random spread gives; ops#146)
    */
   burstiness?: {
     spots?: number;
     flagged_spots?: number;
     flagged_by_dispersion?: number;
     flagged_by_concentration?: number;
+    /**
+     * spots with at least 8 reports (BURST_MIN_REPORTS); the others are never flagged
+     */
+    assessed_spots?: number;
     originals?: number;
     flagged_originals?: number;
     [k: string]: unknown;
@@ -673,6 +677,22 @@ export interface SensitivityGridFile {
     sensitivity: number;
     excess: number | null;
     stayed_fixed_rate: number | null;
+    /**
+     * lower end of the 95% bootstrap interval of `excess` (200 seeded replicates; ops#182); null when `excess` is null
+     */
+    excess_lo?: number | null;
+    /**
+     * upper end of the 95% bootstrap interval of `excess`
+     */
+    excess_hi?: number | null;
+    /**
+     * lower end of the 95% Wilson interval of `stayed_fixed_rate`
+     */
+    stayed_fixed_lo?: number | null;
+    /**
+     * upper end of the 95% Wilson interval of `stayed_fixed_rate`
+     */
+    stayed_fixed_hi?: number | null;
     [k: string]: unknown;
   }[];
   without_street_light_other: {
@@ -681,5 +701,56 @@ export interface SensitivityGridFile {
     [k: string]: unknown;
   };
   [k: string]: unknown;
+}
+
+/**
+ * REQ-STAT-TREND.1: on-time and raw stayed-fixed rates in rolling windows of 6 calendar months (never a single month), by family and citywide, headline and all tiers.
+ */
+export interface TrendsFile {
+  data_version: string;
+  dataset?: "sample" | "full";
+  params: {
+    WINDOW_DAYS: number;
+    RADIUS_M: number;
+    matching: string;
+  };
+  seed: number | null;
+  /**
+   * months pooled in every row; never 1
+   */
+  window_months: number;
+  note: string;
+  rows: {
+    family: string;
+    tier_set: "headline" | "all";
+    /**
+     * calendar month YYYY-MM (UTC)
+     */
+    window_start: string;
+    /**
+     * calendar month YYYY-MM (UTC)
+     */
+    window_end: string;
+    n_closed: number;
+    n_on_time_known: number;
+    on_time: {
+      rate: number | null;
+      lo: number | null;
+      hi: number | null;
+      k?: number;
+      n: number;
+      reason?: string | null;
+      [k: string]: unknown;
+    };
+    stayed_fixed_raw: {
+      rate: number | null;
+      lo: number | null;
+      hi: number | null;
+      k?: number;
+      n: number;
+      reason?: string | null;
+      [k: string]: unknown;
+    };
+  }[];
 }
 

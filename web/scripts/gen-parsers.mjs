@@ -32,6 +32,7 @@ export const KINDS = {
   bulk_closures: "BulkClosuresFile",
   temporary_fixes: "TemporaryFixesFile",
   sensitivity_grid: "SensitivityGridFile",
+  trends: "TrendsFile",
 };
 
 export function loadSchemas() {

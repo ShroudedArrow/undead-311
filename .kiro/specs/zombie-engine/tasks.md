@@ -117,6 +117,6 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
 
 ## Delight
 
-- [ ] 28. [delight] Block-level privacy for repeat offenders
+- [x] 28. [delight] Block-level privacy for repeat offenders
   - Segment midpoint (or 100 m cell center) for resident-driven residential chains; unit tests for each branch.
   - _Requirements: REQ-EXP-PRIV.1_

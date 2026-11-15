@@ -30,6 +30,7 @@ from undead311.detect.grid import run_grid, store_grid
 from undead311.detect.model import ZOMBIE_TIERS, DetectionResult
 from undead311.detect.params import DEFAULT, Params
 from undead311.detect.skeptic import build_input, join_objections, write_input
+from undead311.export.privacy import load_segment_info
 from undead311.export.writers import (
     FIRST_VIEW_BUDGET_BYTES,
     ExportContext,
@@ -59,7 +60,7 @@ from undead311.paths import data_dir, worktree_root
 STATS_ABSENT_NAMES = ("undead311.stats", "undead311.stats.pipeline")  # the only ModuleNotFoundError names that mean "absent"
 STATS_STALE_FILES = (
     "scorecard.json", "judge_tour.json", "excess.json", "survival.json", "funnel.json", "groups.json",
-    "sensitivity_grid.json", "temporary_fixes.json", "validation.json", "stats_status.json",
+    "sensitivity_grid.json", "temporary_fixes.json", "validation.json", "trends.json", "stats_status.json",
 )  # fmt: skip
 # Files this pipeline owns in the output folder: one that a run does not produce is removed when the run is swapped in.
 ENGINE_JSON = ("zombies", "incidents", "points", "exclusions", "separate_deaths", "repeat_offenders", "bulk_closures", "status")
@@ -67,7 +68,8 @@ PROCESSED_OWNED = ("skeptic_input.json", "coroner_templates.csv")
 
 
 def owns_output(rel: str) -> bool:
-    """True for an exported file (or its `.gz` copy) that this pipeline owns (REQ-ING-NIGHTLY.1)."""
+    """True for an exported file that this pipeline owns (REQ-ING-NIGHTLY.1). A `.gz` copy left by an older run counts too,
+    so the swap removes it (ops#165: the engine no longer writes precompressed files)."""
     name = rel.removesuffix(".gz")
     if rel.startswith("cards/"):
         return True
@@ -327,6 +329,7 @@ def run_pipeline(
             bulk_closures=state.get("bulk", []),
             dataset=dataset,
             city_origin=report.city_origin,
+            segment_info=None if sample else load_segment_info((raw_dir or base / "raw") / SEGMENTS_FILE),
             data_end=max(c.open_utc for c in cases).strftime("%Y-%m-%d") if cases else None,
         )
         export_all(result, by_id, stage_out, ctx)
