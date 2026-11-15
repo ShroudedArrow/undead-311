@@ -427,6 +427,21 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
   .stage { flex: 1 1 100%; min-height: max(24rem, calc(100svh - 17rem)); }
 }
 
+/*
+ * UX-52 (issue 192): below about 380 px the count block no longer shares one narrow column with Show filters (it grew to
+ * 160-204 px tall at 360 and 320 px wide). The block dissolves so the count heading and Show filters share a row, and the
+ * floor note, and the all-tier count when shown, get their own full-width lines. The 390 px layout above is unchanged.
+ */
+@media (max-width: 380px) {
+  .filters-panel > div:not(.hero-text):not(.filters-body) { display: contents; }
+  .filters-panel .count-line { order: 1; flex: 1 1 8rem; min-width: 0; margin: var(--space-2) var(--space-3) 0; align-self: center; }
+  .filters-panel > .filters-toggle { order: 2; margin-inline: 0 var(--space-3); }
+  .filters-panel .count-all, .filters-panel .count-note { order: 3; flex: 1 1 100%; margin-inline: var(--space-3); }
+  .filters-panel > .filters-body { order: 4; }
+  .stage { order: 5; }
+  .filters-panel > .hero-text { order: 6; }
+}
+
 /* UX-13 (ops#26): the card repeats a short preview notice, because the phone sheet can cover the header notice. */
 .card-fixture-notice { border: 2px dashed var(--asphalt); padding: var(--space-1) var(--space-2); margin: 0 0 var(--space-3); font-weight: 600; max-width: none; }
 

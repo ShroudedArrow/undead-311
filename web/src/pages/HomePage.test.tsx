@@ -7,11 +7,9 @@ import { clearDataCache } from "../lib/data";
 
 // The real map needs WebGL; the page's contract is the rows it hands to the map.
 const mapRows = vi.fn();
-const mapLabels = vi.fn();
 vi.mock("../map/MapView", () => ({
-  default: (props: { rows: { id: string }[]; bulkIds?: ReadonlySet<string> | null; labels?: { name: string }[] }) => {
+  default: (props: { rows: { id: string }[]; bulkIds?: ReadonlySet<string> | null }) => {
     mapRows(props.rows.map((r) => r.id));
-    mapLabels((props.labels ?? []).map((l) => l.name));
     return <div data-testid="map" data-marker-count={props.rows.length} data-bulk-ids={props.bulkIds ? [...props.bulkIds].sort().join(",") : ""} />;
   },
 }));
@@ -31,7 +29,7 @@ function stubFetch(bulkFlags: [boolean, boolean, boolean, boolean] = [false, tru
   }));
 }
 
-afterEach(() => { vi.unstubAllGlobals(); clearDataCache(); mapRows.mockClear(); mapLabels.mockClear(); });
+afterEach(() => { vi.unstubAllGlobals(); clearDataCache(); mapRows.mockClear(); });
 
 describe("HomePage (REQ-WEB-MAP.2-4)", () => {
   it("shows headline zombies only by default, and the count matches the map set", async () => {
@@ -51,18 +49,6 @@ describe("HomePage (REQ-WEB-MAP.2-4)", () => {
     await user.click(within(screen.getByRole("form", { name: "Filters" })).getByLabelText(/Roxbury/));
     expect(await screen.findByText("2 possible zombies match these filters")).toBeTruthy();
     expect(mapRows).toHaveBeenLastCalledWith(["b", "c"]);
-  });
-
-  it("hands the map neighborhood names from every point, so filtering does not move or drop them (ops#18)", async () => {
-    stubFetch();
-    const user = userEvent.setup();
-    render(<MemoryRouter><App /></MemoryRouter>);
-    await screen.findByText("3 possible zombies match these filters");
-    expect(mapLabels).toHaveBeenLastCalledWith(["Roxbury"]);
-    await user.click(screen.getByText("Neighborhood"));
-    await user.click(within(screen.getByRole("form", { name: "Filters" })).getByLabelText(/Dorchester/));
-    expect(await screen.findByText("1 possible zombie matches these filters")).toBeTruthy();
-    expect(mapLabels).toHaveBeenLastCalledWith(["Roxbury"]);
   });
 
   it("puts the filters behind a Show filters button that reports its state (UX-7)", async () => {

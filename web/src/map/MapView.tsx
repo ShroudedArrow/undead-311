@@ -8,7 +8,6 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { Protocol } from "pmtiles";
 import { useEffect, useRef, useState } from "react";
-import type { PlaceLabel } from "../lib/placeLabels";
 import type { PointRow } from "../lib/points";
 import { t } from "../lib/t";
 import { buildLayers } from "./layers";
@@ -24,8 +23,6 @@ function ensureProtocol(): void {
   protocolAdded = true;
 }
 
-const NO_LABELS: readonly PlaceLabel[] = [];
-
 const prefersReducedMotion = (): boolean => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 
 interface Props {
@@ -36,11 +33,9 @@ interface Props {
   bulkIds?: ReadonlySet<string> | null;
   /** Zoom to this box, [west, south, east, north] ("Check my street", REQ-WEB-STREET.1). */
   bounds?: [number, number, number, number] | null;
-  /** Neighborhood names drawn over the markers (ops#18); empty or absent draws none. */
-  labels?: readonly PlaceLabel[];
 }
 
-export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bounds = null, labels = NO_LABELS }: Props) {
+export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bounds = null }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const overlayRef = useRef<MapboxOverlay | null>(null);
@@ -48,7 +43,6 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
   const onSelectRef = useRef(onSelect);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
-  const [fontReady, setFontReady] = useState(false);
   onSelectRef.current = onSelect;
 
   useEffect(() => {
@@ -92,24 +86,13 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
     };
   }, []);
 
-  // deck.gl draws label glyphs from the page's own self-hosted Public Sans, so wait for it before the first label is drawn
-  useEffect(() => {
-    let live = true;
-    const done = () => live && setFontReady(true);
-    if (typeof document !== "undefined" && document.fonts?.load) document.fonts.load('600 14px "Public Sans"').then(done, done);
-    else done();
-    return () => {
-      live = false;
-    };
-  }, []);
-
   useEffect(() => {
     const overlay = overlayRef.current;
     if (!overlay || !atlasRef.current) return;
     overlay.setProps({
-      layers: buildLayers({ rows, selectedId, atlas: atlasRef.current, bulkIds, labels, fontReady, onSelect: (id) => onSelectRef.current(id) }),
+      layers: buildLayers({ rows, selectedId, atlas: atlasRef.current, bulkIds, onSelect: (id) => onSelectRef.current(id) }),
     });
-  }, [rows, selectedId, ready, bulkIds, labels, fontReady]);
+  }, [rows, selectedId, ready, bulkIds]);
 
   useEffect(() => {
     const map = mapRef.current;
