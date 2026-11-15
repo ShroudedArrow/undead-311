@@ -28,7 +28,7 @@ from jsonschema import Draft202012Validator
 
 from undead311.detect.model import Case, DetectionResult, Zombie
 from undead311.detect.params import DEFAULT, Params
-from undead311.export.privacy import SegmentInfo, chain_resurrection_ids, offender_location, resident_driven
+from undead311.export.privacy import SegmentInfo, block_level_locations
 from undead311.ingest.pii import scrub_text
 from undead311.paths import repo_root
 
@@ -157,12 +157,15 @@ def zombie_record(z: Zombie) -> dict:
     }  # fmt: skip
 
 
-def case_record(c: Case) -> dict:
+def case_record(c: Case, block: tuple[float, float] | None = None) -> dict:
+    """One case's card fields. `block` is the (lat, lon) of a block-level repeat-offender chain: the case then carries that
+    location and no street text, so the exact address is not exported (REQ-EXP-PRIV.1, ops#167)."""
+    lat, lon = block if block is not None else (c.lat, c.lon)
     return {
         "id": c.id, "system": c.system, "open_time": c.open_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "close_time": c.close_utc.strftime("%Y-%m-%dT%H:%M:%SZ") if c.close_utc else None,
         "type_raw": c.type_raw, "status": c.status or "", "closure_text": scrub_text(c.closure_text),
-        "street": scrub_text(c.street), "lat": round(c.lat, 6), "lon": round(c.lon, 6),
+        "street": None if block is not None else scrub_text(c.street), "lat": round(lat, 6), "lon": round(lon, 6),
     }  # fmt: skip
 
 
@@ -199,12 +202,20 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
             if i.incident_id in with_reports
         ],
     }  # fmt: skip
+    # block-level repeat-offender chains: every row of the chain carries the block location (REQ-EXP-PRIV.1, ops#167)
+    locations = block_level_locations(result, cases, ctx.segment_info)
+    block_of = {cid: (lat, lon) for cid, (lat, lon, block) in locations.items() if block}
+
+    def blk(z: Zombie) -> tuple[float, float] | None:
+        return block_of.get(z.chain_id)
+
     reps = {z.zombie_id: closing_member(z, cases) for z in zombies}  # the card's original (ops#40)
+    spot = {z.zombie_id: blk(z) or (reps[z.zombie_id].lat, reps[z.zombie_id].lon) for z in zombies}
     out["points.json"] = {
         "data_version": dv, "n": len(zombies),
         "id": [z.zombie_id for z in zombies],
-        "lat": [round(reps[z.zombie_id].lat, 6) for z in zombies],
-        "lon": [round(reps[z.zombie_id].lon, 6) for z in zombies],
+        "lat": [round(spot[z.zombie_id][0], 6) for z in zombies],
+        "lon": [round(spot[z.zombie_id][1], 6) for z in zombies],
         "tier": [z.tier for z in zombies], "family": [z.type_family for z in zombies],
         "department": [z.department for z in zombies], "neighborhood": [z.neighborhood for z in zombies],
         "year": [int(z.resurrection_date[:4]) for z in zombies],
@@ -214,7 +225,8 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
         res = cases[z.resurrection_id]
         shards[f"{slug(z.neighborhood)}-{z.resurrection_date[:4]}"].append(
             {
-                "zombie_id": z.zombie_id, "original": case_record(closing_member(z, cases)), "rereport": case_record(res),
+                "zombie_id": z.zombie_id, "original": case_record(closing_member(z, cases), blk(z)),
+                "rereport": case_record(res, blk(z)),
                 "cause_of_death": z.coroner_label, "gap_days": round(z.gap_days, 6),
                 "resurrection_date": z.resurrection_date, "confidence": round(z.confidence, 6),
                 "confidence_partial": z.confidence_partial,
@@ -243,9 +255,7 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
     offenders = []
     for c in sorted(result.repeat_offenders, key=lambda c: c.chain_id):
         first = by_inc[c.chain_id]
-        rep = min((cases[m] for m in first.member_ids), key=lambda x: (x.open_utc, x.id))
-        driven = resident_driven(chain_resurrection_ids(result.zombies, c.chain_id), cases)  # REQ-EXP-PRIV.1
-        lat, lon, block = offender_location((rep.lat, rep.lon), first.segment_id, driven, ctx.segment_info)
+        lat, lon, block = locations[c.chain_id]
         offenders.append(
             {
                 "chain_id": c.chain_id, "times_risen": c.times_risen, "headline_count": c.headline_count,
