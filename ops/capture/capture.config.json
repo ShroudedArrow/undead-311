@@ -15,6 +15,7 @@
     { "name": "timelapse", "path": "/timelapse", "wait": "[data-testid=timelapse-now]" },
     { "name": "repeat", "path": "/repeat", "wait": "main, .page" },
     { "name": "districts", "path": "/districts", "wait": "main, .page" },
+    { "name": "district", "path": "/districts/{first_district}", "wait": "main, .page" },
     { "name": "street", "path": "/street", "wait": "main, .page" },
     { "name": "methods", "path": "/methods", "wait": "main, .page" },
     { "name": "corrections", "path": "/corrections", "wait": "main, .page" },

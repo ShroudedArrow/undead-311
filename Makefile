@@ -109,7 +109,9 @@ kiro-stats:
 	python3 scripts/kiro_stats.py --out docs/KIRO_STATS.md
 
 # REQ-OPS-CAPTURE.1, .2: needs `make build` first. Writes screenshots, the judge-tour video and the time-lapse GIF to docs/media/.
+# It first checks the served data against data/SNAPSHOT.md (ops#200); CAPTURE_DEV=1 overrides and writes docs/media/NOT-SNAPSHOT.txt.
 capture: web-deps
+	PYTHONPATH=pipeline $(UV) run python pipeline/scripts/capture_check.py $(if $(CAPTURE_DEV),--dev)
 	node ops/capture/capture.mjs
 
 # Fails when the cloud-cache copies of workflows, agents, hooks and steering differ from the repo copies on main.

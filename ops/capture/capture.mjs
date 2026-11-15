@@ -35,12 +35,18 @@ const launchOptions = { args: ["--use-gl=swiftshader", "--enable-unsafe-swiftsha
 
 const slug = (s) => (s || "unknown").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-/** Fills {first_zombie} and {first_neighborhood} from the served data, so the dynamic pages exist in any dataset. */
+/** Fills {first_zombie}, {first_neighborhood} and {first_district} from the served data, so the dynamic pages exist in any
+ * dataset. When no headline zombie has a council district (the sample data), {first_district} falls back to "1" and the
+ * page shows its "not found" state, which is still a page of the site (ops#205). */
 function resolvePath(path) {
   const zombies = JSON.parse(readFileSync(join(web, "public", "data", "zombies.json"), "utf8")).zombies;
   const first = zombies[0];
   if (!first) throw new Error("capture: zombies.json has no zombies");
-  return path.replace("{first_zombie}", encodeURIComponent(first.zombie_id)).replace("{first_neighborhood}", slug(first.neighborhood));
+  const withDistrict = zombies.find((z) => z.tier === "headline" && z.district);
+  return path
+    .replace("{first_zombie}", encodeURIComponent(first.zombie_id))
+    .replace("{first_neighborhood}", slug(first.neighborhood))
+    .replace("{first_district}", encodeURIComponent(withDistrict ? withDistrict.district : "1"));
 }
 
 /** Hides third-party logos and city marks. The attribution selectors in keep_selectors are never hidden. */

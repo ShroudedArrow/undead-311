@@ -39,6 +39,28 @@ def test_every_route_has_a_screenshot_page():
     assert any(p.startswith("/neighborhood/") for p in pages)
 
 
+def parameterised_routes() -> set[str]:
+    """Static prefix of each `:param` route in App.tsx ("/zombie/" for `zombie/:id`)."""
+    app = (REPO / "web" / "src" / "App.tsx").read_text(encoding="utf-8")
+    return {"/" + p.split(":")[0] for p in re.findall(r'<Route path="([^"]+)"', app) if ":" in p}
+
+
+def test_every_parameterised_route_has_an_example_page():
+    """REQ-OPS-CAPTURE.1 (ops#205): districts/:id, zombie/:id and neighborhood/:slug each have an example page."""
+    pages = [p["path"].split("?")[0] for p in CONFIG["pages"]]
+    routes = parameterised_routes()
+    assert {"/zombie/", "/neighborhood/", "/districts/"} <= routes
+    for prefix in routes:
+        assert any(p.startswith(prefix) and p != prefix for p in pages), f"{prefix}:param has no example page in capture.config.json"
+
+
+def test_every_path_placeholder_is_resolved_by_the_script():
+    """REQ-OPS-CAPTURE.1: each {placeholder} used in the config is filled in by capture.mjs."""
+    src = (REPO / "ops" / "capture" / "capture.mjs").read_text(encoding="utf-8")
+    for name in {m for p in CONFIG["pages"] for m in re.findall(r"\{(\w+)\}", p["path"])}:
+        assert "{" + name + "}" in src, f"capture.mjs does not fill {{{name}}}"
+
+
 def test_desktop_and_phone_sizes():
     """REQ-OPS-CAPTURE.1: each page is captured at a desktop and a phone size."""
     sizes = {v["name"]: (v["width"], v["height"]) for v in CONFIG["viewports"]}
@@ -141,3 +163,143 @@ def test_gif_with_noisy_pixels_exercises_table_reset(tmp_path):
         want = ((s >> 3) & 255, (s >> 11) & 255, (s >> 19) & 255)
         got = im.getpixel((i % 120, i // 120))
         assert all(abs(a - b) <= 26 for a, b in zip(got, want)), (i, got, want)
+
+
+@pytest.mark.skipif(NODE is None, reason="node not installed")
+@settings(max_examples=examples(25), deadline=None)
+@given(grey=st.integers(0, 255), d1=st.integers(0, 12), d2=st.integers(0, 12))
+def test_neutral_colours_decode_to_greys(grey, d1, d2):
+    """REQ-OPS-CAPTURE.1 (ops#201): a near-neutral colour (channels within 12 of each other) decodes with r = g = b."""
+    pil = pytest.importorskip("PIL.Image")
+    import tempfile
+
+    r, g, b = min(255, grey + d1), grey, min(255, grey + d2)
+    with tempfile.TemporaryDirectory() as d:
+        script = Path(d) / "grey.mjs"
+        out = Path(d) / "g.gif"
+        script.write_text(
+            f'import {{ encodeGif }} from "{(REPO / "ops" / "capture" / "gif.mjs").as_posix()}";\n'
+            'import { writeFileSync } from "node:fs";\n'
+            f'writeFileSync("{out.as_posix()}", encodeGif([{{ width: 2, height: 1, rgba: new Uint8Array([{r},{g},{b},255,{r},{g},{b},255]) }}]));\n',
+            encoding="utf-8",
+        )
+        subprocess.run([NODE, str(script)], check=True)
+        got = pil.open(out).convert("RGB").getpixel((0, 0))
+    assert got[0] == got[1] == got[2], (r, g, b, got)
+    assert abs(got[0] - (r + g + b) / 3) <= 8
+
+
+@pytest.mark.skipif(NODE is None, reason="node not installed")
+def test_every_palette_entry_is_a_cube_colour_or_a_grey():
+    """REQ-OPS-CAPTURE.1 (ops#201): the 6x6x6 cube and the 36-step ramp fit in 256 entries, and a colour keeps its hue."""
+    pil = pytest.importorskip("PIL.Image")
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as d:
+        out = Path(d) / "c.gif"
+        write = Path(d) / "c.mjs"
+        write.write_text(
+            f'import {{ encodeGif }} from "{(REPO / "ops" / "capture" / "gif.mjs").as_posix()}";\n'
+            'import { writeFileSync } from "node:fs";\n'
+            f'writeFileSync("{out.as_posix()}", encodeGif([{{ width: 1, height: 1, rgba: new Uint8Array([200, 30, 30, 255]) }}]));\n',
+            encoding="utf-8",
+        )
+        subprocess.run([NODE, str(write)], check=True)
+        r, g, b = pil.open(out).convert("RGB").getpixel((0, 0))
+    assert r > 150 and g < 80 and b < 80  # still red
+
+
+# ---- capture runs only on the frozen snapshot (REQ-OPS-CAPTURE.1, REQ-OPS-SNAP.2, ops#200) ---------------------------
+
+
+def _snapshot_for(served: Path) -> str:
+    """A SNAPSHOT.md text whose judging section describes the files under `served`."""
+    from undead311 import snapshot as snap
+
+    rows = sorted(
+        (f"web/public/data/{p.relative_to(served).as_posix()}", p.stat().st_size, snap.sha256_file(p))
+        for p in served.rglob("*")
+        if p.is_file() and p.relative_to(served).parts[0] != snap.FROZEN_DIR
+    )
+    return snap.render_section(rows, "2026-01-01", "judged-2026-01-01")
+
+
+def _served(tmp_path: Path) -> Path:
+    served = tmp_path / "dist" / "data"
+    (served / "stats").mkdir(parents=True)
+    (served / "status.json").write_text('{"data_end": "2026-01-01"}', encoding="utf-8")
+    (served / "zombies.json").write_text('{"zombies": []}', encoding="utf-8")
+    (served / "stats" / "a.json").write_text("{}", encoding="utf-8")
+    return served
+
+
+def test_capture_passes_on_the_snapshot_and_clears_the_marker(tmp_path):
+    """REQ-OPS-CAPTURE.1: matching data passes, and a NOT-SNAPSHOT marker from an earlier dev run is removed."""
+    from undead311 import capture_guard as cg
+
+    served = _served(tmp_path)
+    media = tmp_path / "media"
+    media.mkdir()
+    (media / cg.MARKER).write_text("old", encoding="utf-8")
+    problems = cg.check(served, _snapshot_for(served))
+    assert problems == []
+    assert cg.apply_marker(media, problems, dev=False) == 0
+    assert not (media / cg.MARKER).exists()
+
+
+def test_capture_refuses_when_there_is_no_judging_section(tmp_path):
+    """REQ-OPS-CAPTURE.1: no judging section means no capture (exit 1)."""
+    from undead311 import capture_guard as cg
+
+    problems = cg.check(_served(tmp_path), "# Data snapshot\n")
+    assert problems and "no judging section" in problems[0]
+    assert cg.apply_marker(tmp_path / "media", problems, dev=False) == 1
+    assert not (tmp_path / "media" / cg.MARKER).exists()
+
+
+@pytest.mark.parametrize("change", ["edit", "add", "remove"])
+def test_capture_refuses_data_that_differs_from_the_snapshot(tmp_path, change):
+    """REQ-OPS-CAPTURE.1: an edited, added or missing served file stops the capture."""
+    from undead311 import capture_guard as cg
+
+    served = _served(tmp_path)
+    text = _snapshot_for(served)
+    if change == "edit":
+        (served / "zombies.json").write_text('{"zombies": [1]}', encoding="utf-8")
+    elif change == "add":
+        (served / "extra.json").write_text("{}", encoding="utf-8")
+    else:
+        (served / "stats" / "a.json").unlink()
+    problems = cg.check(served, text)
+    assert problems
+    assert cg.apply_marker(tmp_path / "media", problems, dev=False) == 1
+
+
+def test_capture_dev_override_writes_the_marker(tmp_path):
+    """REQ-OPS-CAPTURE.1: --dev lets a capture run on other data, and leaves a NOT-SNAPSHOT marker in docs/media."""
+    from undead311 import capture_guard as cg
+
+    problems = cg.check(_served(tmp_path), "")
+    assert cg.apply_marker(tmp_path / "media", problems, dev=True) == 0
+    assert "Do not publish" in (tmp_path / "media" / cg.MARKER).read_text(encoding="utf-8")
+
+
+def test_capture_checks_the_frozen_folder_too(tmp_path):
+    """REQ-OPS-SNAP.2: a frozen/ file that differs from the judging table stops the capture."""
+    from undead311 import capture_guard as cg
+
+    served = _served(tmp_path)
+    text = _snapshot_for(served)
+    (served / "frozen").mkdir()
+    (served / "frozen" / "zombies.json").write_text("tampered", encoding="utf-8")
+    assert any(line.startswith("frozen:") for line in cg.check(served, text))
+
+
+def test_make_capture_checks_the_snapshot_before_capturing():
+    """REQ-OPS-CAPTURE.1: the Makefile runs capture_check.py before the node script."""
+    make = (REPO / "Makefile").read_text(encoding="utf-8")
+    block = re.search(r"^capture:.*\n((?:\t.*\n)+)", make, re.MULTILINE)
+    assert block
+    body = block.group(1)
+    assert body.index("capture_check.py") < body.index("capture.mjs")
+    assert "CAPTURE_DEV" in body

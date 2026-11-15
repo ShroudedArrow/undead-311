@@ -1,5 +1,5 @@
 // REQ-OPS-CAPTURE.1: a small GIF89a writer, so the time-lapse GIF needs no extra dependency (no ffmpeg, no Pillow).
-// Colours are mapped to a fixed 256-colour palette (6 x 7 x 6 levels); there is no dithering.
+// Colours are mapped to a fixed 256-colour palette (a 6 x 6 x 6 cube plus a 36-step grey ramp); there is no dithering.
 //
 // Usage as a module: encodeGif([{ width, height, rgba: Uint8Array }], { delaysMs: [..] }) -> Buffer
 // Usage as a CLI (used by the tests): node gif.mjs <out.gif> <width> <height> <frames> <delayMs>   (writes a test pattern)
@@ -9,22 +9,35 @@ import { fileURLToPath } from "node:url";
 const CLEAR = 256;
 const EOI = 257;
 
-/** Index into the fixed palette: 6 red levels x 7 green levels x 6 blue levels (252 colours; greys map to greys). */
+/** A pixel whose channels differ by at most this much counts as a grey and is sent to the grey ramp (ops#201). */
+const NEUTRAL_SPREAD = 12;
+const CUBE = 216; // 6 x 6 x 6 colour cube, entries 0 to 215
+const RAMP = 36; // 36-step grey ramp, entries 216 to 251; entries 252 to 255 stay black and are never used
+
+/** Index into the fixed palette: a 6 x 6 x 6 cube for colours, a 36-step grey ramp for near-neutral pixels, so a grey
+ * input always decodes to r = g = b. */
 export function paletteIndex(r, g, b) {
-  return Math.round((r * 5) / 255) * 42 + Math.round((g * 6) / 255) * 6 + Math.round((b * 5) / 255);
+  if (Math.max(r, g, b) - Math.min(r, g, b) <= NEUTRAL_SPREAD) {
+    return CUBE + Math.round((((r + g + b) / 3) * (RAMP - 1)) / 255);
+  }
+  return Math.round((r * 5) / 255) * 36 + Math.round((g * 5) / 255) * 6 + Math.round((b * 5) / 255);
 }
 
 function palette() {
-  const out = Buffer.alloc(768); // entries 252 to 255 stay black and are never used
+  const out = Buffer.alloc(768);
   for (let r = 0; r < 6; r++) {
-    for (let g = 0; g < 7; g++) {
+    for (let g = 0; g < 6; g++) {
       for (let b = 0; b < 6; b++) {
-        const i = r * 42 + g * 6 + b;
+        const i = r * 36 + g * 6 + b;
         out[i * 3] = Math.round((r * 255) / 5);
-        out[i * 3 + 1] = Math.round((g * 255) / 6);
+        out[i * 3 + 1] = Math.round((g * 255) / 5);
         out[i * 3 + 2] = Math.round((b * 255) / 5);
       }
     }
+  }
+  for (let k = 0; k < RAMP; k++) {
+    const v = Math.round((k * 255) / (RAMP - 1));
+    out.set([v, v, v], (CUBE + k) * 3);
   }
   return out;
 }
