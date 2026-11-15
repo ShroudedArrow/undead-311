@@ -304,7 +304,7 @@
     "count_headline_one": "1 possible zombie matches these filters",
     "count_all_tiers": "{count} when cases outside the headline are included",
     "tier_toggle": "Include cases outside the headline count",
-    "tier_toggle_note": "Adds cases whose source is unknown and sensitivity checks. They show as dashed outlines and are labeled on their cards. The headline count above does not change.",
+    "tier_toggle_note": "Adds city re-reports (opened by a city worker, so possibly crew work records), cases whose source is unknown, and sensitivity checks. They show as dashed outlines and are labeled on their cards. The headline count above does not change.",
     "count_floor": "Counts are a floor: a possible zombie appears only if someone reported the problem again.",
     "loading": "Loading possible zombies",
     "bulk_toggle": "Mark closures that were part of a bulk closure",
@@ -355,6 +355,7 @@
   "tiers": {
     "headline": "Headline",
     "source_unknown": "Source unknown",
+    "city_rereport": "City re-report",
     "sensitivity": "Sensitivity check"
   },
   "labels": {
@@ -412,6 +413,7 @@
     "view_case": "View case {id} on the city's site",
     "bulk_warning": "Bulk closure: this case was closed on a day when the same department closed many cases of one kind at once. The closure may say little about this location.",
     "tier_note_source_unknown": "Outside the headline count: the new 311 system does not record who reported the case, so this may be a planned city visit.",
+    "tier_note_city_rereport": "Outside the headline count: a city worker opened this re-report, so it may be a crew work record and not a resident reporting the problem again.",
     "tier_note_sensitivity": "Outside the headline count: this case type is reported as a sensitivity check.",
     "loading": "Loading the card",
     "not_found": "No card was found for {id}. It may have moved after a data refresh. Go back to the map and pick it again.",

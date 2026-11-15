@@ -3,12 +3,19 @@
   "_needs_review": [
     "app",
     "card",
+    "tiers",
     "score",
     "labels",
     "families",
     "nav",
     "lang"
   ],
+  "tiers": {
+    "headline": "Conteo principal",
+    "source_unknown": "Origen desconocido",
+    "city_rereport": "Nuevo reporte de la ciudad",
+    "sensitivity": "Prueba de sensibilidad"
+  },
   "app": {
     "title": "The Undead 311",
     "footer_independent": "Proyecto independiente. Sin afiliación con la Ciudad de Boston.",
@@ -66,6 +73,7 @@
     "view_case": "Ver el caso {id} en el sitio de la ciudad",
     "bulk_warning": "Cierre masivo: este caso se cerró un día en que el mismo departamento cerró muchos casos del mismo tipo a la vez. El cierre puede decir poco sobre este lugar.",
     "tier_note_source_unknown": "Fuera del conteo principal: el nuevo sistema 311 no registra quién reportó el caso, así que puede ser una visita planificada de la ciudad.",
+    "tier_note_city_rereport": "Fuera del conteo principal: un trabajador de la ciudad abrió este nuevo reporte, así que puede ser un registro de trabajo de una cuadrilla y no un vecino que vuelve a reportar el problema.",
     "tier_note_sensitivity": "Fuera del conteo principal: este tipo de caso se informa como prueba de sensibilidad.",
     "loading": "Cargando la tarjeta",
     "not_found": "No se encontró una tarjeta para {id}. Puede haberse movido después de una actualización de datos. Vuelva al mapa y elíjala de nuevo.",

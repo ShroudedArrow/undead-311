@@ -3,6 +3,8 @@
  * `visibleSet`, so they can never disagree (property W4).
  */
 export type Tier = "headline" | "source_unknown" | "city_rereport" | "sensitivity";
+/** Every tier, in display order. A copy test (REQ-WEB-TIER.1) requires a label and a card note for each. */
+export const TIERS: readonly Tier[] = ["headline", "source_unknown", "city_rereport", "sensitivity"];
 /** "headline" shows the headline tier only (REQ-WEB-MAP.4); "all" adds the other tiers (REQ-WEB-TIER). */
 export type TierMode = "headline" | "all";
 
