@@ -27,7 +27,42 @@
     "corrections": "Corrections log",
     "street": "Check my street",
     "repeat": "Repeat offenders",
-    "timelapse": "Night of the Living 311"
+    "timelapse": "Night of the Living 311",
+    "districts": "District report cards"
+  },
+  "open": {
+    "heading": "Download the data",
+    "intro": "The possible zombie dataset, one row per possible zombie, in every tier. The tier column says which ones the headline count includes.",
+    "json": "Download as JSON",
+    "json_gz": "Download as compressed JSON",
+    "csv": "Download as CSV",
+    "csv_preparing": "Loading the data for the CSV",
+    "csv_error": "The CSV could not be made because zombies.json did not load.",
+    "csv_rows": "{count} rows, one per possible zombie.",
+    "license_dataset": "TODO-COPY: license statement for the possible zombie dataset (name the open license the team chose and how to credit it).",
+    "license_cases": "The case details come from Boston 311 service requests on Analyze Boston, used under the city's open data terms.",
+    "floor": "Counts in this data are a floor: a possible zombie appears only when someone reports again.",
+    "before_after_missing": "The comparison of rates before and after each case type moved to the new system is not part of this data yet. When it is, it will appear here with a warning that format changes can create artifacts."
+  },
+  "district": {
+    "title": "Council district report cards",
+    "intro": "One printable page for each council district. Each page counts the headline possible zombies in the district.",
+    "none": "No council district is recorded for any possible zombie in this data yet, so there are no district pages to show.",
+    "list_caption": "Council districts with headline possible zombies",
+    "col_district": "District",
+    "col_count": "Headline possible zombies",
+    "card_title": "Report card for council district {district}",
+    "total": "{count} headline possible zombies",
+    "by_family": "By case type",
+    "by_year": "By year reported again",
+    "col_family": "Case type",
+    "col_year": "Year",
+    "col_n": "Count",
+    "rates_missing": "Closed-on-time and stayed-fixed rates, their intervals and the reporting intensity for a district are not part of this data yet. The citywide scorecard has them for each case type.",
+    "print": "Print this page",
+    "back": "All districts",
+    "not_found": "No possible zombies are recorded for council district {district}.",
+    "printed_from": "From The Undead 311. Independent project. Not affiliated with the City of Boston. Data as of the last refresh. A measured count is a floor."
   },
   "timelapse": {
     "title": "Night of the Living 311",

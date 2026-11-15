@@ -5,6 +5,7 @@ import { LangContext } from "./lib/lang";
 import { setLang, spanishAvailable, t, type Lang } from "./lib/t";
 import CardRoute from "./pages/CardRoute";
 import CorrectionsPage from "./pages/CorrectionsPage";
+import DistrictPage from "./pages/DistrictPage";
 import DurabilityPage from "./pages/DurabilityPage";
 import HomePage from "./pages/HomePage";
 import JudgePage from "./pages/JudgePage";
@@ -44,6 +45,8 @@ export default function App() {
         <Route path="neighborhood/:slug" element={<NeighborhoodRoute />} />
         <Route path="timelapse" element={<TimeLapsePage />} />
         <Route path="repeat" element={<RepeatPage />} />
+        <Route path="districts" element={<DistrictPage />} />
+        <Route path="districts/:id" element={<DistrictPage />} />
         <Route path="street" element={<StreetPage />} />
         <Route path="methods" element={<MethodsPage />} />
         <Route path="corrections" element={<CorrectionsPage />} />

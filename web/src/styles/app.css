@@ -434,3 +434,15 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .calibration-warning { border: 2px solid var(--asphalt); border-left: 0.6rem solid var(--cone-orange); padding: var(--space-2) var(--space-3); background: var(--crew-white); max-width: var(--measure); }
 .report-error { font-weight: 600; }
 .autopsy-report { margin: var(--space-3) 0 0; }
+
+/* Print: one clean page per district report card (REQ-WEB-OPEN.2). Black on white, no navigation, no controls. */
+.print-only { display: none; }
+.open-links { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.open-links a, .open-links button, .district-page button { min-height: 2.75rem; padding: 0 var(--space-3); border: 2px solid var(--asphalt); border-radius: 2px; background: var(--crew-white); color: var(--asphalt); font: inherit; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; }
+@media print {
+  .site-header, .site-footer, .skip-link, .no-print { display: none !important; }
+  .print-only { display: block; }
+  body, .shell, .shell-main, .page { background: var(--crew-white); color: var(--asphalt); }
+  .district-page .zombie-table { border-collapse: collapse; }
+  .district-page .zombie-table th, .district-page .zombie-table td { border: 1px solid var(--asphalt); padding: 4px 8px; }
+}

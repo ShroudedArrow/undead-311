@@ -80,5 +80,5 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 - [x] 22. [delight] Spanish evidence cards
   - `es.json` drafts marked `needs-review`, hidden in production until reviewed.
   - _Requirements: REQ-WEB-ES.1_
-- [ ] 23. [delight] Open data download, district report cards, before/after display
+- [x] 23. [delight] Open data download, district report cards, before/after display
   - _Requirements: REQ-WEB-OPEN.1–3_

@@ -1,3 +1,4 @@
+import { OpenData } from "../components/OpenData";
 import { Sliders } from "../components/Sliders";
 import { LeavesOut } from "../components/LeavesOut";
 import { PanelError } from "../components/PanelError";
@@ -227,6 +228,7 @@ export default function MethodsPage() {
         </ul>
       </section>
       <LeavesOut />
+      <OpenData />
       <Status />
       <section className="chart-section" aria-labelledby="report-h">
         <h2 id="report-h">{t("methods.report_heading")}</h2>
