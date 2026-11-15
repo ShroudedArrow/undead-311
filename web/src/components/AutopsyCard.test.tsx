@@ -82,7 +82,7 @@ describe("AutopsyCard content (REQ-WEB-CARD.1, .3, .6)", () => {
     expect(screen.getByText("CLOSED").className).toContain("stamp-closed");
     expect(screen.getByText("REPORTED AGAIN").className).toContain("stamp-again");
   });
-  it("writes the case system without nested parentheses and explains why a current-system ID has no link (REQ-WEB-CARD.2; ops#118, ops#119)", () => {
+  it("writes the case system without nested parentheses and explains why a current-system ID has no link (REQ-WEB-CARD.1; ops#118, ops#119)", () => {
     render(<AutopsyCard card={CARD} />);
     const [orig, again] = [screen.getByRole("region", { name: "Original case" }), screen.getByRole("region", { name: "Reported again" })];
     const line = (el: HTMLElement) => el.querySelector("dd")?.textContent ?? "";

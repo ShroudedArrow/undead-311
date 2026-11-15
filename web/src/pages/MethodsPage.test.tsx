@@ -128,6 +128,63 @@ describe("Methods page (REQ-WEB-METHODS.1)", () => {
   });
 });
 
+describe("Null towns, placebo and the floor (REQ-WEB-METHODS.1; ops#130)", () => {
+  it("states plainly that no pretend town's interval lay above 0, with the counts, in copy that is not a placeholder", async () => {
+    stub();
+    open();
+    const sum = await screen.findByTestId("null-summary");
+    expect(sum.textContent).toContain("40 pretend towns");
+    expect(sum.textContent).toContain("In none of them did the 95% interval for the excess lie above 0");
+    expect(sum.textContent).toContain("below 0 in 32 towns and included 0 in 8");
+    expect(sum.textContent).toContain("every placebo warning was below 0, never above");
+    expect(sum.textContent).not.toMatch(/TODO-COPY/);
+  });
+  it("lists every pretend-town family with its range and where its interval fell", async () => {
+    stub();
+    open();
+    const section = await screen.findByTestId("null-towns");
+    const rows = within(section).getAllByRole("row").slice(1);
+    expect(rows).toHaveLength(10);
+    const first = rows[0].textContent ?? "";
+    expect(first).toContain("A report at each spot every 30 days on average");
+    expect(first).toContain("5-8");
+    expect(first).toContain("-855 to -643");
+    expect(first).toContain("Below 0 in 4 of 4; includes 0 in 0");
+    expect(rows[6].textContent).toContain("-34 to +16");
+    expect(rows[6].textContent).toContain("Below 0 in 1 of 4; includes 0 in 3");
+  });
+  it("names the stress towns where the excess can read high, so the floor is not overstated", async () => {
+    stub();
+    open();
+    const limits = await screen.findByTestId("null-limits");
+    expect(limits.textContent).toContain("48 pretend towns");
+    expect(limits.textContent).toContain("30 were not above 0 and 18 were above 0");
+    expect(limits.textContent).toContain("the excess can read high");
+  });
+  it("calls the excess a floor and explains that the counts are a floor too", async () => {
+    stub();
+    open();
+    const floor = await screen.findByTestId("excess-floor");
+    expect(floor.textContent).toMatch(/Read the excess as a floor/);
+    expect(floor.textContent).toMatch(/counts are also a floor/);
+  });
+  it("reads a placebo warning together with its sign: below 0 is cautious, above 0 is a care note, inside the interval has no note", async () => {
+    const withPlacebo = (placebo: object) => ({ "excess.json": { ...(FILES["excess.json"] as object), placebo } });
+    stub(withPlacebo({ excess: -60, lo: -90, hi: -30 }));
+    const a = open();
+    expect((await screen.findByTestId("placebo-note")).textContent).toContain("reads below 0 here. The baseline runs cautious");
+    a.unmount(); clearDataCache();
+    stub(withPlacebo({ excess: 70, lo: 40, hi: 100 }));
+    const b = open();
+    expect((await screen.findByTestId("placebo-note")).textContent).toContain("reads above 0 here");
+    b.unmount(); clearDataCache();
+    stub();
+    open();
+    await screen.findByTestId("placebo");
+    expect(screen.queryByTestId("placebo-note")).toBeNull();
+  });
+});
+
 describe("What the headline leaves out (REQ-WEB-DEATHS.1)", () => {
   it("shows separate deaths, temporary-fix return rates with intervals, exclusions and bulk-closure days", async () => {
     stub();
