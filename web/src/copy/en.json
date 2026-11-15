@@ -518,5 +518,11 @@
     "bulk_col_cases": "Cases",
     "bulk_col_usual": "Usual per day",
     "bulk_layer_link": "Mark these possible zombies on the map"
+  },
+  "lang": {
+    "label": "Language",
+    "en": "English",
+    "es": "Español",
+    "note_es": "Cards and the scorecard are available in Spanish. The rest of the site stays in English."
   }
 }

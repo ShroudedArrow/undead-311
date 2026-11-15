@@ -1,13 +1,21 @@
 import { useEffect, useState } from "react";
 import { neighborhoodImagePath, zombieImagePath } from "../lib/share";
-import { t } from "../lib/t";
+import { getLang, t } from "../lib/t";
+
+/** The address to share: the current one, with `lang=es` added when the page is in Spanish, so the link opens the same way (REQ-WEB-LINKS.1, REQ-WEB-ES.1). */
+export function permalink(href: string, lang: "en" | "es"): string {
+  const u = new URL(href);
+  if (lang === "es") u.searchParams.set("lang", "es");
+  else u.searchParams.delete("lang");
+  return u.toString();
+}
 
 /** Copies the current address, so any view can be shared (REQ-WEB-LINKS.1). Falls back to showing the address when the clipboard is not available. */
 export function CopyLink() {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(permalink(window.location.href, getLang()));
       setState("copied");
     } catch {
       setState("failed");
@@ -17,7 +25,7 @@ export function CopyLink() {
     <span className="copy-link">
       <button type="button" onClick={copy}>{t("share.copy_link")}</button>
       <span role="status" className="count-note">
-        {state === "copied" ? t("share.copied") : state === "failed" ? t("share.copy_failed", { url: window.location.href }) : ""}
+        {state === "copied" ? t("share.copied") : state === "failed" ? t("share.copy_failed", { url: permalink(window.location.href, getLang()) }) : ""}
       </span>
     </span>
   );
