@@ -127,7 +127,7 @@ def build_stats(
     heads = [i for i in result.incidents if i.tier == "core" and not i.has_transferred_member]
     excess: dict[str, Any] = {
         "data_version": data_version, "dataset": dataset, "params": params_json(params), "seed": seed, "rows": rows,
-        "baseline_sources": model.fallback_counts(heads), "burstiness": model.burst_summary(heads), "neighborhood_check": "ran" if model.areas_m2 else "skipped",
+        "baseline_sources": model.fallback_counts(heads), "burstiness": model.burst_summary(model.excess_cohort("headline")), "neighborhood_check": "ran" if model.areas_m2 else "skipped",
         "counts": counts_by_tier(result),
     }  # fmt: skip
     if shift is not None:

@@ -137,9 +137,11 @@ def burstiness(opens: np.ndarray, t_end: float) -> Burst:
     `opens` are the open times (epoch seconds) of every non-mirror same-family report at the spot; the observed months run from
     the month of the first one to the month of the data end. The spot is bursty when the index of dispersion of its monthly
     counts (sample variance over mean) is above BURST_DISPERSION, or when its reports fall in fewer than BURST_ACTIVE_SHARE of
-    the observed months. Both tests read only the reports and the span, never closures or outcomes, so a placebo shift cannot
-    change the flag. Bursts and time-limited reporting are where a baseline built from the spot's own history is biased
-    (docs/METHODS.md Limits)."""
+    the observed months. Both tests read the open times of every non-mirror report at the spot, the re-reports that make the
+    zombies included, and never closures, so a placebo shift (which moves closures only) cannot change the flag. Because the
+    re-reports count, a spot with real resurrections fills more months and is flagged differently from the same spot without
+    them: the with/without split is therefore not independent of the outcome (ops#150; docs/METHODS.md, burstiness flag).
+    Bursts and time-limited reporting are where a baseline built from the spot's own history is biased (docs/METHODS.md Limits)."""
     if not opens.size:
         return Burst(0, 0, None, False, False)
     month = np.asarray(opens, dtype="int64").astype("datetime64[s]").astype("datetime64[M]").astype("int64")
@@ -375,7 +377,9 @@ class BaselineModel:
         return self.burst(self._incident_key[incident.incident_id]).flagged
 
     def burst_summary(self, incidents: list[Incident]) -> dict[str, int]:
-        """Spots and originals behind `incidents` by burstiness flag (REQ-STAT-BASE.2, ops#141), for `excess.json`."""
+        """Spots and originals behind `incidents` by burstiness flag (REQ-STAT-BASE.2, ops#141), for `excess.json`.
+
+        Pass the cohort of the excess rows (`excess_cohort`), so `flagged_originals` is comparable with the rows' `n_bursty`."""
         keys = {self._incident_key[i.incident_id] for i in incidents}
         flags = {k: self.burst(k) for k in keys}
         return {
@@ -386,6 +390,11 @@ class BaselineModel:
             "originals": len(incidents),
             "flagged_originals": sum(self.is_bursty(i) for i in incidents),
         }
+
+    def excess_cohort(self, tier_set: TierSet = "headline") -> list[Incident]:
+        """The originals the excess rows cover: eligible originals of the tier set that have an estimate (REQ-STAT-BASE.2, ops#152)."""
+        return [i for i in eligible_originals(self.result.incidents, self.data_end, self.params, all_tiers=tier_set == "all")
+                if self.estimate(i).p is not None]  # fmt: skip
 
     def dense_share(self, opens: np.ndarray, live: LiveSpot) -> np.ndarray:
         """Share of sliding WINDOW_DAYS windows that contain a report, for the dense estimator (REQ-STAT-BASE.1, ops#131).
@@ -700,10 +709,8 @@ def excess_rows(
     for tier_set in ("headline", "all"):
         zs = zombie_by_incident(model.result.zombies, tier_set)
         groups: dict[tuple[str, str], list[tuple]] = defaultdict(list)
-        for inc in eligible_originals(model.result.incidents, model.data_end, model.params, all_tiers=tier_set == "all"):
+        for inc in model.excess_cohort(tier_set):
             est = model.estimate(inc)
-            if est.p is None:
-                continue
             row = (1.0 if inc.incident_id in zs else 0.0, est.p, est.expected_nbr, est.source != "spot", est.cell, est.n_eff,
                    est.cluster, model.is_bursty(inc))
             for kind, name in (("department", inc.department or UNKNOWN), ("family", inc.type_family),

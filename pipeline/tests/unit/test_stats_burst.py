@@ -144,12 +144,27 @@ def test_req_stat_base_2_a_row_whose_originals_are_all_flagged_has_no_unflagged_
     assert row.n_bursty == row.n_originals > 0 and row.unflagged is None
 
 
-def test_req_stat_base_2_the_flag_does_not_move_the_full_rows_or_the_seeded_results():
-    """Reproducible for a fixed seed, and the full row's interval is drawn before and apart from the unflagged draws."""
+def test_req_stat_base_2_the_seeded_rows_do_not_depend_on_the_input_order():
+    """Reproducible for a fixed seed and invariant to the row order of the input (testing.md #5, #7)."""
     cs = bursty_town(6, spots=60)
     _m, rows_a, _ = family_row(cs)
     _m, rows_b, _ = family_row(list(reversed(cs)))
     assert [r.to_json() for r in rows_a] == [r.to_json() for r in rows_b]
+
+
+@pytest.mark.parametrize("flag", [False, True])
+def test_req_stat_base_2_the_full_rows_are_identical_whatever_the_flag_says(flag, monkeypatch):
+    """ops#153: the full rows' observed, expected, excess and interval are the same with `is_bursty` patched to always False
+    and to always True, and the same as the real flag. A regression that shares one generator between the full and the
+    unflagged draws would move the full interval and fail here."""
+    cs = bursty_town(6, spots=60)
+    _m, _rows, real = family_row(cs)
+    monkeypatch.setattr(BaselineModel, "is_bursty", lambda self, incident: flag)
+    _m, _rows, patched = family_row(cs)
+    for field in ("observed", "expected", "excess", "lo", "hi", "n_originals"):
+        assert getattr(patched, field) == getattr(real, field), field
+    assert (patched.unflagged is None) == flag
+    assert patched.n_bursty == (patched.n_originals if flag else 0)
 
 
 def test_req_stat_base_2_the_flag_never_reads_closures():
@@ -175,6 +190,20 @@ def test_req_stat_exp_1_excess_json_carries_burstiness_and_validates(tmp_path):
     assert b["flagged_by_dispersion"] <= b["flagged_spots"] <= b["flagged_by_dispersion"] + b["flagged_by_concentration"]
     for row in payload["rows"]:
         assert "n_bursty" in row and "without_bursty" in row
+
+
+def test_req_stat_base_2_the_burstiness_summary_covers_the_cohort_of_the_excess_rows(tmp_path):
+    """ops#152: `flagged_originals` and `originals` of the summary equal the sums of `n_bursty` and `n_originals` over the
+    headline family rows. An original closed within WINDOW_DAYS of the data end is not in the cohort of either."""
+    cs = bursty_town(5, spots=40)
+    cs.append(mk("LATE", END - 10, END - 9, x=999_000.0, segment="late"))  # closed 9 days before the end: not fully observed
+    by_id = {c.id: c for c in cs}
+    run_stats(None, detect(cs), by_id, tmp_path, data_version="v1", data_end=day(END))
+    payload = json.loads((tmp_path / "stats" / "excess.json").read_text())
+    fam = [r for r in payload["rows"] if r["kind"] == "family" and r["tier_set"] == "headline"]
+    b = payload["burstiness"]
+    assert b["originals"] == sum(r["n_originals"] for r in fam) > 0
+    assert b["flagged_originals"] == sum(r["n_bursty"] for r in fam) > 0
 
 
 def test_req_stat_exp_1_the_schema_accepts_an_old_file_without_the_burst_fields_and_rejects_a_bad_one():
@@ -203,3 +232,21 @@ def test_req_stat_base_2_methods_documents_the_flag_its_thresholds_and_the_with_
     for needle in ("Burstiness flag", "BURST_DISPERSION", "BURST_ACTIVE_SHARE", "without_bursty", "fewer than a quarter",
                    "+483 [+438, +525]", "+78 [+64, +93]"):
         assert needle in text, needle
+
+
+def test_req_stat_base_2_methods_says_the_flag_reads_the_rereports_and_gives_the_causal_and_sample_figures():
+    """ops#150, ops#151: METHODS.md states that the flag counts the re-reports (so it reads the outcome), has the causal-town
+    rows and the sample figures, and says when the without-flagged column is not comparable with the full row."""
+    from pathlib import Path
+
+    text = (Path(__file__).resolve().parents[3] / "docs" / "METHODS.md").read_text()
+    for needle in ("the re-reports that make the zombies included", "not independent of the outcome",
+                   "| Causal, report every 300 days, q = 0.4 (real resurrections) | 5 | 234 of 296 | +715 [+617, +792] | +227 [+172, +288] (790 originals) |",
+                   "6,276 of 6,508 spots", "11,257 of the 11,590 originals", "pothole +269 [+206, +332] against -13 [-32, +5] (199 of 4,577)",
+                   "When the column is not comparable with the full row", "computed from live reports only"):
+        assert needle in text, needle
+
+
+def test_req_stat_base_2_the_docstring_of_the_flag_names_the_rereports():
+    """ops#150: the code says what METHODS.md says."""
+    assert "re-reports that make the" in (burstiness.__doc__ or "")
