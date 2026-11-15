@@ -2,7 +2,6 @@
  * Haunted map (REQ-WEB-MAP.1, .5). MapLibre draws the self-hosted PMTiles basemap; a deck.gl IconLayer draws the
  * possible zombies as spray-circle sprites. Loaded lazily from the page so the first view stays small (REQ-WEB-PERF.1).
  */
-import { IconLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -12,7 +11,8 @@ import { useEffect, useRef, useState } from "react";
 import type { PlaceLabel } from "../lib/placeLabels";
 import type { PointRow } from "../lib/points";
 import { t } from "../lib/t";
-import { iconFor, iconMapping, makeAtlasCanvas } from "./sprites";
+import { buildLayers } from "./layers";
+import { makeAtlasCanvas } from "./sprites";
 import { BOSTON_BOUNDS, BOSTON_CENTER, BOSTON_ZOOM, buildStyle, tilesUrl } from "./style";
 
 let protocolAdded = false;
@@ -36,7 +36,7 @@ interface Props {
   bulkIds?: ReadonlySet<string> | null;
   /** Zoom to this box, [west, south, east, north] ("Check my street", REQ-WEB-STREET.1). */
   bounds?: [number, number, number, number] | null;
-  /** Neighborhood names drawn under the markers (ops#18); empty or absent draws none. */
+  /** Neighborhood names drawn over the markers (ops#18); empty or absent draws none. */
   labels?: readonly PlaceLabel[];
 }
 
@@ -107,49 +107,7 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
     const overlay = overlayRef.current;
     if (!overlay || !atlasRef.current) return;
     overlay.setProps({
-      layers: [
-        ...(fontReady && labels.length > 0
-          ? [
-              new TextLayer<PlaceLabel>({
-                id: "place-labels", data: labels as PlaceLabel[], pickable: false, getPosition: (d) => [d.lon, d.lat], getText: (d) => d.name,
-                getSize: 14, sizeUnits: "pixels", fontFamily: '"Public Sans", system-ui, sans-serif', fontWeight: 600, fontSettings: { sdf: true },
-                getColor: [46, 49, 52, 255], outlineWidth: 3, outlineColor: [205, 203, 198, 255], getTextAnchor: "middle", getAlignmentBaseline: "center",
-                characterSet: "auto",
-              }),
-            ]
-          : []),
-        // Cone orange rings under the markers: a warning, never text (design-system.md). Asphalt ring beneath keeps 3:1 on Concrete.
-        ...(bulkIds && bulkIds.size > 0
-          ? [
-              new ScatterplotLayer<PointRow>({
-                id: "bulk-ring-edge", data: rows.filter((r) => bulkIds.has(r.id)), getPosition: (d) => [d.lon, d.lat], stroked: true, filled: false,
-                radiusUnits: "pixels", getRadius: 22, lineWidthUnits: "pixels", getLineWidth: 8, getLineColor: [46, 49, 52, 255],
-              }),
-              new ScatterplotLayer<PointRow>({
-                id: "bulk-ring", data: rows.filter((r) => bulkIds.has(r.id)), getPosition: (d) => [d.lon, d.lat], stroked: true, filled: false,
-                radiusUnits: "pixels", getRadius: 22, lineWidthUnits: "pixels", getLineWidth: 4, getLineColor: [242, 107, 29, 255],
-              }),
-            ]
-          : []),
-        new IconLayer<PointRow>({
-          id: "zombies",
-          data: rows,
-          pickable: true,
-          // never let loaders.gl fetch worker scripts from a CDN (REQ-WEB-PERF.2)
-          loadOptions: { worker: false },
-          iconAtlas: atlasRef.current as unknown as string,
-          iconMapping: iconMapping(),
-          getIcon: (d) => iconFor(d.id, d.tier),
-          getPosition: (d) => [d.lon, d.lat],
-          getSize: (d) => (d.id === selectedId ? 44 : 30),
-          sizeUnits: "pixels",
-          sizeMinPixels: 14,
-          updateTriggers: { getSize: [selectedId] },
-          onClick: (info) => {
-            if (info.object) onSelectRef.current(info.object.id);
-          },
-        }),
-      ],
+      layers: buildLayers({ rows, selectedId, atlas: atlasRef.current, bulkIds, labels, fontReady, onSelect: (id) => onSelectRef.current(id) }),
     });
   }, [rows, selectedId, ready, bulkIds, labels, fontReady]);
 
