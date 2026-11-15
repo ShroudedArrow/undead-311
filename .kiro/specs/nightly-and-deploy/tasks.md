@@ -21,9 +21,9 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 - [x] 4. [credibility] Nightly deep property tests
   - Hypothesis `deep` profile (10× examples, database in `.hypothesis/` cached with `actions/cache`), fast-check 10× runs, finding issues on failure.
   - _Requirements: REQ-OPS-PBT.1–2_
-- [ ] 5. [credibility] Caching headers
+- [x] 5. [credibility] Caching headers
   - Generated headers: immutable for hashed assets, `no-cache` for `index.html`, `status.json` and manifests; `.gz` use.
-  - [ ] 5.1 Check O3: the header generator never marks an unhashed file immutable (property over generated file lists). _REQ-OPS-CACHE.1_
+  - [x] 5.1 Check O3: the header generator never marks an unhashed file immutable (property over generated file lists). _REQ-OPS-CACHE.1_
   - _Requirements: REQ-OPS-CACHE.1_
 - [ ] 6. [credibility] Nightly refresh template and alerts
   - `ops/undead-311-data/.github/workflows/nightly.yml` and README (checkout at the frozen tag, download, pipeline, build, deploy, Release with Parquet; keep the last good deploy; `needs-human` alert issue).

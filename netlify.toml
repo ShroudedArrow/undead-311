@@ -8,7 +8,9 @@
 # Headers (REQ-OPS-HOST.3, REQ-OPS-CACHE.1): the Content-Security-Policy lives in ONE place, the `_headers` file the web
 # build writes into web/dist (web/scripts/write-headers.ts, from web/src/lib/csp.ts), which Netlify reads from the publish
 # directory. This file sets no security header, so Netlify never sends two policies (ops#59, ops#64).
-# Cache headers (immutable assets, no-cache index.html) are nightly-and-deploy task 5 and are not set here.
+# Cache headers (REQ-OPS-CACHE.1) come from the same file: `make build` runs ops/cache-headers/cache-headers.mjs after the web
+# build, which adds immutable rules for hashed assets only and no-cache rules for index.html, status.json and data/.
+# Netlify compresses text files itself, so no precompressed .gz files are produced.
 
 [build]
   command = "npm --prefix web ci && make build"
@@ -21,3 +23,37 @@
 
 [context.deploy-preview]
   command = "npm --prefix web ci && make build"
+
+# REQ-OPS-HOST.1: the app uses BrowserRouter, so a direct visit or a shared permalink to one of its routes must serve
+# index.html (web/src/App.tsx lists the routes; test_netlify_config.py keeps the two lists equal). Only these routes
+# fall back: a missing data file or asset stays a real 404 instead of an HTML page that looks like a JSON parse error.
+# Without `force`, a real file is always served as itself.
+[[redirects]]
+  from = "/zombie/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/scorecard"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/durability"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/methods"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/corrections"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/judge"
+  to = "/index.html"
+  status = 200

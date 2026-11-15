@@ -68,8 +68,11 @@ test-fast:
 web:
 	cd web && npm run dev
 
+# REQ-OPS-CACHE.1: after the web build, the cache rules (immutable hashed assets, no-cache entry points and data) are
+# added to web/dist/_headers. Plain Node, so the Netlify build image needs no Python or uv.
 build:
 	cd web && npm run build
+	node ops/cache-headers/cache-headers.mjs web/dist
 
 e2e:
 	cd web && npm run e2e

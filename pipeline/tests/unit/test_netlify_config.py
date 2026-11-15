@@ -137,3 +137,32 @@ def test_deploy_guide_has_no_real_secret_values_and_balanced_markup():
     assert not re.search(r"\b(ghp_|github_pat_|nfp_)[A-Za-z0-9_]{10,}", text)
     assert text.count("`") % 2 == 0
     assert "**" not in re.sub(r"\*\*[^*\n]+\*\*", "", text)
+
+
+# ---- credibility layer: caching and routes ---------------------------------------------------------------------------
+
+def app_routes() -> set[str]:
+    """The URL prefixes web/src/App.tsx routes, other than the index and the catch-all."""
+    text = (REPO / "web" / "src" / "App.tsx").read_text()
+    return {m.split("/:")[0] for m in re.findall(r'<Route path="([^"*]+)"', text)}
+
+
+def test_every_app_route_falls_back_to_index_html_and_nothing_else_does():
+    """REQ-OPS-HOST.1: BrowserRouter permalinks work on a direct visit; unknown files keep their 404."""
+    rules = config()["redirects"]
+    assert all(r["to"] == "/index.html" and r["status"] == 200 and not r.get("force") for r in rules)
+    served = {r["from"].removesuffix("/*").lstrip("/") for r in rules}
+    assert served == app_routes() and served
+    assert not any(r["from"] in ("/*", "/data/*", "/assets/*") for r in rules)
+
+
+def test_make_build_adds_the_cache_rules_after_the_web_build_with_plain_node():
+    """REQ-OPS-CACHE.1: the rules are written after `npm run build` (which writes `_headers`), and need no Python."""
+    recipe = make_recipe("build")
+    assert recipe.index("npm run build") < recipe.index("ops/cache-headers/cache-headers.mjs web/dist")
+    assert (REPO / "ops" / "cache-headers" / "cache-headers.mjs").exists()
+
+
+def test_the_toml_sets_no_cache_header_either():
+    """REQ-OPS-CACHE.1: one source for headers (the generated `_headers`), so the host never merges two."""
+    assert not config().get("headers")
