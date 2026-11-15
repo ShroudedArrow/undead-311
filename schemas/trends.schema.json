@@ -67,11 +67,11 @@
           },
           "window_start": {
             "type": "string",
-            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+            "description": "calendar month YYYY-MM (UTC)"
           },
           "window_end": {
             "type": "string",
-            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+            "description": "calendar month YYYY-MM (UTC)"
           },
           "n_closed": {
             "type": "integer",

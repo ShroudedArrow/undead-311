@@ -703,3 +703,54 @@ export interface SensitivityGridFile {
   [k: string]: unknown;
 }
 
+/**
+ * REQ-STAT-TREND.1: on-time and raw stayed-fixed rates in rolling windows of 6 calendar months (never a single month), by family and citywide, headline and all tiers.
+ */
+export interface TrendsFile {
+  data_version: string;
+  dataset?: "sample" | "full";
+  params: {
+    WINDOW_DAYS: number;
+    RADIUS_M: number;
+    matching: string;
+  };
+  seed: number | null;
+  /**
+   * months pooled in every row; never 1
+   */
+  window_months: number;
+  note: string;
+  rows: {
+    family: string;
+    tier_set: "headline" | "all";
+    /**
+     * calendar month YYYY-MM (UTC)
+     */
+    window_start: string;
+    /**
+     * calendar month YYYY-MM (UTC)
+     */
+    window_end: string;
+    n_closed: number;
+    n_on_time_known: number;
+    on_time: {
+      rate: number | null;
+      lo: number | null;
+      hi: number | null;
+      k?: number;
+      n: number;
+      reason?: string | null;
+      [k: string]: unknown;
+    };
+    stayed_fixed_raw: {
+      rate: number | null;
+      lo: number | null;
+      hi: number | null;
+      k?: number;
+      n: number;
+      reason?: string | null;
+      [k: string]: unknown;
+    };
+  }[];
+}
+

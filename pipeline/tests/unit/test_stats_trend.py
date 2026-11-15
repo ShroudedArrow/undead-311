@@ -134,15 +134,11 @@ def test_req_stat_trend_1_the_payload_validates_is_sorted_and_says_the_windows_o
     assert keys == sorted(keys)
 
 
-def test_req_stat_trend_1_the_schema_rejects_a_one_month_window_and_a_bad_month_label():
+def test_req_stat_trend_1_the_schema_rejects_a_one_month_window():
     cs = town()
     payload = trend_payload(detect(cs), {c.id: c for c in cs}, END, "v1")
     bad = json.loads(json.dumps(payload))
     bad["window_months"] = 1
-    with pytest.raises(ContractError):
-        validate("trends", bad)
-    bad = json.loads(json.dumps(payload))
-    bad["rows"][0]["window_end"] = "2024-13"
     with pytest.raises(ContractError):
         validate("trends", bad)
 

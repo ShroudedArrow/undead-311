@@ -15,6 +15,7 @@ import validateSeparateDeaths from "./generated/validators/separate_deaths";
 import validateStatus from "./generated/validators/status";
 import validateSurvival from "./generated/validators/survival";
 import validateTemporaryFixes from "./generated/validators/temporary_fixes";
+import validateTrends from "./generated/validators/trends";
 import validateValidation from "./generated/validators/validation";
 import validateZombies from "./generated/validators/zombies";
 import { runValidator, type ParseResult } from "./index";
@@ -37,6 +38,7 @@ export const REGISTRY: Record<string, (d: unknown) => ParseResult<unknown>> = Ob
     status: validateStatus,
     survival: validateSurvival,
     temporary_fixes: validateTemporaryFixes,
+    trends: validateTrends,
     validation: validateValidation,
     zombies: validateZombies,
   }).map(([k, v]) => [k, (d: unknown) => runValidator(v, d)]),
