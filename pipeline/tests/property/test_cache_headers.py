@@ -14,6 +14,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from helpers import examples
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
@@ -67,7 +68,7 @@ HASHED_NAME = re.compile(r"^assets/[^/]+-[A-Za-z0-9_-]{8}\.[A-Za-z0-9]+(\.map)?$
 ALL_LOWERCASE_HASH = re.compile(r"-[a-z]{8}\.[a-z0-9]+(\.map)?$")
 
 
-@settings(max_examples=40, suppress_health_check=[HealthCheck.too_slow], deadline=None)
+@settings(max_examples=examples(40), suppress_health_check=[HealthCheck.too_slow], deadline=None)
 @given(LISTS)
 def test_only_hashed_assets_are_ever_immutable(files):
     """REQ-OPS-CACHE.1 (check O3): every immutable rule names a hashed asset in the file list; no wildcard is immutable."""
@@ -81,7 +82,7 @@ def test_only_hashed_assets_are_ever_immutable(files):
             assert not ALL_LOWERCASE_HASH.search(name), f"all-lowercase word taken for a hash: {path}"
 
 
-@settings(max_examples=40, suppress_health_check=[HealthCheck.too_slow], deadline=None)
+@settings(max_examples=examples(40), suppress_health_check=[HealthCheck.too_slow], deadline=None)
 @given(LISTS)
 def test_the_entry_points_and_data_are_always_no_cache_and_never_immutable(files):
     """REQ-OPS-CACHE.1: whatever the file list, `/`, index.html, status.json and data/* revalidate."""
@@ -92,7 +93,7 @@ def test_the_entry_points_and_data_are_always_no_cache_and_never_immutable(files
     assert all(v != IMMUTABLE for p, v in r.items() if p in {"/", "/index.html", "/status.json"} or p.startswith("/data/"))
 
 
-@settings(max_examples=40, suppress_health_check=[HealthCheck.too_slow], deadline=None)
+@settings(max_examples=examples(40), suppress_health_check=[HealthCheck.too_slow], deadline=None)
 @given(LISTS, st.randoms(use_true_random=False))
 def test_generated_headers_do_not_depend_on_file_order_or_duplicates(files, rnd):
     """REQ-OPS-CACHE.1: the block is deterministic (sorted, deduplicated)."""

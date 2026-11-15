@@ -76,3 +76,14 @@ def params(**kw) -> Params:
     from dataclasses import replace
 
     return replace(DEFAULT, **kw)
+
+
+def examples(n: int) -> int:
+    """REQ-OPS-PBT.1: a property's own example count, scaled by the active Hypothesis profile.
+
+    `@settings(max_examples=N)` overrides the profile, so a pinned count would stay at 1x in the nightly deep run. Write
+    `max_examples=examples(N)` instead: N under `fast`, 10 x N under `deep` (the ratio of the two profiles in conftest.py).
+    A test checks that no property pins a bare number."""
+    from hypothesis import settings
+
+    return n * max(1, settings.default.max_examples // settings.get_profile("fast").max_examples)

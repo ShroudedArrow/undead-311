@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from helpers import examples
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -73,7 +74,7 @@ def test_same_input_gives_the_same_section_even_in_another_folder(site, tmp_path
     assert snap.build(other / "p", other / "q", None, None) == first
 
 
-@settings(max_examples=40, deadline=None)
+@settings(max_examples=examples(40), deadline=None)
 @given(st.dictionaries(st.text("abcdef", min_size=1, max_size=6), st.binary(max_size=20), min_size=1, max_size=6), st.randoms(use_true_random=False))
 def test_the_section_does_not_depend_on_write_order_and_changes_with_any_byte(tmp_path_factory, files, rnd):
     """REQ-OPS-SNAP.1 (check O4): order-independent, and one changed byte changes the combined hash."""

@@ -8,6 +8,7 @@ from dataclasses import replace
 from datetime import datetime, timedelta
 
 import duckdb
+from helpers import examples
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -135,7 +136,7 @@ def expand(spec):
     return out
 
 
-@settings(deadline=None, max_examples=15)
+@settings(deadline=None, max_examples=examples(15))
 @given(rows_strategy, st.integers(0, 1000))
 def test_req_bulk_1_flagged_groups_meet_both_thresholds_and_do_not_depend_on_row_order(spec, seed):
     rows = expand(spec)
@@ -150,7 +151,7 @@ def test_req_bulk_1_flagged_groups_meet_both_thresholds_and_do_not_depend_on_row
     assert keys == sorted(keys) and len(set(keys)) == len(keys)
 
 
-@settings(deadline=None, max_examples=10)
+@settings(deadline=None, max_examples=examples(10))
 @given(rows_strategy)
 def test_req_bulk_2_flagging_changes_only_the_flag_column(spec):
     con = table(expand(spec))

@@ -8,6 +8,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from helpers import examples
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from strategies import town
@@ -18,7 +19,7 @@ from undead311.export.writers import ContractError, ExportContext, export_all, l
 CTX = ExportContext(data_version="2026-11-12+abc+def", run_time="2026-11-13T00:00:00Z")
 
 
-@settings(max_examples=40)
+@settings(max_examples=examples(40))
 @given(town())
 def test_prop_p11_every_exported_file_validates_against_its_schema(cases):
     """REQ-EXP-1.1: exports of any generated town validate, and a re-run gives identical bytes (REQ-EXP-1.3)."""
@@ -35,7 +36,7 @@ def test_prop_p11_every_exported_file_validates_against_its_schema(cases):
         }
 
 
-@settings(max_examples=40)
+@settings(max_examples=examples(40))
 @given(town(), st.sampled_from(["confidence", "tier", "match_mode", "reports_after"]))
 def test_prop_p11_an_invalid_record_is_refused_before_anything_is_written(cases, field):
     """REQ-EXP-1.1: one bad value (out of range or not in the enum) stops the export with nothing written."""

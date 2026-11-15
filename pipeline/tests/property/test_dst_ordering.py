@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime, timedelta
 
+from helpers import examples
 from hypothesis import example, given, settings
 from hypothesis import strategies as st
 
@@ -45,7 +46,7 @@ def new_utc(utc_dt):
 
 @given(instants(), instants())
 @example(datetime(2026, 11, 1, 4, 30, tzinfo=UTC), datetime(2026, 11, 1, 7, 30, tzinfo=UTC))
-@settings(max_examples=200, deadline=None)
+@settings(max_examples=examples(200), deadline=None)
 def test_cross_system_ordering_matches_truth(a, b):
     if is_ambiguous(a) or is_ambiguous(b):
         return
@@ -56,7 +57,7 @@ def test_cross_system_ordering_matches_truth(a, b):
 
 
 @given(instants())
-@settings(max_examples=200, deadline=None)
+@settings(max_examples=examples(200), deadline=None)
 def test_ambiguous_hour_flagged_and_error_bounded(a):
     for conv in (legacy_utc, new_utc):
         got, _, flags = conv(a)
@@ -69,7 +70,7 @@ def test_ambiguous_hour_flagged_and_error_bounded(a):
 
 
 @given(instants())
-@settings(max_examples=200, deadline=None)
+@settings(max_examples=examples(200), deadline=None)
 def test_roundtrip_identity_outside_ambiguous(a):
     if is_ambiguous(a):
         return
@@ -101,7 +102,7 @@ def test_treating_plus_00_as_utc_would_misorder():
     transfer=st.booleans(),
     same_family=st.booleans(),
 )
-@settings(max_examples=200, deadline=None)
+@settings(max_examples=examples(200), deadline=None)
 def test_pair_survives_rule(gap_s, transfer, same_family):
     t0 = datetime(2026, 1, 1, 12, tzinfo=UTC)
     orig = {

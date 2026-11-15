@@ -7,7 +7,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import duckdb
-from helpers import mk
+from helpers import examples, mk
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -119,7 +119,7 @@ def test_req_sens_run_1_empty_and_tiny_inputs_run():
         assert con.execute("select count(*) from grid_runs").fetchone()[0] == 0
 
 
-@settings(deadline=None, max_examples=15)
+@settings(deadline=None, max_examples=examples(15))
 @given(st.integers(0, 10_000))
 def test_req_sens_run_1_grid_runs_do_not_depend_on_input_order(seed):
     cases = small_town()

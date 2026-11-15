@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import math
 
-from helpers import at, mk
+from helpers import at, examples, mk
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -149,7 +149,7 @@ def _derived(kind: str, pts: list[tuple[float, float]]):
 spot = st.tuples(st.floats(-45, 45), st.floats(-45, 45))
 
 
-@settings(max_examples=60, deadline=None, suppress_health_check=[HealthCheck.too_slow])
+@settings(max_examples=examples(60), deadline=None, suppress_health_check=[HealthCheck.too_slow])
 @given(st.sampled_from(["crossing", "overpass", "dead_end"]), spot, spot)
 def test_prop_p21_derived_intersections_obey_the_three_mode_rule(kind, p1, p2):
     """REQ-DET-MATCH.1-3, REQ-ING-SNAP.4: over generated segment towns the rule holds on the derived near_nodes, and

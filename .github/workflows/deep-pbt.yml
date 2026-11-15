@@ -2,10 +2,12 @@
 # separate template under ops/. Every action is pinned and every job sets its own permissions (check O1).
 #
 # python: the whole pytest suite with the Hypothesis `deep` profile (10x the `fast` examples, pipeline/tests/conftest.py).
-#         The example database `.hypothesis/deep` is cached between nights, so a falsifying example found once is
-#         replayed first on the next run.
-# web:    vitest with fast-check's default runs raised 10x (ops/deep-pbt/vitest.deep.config.ts). Properties that set
-#         `numRuns` themselves (web/src/lib/parse/parse.test.ts: 60 and 40) keep their own value.
+#         Properties that pin `max_examples` scale it with `helpers.examples(N)` (10 x N under `deep`; a test enforces it).
+#         The example database `.hypothesis/deep` is restored before the run and saved after it with `if: always()`
+#         (actions/cache/save), so a night that fails still stores the falsifying example and the next run replays it first.
+#         A plain actions/cache step would skip the save on a failed job.
+# web:    vitest with every fast-check run count multiplied by 10, the default and a pinned `numRuns` alike
+#         (ops/deep-pbt/vitest.deep.config.ts aliases "fast-check" to ops/deep-pbt/fast-check.deep.mjs).
 # On a failure each job opens (or updates) a `type:finding` issue with the shrunk example (REQ-OPS-PBT.2) and a
 # `needs-human` alert (REQ-OPS-ALERT.1). Posting is fail-open (scripts/ci_channel.py always exits 0); the job still
 # ends red, so GitHub's own failure email is the fallback.
@@ -40,7 +42,8 @@ jobs:
           enable-cache: true
       - name: Create the uv cache folder
         run: mkdir -p "$UV_CACHE_DIR"
-      - uses: actions/cache@v4
+      - name: Restore the example database
+        uses: actions/cache/restore@v4
         with:
           path: .hypothesis
           key: hypothesis-deep-${{ github.run_id }}
@@ -54,6 +57,14 @@ jobs:
         run: |
           set -o pipefail
           uv run pytest -q -p no:cacheprovider 2>&1 | tee "$RUNNER_TEMP/pytest-deep.log"
+      # Saved whatever the run did (a failed run holds the falsifying example). The key is new every run; the next
+      # night restores the newest one through the restore-keys prefix.
+      - name: Save the example database
+        if: ${{ always() }}
+        uses: actions/cache/save@v4
+        with:
+          path: .hypothesis
+          key: hypothesis-deep-${{ github.run_id }}
       - name: Report a failure to the channel
         if: ${{ steps.pbt.outcome == 'failure' }}
         continue-on-error: true

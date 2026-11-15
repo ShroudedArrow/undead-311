@@ -9,6 +9,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "unit"))
+from helpers import examples
 from test_normalize import L1, N1, make_con
 
 from undead311.ingest.normalize import normalize
@@ -45,7 +46,7 @@ def snapshot(legacy, new):
     return rows, sorted(report.issues.items())
 
 
-@settings(max_examples=25)
+@settings(max_examples=examples(25))
 @given(raw_rows(), st.randoms(use_true_random=False))
 def test_prop_p4_normalization_is_invariant_to_row_order(rows, rnd):
     """REQ-ING-2.3: shuffling raw rows leaves cases_norm and the issue counts unchanged."""

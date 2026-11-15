@@ -244,9 +244,26 @@ def test_deep_pbt_runs_nightly_with_the_deep_profile_and_a_cached_example_databa
     assert triggers["schedule"] and "workflow_dispatch" in triggers
     py = doc["jobs"]["python"]
     assert py["env"]["HYPOTHESIS_PROFILE"] == "deep"
-    cache = next(s for s in py["steps"] if str(s.get("uses", "")).startswith("actions/cache@"))
-    assert cache["with"]["path"] == ".hypothesis"
-    assert "restore-keys" in cache["with"]            # a new night starts from the last night's database
+    restore = next(s for s in py["steps"] if str(s.get("uses", "")).startswith("actions/cache/restore@"))
+    assert restore["with"]["path"] == ".hypothesis"
+    assert "restore-keys" in restore["with"]          # a new night starts from the last night's database
+
+
+def test_the_example_database_is_saved_even_when_the_properties_fail():
+    """REQ-OPS-PBT.1 (ops#156): actions/cache saves only on success, so the save is a separate step with `if: always()`.
+
+    It must also sit after the property run and before the step that ends the job red, with the same path and a key
+    that is new every run (a cache key cannot be overwritten)."""
+    steps = load(DEEP)["jobs"]["python"]["steps"]
+    uses = [str(s.get("uses", "")) for s in steps]
+    assert not any(u.startswith("actions/cache@") for u in uses)   # the combined action would skip the save on failure
+    save = next(s for s in steps if str(s.get("uses", "")).startswith("actions/cache/save@"))
+    assert "always()" in str(save["if"])
+    restore = next(s for s in steps if str(s.get("uses", "")).startswith("actions/cache/restore@"))
+    assert save["with"]["path"] == restore["with"]["path"] == ".hypothesis"
+    assert "github.run_id" in save["with"]["key"] and save["with"]["key"].startswith(restore["with"]["key"].split("$")[0])
+    pbt = next(i for i, s in enumerate(steps) if s.get("id") == "pbt")
+    assert pbt < steps.index(save) < len(steps) - 1       # after the run, before the closing `exit 1`
 
 
 def test_the_deep_profile_is_ten_times_the_fast_profile_and_stores_its_database_under_dot_hypothesis():
@@ -262,8 +279,10 @@ def test_deep_pbt_runs_fast_check_ten_times_through_a_separate_vitest_config():
     """REQ-OPS-PBT.1: the 10x factor lives in ops/deep-pbt (never in the normal `npm test`)."""
     web = "\n".join(str(s.get("run", "")) for s in load(DEEP)["jobs"]["web"]["steps"])
     assert "--config ../ops/deep-pbt/vitest.deep.config.ts" in web
-    setup = (REPO / "ops" / "deep-pbt" / "fast-check-deep.setup.ts").read_text()
-    assert "FACTOR = 10" in setup and "configureGlobal" in setup
+    shim = (REPO / "ops" / "deep-pbt" / "fast-check.deep.mjs").read_text()
+    assert "FACTOR = 10" in shim and "real.assert" in shim
+    config = (REPO / "ops" / "deep-pbt" / "vitest.deep.config.ts").read_text()
+    assert '"fast-check"' in config and "fast-check.deep.mjs" in config
     assert "deep" not in (REPO / "web" / "package.json").read_text().split('"test"')[1].split(",")[0]
 
 
