@@ -105,8 +105,9 @@ trace:
 kiro-stats:
 	$(STUB)
 
-capture:
-	$(STUB)
+# REQ-OPS-CAPTURE.1, .2: needs `make build` first. Writes screenshots, the judge-tour video and the time-lapse GIF to docs/media/.
+capture: web-deps
+	node ops/capture/capture.mjs
 
 # Fails when the cloud-cache copies of workflows, agents, hooks and steering differ from the repo copies on main.
 cloud-sync-check:

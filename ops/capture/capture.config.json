@@ -1,0 +1,33 @@
+{
+  "_doc": "REQ-OPS-CAPTURE.1, REQ-OPS-CAPTURE.2: what `make capture` records. Read by ops/capture/capture.mjs and checked against web/src/App.tsx by pipeline/tests/unit/test_capture.py.",
+  "out_dir": "docs/media",
+  "viewports": [
+    { "name": "desktop", "width": 1280, "height": 800, "device": null },
+    { "name": "phone", "width": 412, "height": 915, "device": "Pixel 7" }
+  ],
+  "pages": [
+    { "name": "map", "path": "/", "wait": "[data-testid=map][data-ready=true]" },
+    { "name": "table", "path": "/?view=table", "wait": "[data-testid=zombie-table]" },
+    { "name": "card", "path": "/zombie/{first_zombie}", "wait": "[data-testid=autopsy-card]" },
+    { "name": "scorecard", "path": "/scorecard", "wait": "main, .page" },
+    { "name": "durability", "path": "/durability", "wait": "main, .page" },
+    { "name": "neighborhood", "path": "/neighborhood/{first_neighborhood}", "wait": "main, .page" },
+    { "name": "timelapse", "path": "/timelapse", "wait": "[data-testid=timelapse-now]" },
+    { "name": "repeat", "path": "/repeat", "wait": "main, .page" },
+    { "name": "districts", "path": "/districts", "wait": "main, .page" },
+    { "name": "street", "path": "/street", "wait": "main, .page" },
+    { "name": "methods", "path": "/methods", "wait": "main, .page" },
+    { "name": "corrections", "path": "/corrections", "wait": "main, .page" },
+    { "name": "judge", "path": "/judge", "wait": "main, .page" }
+  ],
+  "hide_selectors": [
+    ".maplibregl-ctrl-logo",
+    "[data-capture-hide]",
+    "img[alt*='logo' i]",
+    "img[src*='logo' i]",
+    "[class*='city-seal' i]"
+  ],
+  "keep_selectors": [".maplibregl-ctrl-attrib"],
+  "video": { "file": "judge-tour.webm", "step_ms": 2500 },
+  "gif": { "file": "timelapse.gif", "frames": 24, "width": 640, "delay_ms": 250, "last_delay_ms": 1500 }
+}
