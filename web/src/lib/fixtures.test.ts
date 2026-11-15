@@ -30,7 +30,7 @@ describe("fixture files follow the schemas (REQ-WEB-DATA.3)", () => {
   });
 
   it("every card shard parses and is named by neighborhood and year", () => {
-    const shards = readdirSync(join(dir, "cards"));
+    const shards = readdirSync(join(dir, "cards")).filter((f) => f.endsWith(".json"));
     expect(shards.length).toBeGreaterThan(0);
     for (const f of shards) expect(parseCardShard(read(`cards/${f}`))).toMatchObject({ ok: true });
   });
@@ -72,10 +72,10 @@ describe("fixture files follow the schemas (REQ-WEB-DATA.3)", () => {
     for (const id of tour.data.zombie_ids) expect(ids.has(id)).toBe(true);
   });
 
-  it("every kept pair re-reports at least a day after the closure (UX-1, REQ-WEB-DATA.3)", () => {
+  it("every kept pair re-reports strictly after the closure (testing.md property 2, REQ-WEB-DATA.3)", () => {
     const zs = parseZombies(read("zombies.json"));
     if (!zs.ok) throw new Error("fixture does not parse");
-    for (const z of zs.data.zombies) expect(z.gap_days).toBeGreaterThanOrEqual(1);
+    for (const z of zs.data.zombies) expect(z.gap_days).toBeGreaterThan(0);
     const gaps = zs.data.zombies.map((z) => z.gap_days);
     expect(Math.max(...gaps)).toBeGreaterThan(30);
   });
@@ -143,7 +143,7 @@ describe("fixture judge tour follows REQ-STAT-TOUR.1 (UX-10)", () => {
 
 describe("fixtures follow the zombie definition (UX-16, UX-18, UX-20, UX-25)", () => {
   const TRANSFER = /resubmitted|see new case|transferred|migrated/i;
-  const allCards = () => readdirSync(join(dir, "cards")).flatMap((f) => {
+  const allCards = () => readdirSync(join(dir, "cards")).filter((f) => f.endsWith(".json")).flatMap((f) => {
     const sh = parseCardShard(read(`cards/${f}`));
     if (!sh.ok) throw new Error(`${f} does not parse`);
     return sh.data.cards;
@@ -186,10 +186,11 @@ describe("fixtures follow the zombie definition (UX-16, UX-18, UX-20, UX-25)", (
   });
 
   it("the methods numbers describe the same zombies as the map: observed headline = status headline_count (UX-25)", () => {
-    const ex = read("excess.json") as { shift: { observed: number } };
+    const ex = read("excess.json") as { shift: { observed: number; headline_zombies?: number } };
     const st = parseStatus(read("status.json"));
     if (!st.ok) throw new Error("fixture does not parse");
-    expect(ex.shift.observed).toBe(st.data.headline_count);
+    // `shift.observed` is the shift test's own count (all tiers); `headline_zombies` is the headline set it came with.
+    expect(ex.shift.headline_zombies ?? ex.shift.observed).toBe(st.data.headline_count);
     const zs = parseZombies(read("zombies.json"));
     if (!zs.ok) throw new Error("fixture does not parse");
     expect(zs.data.zombies.filter((z) => z.tier === "headline")).toHaveLength(st.data.headline_count as number);

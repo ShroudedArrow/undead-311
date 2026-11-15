@@ -28,7 +28,7 @@ export async function loadData<T>(file: string, parse: (d: unknown) => ParseResu
 }
 
 /**
- * Frozen judging-snapshot copy of a file (REQ-OPS-SNAP.2, ops#161): `data/frozen/<same path>`. Judge mode reads it so the tour stays on
+ * Frozen judging-snapshot copy of a file (REQ-OPS-SNAP.2, issue 161 in the ops repo): `data/frozen/<same path>`. Judge mode reads it so the tour stays on
  * the judging snapshot after a nightly refresh. When `frozen/` is absent (local dev, committed fixtures; a static host may answer a
  * missing path with the app shell, which is not JSON) it falls back to the live file. A frozen file that is present but fails its schema
  * is an error, never a silent switch to live data.

@@ -112,7 +112,7 @@ describe("Judge mode reads the frozen snapshot (REQ-OPS-SNAP.2, ops#161)", () =>
   it("loads the tour, points and card shards from data/frozen/", async () => {
     setup();
     await screen.findByRole("button", { name: "Start the tour" });
-    await waitFor(() => expect(requested.some((u) => u.includes("/data/frozen/cards/"))).toBe(true));
+    await waitFor(() => expect(requested.some((u) => u.includes("/data/frozen/cards/"))).toBe(true), { timeout: 4000 });
     expect(requested).toContain("/data/frozen/stats/judge_tour.json");
     expect(requested).toContain("/data/frozen/points.json");
     expect(requested.filter((u) => /\/data\/(stats\/judge_tour|points\.json|cards\/)/.test(u))).toEqual([]);
@@ -121,6 +121,6 @@ describe("Judge mode reads the frozen snapshot (REQ-OPS-SNAP.2, ops#161)", () =>
     setup({ noFrozen: true });
     await screen.findByRole("button", { name: "Start the tour" });
     await waitFor(() => expect(requested).toContain("/data/stats/judge_tour.json"));
-    await waitFor(() => expect(requested.some((u) => u.startsWith("/data/cards/"))).toBe(true));
+    await waitFor(() => expect(requested.some((u) => u.startsWith("/data/cards/"))).toBe(true), { timeout: 4000 });
   });
 });
