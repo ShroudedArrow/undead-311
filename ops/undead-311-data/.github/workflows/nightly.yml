@@ -1,8 +1,8 @@
 # Nightly data refresh. TEMPLATE: copy this file to `.github/workflows/nightly.yml` in ShroudedArrow/undead-311-data
 # (agents have no access to that repo). REQ-OPS-NIGHTLY.1 to .4, REQ-OPS-ALERT.1. Setup steps: ops/undead-311-data/README.md.
 #
-# Flow: check out the judged repo at the frozen release tag, download the 311 data, run the pipeline, build the site with
-# the new data, deploy the WHOLE site to Netlify (so data is always served from the site's own origin), attach the
+# Flow: check out the judged repo at the frozen release tag, copy judge mode's files from the tag into web/public/data/frozen/
+# (so judge mode stays on the judging snapshot), download the 311 data, run the pipeline, build the site with the new data, deploy the WHOLE site to Netlify (so data is always served from the site's own origin), attach the
 # processed data to a GitHub Release. The deploy is the last step that changes anything public, and a failed night
 # never reaches it, so Netlify keeps the last good deploy. On failure the job writes a failure entry (kept in the release
 # `nightly-state`, merged into the next good deploy's status.json `history`) and opens a needs-human alert.
@@ -39,6 +39,7 @@ jobs:
       DATA_REPO: ${{ github.repository }}
     steps:
       - name: Require the frozen tag
+        id: tag
         run: |
           if [ -z "$JUDGED_TAG" ]; then echo "Set the repository variable JUDGED_TAG to the frozen release tag (README.md)." >&2; exit 1; fi
 
@@ -66,6 +67,14 @@ jobs:
           mkdir -p "$UV_CACHE_DIR"
           make setup
 
+      # Judge mode stays on the judging snapshot (REQ-OPS-SNAP.2). The pipeline below rewrites stats/judge_tour.json,
+      # points.json and the card shards, so judge mode's copy is taken from the tag first, into web/public/data/frozen/
+      # (a folder the pipeline never writes), and only if each file matches data/SNAPSHOT.md.
+      - name: Freeze the judge-mode files from the tag
+        id: freeze
+        working-directory: judged
+        run: python3 pipeline/scripts/snapshot.py --freeze-judge
+
       - name: Download the 311 data
         id: download
         working-directory: judged
@@ -81,18 +90,26 @@ jobs:
         id: check
         run: python3 judged/ops/undead-311-data/status_history.py check --status judged/web/public/data/status.json
 
+      # The merged status.json is validated against schemas/status.schema.json, which defines `history`.
       - name: Merge earlier failures into status.json history
         id: history
+        working-directory: judged
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release download nightly-state --repo "$DATA_REPO" --pattern failure-history.json --dir "$RUNNER_TEMP" --clobber || echo "no failure history yet"
-          python3 judged/ops/undead-311-data/status_history.py merge --status judged/web/public/data/status.json --history "$RUNNER_TEMP/failure-history.json"
+          uv run python ops/undead-311-data/status_history.py merge --status web/public/data/status.json --history "$RUNNER_TEMP/failure-history.json" --schema schemas/status.schema.json
 
       - name: Build the site with the new data
         id: build
         working-directory: judged
         run: make build
+
+      # What is about to ship must still carry the snapshot's judge-mode files, byte for byte.
+      - name: Verify the frozen judge-mode files in the built site
+        id: verify
+        working-directory: judged
+        run: python3 pipeline/scripts/snapshot.py --check-frozen --public web/dist/data
 
       - name: Deploy the whole site (production)
         id: deploy
@@ -129,17 +146,22 @@ jobs:
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
+          S_TAG: ${{ steps.tag.outcome }}
           S_CHECKOUT: ${{ steps.checkout.outcome }}
           S_SETUP: ${{ steps.setup.outcome }}
+          S_FREEZE: ${{ steps.freeze.outcome }}
           S_DOWNLOAD: ${{ steps.download.outcome }}
           S_PIPELINE: ${{ steps.pipeline.outcome }}
           S_CHECK: ${{ steps.check.outcome }}
+          S_HISTORY: ${{ steps.history.outcome }}
           S_BUILD: ${{ steps.build.outcome }}
+          S_VERIFY: ${{ steps.verify.outcome }}
           S_DEPLOY: ${{ steps.deploy.outcome }}
+          S_CLEAR: ${{ steps.clear.outcome }}
           S_RELEASE: ${{ steps.release.outcome }}
         run: |
           gh release download nightly-state --repo "$DATA_REPO" --pattern failure-history.json --dir "$RUNNER_TEMP" --clobber || echo "no failure history yet"
-          python3 judged/ops/undead-311-data/status_history.py record --history "$RUNNER_TEMP/failure-history.json" --run-url "$RUN_URL" --outcomes "checkout=$S_CHECKOUT" "setup=$S_SETUP" "download=$S_DOWNLOAD" "pipeline=$S_PIPELINE" "check=$S_CHECK" "build=$S_BUILD" "deploy=$S_DEPLOY" "release=$S_RELEASE"
+          python3 judged/ops/undead-311-data/status_history.py record --history "$RUNNER_TEMP/failure-history.json" --run-url "$RUN_URL" --outcomes "tag=$S_TAG" "checkout=$S_CHECKOUT" "setup=$S_SETUP" "freeze=$S_FREEZE" "download=$S_DOWNLOAD" "pipeline=$S_PIPELINE" "check=$S_CHECK" "history=$S_HISTORY" "build=$S_BUILD" "verify=$S_VERIFY" "deploy=$S_DEPLOY" "clear=$S_CLEAR" "release=$S_RELEASE"
           gh release view nightly-state --repo "$DATA_REPO" > /dev/null 2>&1 || gh release create nightly-state --repo "$DATA_REPO" --title "nightly state" --notes "Failure history for the nightly refresh. Not a data release."
           gh release upload nightly-state "$RUNNER_TEMP/failure-history.json" --repo "$DATA_REPO" --clobber
 

@@ -5,7 +5,9 @@ The data repo's `nightly.yml` checks out the judged repo at the frozen tag and r
   check   exit 1 unless the status file exists, parses and says `ok: true` (nothing is deployed from a failed run).
   record  after a failed night, append one entry `{at, ok: false, stage, run_url}` to the failure-history file.
   merge   before a successful deploy, copy the last failure entries into `status.json` under `history`, so the site
-          shows that a night failed even though the deploy that followed succeeded.
+          shows that a night failed even though the deploy that followed succeeded. With `--schema`, the merged file
+          is validated against schemas/status.schema.json (which defines `history`) and the merge fails when it does
+          not validate (REQ-OPS-NIGHTLY.3, testing.md #16). Needs `jsonschema`, so the workflow runs it through `uv run`.
   clear   after that successful deploy, empty the failure-history file.
 
 The failure-history file lives as an asset of the GitHub Release `nightly-state` in the data repo (the workflow uploads
@@ -23,7 +25,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 KEEP = 10
-STAGES = ("checkout", "download", "pipeline", "check", "build", "deploy", "release")
+# Every workflow step that has an id, in run order. A failed night names the first one that did not succeed, so a step
+# missing here would be recorded as `unknown` (ops#158).
+STAGES = (
+    "tag", "checkout", "setup", "freeze", "download", "pipeline", "check", "history", "build", "verify", "deploy", "clear", "release",
+)
+ENTRY_KEYS = {"at", "ok", "stage", "run_url"}
 
 
 def read_json(path: Path, default):
@@ -48,10 +55,28 @@ def write_json(path: Path, data) -> None:
         raise
 
 
+def valid_entry(entry: object) -> bool:
+    """True for an object the status schema accepts as a history entry: `{at, ok: false, stage, run_url}`, strings."""
+    return (
+        isinstance(entry, dict)
+        and set(entry) == ENTRY_KEYS
+        and entry["ok"] is False
+        and all(isinstance(entry[k], str) for k in ("at", "stage", "run_url"))
+    )
+
+
 def load_history(path: Path) -> list[dict]:
-    """The failure entries in `path`: a list of objects; anything else counts as empty."""
+    """The valid failure entries in `path`; a damaged file, or an entry that would break the schema, is dropped."""
     data = read_json(path, [])
-    return [e for e in data if isinstance(e, dict)] if isinstance(data, list) else []
+    return [e for e in data if valid_entry(e)] if isinstance(data, list) else []
+
+
+def validate_status(status: dict, schema_path: Path) -> list[str]:
+    """Schema errors of `status` (empty when valid). jsonschema is imported here so the other commands stay stdlib-only."""
+    from jsonschema import Draft202012Validator
+
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    return [f"{'/'.join(map(str, e.path)) or '<root>'}: {e.message}" for e in Draft202012Validator(schema).iter_errors(status)]
 
 
 def failed_stage(outcomes: dict[str, str]) -> str:
@@ -103,6 +128,7 @@ def main(argv: list[str] | None = None) -> int:
     m = sub.add_parser("merge")
     m.add_argument("--status", required=True, type=Path)
     m.add_argument("--history", required=True, type=Path)
+    m.add_argument("--schema", type=Path, default=None, help="status.schema.json; validate the merged file against it")
     k = sub.add_parser("clear")
     k.add_argument("--history", required=True, type=Path)
     args = p.parse_args(argv)
@@ -122,7 +148,13 @@ def main(argv: list[str] | None = None) -> int:
         if not isinstance(status, dict):
             print(f"status_history: {args.status} is missing or damaged", file=sys.stderr)
             return 1
-        write_json(args.status, merge(status, load_history(args.history)))
+        merged = merge(status, load_history(args.history))
+        if args.schema is not None:
+            errors = validate_status(merged, args.schema)
+            if errors:
+                print(f"status_history: merged status.json breaks {args.schema.name}: {errors[0]} ({len(errors)} error(s))", file=sys.stderr)
+                return 1
+        write_json(args.status, merged)
         return 0
     write_json(args.history, [])
     return 0

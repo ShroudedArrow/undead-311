@@ -8,20 +8,32 @@
 Reproducible (check O4): the output depends only on the file bytes, the data end date and the tag name. No wall clock,
 no absolute path and no file mtime goes into it. The DuckDB file is left out because DuckDB does not write the same bytes
 for the same data twice. The script never creates or pushes a git tag: that is the owner's step (printed at the end).
-After the freeze the site keeps serving this snapshot even when the nightly refresh fails or is switched off, because
-the data is part of the deployed site and Netlify keeps the last good deploy (REQ-OPS-SNAP.2).
+Judge mode on the frozen snapshot (REQ-OPS-SNAP.2). The nightly refresh rewrites `stats/judge_tour.json`, `points.json`
+and the card shards from fresh data, so the files judge mode reads would drift from the table above after one good night.
+`freeze_judge` therefore copies the tour file, the points file and the shards of the three tour zombies into
+`web/public/data/frozen/` BEFORE the pipeline runs, and only if each file's sha256 equals its row in the judging section
+(a tag whose files differ from the table is refused). The pipeline never writes `frozen/` (the exporter removes only files
+it owns: cards/ and stats/), `collect` leaves the folder out of the table, and `check_frozen` re-verifies the copies in the
+built site (`web/dist/data/frozen/`) against the table before the deploy. A failed night then keeps the last good deploy,
+whose `frozen/` folder is still the snapshot's. The web app reads judge mode from `frozen/` (handoff to:web, ops#161).
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import re
+import shutil
 from pathlib import Path
 
 BEGIN = "<!-- BEGIN judging snapshot (written by make snapshot; do not edit) -->"
 END = "<!-- END judging snapshot -->"
 PROCESSED_SUFFIXES = {".parquet"}
 PROCESSED_NAMES = {"run_report.json"}
+FROZEN_DIR = "frozen"                      # under web/public/data; judge mode's copy of the snapshot (REQ-OPS-SNAP.2)
+JUDGE_TOUR = "stats/judge_tour.json"
+POINTS = "points.json"
+PUBLIC_PREFIX = "web/public/data/"
 
 
 def sha256_file(path: Path) -> str:
@@ -40,7 +52,7 @@ def collect(public_dir: Path, processed_dir: Path | None) -> list[tuple[str, int
     rows: list[tuple[str, int, str]] = []
     if public_dir.is_dir():
         for p in public_dir.rglob("*"):
-            if p.is_file():
+            if p.is_file() and p.relative_to(public_dir).parts[0] != FROZEN_DIR:
                 rows.append((f"web/public/data/{p.relative_to(public_dir).as_posix()}", p.stat().st_size, sha256_file(p)))
     if processed_dir is not None and processed_dir.is_dir():
         for p in processed_dir.rglob("*"):
@@ -114,6 +126,95 @@ def data_end_of(public_dir: Path) -> str:
     return end
 
 
+def status_data_end(public_dir: Path) -> str | None:
+    """`data_end` from status.json, or None when the file is missing, damaged or has no date."""
+    try:
+        end = json.loads((public_dir / "status.json").read_text()).get("data_end")
+    except (OSError, ValueError, AttributeError):
+        return None
+    return end if isinstance(end, str) and end else None
+
+
 def build(public_dir: Path, processed_dir: Path | None, data_end: str | None, tag: str | None) -> str:
+    """The judging section. REQ-OPS-SNAP.1: `--data-end` that disagrees with status.json is refused (ops#160), because
+    the section would name a "Data through" date the hashed files do not run through."""
+    actual = status_data_end(public_dir)
+    if data_end and actual and data_end != actual:
+        raise SystemExit(f"snapshot: --data-end {data_end} differs from data_end {actual} in {public_dir / 'status.json'}; "
+                         "rerun without --data-end, or rebuild the data")
     end = data_end or data_end_of(public_dir)
     return render_section(collect(public_dir, processed_dir), end, tag or default_tag(end))
+
+
+# ---- judge mode on the frozen snapshot (REQ-OPS-SNAP.2) -------------------------------------------------------------
+
+def slug(text: str | None) -> str:
+    """Card shard slug: the rule of `export.writers.slug` and `web/src/lib/shard.ts` (a test keeps the three equal)."""
+    return re.sub(r"[^a-z0-9]+", "-", (text or "unknown").lower()).strip("-") or "unknown"
+
+
+def judge_files(public_dir: Path) -> list[str]:
+    """Paths (relative to `public_dir`) judge mode reads: the tour file, the points file, and the card shard of each tour zombie."""
+    tour = json.loads((public_dir / JUDGE_TOUR).read_text())
+    points = json.loads((public_dir / POINTS).read_text())
+    where = {zid: i for i, zid in enumerate(points["id"])}
+    files = {JUDGE_TOUR, POINTS}
+    for zid in tour["zombie_ids"]:
+        if zid not in where:
+            raise SystemExit(f"snapshot: tour zombie {zid} is not in {POINTS}")
+        i = where[zid]
+        files.add(f"cards/{slug(points['neighborhood'][i])}-{points['year'][i]}.json")
+    return sorted(files)
+
+
+def section_hashes(snapshot_text: str) -> dict[str, str]:
+    """`{web/public/data/<path>: sha256}` from the judging section's table; empty when there is no section."""
+    section = extract_section(snapshot_text)
+    out: dict[str, str] = {}
+    for line in (section or "").splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) == 3 and cells[0].startswith(PUBLIC_PREFIX):
+            out[cells[0]] = cells[2]
+    return out
+
+
+def freeze_judge(public_dir: Path, snapshot_text: str) -> list[str]:
+    """Copy the judge-mode files into `public_dir/frozen/`, each one only if its sha256 equals the judging table.
+
+    Exits (SystemExit) when the section is missing or a file is absent or differs: freezing files the table does not
+    describe would freeze the wrong thing. Returns the copied relative paths."""
+    table = section_hashes(snapshot_text)
+    if not table:
+        raise SystemExit("snapshot: data/SNAPSHOT.md has no judging section; run `make snapshot` on the frozen data first")
+    copied = []
+    for rel in judge_files(public_dir):
+        src = public_dir / rel
+        want = table.get(PUBLIC_PREFIX + rel)
+        if want is None or not src.is_file() or sha256_file(src) != want:
+            raise SystemExit(f"snapshot: {rel} does not match the judging section of data/SNAPSHOT.md (tag and table disagree)")
+        dest = public_dir / FROZEN_DIR / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(src, dest)
+        copied.append(rel)
+    return copied
+
+
+def check_frozen(public_dir: Path, snapshot_text: str) -> list[str]:
+    """Problems with `public_dir/frozen/` against the judging table (empty when it is the snapshot): a missing folder,
+    a file whose sha256 differs from its row, or a file with no row."""
+    table = section_hashes(snapshot_text)
+    root = public_dir / FROZEN_DIR
+    files = sorted(p for p in root.rglob("*") if p.is_file()) if root.is_dir() else []
+    if not table:
+        return ["data/SNAPSHOT.md has no judging section"]
+    if not files:
+        return [f"{root} is missing or empty"]
+    problems = []
+    for p in files:
+        rel = p.relative_to(root).as_posix()
+        want = table.get(PUBLIC_PREFIX + rel)
+        if want is None:
+            problems.append(f"{rel} has no row in the judging section")
+        elif sha256_file(p) != want:
+            problems.append(f"{rel} differs from the judging section")
+    return problems

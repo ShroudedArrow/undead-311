@@ -66,7 +66,7 @@ def test_it_checks_out_the_judged_repo_at_the_frozen_tag():
 
 def test_stages_run_in_order_and_the_deploy_comes_after_every_check():
     """REQ-OPS-NIGHTLY.2, .3: download, pipeline, status check, history merge, build, deploy. A failure never reaches the deploy."""
-    order = ["checkout", "setup", "download", "pipeline", "check", "history", "build", "deploy"]
+    order = ["tag", "checkout", "setup", "freeze", "download", "pipeline", "check", "history", "build", "verify", "deploy"]
     assert [index(i) for i in order] == sorted(index(i) for i in order)
     for step_id, needle in (("download", "make data-download"), ("pipeline", "make pipeline"), ("build", "make build")):
         assert needle in steps()[index(step_id)]["run"]
@@ -119,7 +119,8 @@ def test_a_failure_keeps_the_last_deploy_records_itself_and_alerts():
     assert "status_history.py record" in record["run"] and "nightly-state" in record["run"]
     assert "ci_channel.py alert" in alert["run"]
     assert steps().index(record) > index("release") and steps().index(alert) > steps().index(record)
-    for stage in ("CHECKOUT", "SETUP", "DOWNLOAD", "PIPELINE", "CHECK", "BUILD", "DEPLOY", "RELEASE"):
+    for stage in ("TAG", "CHECKOUT", "SETUP", "FREEZE", "DOWNLOAD", "PIPELINE", "CHECK", "HISTORY", "BUILD", "VERIFY",
+                  "DEPLOY", "CLEAR", "RELEASE"):
         assert f"S_{stage}" in record["env"]
 
 
@@ -128,6 +129,16 @@ def test_the_failure_history_is_merged_before_the_build_and_cleared_only_after_t
     assert "status_history.py merge" in steps()[index("history")]["run"]
     assert index("history") < index("build") < index("deploy") < index("clear")
     assert "status_history.py clear" in steps()[index("clear")]["run"]
+
+
+def test_judge_mode_files_are_frozen_before_the_pipeline_and_verified_before_the_deploy():
+    """REQ-OPS-SNAP.2 (ops#157): the copy is taken from the tag before `make pipeline` rewrites the data, and the built
+    site is checked against data/SNAPSHOT.md before it ships. Neither step may be skipped or allowed to fail quietly."""
+    freeze, verify = steps()[index("freeze")], steps()[index("verify")]
+    assert "snapshot.py --freeze-judge" in freeze["run"] and index("freeze") < index("pipeline")
+    assert "snapshot.py --check-frozen --public web/dist/data" in verify["run"] and index("build") < index("verify") < index("deploy")
+    for s in (freeze, verify):
+        assert s["working-directory"] == "judged" and not s.get("continue-on-error") and "if" not in s
 
 
 def test_the_release_holds_one_processed_data_file_and_its_hash():
@@ -180,12 +191,65 @@ def test_merge_puts_history_in_status_without_changing_the_rest():
 
 
 def test_the_status_schema_accepts_the_merged_history():
-    """REQ-OPS-NIGHTLY.3: status.json with `history` still validates (additionalProperties is true)."""
+    """REQ-OPS-NIGHTLY.3: status.json with `history` validates, and the schema defines the entry (ops#159)."""
     import jsonschema
 
     schema = json.loads((REPO / "schemas" / "status.schema.json").read_text())
     status = json.loads((REPO / "web" / "public" / "data" / "status.json").read_text())
-    jsonschema.validate(sh.merge(status, [{"at": "t", "ok": False, "stage": "build", "run_url": "u"}]), schema)
+    entry = {"at": "2026-12-01T03:41:00Z", "ok": False, "stage": "build", "run_url": "u"}
+    jsonschema.validate(sh.merge(status, [entry]), schema)
+    assert set(schema["properties"]["history"]["items"]["required"]) == {"at", "ok", "stage", "run_url"}
+    for broken in ({**entry, "ok": True}, {**entry, "stage": 3}, {k: v for k, v in entry.items() if k != "at"},
+                   {**entry, "name": "someone"}):
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate({**status, "history": [broken]}, schema)
+
+
+def test_every_workflow_step_id_is_a_named_stage():
+    """REQ-OPS-NIGHTLY.3 (ops#158): a failure in any step with an id is recorded under its name, never `unknown`."""
+    ids = [s["id"] for s in steps() if s.get("id")]
+    assert set(ids) <= set(sh.STAGES), set(ids) - set(sh.STAGES)
+    assert [i for i in sh.STAGES if i in ids] == ids              # same order as the workflow runs them
+    record = next(s for s in steps() if s.get("name", "").startswith("Record the failure"))
+    assert all(f"{i}=$S_{i.upper()}" in record["run"] and f"steps.{i}.outcome" in record["env"][f"S_{i.upper()}"] for i in ids)
+
+
+@pytest.mark.parametrize("stage", sh.STAGES)
+def test_each_stage_failing_is_named(stage):
+    """REQ-OPS-NIGHTLY.3 (ops#158): setup and history failures are named like the rest."""
+    outcomes = {s: "success" for s in sh.STAGES}
+    outcomes[stage] = "failure"
+    assert sh.failed_stage(outcomes) == stage
+
+
+def test_the_history_step_validates_against_the_status_schema():
+    """REQ-OPS-NIGHTLY.3 (ops#159): the merge runs where jsonschema is installed and passes the schema."""
+    step = steps()[index("history")]
+    assert "uv run python ops/undead-311-data/status_history.py merge" in step["run"]
+    assert "--schema schemas/status.schema.json" in step["run"] and step["working-directory"] == "judged"
+
+
+def test_merge_with_a_schema_refuses_a_status_that_would_break_it(tmp_path):
+    """REQ-OPS-NIGHTLY.3 (ops#159): a merge that does not validate fails and leaves status.json as it was."""
+    schema = REPO / "schemas" / "status.schema.json"
+    good = json.loads((REPO / "web" / "public" / "data" / "status.json").read_text())
+    status, hist = tmp_path / "status.json", tmp_path / "h.json"
+    status.write_text(json.dumps(good))
+    hist.write_text(json.dumps([{"at": "2026-12-01T03:41:00Z", "ok": False, "stage": "setup", "run_url": "u"}]))
+    assert run_cli("merge", "--status", str(status), "--history", str(hist), "--schema", str(schema)).returncode == 0
+    assert json.loads(status.read_text())["history"][0]["stage"] == "setup"
+    bad = {**good, "ok": "yes"}                                   # the pipeline's own fields break the schema
+    status.write_text(json.dumps(bad))
+    r = run_cli("merge", "--status", str(status), "--history", str(hist), "--schema", str(schema))
+    assert r.returncode == 1 and "status.schema.json" in r.stderr and json.loads(status.read_text()) == bad
+
+
+def test_a_history_entry_the_schema_would_reject_is_dropped_on_load(tmp_path):
+    """REQ-OPS-NIGHTLY.3: extra keys, a true `ok` or a non-string field never reach status.json."""
+    ok = {"at": "t", "ok": False, "stage": "build", "run_url": "u"}
+    hist = tmp_path / "h.json"
+    hist.write_text(json.dumps([ok, {**ok, "ok": True}, {**ok, "stage": 1}, {**ok, "extra": 1}, {"stage": "build"}]))
+    assert sh.load_history(hist) == [ok]
 
 
 def run_cli(*args: str) -> subprocess.CompletedProcess:

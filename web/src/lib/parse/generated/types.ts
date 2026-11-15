@@ -241,6 +241,21 @@ export interface StatusFile {
    * Later copies of cross-system pairs opened within MIRROR_WINDOW_HOURS: one report filed twice, so the later copy joins no incident and every denominator counts the pair once (ZD step 9, ops#30, ops#46)
    */
   mirror_copies_merged?: number;
+  /**
+   * REQ-OPS-NIGHTLY.3: nights that failed since the last good deploy, newest last (at most 10). Added by the nightly refresh after the pipeline's own export, so a pipeline run never writes it; the entry is validated again at merge time (ops/undead-311-data/status_history.py).
+   */
+  history?: {
+    /**
+     * UTC time of the failure, YYYY-MM-DDTHH:MM:SSZ
+     */
+    at: string;
+    ok: false;
+    /**
+     * First stage that did not succeed (tag, checkout, setup, download, pipeline, check, history, build, deploy, clear, release) or unknown
+     */
+    stage: string;
+    run_url: string;
+  }[];
   [k: string]: unknown;
 }
 

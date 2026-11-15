@@ -95,7 +95,7 @@ def test_the_section_names_the_data_end_the_tag_and_the_owner_steps(site):
     assert "Data through: 2026-11-11" in section and "`judged-2026-11-11`" in section
     assert "git tag -a judged-2026-11-11" in section and "git push origin judged-2026-11-11" in section
     assert "JUDGED_TAG" in section
-    assert snap.build(*site, "2026-12-01", "judged-final").count("judged-final") >= 3
+    assert snap.build(*site, "2026-11-11", "judged-final").count("judged-final") >= 3
 
 
 def test_upsert_replaces_the_section_keeps_the_download_table_and_is_idempotent(site):
@@ -105,6 +105,7 @@ def test_upsert_replaces_the_section_keeps_the_download_table_and_is_idempotent(
     once = snap.upsert_section(table, section)
     assert once.startswith(table.rstrip("\n")) and once.count(snap.BEGIN) == 1
     assert snap.upsert_section(once, section) == once
+    (site[0] / "status.json").write_text(json.dumps({"ok": True, "data_end": "2027-01-01"}))   # the data now runs further
     changed = snap.build(*site, "2027-01-01", None)
     twice = snap.upsert_section(once, changed)
     assert twice.count(snap.BEGIN) == 1 and "2027-01-01" in twice and "2026-11-11" not in twice
@@ -170,6 +171,121 @@ def test_make_snapshot_is_wired_to_the_script():
     mk = (REPO / "Makefile").read_text()
     assert "pipeline/scripts/snapshot.py\n" in mk and "pipeline/scripts/snapshot.py --check" in mk
     assert "snapshot:\n\t$(STUB)" not in mk
+
+
+# ---- judge mode stays on the frozen snapshot (REQ-OPS-SNAP.2, ops#157) --------------------------------------------------
+
+def judge_site(tmp_path):
+    """A served-data folder with a tour of two zombies in two card shards, and the snapshot text that describes it."""
+    public = tmp_path / "public"
+    points = {"id": ["z1", "z2", "z3"], "neighborhood": ["Back Bay", "South End", "Back Bay"], "year": [2025, 2026, 2025]}
+    make_tree(public, {"status.json": json.dumps({"ok": True, "data_end": "2026-11-11"}).encode(),
+                       "points.json": json.dumps(points).encode(),
+                       "stats/judge_tour.json": json.dumps({"zombie_ids": ["z1", "z2"]}).encode(),
+                       "cards/back-bay-2025.json": b'{"cards": ["z1", "z3"]}', "cards/south-end-2026.json": b'{"cards": ["z2"]}',
+                       "cards/other-2025.json": b"{}", "zombies.json": b"[]"})
+    return public, snap.render_section(snap.collect(public, None), "2026-11-11", "judged-2026-11-11")
+
+
+def test_freeze_copies_the_tour_the_points_and_the_tour_shards_only(tmp_path):
+    """REQ-OPS-SNAP.2: judge mode's files, and nothing else, go to frozen/ with the same layout."""
+    public, text = judge_site(tmp_path)
+    copied = snap.freeze_judge(public, text)
+    assert copied == ["cards/back-bay-2025.json", "cards/south-end-2026.json", "points.json", "stats/judge_tour.json"]
+    assert sorted(p.relative_to(public / "frozen").as_posix() for p in (public / "frozen").rglob("*") if p.is_file()) == copied
+    assert snap.check_frozen(public, text) == []
+
+
+def test_frozen_files_survive_a_pipeline_run_that_rewrites_the_live_ones(tmp_path):
+    """REQ-OPS-SNAP.2 (ops#157): after the nightly pipeline overwrites the live files, the frozen copies still equal the
+    tagged ones, byte for byte, and the check on the built site passes; a changed frozen file fails it."""
+    public, text = judge_site(tmp_path)
+    tagged = {p.relative_to(public).as_posix(): p.read_bytes() for p in public.rglob("*") if p.is_file()}
+    snap.freeze_judge(public, text)
+    (public / "stats" / "judge_tour.json").write_text(json.dumps({"zombie_ids": ["z3"]}))   # the pipeline's rewrite
+    (public / "points.json").write_text("{}")
+    (public / "cards" / "back-bay-2025.json").write_text('{"cards": ["z1", "z3", "new"]}')
+    for rel in ("stats/judge_tour.json", "points.json", "cards/back-bay-2025.json", "cards/south-end-2026.json"):
+        assert (public / "frozen" / rel).read_bytes() == tagged[rel]
+    assert snap.check_frozen(public, text) == []
+    (public / "frozen" / "points.json").write_text("{}")
+    assert snap.check_frozen(public, text) == ["points.json differs from the judging section"]
+
+
+def test_the_table_ignores_the_frozen_folder(tmp_path):
+    """REQ-OPS-SNAP.1, REQ-OPS-SNAP.2: freezing does not change the hashes of `make snapshot` (a second run stays equal)."""
+    public, text = judge_site(tmp_path)
+    before = snap.collect(public, None)
+    snap.freeze_judge(public, text)
+    assert snap.collect(public, None) == before
+
+
+def test_freeze_refuses_files_that_do_not_match_the_table(tmp_path):
+    """REQ-OPS-SNAP.2: a tag whose files differ from data/SNAPSHOT.md, or a missing section, stops the nightly."""
+    public, text = judge_site(tmp_path)
+    (public / "points.json").write_text('{"id": ["z1", "z2"], "neighborhood": ["Back Bay", "South End"], "year": [2025, 2026]}')
+    with pytest.raises(SystemExit, match="points.json does not match"):
+        snap.freeze_judge(public, text)
+    with pytest.raises(SystemExit, match="no judging section"):
+        snap.freeze_judge(public, "# SNAPSHOT\n")
+    assert not (public / "frozen" / "stats").exists() or not any((public / "frozen" / "stats").iterdir())
+
+
+def test_check_frozen_reports_a_missing_folder_a_missing_section_and_an_unlisted_file(tmp_path):
+    """REQ-OPS-SNAP.2: the verify step fails when there is nothing, or something the table does not list, to ship."""
+    public, text = judge_site(tmp_path)
+    assert snap.check_frozen(public, text) == [f"{public / 'frozen'} is missing or empty"]
+    snap.freeze_judge(public, text)
+    assert snap.check_frozen(public, "") == ["data/SNAPSHOT.md has no judging section"]
+    (public / "frozen" / "extra.json").write_text("{}")
+    assert snap.check_frozen(public, text) == ["extra.json has no row in the judging section"]
+
+
+def test_the_exporter_never_touches_the_frozen_folder():
+    """REQ-OPS-SNAP.2: the pipeline's swap removes only files it owns, and frozen/ is not one of them."""
+    from undead311.pipeline import owns_output
+
+    for rel in ("frozen/stats/judge_tour.json", "frozen/points.json", "frozen/cards/back-bay-2025.json", "frozen/points.json.gz"):
+        assert not owns_output(rel), rel
+    assert owns_output("cards/back-bay-2025.json") and owns_output("zombies.json")
+
+
+def test_the_shard_slug_matches_the_exporter_and_the_web_rule():
+    """REQ-OPS-SNAP.2: frozen shard names follow `export.writers.slug` (and web/src/lib/shard.ts uses the same regex)."""
+    from undead311.export.writers import slug
+
+    for name in ("Back Bay", "South Boston / Seaport", "Allston-Brighton", None, "", "Jamaica Plain!"):
+        assert snap.slug(name) == slug(name)
+    assert 'replace(/[^a-z0-9]+/g, "-")' in (REPO / "web" / "src" / "lib" / "shard.ts").read_text()
+
+
+def test_the_cli_freezes_and_checks_the_frozen_copy(tmp_path):
+    """REQ-OPS-SNAP.2: `--freeze-judge` then `--check-frozen` (what the workflow runs), and a stale copy fails the check."""
+    public, text = judge_site(tmp_path)
+    snapshot = tmp_path / "SNAPSHOT.md"
+    snapshot.write_text(text)
+    r, _ = run_cli(tmp_path, public, tmp_path / "none", "--freeze-judge")
+    assert r.returncode == 0, r.stderr
+    assert run_cli(tmp_path, public, tmp_path / "none", "--check-frozen")[0].returncode == 0
+    (public / "frozen" / "stats" / "judge_tour.json").write_text("{}")
+    r, _ = run_cli(tmp_path, public, tmp_path / "none", "--check-frozen")
+    assert r.returncode == 1 and "judge_tour.json differs" in r.stderr
+
+
+def test_snapshot_refuses_a_data_end_the_files_do_not_run_through(site, tmp_path):
+    """REQ-OPS-SNAP.1 (ops#160): `--data-end` must equal status.json's data_end; the same date is accepted."""
+    public, processed = site
+    r, snapshot = run_cli(tmp_path, public, processed, "--data-end", "2026-12-31")
+    assert r.returncode == 1 and "2026-11-11" in (r.stderr + r.stdout) and not snapshot.exists()
+    r, snapshot = run_cli(tmp_path, public, processed, "--data-end", "2026-11-11")
+    assert r.returncode == 0 and "Data through: 2026-11-11" in snapshot.read_text()
+
+
+def test_data_end_flag_fills_in_a_status_that_has_no_date(tmp_path):
+    """REQ-OPS-SNAP.1: with no data_end in status.json the flag is still the way to name the date."""
+    public = tmp_path / "public"
+    make_tree(public, {"status.json": b'{"ok": true}', "zombies.json": b"[]"})
+    assert "Data through: 2026-11-11" in snap.build(public, None, "2026-11-11", None)
 
 
 def test_the_nightly_deploy_never_replaces_the_frozen_data_with_a_failed_run():
