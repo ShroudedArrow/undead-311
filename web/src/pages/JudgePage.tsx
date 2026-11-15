@@ -16,7 +16,7 @@ const TICK_MS = 250;
  * keyboard operable (space, arrows, escape). Under reduced motion it does not advance by itself.
  */
 export default function JudgePage() {
-  const tour = useData("judge_tour.json", parseJudgeTour);
+  const tour = useData("judge_tour.json", parseJudgeTour, true);
   const cards = useTourCards(tour.status === "ok" ? tour.data.zombie_ids : null);
   const reduced = usePrefersReducedMotion();
   const navigate = useNavigate();

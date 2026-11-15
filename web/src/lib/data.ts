@@ -27,6 +27,25 @@ export async function loadData<T>(file: string, parse: (d: unknown) => ParseResu
   }
 }
 
+/**
+ * Frozen judging-snapshot copy of a file (REQ-OPS-SNAP.2, ops#161): `data/frozen/<same path>`. Judge mode reads it so the tour stays on
+ * the judging snapshot after a nightly refresh. When `frozen/` is absent (local dev, committed fixtures; a static host may answer a
+ * missing path with the app shell, which is not JSON) it falls back to the live file. A frozen file that is present but fails its schema
+ * is an error, never a silent switch to live data.
+ */
+export async function loadFrozen<T>(file: string, parse: (d: unknown) => ParseResult<T>): Promise<Load<T>> {
+  let json: unknown;
+  try {
+    const res = await fetch(`${import.meta.env.BASE_URL}data/frozen/${statsPath(file)}`);
+    if (!res.ok) return loadData(file, parse);
+    json = await res.json();
+  } catch {
+    return loadData(file, parse);
+  }
+  const parsed = parse(json);
+  return parsed.ok ? { status: "ok", data: parsed.data } : { status: "error", file: `frozen/${statsPath(file)}`, error: parsed.error };
+}
+
 const cache = new Map<string, Promise<Load<unknown>>>();
 
 /** Load once per file per page view; later callers share the promise. */
@@ -39,17 +58,28 @@ export function loadOnce<T>(file: string, parse: (d: unknown) => ParseResult<T>)
   return p as Promise<Load<T>>;
 }
 
+/** `loadFrozen`, once per file per page view. */
+export function loadFrozenOnce<T>(file: string, parse: (d: unknown) => ParseResult<T>): Promise<Load<T>> {
+  const key = `frozen:${file}`;
+  let p = cache.get(key);
+  if (!p) {
+    p = loadFrozen(file, parse);
+    cache.set(key, p);
+  }
+  return p as Promise<Load<T>>;
+}
+
 export function clearDataCache(): void {
   cache.clear();
 }
 
-export function useData<T>(file: string | null, parse: (d: unknown) => ParseResult<T>): Load<T> {
+export function useData<T>(file: string | null, parse: (d: unknown) => ParseResult<T>, frozen = false): Load<T> {
   const [state, setState] = useState<Load<T>>({ status: "loading" });
   useEffect(() => {
     if (file === null) return;
     let live = true;
     setState({ status: "loading" });
-    void loadOnce(file, parse).then((r) => live && setState(r));
+    void (frozen ? loadFrozenOnce(file, parse) : loadOnce(file, parse)).then((r) => live && setState(r));
     return () => {
       live = false;
     };

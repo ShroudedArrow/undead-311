@@ -13,10 +13,15 @@ const POINTS = { data_version: "v", n: 3, id: IDS, lat: [42.3, 42.3, 42.3], lon:
 const SHARD = { data_version: "v", shard: "dorchester-2026", cards: IDS.map((id, i) => ({ zombie_id: id, original: rec(`o${i}`), rereport: rec(`r${i}`), cause_of_death: "resolved", gap_days: 3 + i, resurrection_date: "2026-01-20", confidence: 0.8, tier: "headline", skeptic_verdict: "survives", skeptic_notes: `note ${i + 1}`, bulk_closure: false })) };
 const STATUS = { data_version: "v", last_run: "2026-11-11T00:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" };
 
-function setup(opts: { provisional?: boolean; reduced?: boolean } = {}) {
+const requested: string[] = [];
+
+function setup(opts: { provisional?: boolean; reduced?: boolean; noFrozen?: boolean } = {}) {
+  requested.length = 0;
   vi.stubGlobal("matchMedia", (q: string) => ({ matches: !!opts.reduced && q.includes("reduce"), addEventListener() {}, removeEventListener() {}, media: q }));
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
     const u = String(url);
+    requested.push(u);
+    if (opts.noFrozen && u.includes("/frozen/")) return { ok: false, status: 404, json: async () => ({}) } as Response;
     const body = u.endsWith("judge_tour.json") ? { data_version: "v", provisional: opts.provisional ?? true, zombie_ids: IDS, source: "most_reports", params: { WINDOW_DAYS: 60, RADIUS_M: 30, matching: "segment" }, seed: null } : u.endsWith("points.json") ? POINTS : u.includes("cards/") ? SHARD : STATUS;
     return { ok: true, status: 200, json: async () => body } as Response;
   }));
@@ -100,5 +105,22 @@ describe("Judge mode (REQ-WEB-JUDGE.1, .3)", () => {
     setup({ provisional: false });
     await screen.findByRole("button", { name: "Start the tour" });
     expect(screen.queryByTestId("provisional-notice")).toBeNull();
+  });
+});
+
+describe("Judge mode reads the frozen snapshot (REQ-OPS-SNAP.2, ops#161)", () => {
+  it("loads the tour, points and card shards from data/frozen/", async () => {
+    setup();
+    await screen.findByRole("button", { name: "Start the tour" });
+    await waitFor(() => expect(requested.some((u) => u.includes("/data/frozen/cards/"))).toBe(true));
+    expect(requested).toContain("/data/frozen/stats/judge_tour.json");
+    expect(requested).toContain("/data/frozen/points.json");
+    expect(requested.filter((u) => /\/data\/(stats\/judge_tour|points\.json|cards\/)/.test(u))).toEqual([]);
+  });
+  it("falls back to the live files when frozen/ is absent", async () => {
+    setup({ noFrozen: true });
+    await screen.findByRole("button", { name: "Start the tour" });
+    await waitFor(() => expect(requested).toContain("/data/stats/judge_tour.json"));
+    await waitFor(() => expect(requested.some((u) => u.startsWith("/data/cards/"))).toBe(true));
   });
 });
