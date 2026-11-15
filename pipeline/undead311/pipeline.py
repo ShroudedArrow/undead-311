@@ -60,7 +60,7 @@ from undead311.paths import data_dir, worktree_root
 STATS_ABSENT_NAMES = ("undead311.stats", "undead311.stats.pipeline")  # the only ModuleNotFoundError names that mean "absent"
 STATS_STALE_FILES = (
     "scorecard.json", "judge_tour.json", "excess.json", "survival.json", "funnel.json", "groups.json",
-    "sensitivity_grid.json", "temporary_fixes.json", "validation.json", "stats_status.json",
+    "sensitivity_grid.json", "temporary_fixes.json", "validation.json", "trends.json", "stats_status.json",
 )  # fmt: skip
 # Files this pipeline owns in the output folder: one that a run does not produce is removed when the run is swapped in.
 ENGINE_JSON = ("zombies", "incidents", "points", "exclusions", "separate_deaths", "repeat_offenders", "bulk_closures", "status")

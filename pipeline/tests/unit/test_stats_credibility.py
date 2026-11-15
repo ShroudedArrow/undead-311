@@ -583,7 +583,7 @@ def test_req_stat_exp_1_a_pipeline_run_writes_and_validates_every_stats_file(tmp
     stats = out / "stats"
     names = {p.name for p in stats.glob("*.json")}
     assert {"scorecard.json", "judge_tour.json", "excess.json", "survival.json", "funnel.json", "groups.json",
-            "sensitivity_grid.json", "temporary_fixes.json", "validation.json", "stats_status.json"} == names | {"judge_tour.json"}  # fmt: skip
+            "sensitivity_grid.json", "temporary_fixes.json", "validation.json", "trends.json", "stats_status.json"} == names | {"judge_tour.json"}  # fmt: skip
     for p in sorted(stats.glob("*.json")):
         payload = json.loads(p.read_text())
         if p.name != "stats_status.json":

@@ -36,6 +36,7 @@ from undead311.stats.shift import shift_and_placebo
 from undead311.stats.survival import horizon_params, survival_payload
 from undead311.stats.temporary import temporary_payload
 from undead311.stats.tour import build_tour, read_override
+from undead311.stats.trend import trend_payload
 from undead311.stats.validation import LABELS_FILE, SAMPLE_FILE, read_labels, read_sample_ids, score
 
 OVERRIDE_FILE = "judge_tour_override.json"
@@ -43,7 +44,7 @@ SEED = 311
 __all__ = ["GridMetrics", "run_stats", "store_grid_metrics", "zombie_baselines"]
 STAT_FILES = (
     "scorecard.json", "judge_tour.json", "excess.json", "survival.json", "funnel.json", "groups.json",
-    "sensitivity_grid.json", "temporary_fixes.json", "validation.json",
+    "sensitivity_grid.json", "temporary_fixes.json", "validation.json", "trends.json",
 )  # fmt: skip
 
 _MODEL: dict[str, Any] = {}
@@ -153,6 +154,7 @@ def build_stats(
     groups, funnel = groups_payload(result, cases, data_end, data_version, params, dataset, street_km)
     payloads["groups.json"], payloads["funnel.json"] = groups, funnel
 
+    payloads["trends.json"] = trend_payload(result, cases, data_end, data_version, params, dataset)  # REQ-STAT-TREND.1
     payloads["temporary_fixes.json"] = temporary_payload(result, data_end, data_version, params, dataset, exclusions)
     if con is not None:
         grid = grid_payload(con, data_version, params, dataset)

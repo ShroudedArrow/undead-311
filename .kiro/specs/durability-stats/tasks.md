@@ -77,5 +77,5 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 
 - [ ] 19. [delight] Before and after the system change
   - _Requirements: REQ-STAT-CREATIO.1_
-- [ ] 20. [delight] Rolling 6-month trends
+- [x] 20. [delight] Rolling 6-month trends
   - _Requirements: REQ-STAT-TREND.1_
