@@ -22,5 +22,5 @@ export default defineConfig({
     { name: "desktop", use: { viewport: { width: 1280, height: 800 } } },
     { name: "phone", use: { ...devices["Pixel 7"], launchOptions } },
   ],
-  webServer: { command: "npm run build && npx vite preview --port 4173 --strictPort", url: "http://localhost:4173", reuseExistingServer: true, timeout: 180_000 },
+  webServer: { command: "SHARE_IMAGES=skip npm run build && npx vite preview --port 4173 --strictPort", url: "http://localhost:4173", reuseExistingServer: true, timeout: 180_000 },
 });

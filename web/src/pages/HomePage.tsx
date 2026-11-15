@@ -2,6 +2,7 @@ import { lazy, Suspense, useId, useMemo, useState } from "react";
 import { Outlet, useMatch, useNavigate, useSearchParams } from "react-router-dom";
 import { CountLine } from "../components/CountLine";
 import { Filters } from "../components/Filters";
+import { CopyLink, NeighborhoodShareLink } from "../components/ShareLinks";
 import { PanelError } from "../components/PanelError";
 import { ZombieTable } from "../components/ZombieTable";
 import { visibleSet } from "../lib/filter";
@@ -72,6 +73,10 @@ export default function HomePage() {
               </label>
               <p className="count-note" id={bulkNoteId} data-testid="bulk-note">
                 {state.bulk && bulkSet && zombies.status === "ok" ? (bulkSet.size === 0 ? t("filters.bulk_none") : t("filters.bulk_count", { count: bulkSet.size })) : t("filters.bulk_note")}
+              </p>
+              <p className="filters-share">
+                <CopyLink />
+                {state.filters.neighborhoods.length === 1 ? <NeighborhoodShareLink name={state.filters.neighborhoods[0]} /> : null}
               </p>
               <Filters rows={optionRows} filters={state.filters} onChange={(filters) => update({ ...state, filters })} />
             </div>

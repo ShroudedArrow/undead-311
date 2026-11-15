@@ -72,8 +72,8 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
   - _Requirements: REQ-WEB-STREET.1_
 - [x] 19. [delight] Repeat offenders view
   - _Requirements: REQ-WEB-REPEAT.1_
-- [ ] 20. [delight] Permalinks and share images
-  - [ ] 20.1 Property W7: URL state round-trips. _REQ-WEB-LINKS.1_
+- [x] 20. [delight] Permalinks and share images
+  - [x] 20.1 Property W7: URL state round-trips. _REQ-WEB-LINKS.1_
   - _Requirements: REQ-WEB-LINKS.1–2_
 - [ ] 21. [delight] Night of the Living 311 time-lapse
   - _Requirements: REQ-WEB-TIMELAPSE.1_

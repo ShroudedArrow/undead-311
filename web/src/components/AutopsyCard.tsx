@@ -1,6 +1,7 @@
 import { formatDateTime, formatDay, formatGap } from "../lib/format";
 import type { Card, CaseRecord } from "../lib/parse";
 import { t } from "../lib/t";
+import { CardShare } from "./ShareLinks";
 import { ReportError } from "./ReportError";
 
 /** Cards may carry `confidence_partial` as an extra field (zombies.json has it; see the engine proposal). */
@@ -120,6 +121,7 @@ export function AutopsyCard({ card }: { card: CardWithPartial }) {
         <p className="autopsy-report">
           <ReportError id={card.zombie_id} />
         </p>
+        <CardShare zombieId={card.zombie_id} />
       </div>
     </article>
   );

@@ -8,11 +8,12 @@ import { parsePoints, parseSensitivityGrid } from "../lib/parse";
 import { pointsToRows } from "../lib/points";
 import { boundsOf, nearStreet, searchStreets, type StreetIndex } from "../lib/streets";
 import { t } from "../lib/t";
+import { decodeStreetState, encodeStreetState, STREET_RADII_M } from "../lib/url";
 
 const MapView = lazy(() => import("../map/MapView"));
 
 /** Search distances offered, in meters; "widen" steps to the next one. */
-export const RADII_M = [150, 300, 600, 1000] as const;
+const RADII_M = STREET_RADII_M;
 
 /**
  * "Check my street" (REQ-WEB-STREET.1): search a client-side street index (no API), zoom to the street and list the nearby
@@ -39,9 +40,8 @@ export default function StreetPage() {
     };
   }, []);
 
-  const chosenKey = params.get("s");
-  const radiusIdx = Math.max(0, RADII_M.indexOf(Number(params.get("r")) as (typeof RADII_M)[number]));
-  const radius = RADII_M[radiusIdx];
+  const { key: chosenKey, radius } = decodeStreetState(params.toString());
+  const radiusIdx = RADII_M.indexOf(radius as (typeof RADII_M)[number]);
   const chosen = useMemo(() => index?.streets.find((e) => e.k === chosenKey) ?? null, [index, chosenKey]);
   const matches = useMemo(() => (index && query.trim() ? searchStreets(index, query) : []), [index, query]);
   const rows = useMemo(() => (points.status === "ok" ? pointsToRows(points.data).filter((r) => r.tier === "headline") : []), [points]);
@@ -49,7 +49,7 @@ export default function StreetPage() {
   const bounds = useMemo(() => (chosen ? boundsOf(chosen) : null), [chosen]);
   const note = grid.status === "ok" ? methodsPageSettings(grid.data) : null;
 
-  const choose = (key: string, r = radius) => setParams({ s: key, ...(r !== RADII_M[0] ? { r: String(r) } : {}) }, { replace: false });
+  const choose = (key: string, r: number = radius) => setParams(encodeStreetState({ key, radius: r }), { replace: false });
 
   return (
     <div className="page street-page">
