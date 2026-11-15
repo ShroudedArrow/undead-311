@@ -34,6 +34,7 @@ from undead311.detect.model import Case, DetectionResult
 from undead311.ingest.snap import M_PER_DEG_LAT, M_PER_DEG_LON
 
 GRID_CELL_M = 100.0  # REQ-EXP-PRIV.1
+COLOCATED_M = 10.0  # a zombie this close (on the same segment) to a block-level case is shown at the block too (ops#185)
 CLASS_KEYS = ("ST_CLASS", "STREET_CLASS", "ROAD_CLASS", "ROADCLASS", "FUNC_CLASS", "FUNCCLASS", "CLASS")
 #: words that mark a street as NOT residential; anything else (including no class) is residential or unknown
 NON_RESIDENTIAL_WORDS = (
@@ -210,7 +211,49 @@ def block_location_by_case(
     return {x: where[find(x)] for x in list(parent) if find(x) in where}
 
 
+def colocated_block_locations(
+    result: DetectionResult, cases: Mapping[str, Case], block_of: Mapping[str, tuple[float, float]]
+) -> dict[str, tuple[float, float]]:
+    """resurrection_id -> block (lat, lon) for every zombie that is not linked to a block-level chain but sits within
+    `COLOCATED_M` of a case that is, on the same street segment (both unsnapped counts as the same segment) (REQ-EXP-PRIV.1,
+    ops#185). Without it a dot at the exact address of a home appears beside the block-level chain of that home. A zombie
+    already in `block_of` is left out. A zombie takes the location of the nearest such case (ties by case ID); every case of
+    the zombie (the original's members and the re-report) is compared, so the card's original and re-report agree. Only the
+    zombie's own exported rows change: the colocated case does not start a new chain or move any count."""
+    by_seg: dict[str | None, list[Case]] = {}
+    for cid in sorted(block_of):
+        c = cases.get(cid)
+        if c is not None:
+            by_seg.setdefault(c.segment_id, []).append(c)
+    out: dict[str, tuple[float, float]] = {}
+    for z in sorted(result.zombies, key=lambda z: z.zombie_id):
+        if z.resurrection_id in block_of:
+            continue
+        best: tuple[float, str] | None = None
+        for x in (*z.member_ids, z.resurrection_id):
+            c = cases[x]
+            for b in by_seg.get(c.segment_id, ()):
+                d = math.hypot((c.lon - b.lon) * M_PER_DEG_LON, (c.lat - b.lat) * M_PER_DEG_LAT)
+                if d <= COLOCATED_M and (best is None or (d, b.id) < best):
+                    best = (d, b.id)
+        if best is not None:
+            out[z.resurrection_id] = block_of[best[1]]
+    return out
+
+
 __all__ = [
-    "CLASS_KEYS", "GRID_CELL_M", "SegmentInfo", "block_level_locations", "block_location_by_case", "chain_rereport_ids", "grid_cell_center",
-    "load_segment_info", "offender_location", "resident_driven", "segment_midpoint", "street_kind",
+    "CLASS_KEYS",
+    "COLOCATED_M",
+    "GRID_CELL_M",
+    "SegmentInfo",
+    "block_level_locations",
+    "block_location_by_case",
+    "chain_rereport_ids",
+    "colocated_block_locations",
+    "grid_cell_center",
+    "load_segment_info",
+    "offender_location",
+    "resident_driven",
+    "segment_midpoint",
+    "street_kind",
 ]  # fmt: skip

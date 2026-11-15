@@ -27,7 +27,12 @@ from jsonschema import Draft202012Validator
 
 from undead311.detect.model import Case, DetectionResult, Zombie
 from undead311.detect.params import DEFAULT, Params
-from undead311.export.privacy import SegmentInfo, block_level_locations, block_location_by_case
+from undead311.export.privacy import (
+    SegmentInfo,
+    block_level_locations,
+    block_location_by_case,
+    colocated_block_locations,
+)
 from undead311.ingest.pii import scrub_text
 from undead311.paths import repo_root
 
@@ -188,6 +193,7 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
     # block-level repeat-offender chains: every row that touches the chain's cases carries the block location (REQ-EXP-PRIV.1, ops#167)
     locations = block_level_locations(result, cases, ctx.segment_info)
     block_of = block_location_by_case(result, locations)  # every case that touches a block-level chain (ops#180)
+    block_of = {**colocated_block_locations(result, cases, block_of), **block_of}  # a zombie at the same spot (ops#185)
 
     def blk(z: Zombie) -> tuple[float, float] | None:
         return block_of.get(z.resurrection_id)
