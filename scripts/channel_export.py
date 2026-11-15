@@ -1,7 +1,8 @@
 """`make channel-export`: write the agent channel (issues and comments of undead-311-ops) to docs/AGENT_CHANNEL.md. REQ-OPS-EVID.1.
 
 Standard library only. The token is a read-only GitHub token supplied at run time in the environment variable
-GITHUB_CHANNEL_READ_TOKEN (or GITHUB_CHANNEL_TOKEN). It is used for GET requests only. It is never printed and never
+GITHUB_CHANNEL_READ_TOKEN. It is used for GET requests only. The agents' issue-write token (GITHUB_CHANNEL_TOKEN)
+is NOT used unless --allow-write-token is given, and then a warning is printed (ops#202). It is never printed and never
 written into the output: every body is passed through `redact`, which also blanks the exact token string and any
 token-shaped text (ghp_, gho_, ghs_, github_pat_, Bearer values, AWS and Slack keys).
 
@@ -19,8 +20,9 @@ import os
 import re
 import sys
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 DEFAULT_REPO = "ShroudedArrow/undead-311-ops"
 API = "https://api.github.com"
@@ -42,10 +44,14 @@ _TOKEN_SHAPES = [
 ]
 
 
-def read_token() -> str | None:
-    for name in ("GITHUB_CHANNEL_READ_TOKEN", "GITHUB_CHANNEL_TOKEN"):
+def read_token(allow_write_token: bool = False) -> str | None:
+    """The run-time read-only token. GITHUB_CHANNEL_TOKEN (the agents' write token) only with `allow_write_token`. REQ-OPS-EVID.1."""
+    names = ("GITHUB_CHANNEL_READ_TOKEN", "GITHUB_CHANNEL_TOKEN") if allow_write_token else ("GITHUB_CHANNEL_READ_TOKEN",)
+    for name in names:
         value = os.environ.get(name, "").strip()
         if value:
+            if name != "GITHUB_CHANNEL_READ_TOKEN":
+                print(f"channel-export: warning: using {name}, which can write issues; the export only sends GET requests", file=sys.stderr)
             return value
     return None
 
@@ -73,7 +79,7 @@ def make_fetch(token: str) -> Fetch:
                 "X-GitHub-Api-Version": "2022-11-28",
             },
         )
-        with urllib.request.urlopen(req, timeout=TIMEOUT_S) as resp:  # noqa: S310 (fixed https API host)
+        with urllib.request.urlopen(req, timeout=TIMEOUT_S) as resp:
             return json.loads(resp.read().decode("utf-8"))
 
     return fetch
@@ -86,7 +92,7 @@ def pages(fetch: Fetch, path: str) -> list[dict]:
     for page in range(1, MAX_PAGES + 1):
         batch = fetch(f"{path}{sep}per_page={PER_PAGE}&page={page}")
         if not isinstance(batch, list):
-            raise ValueError(f"expected a list from {path}, got {type(batch).__name__}")
+            raise TypeError(f"expected a list from {path}, got {type(batch).__name__}")
         out.extend(batch)
         if len(batch) < PER_PAGE:
             break
@@ -113,7 +119,7 @@ def _user(obj: dict) -> str:
 
 def render(issues: list[dict], repo: str, secret: str | None = None) -> str:
     """The markdown document. Deterministic: no export timestamp, issues by number, comments by creation time."""
-    r = lambda s: redact(s, secret)  # noqa: E731
+    r = lambda s: redact(s, secret)
     n_comments = sum(len(i.get("_comments", [])) for i in issues)
     out = [
         "# Agent channel export",
@@ -141,8 +147,9 @@ def main(argv: list[str] | None = None, fetch: Fetch | None = None, env_token: s
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", default="docs/AGENT_CHANNEL.md")
     ap.add_argument("--repo", default=DEFAULT_REPO)
+    ap.add_argument("--allow-write-token", action="store_true", help="fall back to GITHUB_CHANNEL_TOKEN (can write issues) when no read-only token is set")
     args = ap.parse_args(argv)
-    token = env_token or read_token()
+    token = env_token or read_token(args.allow_write_token)
     if fetch is None:
         if not token:
             print("channel-export: set GITHUB_CHANNEL_READ_TOKEN (a read-only token) and run again; nothing written", file=sys.stderr)

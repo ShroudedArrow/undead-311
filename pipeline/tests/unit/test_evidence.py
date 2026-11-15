@@ -106,6 +106,26 @@ def test_without_a_token_nothing_is_written(tmp_path, monkeypatch, capsys):
     assert "GITHUB_CHANNEL_READ_TOKEN" in capsys.readouterr().err
 
 
+def test_the_write_token_is_not_used_unless_allowed(tmp_path, monkeypatch, capsys):
+    """REQ-OPS-EVID.1 (ops#202): the export asks for a READ-only token; the agents' write token is ignored by default."""
+    monkeypatch.delenv("GITHUB_CHANNEL_READ_TOKEN", raising=False)
+    monkeypatch.setenv("GITHUB_CHANNEL_TOKEN", TOKEN)
+    out = tmp_path / "AGENT_CHANNEL.md"
+    assert channel_export.read_token() is None
+    assert channel_export.main(["--out", str(out)]) == 2
+    assert not out.exists()
+    assert TOKEN not in capsys.readouterr().err
+    assert channel_export.read_token(allow_write_token=True) == TOKEN
+    assert "can write issues" in capsys.readouterr().err  # a warning, without the token itself
+
+
+def test_the_read_token_wins_over_the_write_token(monkeypatch):
+    """REQ-OPS-EVID.1 (ops#202): with both set, the read-only token is the one used."""
+    monkeypatch.setenv("GITHUB_CHANNEL_READ_TOKEN", "read-token-value")
+    monkeypatch.setenv("GITHUB_CHANNEL_TOKEN", TOKEN)
+    assert channel_export.read_token(allow_write_token=True) == "read-token-value"
+
+
 def test_a_failed_read_keeps_the_old_export(tmp_path, capsys):
     """REQ-OPS-EVID.1: a network or shape error exits 1, keeps the old file and does not print the token."""
     def boom(path: str):
@@ -154,19 +174,23 @@ def test_main_writes_the_file(tmp_path):
 # ---------------------------------------------------------------- trace
 
 
+# The fixture IDs are joined at run time so that this file itself never cites an undefined ID (ops#204).
+A1, B, C, D, UNKNOWN = ("REQ-" + x for x in ("A-1", "B", "C", "D", "UNKNOWN-9"))
+
+
 def make_repo(tmp_path: Path) -> Path:
     spec = tmp_path / ".kiro" / "specs" / "demo"
     spec.mkdir(parents=True)
     (spec / "requirements.md").write_text(
-        "### REQ-A-1: Alpha\n**Layer:** demo-critical\n1. x\n\n### REQ-B: Beta\n**Layer:** delight\n1. y\n\n"
-        "### REQ-C: Gamma\n\n### REQ-D: Delta\n", encoding="utf-8")
+        f"### {A1}: Alpha\n**Layer:** demo-critical\n1. x\n\n### {B}: Beta\n**Layer:** delight\n1. y\n\n"
+        f"### {C}: Gamma\n\n### {D}: Delta\n", encoding="utf-8")
     (tmp_path / "scripts").mkdir()
-    (tmp_path / "scripts" / "a.py").write_text('"""Implements REQ-A-1.2 and REQ-B."""\n', encoding="utf-8")
-    (tmp_path / "scripts" / "c.py").write_text("# REQ-C.1\n# REQ-UNKNOWN-9\n", encoding="utf-8")
+    (tmp_path / "scripts" / "a.py").write_text(f'"""Implements {A1}.2 and {B}."""\n', encoding="utf-8")
+    (tmp_path / "scripts" / "c.py").write_text(f"# {C}.1\n# {UNKNOWN}\n", encoding="utf-8")
     t = tmp_path / "pipeline" / "tests" / "unit"
     t.mkdir(parents=True)
-    (t / "test_a.py").write_text("def test_alpha_req_a_1():\n    '''REQ-A-1.2'''\n", encoding="utf-8")
-    (t / "test_d.py").write_text("# REQ-D.1\n", encoding="utf-8")
+    (t / "test_a.py").write_text(f"def test_alpha_req_a_1():\n    '''{A1}.2'''\n", encoding="utf-8")
+    (t / "test_d.py").write_text(f"# {D}.1\n", encoding="utf-8")
     return tmp_path
 
 
@@ -174,9 +198,9 @@ def test_trace_statuses(tmp_path):
     """REQ-OPS-EVID.1: tested, untested, test-only and uncited are told apart; sub-numbers count for the requirement."""
     root = make_repo(tmp_path)
     text, states = trace_script.build(root)
-    assert states == {"REQ-A-1": "tested", "REQ-B": "untested", "REQ-C": "untested", "REQ-D": "test-only"}
-    assert "REQ-UNKNOWN-9" in text  # cited but undefined IDs are listed
-    assert "| REQ-A-1 Alpha | demo | demo-critical |" in text
+    assert states == {A1: "tested", B: "untested", C: "untested", D: "test-only"}
+    assert UNKNOWN in text  # cited but undefined IDs are listed
+    assert f"| {A1} Alpha | demo | demo-critical |" in text
 
 
 def test_trace_is_deterministic_and_main_writes(tmp_path):
@@ -274,3 +298,24 @@ def test_only_test_files_count_tests(path, line):
     is_test_file = kiro_stats.TEST_FILE.search(path) is not None
     if not is_test_file:
         assert n == 0
+
+
+def test_this_repo_cites_no_undefined_requirement_id_from_the_evidence_tests():
+    """REQ-OPS-EVID.1 (ops#204): the judge-facing traceability file does not list this test file's fixture IDs as undefined."""
+    text, _ = trace_script.build(Path(__file__).resolve().parents[3])
+    undefined = text.split("## IDs cited but not defined", 1)[-1] if "## IDs cited but not defined" in text else ""
+    for fixture in (A1, B, C, D, UNKNOWN):
+        assert f"- {fixture}:" not in undefined
+
+
+def test_trace_header_explains_config_only_requirements(tmp_path):
+    """REQ-OPS-EVID.1 (ops#204): a requirement met only by configuration files can show 'test-only'; the header says so."""
+    text, _ = trace_script.build(make_repo(tmp_path))
+    assert "configuration files" in text and "test-only" in text.split("| Requirement |", 1)[0]
+
+
+def test_kiro_stats_column_says_definitions_added_or_changed():
+    """REQ-OPS-EVID.1 (ops#207): the judge-facing column does not claim every counted line is a new test."""
+    src = (Path(__file__).resolve().parents[3] / "scripts" / "kiro_stats.py").read_text(encoding="utf-8")
+    assert "Test definitions added or changed" in src
+    assert "Tests added" not in src
