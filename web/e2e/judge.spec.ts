@@ -10,7 +10,11 @@ for (const reduced of [false, true]) {
       await page.goto("/");
       await expect(page.getByTestId("map")).toBeVisible();
 
-      // From the first screen: the entry link is reachable by Tab.
+      // From the first screen: the entry link is reachable by Tab. On a phone the links sit behind the Menu button (UX-40).
+      if (await page.locator(".nav-toggle").isVisible()) {
+        await tabTo(page, "Menu");
+        await page.keyboard.press("Enter");
+      }
       await tabTo(page, "Start the 60-second tour");
       await page.keyboard.press("Enter");
       await expect(page).toHaveURL(/\/judge$/);
@@ -40,6 +44,7 @@ for (const reduced of [false, true]) {
 
     test(`escape skips the tour (reduced motion ${reduced ? "on" : "off"})`, async ({ page }) => {
       await page.goto("/judge");
+      await expect(page.getByRole("button", { name: "Start the tour" })).toBeVisible();
       await tabTo(page, "Start the tour");
       await page.keyboard.press("Enter");
       await expect(page.getByTestId("tour-step")).toBeVisible();
