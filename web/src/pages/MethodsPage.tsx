@@ -94,7 +94,6 @@ function NullTowns() {
           <thead>
             <tr>
               <th scope="col">{t("methods.null_col_town")}</th>
-              <th scope="col">{t("methods.null_col_seeds")}</th>
               <th scope="col">{t("methods.null_col_range")}</th>
               <th scope="col">{t("methods.null_col_where")}</th>
             </tr>
@@ -103,7 +102,6 @@ function NullTowns() {
             {NULL_TOWNS.map((r) => (
               <tr key={r.id}>
                 <th scope="row">{t(`methods.nt_${r.id}`)}</th>
-                <td>{r.seeds}</td>
                 <td>{t("methods.null_range", { min: signed(r.min), max: signed(r.max) })}</td>
                 <td>{t("methods.null_where", { below: r.below, n: r.below + r.covers + r.above, covers: r.covers })}</td>
               </tr>

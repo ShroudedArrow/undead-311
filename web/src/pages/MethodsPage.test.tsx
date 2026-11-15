@@ -147,7 +147,8 @@ describe("Null towns, placebo and the floor (REQ-WEB-METHODS.1; ops#130)", () =>
     expect(rows).toHaveLength(10);
     const first = rows[0].textContent ?? "";
     expect(first).toContain("A report at each spot every 30 days on average");
-    expect(first).toContain("5-8");
+    expect(within(section).queryByText("Random seeds")).toBeNull(); // UX-36: no seed column
+    expect(first).not.toContain("5-8");
     expect(first).toContain("-855 to -643");
     expect(first).toContain("Below 0 in 4 of 4; includes 0 in 0");
     expect(rows[6].textContent).toContain("-34 to +16");
@@ -165,7 +166,11 @@ describe("Null towns, placebo and the floor (REQ-WEB-METHODS.1; ops#130)", () =>
     stub();
     open();
     const floor = await screen.findByTestId("excess-floor");
-    expect(floor.textContent).toMatch(/Read the excess as a floor/);
+    expect(floor.textContent).toMatch(/Read the excess as a floor where reports arrive at a steady rate/);
+    // UX-34: the condition sits in the same paragraph as the claim.
+    expect(floor.textContent).toMatch(/bursts or stop partway through the data, the excess can read high/);
+    expect(floor.textContent).toMatch(/pretend-town checks below/);
+    expect(floor.textContent).not.toMatch(/TODO-COPY/);
     expect(floor.textContent).toMatch(/counts are also a floor/);
   });
   it("reads a placebo warning together with its sign: below 0 is cautious, above 0 is a care note, inside the interval has no note", async () => {
