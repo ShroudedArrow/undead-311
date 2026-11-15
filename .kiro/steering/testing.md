@@ -21,7 +21,7 @@ inclusion: always
 9. Coroner output is always in the allowed label set.
 10. Stayed-fixed rate ≤ on-time rate.
 11. Distance is symmetric and non-negative.
-12. Incident clustering is a partition: every closed in-scope case belongs to exactly one incident.
+12. Incident clustering is a partition: every closed in-scope case belongs to exactly one incident. , except the later-opened copy of a cross-system mirror pair, which belongs to no incident (zombie-definition step 9).
 13. Every re-report is attributed to at most one incident; attribution is deterministic (ties by ID).
 14. Metamorphic: translating every case by the same small offset, or shifting every timestamp by the same amount, leaves zombie counts unchanged.
 15. Metamorphic: duplicating a closed case (same place, type, close time) never increases the zombie count.    , except when the duplicated case is the linked predecessor of a resubmitted or catch-all successor (a copy that forms its own incident breaks the link by design).

@@ -120,7 +120,7 @@ def test_every_step_starts_in_the_repo_folder(recipe):
 @pytest.mark.parametrize("recipe", RECIPES, ids=lambda p: p.name)
 def test_recipe_inputs_and_worktrees(recipe):
     data = yaml.safe_load(recipe.read_text())
-    expected = {"run_id", "base_branch", "start_at"} if data["name"] == "build-undead-311" else {"run_id"}
+    expected = {"run_id", "base_branch", "start_at", "carry_from"} if data["name"] == "build-undead-311" else {"run_id"}
     assert set(data["inputs"]) == expected
     text = recipe.read_text()
     assert "worktree_path" not in text
