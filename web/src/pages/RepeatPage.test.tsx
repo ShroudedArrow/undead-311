@@ -23,6 +23,8 @@ describe("Repeat offenders page (REQ-WEB-REPEAT.1)", () => {
     const ro = read("repeat_offenders.json");
     open({ "repeat_offenders.json": ro, "zombies.json": read("zombies.json"), "status.json": read("status.json") });
     const table = await screen.findByTestId("repeat-table");
+    // REQ-WEB-REPEAT.1, UX-43: the rule counts headline possible zombies, so the intro says so (times_risen counts every tier).
+    expect(screen.getByText(/at least 3 possible zombies in the headline count in one chain/)).toBeTruthy();
     const rows = within(table).getAllByRole("row").slice(1);
     expect(rows).toHaveLength(ro.repeat_offenders.length);
     expect(screen.getByTestId("repeat-count").textContent).toBe(`${ro.repeat_offenders.length} chains`);

@@ -25,7 +25,6 @@ export function OpenData() {
       <p>{t("open.intro")}</p>
       <p className="open-links">
         <a href={`${base}data/zombies.json`} download>{t("open.json")}</a>
-        <a href={`${base}data/zombies.json.gz`} download>{t("open.json_gz")}</a>
         {!want ? <button type="button" onClick={() => setWant(true)}>{t("open.csv")}</button> : zombies.status === "ok" ? (
           <button type="button" onClick={download}>{t("open.csv")}</button>
         ) : null}
@@ -36,7 +35,9 @@ export function OpenData() {
         {zombies.status === "ok" ? t("open.csv_rows", { count: zombies.data.zombies.length }) : null}
       </p>
       <p><Link to="/districts">{t("nav.districts")}</Link></p>
-      <p data-testid="open-license-dataset">{t("open.license_dataset")}</p>
+      <p data-testid="open-license-dataset">
+        {t("open.license_dataset")} <a href="https://opendatacommons.org/licenses/pddl/1-0/" rel="noopener noreferrer">{t("open.license_text")}</a>
+      </p>
       <p>{t("open.license_cases")}</p>
       <p className="count-note">{t("open.floor")}</p>
       <p data-testid="before-after-note" className="count-note">{t("open.before_after_missing")}</p>

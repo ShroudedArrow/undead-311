@@ -46,13 +46,17 @@ describe("District report cards (REQ-WEB-OPEN.2)", () => {
 });
 
 describe("Open data on the methods page (REQ-WEB-OPEN.1, .3)", () => {
-  it("links JSON, makes the CSV on request, and shows the license placeholder and the before/after note", async () => {
+  it("links JSON, makes the CSV on request, and shows the ODC-PDDL license with its text link, no compressed link, and the before/after note", async () => {
     const created: Blob[] = [];
     vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: (b: Blob) => { created.push(b); return "blob:x"; }, revokeObjectURL: () => undefined }));
     open("/methods", withDistrict);
     const section = await screen.findByTestId("open-data");
     expect(within(section).getByRole("link", { name: "Download as JSON" }).getAttribute("href")).toBe("/data/zombies.json");
-    expect(within(section).getByTestId("open-license-dataset").textContent).toMatch(/^TODO-COPY:/);
+    expect(within(section).queryByRole("link", { name: /compressed/ })).toBeNull();
+    const license = within(section).getByTestId("open-license-dataset");
+    expect(license.textContent).toContain("ODC-PDDL");
+    expect(license.textContent).not.toContain("TODO-COPY");
+    expect(within(license).getByRole("link", { name: "Read the ODC-PDDL text" }).getAttribute("href")).toBe("https://opendatacommons.org/licenses/pddl/1-0/");
     expect(within(section).getByTestId("before-after-note").textContent).toContain("format changes can create artifacts");
     fireEvent.click(within(section).getByRole("button", { name: "Download as CSV" }));
     await waitFor(() => expect(within(section).getByText("3 rows, one per possible zombie.")).toBeTruthy());
