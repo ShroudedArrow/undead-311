@@ -77,3 +77,23 @@ describe("phone layout: the map comes before the hero text (REQ-WEB-MAP.1, desig
     expect(order(".filters-panel > .filters-toggle")).toBeLessThan(order(".stage"));
   });
 });
+
+describe("phone home: heading hidden visually, count and filters button share a row, map fills the view (REQ-WEB-MAP.1, UX-49)", () => {
+  const phone = css.slice(css.lastIndexOf("UX-49"));
+  const body = (sel: string) => {
+    const hit = phone.split("}").map((r) => r.split("{")).find((p) => p.length >= 2 && p[p.length - 2].trim().endsWith(sel));
+    return hit ? hit[hit.length - 1] : "";
+  };
+  it("keeps the h1 for screen readers but out of the layout", () => {
+    expect(body(".filters-panel > h1")).toMatch(/clip-path:\s*inset\(50%\)/);
+    expect(body(".filters-panel > h1")).toMatch(/position:\s*absolute/);
+    expect(body(".filters-panel > h1")).not.toMatch(/display:\s*none/);
+  });
+  it("lets the count and the Show filters button sit on one row", () => {
+    expect(body(".home")).toMatch(/flex-wrap:\s*wrap/);
+    expect(body(".filters-panel > .filters-toggle")).toMatch(/flex:\s*0 0 auto/);
+  });
+  it("gives the stage the rest of the first view", () => {
+    expect(body(".stage")).toMatch(/min-height:\s*max\(24rem,\s*calc\(100svh/);
+  });
+});
