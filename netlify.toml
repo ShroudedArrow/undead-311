@@ -57,3 +57,33 @@
   from = "/judge"
   to = "/index.html"
   status = 200
+
+[[redirects]]
+  from = "/neighborhood/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/timelapse"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/repeat"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/districts"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/districts/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/street"
+  to = "/index.html"
+  status = 200
