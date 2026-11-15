@@ -319,8 +319,9 @@
     "ISD": "Inspectional Services Department (ISD)",
     "PARK": "Parks and Recreation Department (PARK)",
     "PROP": "Property Management Department (PROP)",
-    "INFO": "Department code INFO"
+    "INFO": "INFO"
   },
+  "department_code_note": "Department code as published by the City",
   "department_aliases": {
     "Public Works Department (PWD)": "PWDx",
     "Boston Transportation Department (BTD)": "BTDT"

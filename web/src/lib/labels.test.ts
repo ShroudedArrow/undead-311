@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canonicalDepartment, departmentLabel, groupLabel } from "./labels";
+import { canonicalDepartment, departmentLabel, groupLabel, groupTitle } from "./labels";
 import { pointsToRows } from "./points";
 import { visibleSet } from "./filter";
 import type { PointsFile } from "./parse";
@@ -13,10 +13,13 @@ describe("one filter key per department across both systems (REQ-WEB-MAP.2, UX-1
     expect(canonicalDepartment(null)).toBeNull();
   });
 
-  it("gives INFO a readable label instead of the bare code", () => {
-    expect(departmentLabel("INFO")).not.toBe("INFO");
-    // UX-15: no unsourced claim about the city, no nested parentheses
-    expect(departmentLabel("INFO")).not.toMatch(/city|\(/i);
+  it("shows INFO as the published code with a tooltip, and guesses no name (ops#36, owner decision 7)", () => {
+    expect(departmentLabel("INFO")).toBe("INFO");
+    expect(groupTitle("department", "INFO")).toBe("Department code as published by the City");
+    // listed departments, other groups and the unknown bucket carry no tooltip
+    expect(groupTitle("department", "PWDx")).toBeUndefined();
+    expect(groupTitle("family", "INFO")).toBeUndefined();
+    expect(groupTitle("department", "unknown")).toBeUndefined();
   });
 
   it("a department filter keeps cases from both systems (REQ-WEB-MAP.2)", () => {

@@ -1,5 +1,5 @@
 import { aggregate, options, type Filters as FilterState, type FilterableZombie, type GroupBy } from "../lib/filter";
-import { groupLabel } from "../lib/labels";
+import { groupLabel, groupTitle } from "../lib/labels";
 import { t } from "../lib/t";
 
 type Dim = { by: GroupBy; field: keyof FilterState; label: string };
@@ -47,7 +47,7 @@ export function Filters({ rows, filters, onChange }: Props) {
                           onChange({ ...filters, [field]: next });
                         }}
                       />
-                      <span>
+                      <span title={groupTitle(by, key)}>
                         {groupLabel(by, key)} ({counts.get(key) ?? 0})
                       </span>
                     </label>

@@ -29,3 +29,11 @@ export function groupLabel(by: "neighborhood" | "department" | "family" | "year"
   if (by === "department") return departmentLabel(key);
   return by === "family" ? familyLabel(key) : key;
 }
+
+/**
+ * Tooltip text for a department shown only by its code (INFO has no published name, ops#36): the code is shown as
+ * published and the title says so. Undefined for every other group, so no guessed name is ever shown.
+ */
+export function groupTitle(by: "neighborhood" | "department" | "family" | "year", key: string): string | undefined {
+  return by === "department" && key !== UNKNOWN && departmentLabel(key) === key ? t("department_code_note") : undefined;
+}
