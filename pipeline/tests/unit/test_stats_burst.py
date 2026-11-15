@@ -1,7 +1,9 @@
 """Burstiness flag and the excess with and without flagged spots (REQ-STAT-BASE.2; methods.md "Acceptance and limits"; ops#141).
 
-A spot is flagged when the index of dispersion of its monthly report counts is above 2, or when its reports fall in fewer than a
-quarter of its observed months. Each excess row also reports the excess without the flagged spots."""
+A spot with at least 8 reports is flagged when the index of dispersion of its monthly report counts is above 2, or when its
+reports fall in fewer than half as many distinct months as a random spread of them gives, M (1 - (1 - 1/M)^K) for K reports over
+M observed months (ops#146 (b), ops#170 item 10). A spot with fewer than 8 reports is never flagged. Each excess row also
+reports the excess without the flagged spots."""
 
 from __future__ import annotations
 
@@ -18,11 +20,13 @@ from test_stats_hybrid import END, town
 from undead311.detect.core import detect
 from undead311.export.writers import validate
 from undead311.stats.baseline import (
-    BURST_ACTIVE_SHARE,
+    BURST_ACTIVE_RATIO,
     BURST_DISPERSION,
+    BURST_MIN_REPORTS,
     BaselineModel,
     burstiness,
     excess_rows,
+    expected_distinct_months,
 )
 from undead311.stats.pipeline import run_stats
 
@@ -32,15 +36,23 @@ def ts(y: int, m: int, d: int) -> float:
 
 
 def test_req_stat_base_2_the_flag_thresholds_are_the_owner_values():
-    """methods.md: dispersion above 2, or reports in fewer than a quarter of the observed months."""
-    assert BURST_DISPERSION == 2.0 and BURST_ACTIVE_SHARE == 0.25
+    """methods.md and ops#170 item 10: at least 8 reports, dispersion above 2, or fewer than half the expected distinct months."""
+    assert BURST_DISPERSION == 2.0 and BURST_ACTIVE_RATIO == 0.5 and BURST_MIN_REPORTS == 8
+
+
+def test_req_stat_base_2_the_expected_distinct_months_follow_the_owner_formula_by_hand():
+    """M (1 - (1 - 1/M)^K): M = 12, K = 8 gives 12 (1 - (11/12)^8) = 12 (1 - 0.49850) = 6.018; K = 1 gives exactly 1; M = 1 gives 1."""
+    assert expected_distinct_months(12, 8) == pytest.approx(12 * (1 - (11 / 12) ** 8)) == pytest.approx(6.018, abs=1e-3)
+    assert expected_distinct_months(12, 1) == pytest.approx(1.0)
+    assert expected_distinct_months(1, 5) == pytest.approx(1.0)
+    assert expected_distinct_months(0, 5) == 0.0 and expected_distinct_months(5, 0) == 0.0
 
 
 def test_req_stat_base_2_one_report_in_each_of_twelve_months_is_not_flagged_by_either_test():
-    """Hand count: counts 1 x 12, months 12, active 12, variance 0 so dispersion 0."""
+    """Hand count: counts 1 x 12, months 12, active 12, variance 0 so dispersion 0; K = 12 >= 8 so the spot is assessed."""
     opens = np.array([ts(2024, m, 10) for m in range(1, 13)])
     b = burstiness(opens, ts(2024, 12, 20))
-    assert (b.months, b.active, b.dispersion) == (12, 12, 0.0) and not b.flagged
+    assert (b.months, b.active, b.dispersion, b.assessed) == (12, 12, 0.0, True) and not b.flagged
 
 
 def test_req_stat_base_2_a_month_with_most_of_the_reports_has_a_dispersion_above_two():
@@ -53,13 +65,36 @@ def test_req_stat_base_2_a_month_with_most_of_the_reports_has_a_dispersion_above
     assert b.dispersion > 5.0 and b.by_dispersion and not b.by_concentration and b.flagged
 
 
-def test_req_stat_base_2_reports_in_fewer_than_a_quarter_of_the_months_are_flagged_and_exactly_a_quarter_is_not():
-    """Hand count over 12 observed months: reports in 2 months (2 < 3) are flagged, in 3 months (3 is not < 3) are not."""
+def test_req_stat_base_2_reports_in_fewer_than_half_the_expected_distinct_months_are_flagged():
+    """Hand count over 12 observed months with 8 reports: expected distinct months 6.018, half is 3.009. Reports in 3 months
+    (3 < 3.009) are flagged by concentration; in 4 months (4 >= 3.009) they are not, and dispersion there is 0.97 / 0.667 = 1.45 (counts
+    2, 2, 2, 2, 0 x 8: mean 2/3, sum of squares 10.67, variance 0.97)."""
     end = ts(2024, 12, 31)
-    two = burstiness(np.array([ts(2024, 1, 5), ts(2024, 2, 5)]), end)
-    three = burstiness(np.array([ts(2024, 1, 5), ts(2024, 2, 5), ts(2024, 3, 5)]), end)
-    assert (two.months, two.active, two.by_concentration) == (12, 2, True)
-    assert (three.months, three.active, three.by_concentration) == (12, 3, False)
+    three = burstiness(np.array([ts(2024, 1, 5), ts(2024, 1, 6), ts(2024, 1, 7), ts(2024, 2, 5), ts(2024, 2, 6), ts(2024, 2, 7),
+                                 ts(2024, 3, 5), ts(2024, 3, 6)]), end)  # fmt: skip
+    four = burstiness(np.array([ts(2024, m, d) for m in (1, 2, 3, 4) for d in (5, 6)]), end)
+    assert (three.months, three.active, three.reports, three.by_concentration) == (12, 3, 8, True)
+    assert (four.months, four.active, four.reports, four.by_concentration) == (12, 4, 8, False)
+    assert four.dispersion == pytest.approx(1.4545, abs=0.001) and not four.by_dispersion and not four.flagged
+    assert three.expected_active == pytest.approx(6.018, abs=1e-3)
+
+
+def test_req_stat_base_2_a_spot_with_fewer_than_eight_reports_is_never_flagged():
+    """ops#146 (b): 6 reports in January and one in December (7 reports, 12 months) have a dispersion of 5.1 and would be
+    flagged, but they are not assessed. A seventh January report makes 8 reports (dispersion 6.1): assessed and flagged."""
+    end = ts(2024, 12, 31)
+    jan = [ts(2024, 1, d) for d in range(1, 8)]
+    eight = burstiness(np.array(jan + [ts(2024, 12, 20)]), end)
+    seven = burstiness(np.array(jan[:6] + [ts(2024, 12, 20)]), end)
+    assert (seven.reports, seven.assessed, seven.by_dispersion, seven.by_concentration, seven.flagged) == (7, False, False, False, False)
+    assert seven.dispersion == pytest.approx(5.1, abs=0.1)  # it would have been flagged without the minimum
+    assert (eight.reports, eight.assessed, eight.flagged) == (8, True, True) and eight.dispersion == pytest.approx(6.1, abs=0.1)
+
+
+def test_req_stat_base_2_a_spot_with_two_reports_in_the_first_months_of_a_long_watch_is_not_flagged_any_more():
+    """The old rule flagged this spot (2 of 46 months); with 2 reports it is now never flagged."""
+    b = burstiness(np.array([ts(2020, 1, 5), ts(2020, 2, 5)]), ts(2023, 10, 31))
+    assert b.months == 46 and b.active == 2 and not b.assessed and not b.flagged
 
 
 def test_req_stat_base_2_the_observed_months_run_from_the_first_report_to_the_data_end():
@@ -138,8 +173,9 @@ def test_req_stat_base_2_a_town_with_no_flagged_spot_has_the_same_excess_with_an
 
 
 def test_req_stat_base_2_a_row_whose_originals_are_all_flagged_has_no_unflagged_part():
-    """A spot reported only twice, in the first two of ~46 months: flagged by concentration, so nothing is left."""
-    cs = [mk("A", 0, 1, segment="s"), mk("B", 30, 31, segment="s")]
+    """A spot reported 8 times in its first 21 days of ~46 months (expected distinct months 7.0, half is 3.5, active at most 2): flagged
+    by concentration, so nothing is left."""
+    cs = [mk(f"A{i}", 3 * i, 3 * i + 1, segment="s") for i in range(8)]
     _m, _rows, row = family_row(cs, boot=50)
     assert row.n_bursty == row.n_originals > 0 and row.unflagged is None
 
@@ -218,32 +254,45 @@ def test_req_stat_exp_1_the_schema_accepts_an_old_file_without_the_burst_fields_
 
 def test_req_stat_base_2_the_bursty_null_town_row_is_pinned_to_docs_methods():
     """The measured limit in docs/METHODS.md (300 spots, seed 5, 300 replicates): the full row is +483 and above 0, the row
-    without flagged spots is +78 and still above 0, so the flag lowers the bias and does not remove it."""
-    _m, _rows, row = family_row(bursty_town(5, spots=300), boot=300)
+    without the 10 spots flagged by the ops#146 (b) rule is +449 and still above 0, so the flag lowers the bias only a little."""
+    m, _rows, row = family_row(bursty_town(5, spots=300), boot=300)
     assert round(row.excess) == 483 and row.lo > 0
-    assert row.unflagged is not None and round(row.unflagged.excess) == 78 and row.unflagged.lo > 0
-    assert (row.n_originals, row.unflagged.n_originals) == (3863, 339)
+    assert row.unflagged is not None and round(row.unflagged.excess) == 449 and row.unflagged.lo > 0
+    assert (row.n_originals, row.unflagged.n_originals) == (3863, 3690)
+    b = m.burst_summary(m.excess_cohort("headline"))
+    assert (b["spots"], b["flagged_spots"], b["flagged_by_dispersion"], b["flagged_by_concentration"]) == (300, 10, 10, 0)
+
+
+def test_req_stat_base_2_a_sparse_null_town_flags_under_ten_percent_of_its_spots():
+    """ops#170 item 10 (owner acceptance): the sparse null town (a report every 300 days, seeds 5 and 6) flags under 10% of
+    its spots. Measured for docs/METHODS.md: 0 of 296 and 0 of 297 (the first rule flagged 291 of 297)."""
+    for seed in (5, 6):
+        m, _rows, _row = family_row(town((300.0,), seed), boot=50)
+        b = m.burst_summary(m.excess_cohort("headline"))
+        assert b["spots"] > 250 and b["flagged_spots"] < 0.1 * b["spots"], (seed, b)
+        assert b["assessed_spots"] <= b["spots"]
 
 
 def test_req_stat_base_2_methods_documents_the_flag_its_thresholds_and_the_with_and_without_columns():
     from pathlib import Path
 
     text = (Path(__file__).resolve().parents[3] / "docs" / "METHODS.md").read_text()
-    for needle in ("Burstiness flag", "BURST_DISPERSION", "BURST_ACTIVE_SHARE", "without_bursty", "fewer than a quarter",
-                   "+483 [+438, +525]", "+78 [+64, +93]"):
+    for needle in ("Burstiness flag", "BURST_DISPERSION", "BURST_ACTIVE_RATIO", "BURST_MIN_REPORTS", "without_bursty",
+                   "fewer than 8 reports", "M (1 - (1 - 1/M)^K)", "+483 [+438, +525]", "+449 [+405, +491] (3,690 originals)",
+                   "0 of 296 and 0 of 297 spots"):
         assert needle in text, needle
 
 
 def test_req_stat_base_2_methods_says_the_flag_reads_the_rereports_and_gives_the_causal_and_sample_figures():
-    """ops#150, ops#151: METHODS.md states that the flag counts the re-reports (so it reads the outcome), has the causal-town
-    rows and the sample figures, and says when the without-flagged column is not comparable with the full row."""
+    """ops#150, ops#151, ops#146: METHODS.md states that the flag counts the re-reports (so it reads the outcome), has the
+    causal-town rows and the sample figures of the new rule, and says what stays open (live reports only)."""
     from pathlib import Path
 
     text = (Path(__file__).resolve().parents[3] / "docs" / "METHODS.md").read_text()
     for needle in ("the re-reports that make the zombies included", "not independent of the outcome",
-                   "| Causal, report every 300 days, q = 0.4 (real resurrections) | 5 | 234 of 296 | +715 [+617, +792] | +227 [+172, +288] (790 originals) |",
-                   "6,276 of 6,508 spots", "11,257 of the 11,590 originals", "pothole +269 [+206, +332] against -13 [-32, +5] (199 of 4,577)",
-                   "When the column is not comparable with the full row", "computed from live reports only"):
+                   "| Causal, report every 300 days, q = 0.4 (real resurrections) | 5 | 5 of 296 (157) (5 / 1) | +715 [+617, +792] | +692 [+607, +781] (2,270 originals) |",
+                   "141 of 6,508 spots", "1,181 of the 11,590 originals", "pothole +269 [+206, +332] against +288 [+242, +338] (3,672 of 4,577)",
+                   "computed from live reports only"):
         assert needle in text, needle
 
 

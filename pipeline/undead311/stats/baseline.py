@@ -30,8 +30,8 @@ within WINDOW_DAYS of a closure by coincidence?
   season, leaving out reports within RADIUS_M and +-WINDOW_DAYS of the case; expected = lambda * pi * RADIUS_M^2 *
   WINDOW_DAYS, P = 1 - exp(-expected). It is computed for every incident as a second, independent baseline.
 
-Burstiness (REQ-STAT-BASE.2, methods.md, ops#141): every spot gets a flag (index of dispersion of its monthly report counts above
-BURST_DISPERSION, or its reports in fewer than BURST_ACTIVE_SHARE of its observed months). Each excess row also reports the excess
+Burstiness (REQ-STAT-BASE.2, methods.md, ops#141, ops#146): a spot with at least BURST_MIN_REPORTS reports gets a flag (index of dispersion of
+its monthly report counts above BURST_DISPERSION, or its reports in fewer than BURST_ACTIVE_RATIO of the distinct months a random spread gives). Each excess row also reports the excess
 without the flagged spots; the excess is never the headline number.
 
 Excess (REQ-STAT-BASE.2): observed possible zombies minus the sum of the baseline over the same eligible originals,
@@ -61,7 +61,8 @@ MIN_WINDOWS = 4  # REQ-STAT-BASE.3
 DENSE_WINDOWS = 2  # a spot with at least one report per DENSE_WINDOWS windows is dense (methods.md hybrid, ops#130, ops#131)
 SHORT_DENSE_WINDOWS = 1  # a spot watched for less than MIN_WINDOWS windows is read by its own windows only with one report per window, counting the first (ops#136)
 BURST_DISPERSION = 2.0  # a spot is bursty when the index of dispersion of its monthly report counts exceeds this (methods.md, ops#141)
-BURST_ACTIVE_SHARE = 0.25  # ... or when its reports fall in fewer than this share of its observed months (methods.md, ops#141)
+BURST_MIN_REPORTS = 8  # a spot is assessed only with at least this many reports; fewer are never flagged (owner decision ops#146 (b), ops#170 item 10)
+BURST_ACTIVE_RATIO = 0.5  # ... or when its reports fall in fewer than this share of the distinct months a random spread of them gives (ops#170 item 10)
 POOLED_MIN = 100  # pooled windows needed before the citywide fallback is taken for one season, else all seasons
 _SEASON_OF_MONTH = np.array([0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 0])  # Jan..Dec -> winter, spring, summer, autumn
 UNKNOWN = "(unknown)"
@@ -118,11 +119,14 @@ def season_integrated_p(k: np.ndarray, days: np.ndarray, d: np.ndarray) -> np.nd
 
 @dataclass(frozen=True)
 class Burst:
-    """The burstiness of one spot's reports (REQ-STAT-BASE.2, methods.md "Acceptance and limits", ops#141)."""
+    """The burstiness of one spot's reports (REQ-STAT-BASE.2, methods.md "Acceptance and limits", ops#141, ops#146)."""
 
     months: int  # calendar months (UTC) from the first report's month to the data end's month, inclusive
     active: int  # months that hold at least one report
+    reports: int  # reports at the spot (every non-mirror same-family report)
     dispersion: float | None  # variance / mean of the monthly counts (None with one month or no reports)
+    expected_active: float  # distinct months K reports give when spread at random over the M observed months
+    assessed: bool  # at least BURST_MIN_REPORTS reports; a spot with fewer is never flagged
     by_dispersion: bool
     by_concentration: bool
 
@@ -131,28 +135,42 @@ class Burst:
         return self.by_dispersion or self.by_concentration
 
 
-def burstiness(opens: np.ndarray, t_end: float) -> Burst:
-    """Flag a spot whose reports come in bursts or only for a limited period (REQ-STAT-BASE.2, ops#141).
+def expected_distinct_months(months: int, reports: int) -> float:
+    """Distinct months that `reports` reports fill when each lands in one of `months` months at random: M (1 - (1 - 1/M)^K)
+    (REQ-STAT-BASE.2, ops#170 item 10)."""
+    if months <= 0 or reports <= 0:
+        return 0.0
+    return months * (1.0 - (1.0 - 1.0 / months) ** reports)
 
-    `opens` are the open times (epoch seconds) of every non-mirror same-family report at the spot; the observed months run from
-    the month of the first one to the month of the data end. The spot is bursty when the index of dispersion of its monthly
-    counts (sample variance over mean) is above BURST_DISPERSION, or when its reports fall in fewer than BURST_ACTIVE_SHARE of
-    the observed months. Both tests read the open times of every non-mirror report at the spot, the re-reports that make the
-    zombies included, and never closures, so a placebo shift (which moves closures only) cannot change the flag. Because the
-    re-reports count, a spot with real resurrections fills more months and is flagged differently from the same spot without
-    them: the with/without split is therefore not independent of the outcome (ops#150; docs/METHODS.md, burstiness flag).
-    Bursts and time-limited reporting are where a baseline built from the spot's own history is biased (docs/METHODS.md Limits)."""
+
+def burstiness(opens: np.ndarray, t_end: float) -> Burst:
+    """Flag a spot whose reports come in bursts or only for a limited period (REQ-STAT-BASE.2, ops#141, ops#146).
+
+    `opens` are the open times (epoch seconds) of every non-mirror same-family report at the spot; the observed months (M) run
+    from the month of the first one to the month of the data end. A spot with fewer than BURST_MIN_REPORTS reports (K) is never
+    flagged. Otherwise it is bursty when the index of dispersion of its monthly counts (sample variance over mean) is above
+    BURST_DISPERSION, or when its reports fall in fewer than BURST_ACTIVE_RATIO times the distinct months that K reports
+    spread at random over M months fill, M (1 - (1 - 1/M)^K). Both tests read the open times of every non-mirror report at the
+    spot, the re-reports that make the zombies included, and never closures, so a placebo shift (which moves closures only)
+    cannot change the flag. Because the re-reports count, a spot with real resurrections fills more months and is flagged
+    differently from the same spot without them: the with/without split is therefore not independent of the outcome (ops#150;
+    docs/METHODS.md, burstiness flag). Bursts and time-limited reporting are where a baseline built from the spot's own history
+    is biased (docs/METHODS.md Limits)."""
     if not opens.size:
-        return Burst(0, 0, None, False, False)
+        return Burst(0, 0, 0, None, 0.0, False, False, False)
     month = np.asarray(opens, dtype="int64").astype("datetime64[s]").astype("datetime64[M]").astype("int64")
     last = np.datetime64(int(t_end), "s").astype("datetime64[M]").astype("int64")
     first = int(month.min())
     n_months = max(int(last) - first + 1, int(month.max()) - first + 1)
     counts = np.bincount(month - first, minlength=n_months)
     active = int((counts > 0).sum())
+    k = int(opens.size)
     dispersion = float(counts.var(ddof=1) / counts.mean()) if n_months > 1 else None
-    return Burst(n_months, active, dispersion, dispersion is not None and dispersion > BURST_DISPERSION,
-                 active < BURST_ACTIVE_SHARE * n_months)  # fmt: skip
+    expected = expected_distinct_months(n_months, k)
+    assessed = k >= BURST_MIN_REPORTS
+    return Burst(n_months, active, k, dispersion, expected, assessed,
+                 assessed and dispersion is not None and dispersion > BURST_DISPERSION,
+                 assessed and active < BURST_ACTIVE_RATIO * expected)  # fmt: skip
 
 
 @dataclass(frozen=True)
@@ -387,6 +405,7 @@ class BaselineModel:
             "flagged_spots": sum(b.flagged for b in flags.values()),
             "flagged_by_dispersion": sum(b.by_dispersion for b in flags.values()),
             "flagged_by_concentration": sum(b.by_concentration for b in flags.values()),
+            "assessed_spots": sum(b.assessed for b in flags.values()),
             "originals": len(incidents),
             "flagged_originals": sum(self.is_bursty(i) for i in incidents),
         }

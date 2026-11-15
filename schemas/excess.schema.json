@@ -256,7 +256,7 @@
     },
     "burstiness": {
       "type": "object",
-      "description": "REQ-STAT-BASE.2: spots and headline-scope originals by burstiness flag (dispersion above 2, or reports in fewer than a quarter of the observed months)",
+      "description": "REQ-STAT-BASE.2: spots and headline-scope originals by burstiness flag (spots with at least 8 reports: dispersion above 2, or reports in fewer than half the distinct months a random spread gives; ops#146)",
       "properties": {
         "spots": {
           "type": "integer",
@@ -273,6 +273,11 @@
         "flagged_by_concentration": {
           "type": "integer",
           "minimum": 0
+        },
+        "assessed_spots": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "spots with at least 8 reports (BURST_MIN_REPORTS); the others are never flagged"
         },
         "originals": {
           "type": "integer",
