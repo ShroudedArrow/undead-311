@@ -85,11 +85,14 @@ function wilson(k, n) {
 }
 
 /**
- * REQ-STAT-TOUR.1 (UX-10, ops#23): the provisional tour is the three headline zombies with the most re-reports, ties by
- * zombie ID (source "most_reports"). Never by confidence score. There is no override file (owner decision, ops#36).
+ * REQ-STAT-TOUR.1 (UX-10, ops#23; ops#44, UX-33/ops#120): the provisional tour follows the engine's rule (pipeline/undead311/stats/tour.py).
+ * It ranks resident-reported headline zombies the Skeptic has not explained away, with a re-report that opened at least
+ * MIN_TOUR_GAP_HOURS after the closure, by most re-reports, ties by zombie ID (source "most_reports"). Never by confidence
+ * score. There is no override file (owner decision, ops#36).
  */
+export const MIN_TOUR_GAP_HOURS = 1;
 export function pickTour(zs) {
-  const pool = zs.filter((z) => z.tier === "headline")
+  const pool = zs.filter((z) => z.tier === "headline" && !z.city_rereport && z.skeptic_verdict !== "explained_away" && z.gap_days * 24 >= MIN_TOUR_GAP_HOURS)
     .sort((x, y) => y.reports_after - x.reports_after || (x.zombie_id < y.zombie_id ? -1 : x.zombie_id > y.zombie_id ? 1 : 0));
   return { ids: pool.slice(0, 3).map((z) => z.zombie_id), source: "most_reports" };
 }
