@@ -98,19 +98,19 @@ def test_req_ing_nightly_1_a_good_rerun_swaps_in_new_files_removes_owned_leftove
     assert "stats/judge_tour.json" not in files
     assert "sensitivity_grid.json" in files and ".gitkeep" in files
     assert '"last_run":"2026-11-14T00:00:00Z"' in files["status.json"].decode()
-    assert set(rep.file_sizes) <= set(files) and "status.json.gz" in rep.file_sizes
+    assert set(rep.file_sizes) <= set(files) and "status.json" in rep.file_sizes and not any(n.endswith(".gz") for n in rep.file_sizes)
     assert no_staging_left(tmp_path)
 
 
-def test_req_ing_nightly_1_swap_writes_status_last_and_its_gz_just_before(tmp_path):
+def test_req_ing_nightly_1_swap_writes_status_last(tmp_path):
     stage = staging_dir(tmp_path / "out")
-    for rel in ("status.json", "status.json.gz", "zombies.json", "cards/a-2020.json", "stats/scorecard.json"):
+    for rel in ("status.json", "zombies.json", "cards/a-2020.json", "stats/scorecard.json"):
         (stage / rel).parent.mkdir(parents=True, exist_ok=True)
         (stage / rel).write_text(rel)
     final = swap_into(stage, tmp_path / "out", owns_output)
-    assert [p.relative_to(tmp_path / "out").as_posix() for p in final][-2:] == ["status.json.gz", "status.json"]
+    assert [p.relative_to(tmp_path / "out").as_posix() for p in final][-1:] == ["status.json"]
     assert sorted(p.relative_to(tmp_path / "out").as_posix() for p in final) == sorted(
-        ["status.json", "status.json.gz", "zombies.json", "cards/a-2020.json", "stats/scorecard.json"]
+        ["status.json", "zombies.json", "cards/a-2020.json", "stats/scorecard.json"]
     )
     assert not any(stage.rglob("*.json")) and (tmp_path / "out" / "zombies.json").read_text() == "zombies.json"
 
@@ -148,7 +148,7 @@ def test_req_ing_nightly_1_a_swap_that_fails_part_way_restores_every_file(tmp_pa
     for rel, text in old.items():
         (target / rel).write_text(text)
     stage = staging_dir(target)
-    for rel in ("zombies.json", "points.json", "status.json", "status.json.gz"):
+    for rel in ("zombies.json", "points.json", "status.json", "status.json.bak"):
         (stage / rel).write_text("new-" + rel)
     real, calls = os.replace, []
 

@@ -7,8 +7,9 @@ residential or unknown-class street is exported at block level, so the map never
   measured in metres in the snapping projection; a multi-part segment is walked part by part, with no made-up connector);
 * otherwise (unsnapped, or no segment geometry at hand): the center of a `GRID_CELL_M` (100 m) grid cell.
 
-The chain's location is used for EVERY exported row of the chain (repeat_offenders, points, cards), so a join on
-`chain_id` or case ID cannot recover the exact point; the street text of those cards is dropped too (ops#167).
+The chain's location is used for EVERY exported row that touches the chain (repeat_offenders, points, cards), so a join on
+`chain_id` or case ID cannot recover the exact point; the street text of those cards is dropped too (ops#167). A re-report
+of the chain that starts a chain of its own is covered too (`block_location_by_case`, ops#180).
 Every other chain keeps the exact case point. The safe direction is the default: a chain is shown exactly only when its
 street class is KNOWN not to be residential and the chain is not resident-driven, or when it is city-driven. A new-system
 re-report has no origin field, so it counts as resident (not city-originated).
@@ -159,7 +160,57 @@ def block_level_locations(
     return out
 
 
+def block_location_by_case(
+    result: DetectionResult,
+    locations: Mapping[str, tuple[float, float, bool]],
+) -> dict[str, tuple[float, float]]:
+    """case_id -> block (lat, lon) for every case that touches a block-level chain (REQ-EXP-PRIV.1, ops#180).
+
+    A case touches a chain when it is a member of one of the chain's incidents or one of its attached re-reports. A
+    re-report that is later closed starts its own chain (a non-first attached re-report, or a planned follow-up), and that
+    chain's zombies would otherwise export the exact point of a case the block-level chain counts, so a join on the case ID
+    could undo the block location. So the block location spreads over every zombie link: all cases of a zombie (the
+    original's members and the re-report) share the location of any block-level case among them, transitively. Where two
+    block-level chains meet, the smaller chain ID's location is used. Cases that touch no block-level chain are absent."""
+    parent: dict[str, str] = {}
+
+    def find(x: str) -> str:
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a: str, b: str) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[max(ra, rb)] = min(ra, rb)
+
+    by_inc = {i.incident_id: i for i in result.incidents}
+    seeds: list[tuple[str, str]] = []  # (chain_id, a case of the chain)
+    for c in sorted(result.repeat_offenders, key=lambda c: c.chain_id):
+        loc = locations.get(c.chain_id)
+        if loc is None or not loc[2]:
+            continue
+        cases = {m for i in c.incident_ids for m in by_inc[i].member_ids}
+        cases |= {r for r, inc in result.attribution.items() if inc in set(c.incident_ids)}
+        first = min(cases)
+        for x in cases:
+            union(first, x)
+        seeds.append((c.chain_id, first))
+    if not seeds:
+        return {}
+    for z in result.zombies:
+        for x in (*z.member_ids, z.resurrection_id):
+            union(z.resurrection_id, x)
+    where: dict[str, tuple[float, float]] = {}
+    for chain_id, case in seeds:  # sorted by chain_id: the smallest chain ID wins a shared component
+        loc = locations[chain_id]
+        where.setdefault(find(case), (loc[0], loc[1]))
+    return {x: where[find(x)] for x in list(parent) if find(x) in where}
+
+
 __all__ = [
-    "CLASS_KEYS", "GRID_CELL_M", "SegmentInfo", "block_level_locations", "chain_rereport_ids", "grid_cell_center",
+    "CLASS_KEYS", "GRID_CELL_M", "SegmentInfo", "block_level_locations", "block_location_by_case", "chain_rereport_ids", "grid_cell_center",
     "load_segment_info", "offender_location", "resident_driven", "segment_midpoint", "street_kind",
 ]  # fmt: skip

@@ -600,7 +600,7 @@ def test_req_stat_exp_2_two_runs_on_the_same_input_write_identical_stats_files(t
     run_pipeline(out_dir=tmp_path / "o2", work_dir=tmp_path / "d2", **kw)
     a = {p.name: p.read_bytes() for p in (tmp_path / "o1" / "stats").iterdir()}
     b = {p.name: p.read_bytes() for p in (tmp_path / "o2" / "stats").iterdir()}
-    assert a == b and len(a) > 10
+    assert a == b and len(a) >= 9 and not any(n.endswith(".gz") for n in a)  # plain JSON only (ops#165)
 
 
 def test_req_stat_val_1_the_committed_owner_config_names_four_neighborhoods_that_the_export_uses():

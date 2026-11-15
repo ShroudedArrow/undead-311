@@ -1,8 +1,7 @@
-"""REQ-EXP-SIZE.1-2: card shards, deterministic `.gz` copies, reported sizes and the first-view budget."""
+"""REQ-EXP-SIZE.1-2: card shards, plain JSON with no `.gz` copies (ops#165, owner decision 3), reported sizes and the first-view budget."""
 
 from __future__ import annotations
 
-import gzip
 import json
 from pathlib import Path
 
@@ -18,28 +17,27 @@ from undead311.export.writers import (
     check_first_view_budget,
     export_all,
     first_view_bytes,
-    gzip_bytes,
-    write_gz_copy,
 )
 
 
-def test_req_exp_size_1_every_json_file_has_a_gz_twin_with_the_same_bytes(tmp_path):
+def test_req_exp_size_1_every_file_is_plain_json_and_no_gz_copy_is_written(tmp_path):
+    """ops#165: card shards, bulk_closures.json and every other export are plain JSON (Netlify compresses responses)."""
     result, cases, ctx = town_inputs()
     written = export_all(result, cases, tmp_path, ctx)
-    jsons = [p for p in written if p.suffix == ".json"]
-    assert jsons and all(p.with_name(p.name + ".gz") in written for p in jsons)
-    for p in jsons:
-        assert gzip.decompress(p.with_name(p.name + ".gz").read_bytes()) == p.read_bytes()
-    assert not list(tmp_path.rglob("*.tmp"))
+    assert written and all(p.suffix == ".json" for p in written)
+    assert not list(tmp_path.rglob("*.gz")) and not list(tmp_path.rglob("*.tmp"))
+    for p in tmp_path.rglob("cards/*.json"):
+        assert json.loads(p.read_text())["cards"]  # a card shard parses as plain JSON
+    assert json.loads((tmp_path / "bulk_closures.json").read_text())["bulk_closures"] is not None
 
 
-def test_req_exp_size_1_status_is_still_the_last_file_written_and_gz_files_are_identical_between_runs(tmp_path):
+def test_req_exp_size_1_status_is_still_the_last_file_written_and_files_are_identical_between_runs(tmp_path):
     a, b = tmp_path / "a", tmp_path / "b"
     written = export_all(*town_inputs()[:2], a, town_inputs()[2])
     export_all(*town_inputs()[:2], b, town_inputs()[2])
-    assert written[-1].name == "status.json" and written[-2].name == "status.json.gz"
-    assert {str(p.relative_to(a)): p.read_bytes() for p in a.rglob("*.gz")} == {
-        str(p.relative_to(b)): p.read_bytes() for p in b.rglob("*.gz")
+    assert written[-1].name == "status.json"
+    assert {str(p.relative_to(a)): p.read_bytes() for p in a.rglob("*.json")} == {
+        str(p.relative_to(b)): p.read_bytes() for p in b.rglob("*.json")
     }
 
 
@@ -54,13 +52,12 @@ def test_req_exp_size_1_cards_are_sharded_by_neighborhood_and_year(tmp_path):
         assert {c["resurrection_date"][:4] for c in json.loads(p.read_text())["cards"]} == {str(year)}
 
 
-def test_req_exp_size_1_stats_files_written_before_the_export_get_gz_copies(tmp_path):
+def test_req_exp_size_1_stats_files_written_before_the_export_are_listed_without_a_gz_copy(tmp_path):
     (tmp_path / "stats").mkdir()
     (tmp_path / "stats" / "scorecard.json").write_text('{"scorecards":[]}\n')
     result, cases, ctx = town_inputs()
     written = export_all(result, cases, tmp_path, ctx)
-    assert tmp_path / "stats" / "scorecard.json.gz" in written
-    assert gzip.decompress((tmp_path / "stats" / "scorecard.json.gz").read_bytes()) == b'{"scorecards":[]}\n'
+    assert tmp_path / "stats" / "scorecard.json" in written and not (tmp_path / "stats" / "scorecard.json.gz").exists()
 
 
 def test_req_exp_size_2_first_view_over_budget_fails_before_anything_is_written(tmp_path):
@@ -91,24 +88,13 @@ def test_req_exp_size_2_budget_check_agrees_with_the_sum_of_first_view_sizes(siz
     assert raised == over
 
 
-@given(st.binary(max_size=2000))
-def test_req_exp_size_1_gzip_is_deterministic_and_lossless(data):
-    assert gzip_bytes(data) == gzip_bytes(data) and gzip.decompress(gzip_bytes(data)) == data
-
-
-def test_req_exp_size_1_write_gz_copy_can_precede_its_file(tmp_path):
-    target = tmp_path / "sub" / "status.json"
-    gz = write_gz_copy(target, b"{}\n")
-    assert gz.name == "status.json.gz" and not target.exists() and gzip.decompress(gz.read_bytes()) == b"{}\n"
-
-
 def test_req_exp_size_2_the_run_report_lists_every_file_size_and_the_first_view_total(tmp_path):
     from undead311.pipeline import run_pipeline
 
     out = tmp_path / "out"
     rep = run_pipeline(sample=True, out_dir=out, work_dir=tmp_path / "d", run_time="2026-11-13T00:00:00Z", grid=False)
     on_disk = {p.relative_to(out).as_posix(): p.stat().st_size for p in Path(out).rglob("*") if p.is_file()}
-    assert rep.file_sizes == {k: v for k, v in on_disk.items() if k in rep.file_sizes} and "status.json.gz" in rep.file_sizes
+    assert rep.file_sizes == {k: v for k, v in on_disk.items() if k in rep.file_sizes} and "status.json" in rep.file_sizes and not any(n.endswith(".gz") for n in rep.file_sizes)
     assert all(n in rep.file_sizes for n in on_disk)  # nothing exported goes unreported
     assert 0 < rep.first_view_bytes <= rep.first_view_budget_bytes == FIRST_VIEW_BUDGET_BYTES
     assert f"first view {rep.first_view_bytes:,}" in rep.summary()

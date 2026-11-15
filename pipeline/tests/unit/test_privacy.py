@@ -196,8 +196,10 @@ def test_req_exp_priv_1_load_segment_info_reads_midpoint_and_class(tmp_path):
 
 
 def test_req_exp_priv_1_every_attached_rereport_counts_not_only_the_first():
-    """One incident, three re-reports: the first is the city's, two are residents'. Resurrections alone say 0 of 1
-    resident; every attached re-report says 2 of 3 (ZD step 5: `reports_after` counts them all)."""
+    """A chain whose six re-reports are one per incident: three are the city's (B, D, F), three are residents' (C, E,
+    G), so 3 of 6 is not more than half and the chain is not resident-driven. Each incident has exactly one attached
+    re-report here, so the re-reports of the chain equal its resurrections. The next test shows several re-reports on one
+    incident (ZD step 5: `reports_after` counts them all)."""
     cases = [
         mk("A", 0, 1), mk("B", 3, 4, source="Employee Generated"), mk("C", 8, 9), mk("D", 12, 13),
         mk("E", 16, 17), mk("F", 20, 21), mk("G", 24),
@@ -209,8 +211,8 @@ def test_req_exp_priv_1_every_attached_rereport_counts_not_only_the_first():
     ids = chain_rereport_ids(result.attribution, chain.incident_ids)
     assert ids == ["B", "C", "D", "E", "F", "G"]
     assert resident_driven(ids, index) is False  # 3 of 6 is not more than half
-    only_first = sorted(z.resurrection_id for z in result.zombies if z.chain_id == chain.chain_id)
-    assert only_first == ids  # a chain's re-reports are one per incident here
+    resurrections = sorted(z.resurrection_id for z in result.zombies if z.chain_id == chain.chain_id)
+    assert resurrections == ids  # one re-report per incident here, so the two lists agree
 
 
 def test_req_exp_priv_1_extra_rereports_on_one_incident_can_flip_the_verdict():
@@ -357,3 +359,56 @@ def test_req_exp_priv_1_load_segment_info_reads_a_multilinestring(tmp_path):
     f.write_text(json.dumps({"type": "FeatureCollection", "features": [feat]}))
     mx, my = metres(load_segment_info(f)["1"].midpoint)
     assert abs(mx - 200) < 0.2 and abs(my) < 0.2
+
+
+# --- a re-report that starts its own chain stays at block level (D6, ops#180) ---------------------------------------
+
+
+def side_chain_cases():
+    """A resident-driven repeat offender (A..E, town n=5) plus X, a second re-report of A's incident that is closed on day
+    30 and re-reported by Y on day 31. X counts in chain A's re-reports but starts a chain of its own."""
+    cases = town(segment="S_RES", n=5)
+    return [*cases, replace(mk("X", 5.5, 30, segment="S_RES"), street="12 Elm St"), replace(mk("Y", 31, segment="S_RES"), street="12 Elm St")]
+
+
+def test_req_exp_priv_1_a_rereport_that_starts_its_own_chain_keeps_the_block_location():
+    cases = side_chain_cases()
+    out, result = exports(cases)
+    zid = next(z.zombie_id for z in result.zombies if z.resurrection_id == "Y")
+    assert zid.endswith(":Y") and result.attribution["X"] == result.attribution["B"]  # X is chain A's re-report
+    assert any(o["block_level"] for o in out["repeat_offenders.json"]["repeat_offenders"])
+    card = next(c for k, v in out.items() if k.startswith("cards/") for c in v["cards"] if c["zombie_id"] == zid)
+    for side in ("original", "rereport"):
+        assert (card[side]["lat"], card[side]["lon"]) == MID and card[side]["street"] is None
+    i = out["points.json"]["id"].index(zid)
+    assert (out["points.json"]["lat"][i], out["points.json"]["lon"][i]) == MID
+
+
+def test_req_exp_priv_1_no_exported_row_holds_the_exact_point_of_a_case_in_a_block_level_chain():
+    cases = side_chain_cases()
+    out, _ = exports(cases)
+    touched = {"A", "B", "C", "D", "E", "X", "Y"}
+    exact = {(round(c.lat, 6), round(c.lon, 6)) for c in cases if c.id in touched}
+    pairs = {(a, b) for a, b in zip(out["points.json"]["lat"], out["points.json"]["lon"], strict=True)}
+    for v in (v for k, v in out.items() if k.startswith("cards/")):
+        for card in v["cards"]:
+            pairs |= {(card[s]["lat"], card[s]["lon"]) for s in ("original", "rereport")}
+            assert card["original"]["street"] is None and card["rereport"]["street"] is None
+    assert pairs == {MID} and not (pairs & exact)
+
+
+def test_req_exp_priv_1_a_far_away_zombie_is_not_pulled_into_the_block_location():
+    cases = [*side_chain_cases(), replace(mk("P", 0, 1, x=900.0, y=900.0), street="1 Far St"), mk("Q", 3, x=900.0, y=900.0)]
+    out, result = exports(cases)
+    zid = next(z.zombie_id for z in result.zombies if z.resurrection_id == "Q")
+    card = next(c for k, v in out.items() if k.startswith("cards/") for c in v["cards"] if c["zombie_id"] == zid)
+    assert card["original"]["street"] == "1 Far St" and (card["original"]["lat"], card["original"]["lon"]) != MID
+
+
+def test_req_exp_priv_1_a_city_driven_chain_with_a_side_chain_stays_exact():
+    cases = [replace(c, street="1 Elm St") for c in town(segment="S_RES", city_first=4, n=8)]
+    cases += [mk("X", 5.5, 60, segment="S_RES"), mk("Y", 61, segment="S_RES")]
+    out, _ = exports(cases)
+    assert out["repeat_offenders.json"]["repeat_offenders"][0]["block_level"] is False
+    cards = [c for k, v in out.items() if k.startswith("cards/") for c in v["cards"]]
+    assert cards and all(c["original"]["lat"] != MID[0] for c in cards)

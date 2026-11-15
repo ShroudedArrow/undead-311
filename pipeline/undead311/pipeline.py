@@ -68,7 +68,8 @@ PROCESSED_OWNED = ("skeptic_input.json", "coroner_templates.csv")
 
 
 def owns_output(rel: str) -> bool:
-    """True for an exported file (or its `.gz` copy) that this pipeline owns (REQ-ING-NIGHTLY.1)."""
+    """True for an exported file that this pipeline owns (REQ-ING-NIGHTLY.1). A `.gz` copy left by an older run counts too,
+    so the swap removes it (ops#165: the engine no longer writes precompressed files)."""
     name = rel.removesuffix(".gz")
     if rel.startswith("cards/"):
         return True
