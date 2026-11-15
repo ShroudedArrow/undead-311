@@ -28,8 +28,17 @@ describe("Repeat offenders page (REQ-WEB-REPEAT.1)", () => {
     const rows = within(table).getAllByRole("row").slice(1);
     expect(rows).toHaveLength(ro.repeat_offenders.length);
     expect(screen.getByTestId("repeat-count").textContent).toBe(`${ro.repeat_offenders.length} chains`);
+    // REQ-WEB-REPEAT.1, REQ-EXP-PRIV.1: each row's label follows its own chain's privacy level, whatever the data holds.
+    const byId = new Map<string, { block_level: boolean }>(
+      ro.repeat_offenders.map((c: { chain_id: string; block_level: boolean }) => [c.chain_id, c]),
+    );
+    for (const row of rows) {
+      const chain = byId.get(row.getAttribute("data-chain") as string);
+      expect(chain).toBeTruthy();
+      const label = chain!.block_level ? "Shown at block level" : "Shown at the reported spot";
+      expect(within(row).getByText(label)).toBeTruthy();
+    }
     const first = rows[0];
-    expect(within(first).getByText("Shown at the reported spot")).toBeTruthy();
     expect((await within(first).findByRole("link")).getAttribute("href")).toMatch(/^\/zombie\/\d+%3A\d+$/);
     expect((await screen.findByTestId("map")).getAttribute("data-count")).toBe(String(ro.repeat_offenders.length));
   });
