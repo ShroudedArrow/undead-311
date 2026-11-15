@@ -1,0 +1,205 @@
+"""Burstiness flag and the excess with and without flagged spots (REQ-STAT-BASE.2; methods.md "Acceptance and limits"; ops#141).
+
+A spot is flagged when the index of dispersion of its monthly report counts is above 2, or when its reports fall in fewer than a
+quarter of its observed months. Each excess row also reports the excess without the flagged spots."""
+
+from __future__ import annotations
+
+import json
+from datetime import UTC, datetime
+
+import numpy as np
+import pytest
+from helpers import day, mk
+from hypothesis import given
+from hypothesis import strategies as st
+from test_stats_hybrid import END, town
+
+from undead311.detect.core import detect
+from undead311.export.writers import validate
+from undead311.stats.baseline import (
+    BURST_ACTIVE_SHARE,
+    BURST_DISPERSION,
+    BaselineModel,
+    burstiness,
+    excess_rows,
+)
+from undead311.stats.pipeline import run_stats
+
+
+def ts(y: int, m: int, d: int) -> float:
+    return datetime(y, m, d, tzinfo=UTC).timestamp()
+
+
+def test_req_stat_base_2_the_flag_thresholds_are_the_owner_values():
+    """methods.md: dispersion above 2, or reports in fewer than a quarter of the observed months."""
+    assert BURST_DISPERSION == 2.0 and BURST_ACTIVE_SHARE == 0.25
+
+
+def test_req_stat_base_2_one_report_in_each_of_twelve_months_is_not_flagged_by_either_test():
+    """Hand count: counts 1 x 12, months 12, active 12, variance 0 so dispersion 0."""
+    opens = np.array([ts(2024, m, 10) for m in range(1, 13)])
+    b = burstiness(opens, ts(2024, 12, 20))
+    assert (b.months, b.active, b.dispersion) == (12, 12, 0.0) and not b.flagged
+
+
+def test_req_stat_base_2_a_month_with_most_of_the_reports_has_a_dispersion_above_two():
+    """Hand count over 12 months: 12 reports in Jan and one in each other month. counts = [12, 1 x 11], mean 23/12,
+    sample variance (sum (c - mean)^2) / 11 = 9.73..., dispersion 9.73 / 1.917 = 5.08."""
+    opens = np.array([ts(2024, 1, d) for d in range(1, 13)] + [ts(2024, m, 15) for m in range(2, 13)])
+    b = burstiness(opens, ts(2024, 12, 31))
+    counts = np.array([12] + [1] * 11)
+    assert b.dispersion == pytest.approx(counts.var(ddof=1) / counts.mean())
+    assert b.dispersion > 5.0 and b.by_dispersion and not b.by_concentration and b.flagged
+
+
+def test_req_stat_base_2_reports_in_fewer_than_a_quarter_of_the_months_are_flagged_and_exactly_a_quarter_is_not():
+    """Hand count over 12 observed months: reports in 2 months (2 < 3) are flagged, in 3 months (3 is not < 3) are not."""
+    end = ts(2024, 12, 31)
+    two = burstiness(np.array([ts(2024, 1, 5), ts(2024, 2, 5)]), end)
+    three = burstiness(np.array([ts(2024, 1, 5), ts(2024, 2, 5), ts(2024, 3, 5)]), end)
+    assert (two.months, two.active, two.by_concentration) == (12, 2, True)
+    assert (three.months, three.active, three.by_concentration) == (12, 3, False)
+
+
+def test_req_stat_base_2_the_observed_months_run_from_the_first_report_to_the_data_end():
+    """A spot first reported in October and watched to December has 3 observed months, whatever happened before."""
+    b = burstiness(np.array([ts(2024, 10, 3), ts(2024, 11, 3)]), ts(2024, 12, 5))
+    assert (b.months, b.active) == (3, 2) and not b.by_concentration
+
+
+def test_req_stat_base_2_a_spot_observed_for_one_month_has_no_dispersion_and_is_not_flagged():
+    b = burstiness(np.array([ts(2024, 5, 3), ts(2024, 5, 9)]), ts(2024, 5, 20))
+    assert b.dispersion is None and not b.flagged
+
+
+def test_req_stat_base_2_a_spot_with_no_reports_is_not_flagged():
+    assert not burstiness(np.empty(0), ts(2024, 5, 20)).flagged
+
+
+@given(
+    st.lists(st.integers(min_value=0, max_value=1400), min_size=1, max_size=40),
+    st.integers(min_value=0, max_value=10_000),
+)
+def test_req_stat_base_2_the_flag_ignores_row_order_and_counts_are_consistent(days, seed):
+    """Property: the flag is a function of the set of report times (order-invariant); active <= months; dispersion >= 0."""
+    opens = np.array([day(d).timestamp() for d in days])
+    shuffled = opens.copy()
+    np.random.default_rng(seed).shuffle(shuffled)
+    a, b = burstiness(np.sort(opens), day(1400).timestamp()), burstiness(shuffled, day(1400).timestamp())
+    assert a == b
+    assert 1 <= a.active <= a.months
+    assert a.dispersion is None or a.dispersion >= 0.0
+
+
+def bursty_town(seed, spots=120, closed_after=2.0):
+    """Each gap 10 or 200 days at random (a null town: nothing resurrects by cause)."""
+    rng = np.random.default_rng(seed)
+    out = []
+    for s in range(spots):
+        t, n = 0.0, 0
+        while True:
+            t += float(rng.choice([10.0, 200.0]))
+            if t > END:
+                break
+            out.append(mk(f"S{s:03d}-{n:03d}", t, t + closed_after, x=s * 1000.0, segment=f"seg{s}"))
+            n += 1
+    return out
+
+
+def family_row(cs, boot=200):
+    res = detect(cs)
+    m = BaselineModel({c.id: c for c in cs}, res, data_end=day(END))
+    rows = excess_rows(m, 311, boot)
+    return m, rows, next(r for r in rows if r.kind == "family" and r.tier_set == "headline")
+
+
+def test_req_stat_base_2_every_excess_row_reports_the_excess_without_the_flagged_spots():
+    """On a bursty null town most spots are flagged; the row keeps its own numbers and adds the unflagged ones. The
+    flagged originals plus the unflagged ones are the row's originals, and the unflagged excess is smaller (the bias of
+    a bursty town sits in the flagged spots: +483 against +78 at 300 spots, seed 5, measured for docs/METHODS.md)."""
+    _m, rows, row = family_row(bursty_town(5))
+    assert row.n_bursty > 0 and row.unflagged is not None
+    assert row.n_bursty + row.unflagged.n_originals == row.n_originals
+    assert row.unflagged.observed <= row.observed and row.unflagged.expected <= row.expected
+    assert row.unflagged.excess == pytest.approx(row.unflagged.observed - row.unflagged.expected)
+    assert row.unflagged.excess < row.excess
+    assert row.unflagged.lo <= row.unflagged.excess <= row.unflagged.hi
+    for r in rows:
+        assert r.n_bursty + (r.unflagged.n_originals if r.unflagged else 0) == r.n_originals
+
+
+def test_req_stat_base_2_a_town_with_no_flagged_spot_has_the_same_excess_with_and_without():
+    """A report every 30 days at every spot (seed 5): no spot is flagged, so the unflagged row is the full row."""
+    _m, _rows, row = family_row(town((30.0,), 5, spots=60))
+    assert row.n_bursty == 0 and row.unflagged is not None
+    assert (row.unflagged.observed, row.unflagged.n_originals) == (row.observed, row.n_originals)
+    assert row.unflagged.excess == pytest.approx(row.excess)
+
+
+def test_req_stat_base_2_a_row_whose_originals_are_all_flagged_has_no_unflagged_part():
+    """A spot reported only twice, in the first two of ~46 months: flagged by concentration, so nothing is left."""
+    cs = [mk("A", 0, 1, segment="s"), mk("B", 30, 31, segment="s")]
+    _m, _rows, row = family_row(cs, boot=50)
+    assert row.n_bursty == row.n_originals > 0 and row.unflagged is None
+
+
+def test_req_stat_base_2_the_flag_does_not_move_the_full_rows_or_the_seeded_results():
+    """Reproducible for a fixed seed, and the full row's interval is drawn before and apart from the unflagged draws."""
+    cs = bursty_town(6, spots=60)
+    _m, rows_a, _ = family_row(cs)
+    _m, rows_b, _ = family_row(list(reversed(cs)))
+    assert [r.to_json() for r in rows_a] == [r.to_json() for r in rows_b]
+
+
+def test_req_stat_base_2_the_flag_never_reads_closures():
+    """Closing every report later changes no flag: it depends only on report times and the span (so the placebo shift
+    cannot change it)."""
+    flags = []
+    for closed_after in (2.0, 9.0):
+        cs = bursty_town(7, spots=30, closed_after=closed_after)
+        m = BaselineModel({c.id: c for c in cs}, detect(cs), data_end=day(END))
+        flags.append({k: m.burst(k) for k in m.groups})
+    assert flags[0] == flags[1] and any(b.flagged for b in flags[0].values())
+
+
+def test_req_stat_exp_1_excess_json_carries_burstiness_and_validates(tmp_path):
+    """The export has the burstiness summary and the per-row `without_bursty`, and validates against excess.schema.json."""
+    cs = town((60.0,), 5, spots=30, span=700)
+    by_id = {c.id: c for c in cs}
+    run_stats(None, detect(cs), by_id, tmp_path, data_version="v1", data_end=day(700))
+    payload = json.loads((tmp_path / "stats" / "excess.json").read_text())
+    validate("excess", payload)
+    b = payload["burstiness"]
+    assert b["flagged_spots"] <= b["spots"] and b["flagged_originals"] <= b["originals"]
+    assert b["flagged_by_dispersion"] <= b["flagged_spots"] <= b["flagged_by_dispersion"] + b["flagged_by_concentration"]
+    for row in payload["rows"]:
+        assert "n_bursty" in row and "without_bursty" in row
+
+
+def test_req_stat_exp_1_the_schema_accepts_an_old_file_without_the_burst_fields_and_rejects_a_bad_one():
+    from undead311.export.writers import ContractError
+
+    row = {"kind": "family", "name": "f", "tier_set": "headline", "observed": 1, "expected": 0.5, "excess": 0.5, "lo": 0.0, "hi": 1.0}
+    validate("excess", {"data_version": "v", "rows": [row]})
+    bad = {**row, "without_bursty": {"observed": 1}}
+    with pytest.raises(ContractError):
+        validate("excess", {"data_version": "v", "rows": [bad]})
+
+
+def test_req_stat_base_2_the_bursty_null_town_row_is_pinned_to_docs_methods():
+    """The measured limit in docs/METHODS.md (300 spots, seed 5, 300 replicates): the full row is +483 and above 0, the row
+    without flagged spots is +78 and still above 0, so the flag lowers the bias and does not remove it."""
+    _m, _rows, row = family_row(bursty_town(5, spots=300), boot=300)
+    assert round(row.excess) == 483 and row.lo > 0
+    assert row.unflagged is not None and round(row.unflagged.excess) == 78 and row.unflagged.lo > 0
+    assert (row.n_originals, row.unflagged.n_originals) == (3863, 339)
+
+
+def test_req_stat_base_2_methods_documents_the_flag_its_thresholds_and_the_with_and_without_columns():
+    from pathlib import Path
+
+    text = (Path(__file__).resolve().parents[3] / "docs" / "METHODS.md").read_text()
+    for needle in ("Burstiness flag", "BURST_DISPERSION", "BURST_ACTIVE_SHARE", "without_bursty", "fewer than a quarter",
+                   "+483 [+438, +525]", "+78 [+64, +93]"):
+        assert needle in text, needle

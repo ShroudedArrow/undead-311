@@ -30,6 +30,10 @@ within WINDOW_DAYS of a closure by coincidence?
   season, leaving out reports within RADIUS_M and +-WINDOW_DAYS of the case; expected = lambda * pi * RADIUS_M^2 *
   WINDOW_DAYS, P = 1 - exp(-expected). It is computed for every incident as a second, independent baseline.
 
+Burstiness (REQ-STAT-BASE.2, methods.md, ops#141): every spot gets a flag (index of dispersion of its monthly report counts above
+BURST_DISPERSION, or its reports in fewer than BURST_ACTIVE_SHARE of its observed months). Each excess row also reports the excess
+without the flagged spots; the excess is never the headline number.
+
 Excess (REQ-STAT-BASE.2): observed possible zombies minus the sum of the baseline over the same eligible originals,
 by department, family and neighborhood, each with a seeded bootstrap interval (REQ-STAT-INT.1). Observed and expected
 use the same cohort (fully observed originals), so the two are comparable. The interval carries the error of the baseline
@@ -56,6 +60,8 @@ DAY = 86_400.0
 MIN_WINDOWS = 4  # REQ-STAT-BASE.3
 DENSE_WINDOWS = 2  # a spot with at least one report per DENSE_WINDOWS windows is dense (methods.md hybrid, ops#130, ops#131)
 SHORT_DENSE_WINDOWS = 1  # a spot watched for less than MIN_WINDOWS windows is read by its own windows only with one report per window, counting the first (ops#136)
+BURST_DISPERSION = 2.0  # a spot is bursty when the index of dispersion of its monthly report counts exceeds this (methods.md, ops#141)
+BURST_ACTIVE_SHARE = 0.25  # ... or when its reports fall in fewer than this share of its observed months (methods.md, ops#141)
 POOLED_MIN = 100  # pooled windows needed before the citywide fallback is taken for one season, else all seasons
 _SEASON_OF_MONTH = np.array([0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 0])  # Jan..Dec -> winter, spring, summer, autumn
 UNKNOWN = "(unknown)"
@@ -108,6 +114,43 @@ def season_integrated_p(k: np.ndarray, days: np.ndarray, d: np.ndarray) -> np.nd
     log_none = log_none.sum(axis=1)
     certain = (active & ~enough & (k_eff > 0)).any(axis=1)  # every other live report is in the window
     return np.where(certain, 1.0, 1.0 - np.exp(log_none))
+
+
+@dataclass(frozen=True)
+class Burst:
+    """The burstiness of one spot's reports (REQ-STAT-BASE.2, methods.md "Acceptance and limits", ops#141)."""
+
+    months: int  # calendar months (UTC) from the first report's month to the data end's month, inclusive
+    active: int  # months that hold at least one report
+    dispersion: float | None  # variance / mean of the monthly counts (None with one month or no reports)
+    by_dispersion: bool
+    by_concentration: bool
+
+    @property
+    def flagged(self) -> bool:
+        return self.by_dispersion or self.by_concentration
+
+
+def burstiness(opens: np.ndarray, t_end: float) -> Burst:
+    """Flag a spot whose reports come in bursts or only for a limited period (REQ-STAT-BASE.2, ops#141).
+
+    `opens` are the open times (epoch seconds) of every non-mirror same-family report at the spot; the observed months run from
+    the month of the first one to the month of the data end. The spot is bursty when the index of dispersion of its monthly
+    counts (sample variance over mean) is above BURST_DISPERSION, or when its reports fall in fewer than BURST_ACTIVE_SHARE of
+    the observed months. Both tests read only the reports and the span, never closures or outcomes, so a placebo shift cannot
+    change the flag. Bursts and time-limited reporting are where a baseline built from the spot's own history is biased
+    (docs/METHODS.md Limits)."""
+    if not opens.size:
+        return Burst(0, 0, None, False, False)
+    month = np.asarray(opens, dtype="int64").astype("datetime64[s]").astype("datetime64[M]").astype("int64")
+    last = np.datetime64(int(t_end), "s").astype("datetime64[M]").astype("int64")
+    first = int(month.min())
+    n_months = max(int(last) - first + 1, int(month.max()) - first + 1)
+    counts = np.bincount(month - first, minlength=n_months)
+    active = int((counts > 0).sum())
+    dispersion = float(counts.var(ddof=1) / counts.mean()) if n_months > 1 else None
+    return Burst(n_months, active, dispersion, dispersion is not None and dispersion > BURST_DISPERSION,
+                 active < BURST_ACTIVE_SHARE * n_months)  # fmt: skip
 
 
 @dataclass(frozen=True)
@@ -186,6 +229,7 @@ class BaselineModel:
         self._own: dict[str, np.ndarray] = {}
         self._dense_cache: dict[tuple[str, str], np.ndarray] = {}
         self._pooled = self._pool()
+        self._burst: dict[tuple[str, str], Burst] = {}
         self._estimates: dict[str, Estimate] = {}
         self._nbr_data: dict[tuple[str, str], dict] | None = None
         self.fallbacks: dict[str, int] = {"spot": 0, "neighborhood": 0, "citywide": 0, "none": 0}
@@ -318,6 +362,30 @@ class BaselineModel:
             return False
         span = float(live.span.sum())
         return span > 0 and float(live.all_counts.sum()) * DENSE_WINDOWS * self.params.WINDOW_DAYS >= span
+
+    def burst(self, key: tuple[str, str]) -> Burst:
+        """The burstiness flag of a spot (REQ-STAT-BASE.2): from the open times of every non-mirror report there."""
+        got = self._burst.get(key)
+        if got is None:
+            got = self._burst[key] = burstiness(self.groups[key][0] if key in self.groups else np.empty(0), self.t_end)
+        return got
+
+    def is_bursty(self, incident: Incident) -> bool:
+        """True when the incident's spot is flagged bursty (REQ-STAT-BASE.2)."""
+        return self.burst(self._incident_key[incident.incident_id]).flagged
+
+    def burst_summary(self, incidents: list[Incident]) -> dict[str, int]:
+        """Spots and originals behind `incidents` by burstiness flag (REQ-STAT-BASE.2, ops#141), for `excess.json`."""
+        keys = {self._incident_key[i.incident_id] for i in incidents}
+        flags = {k: self.burst(k) for k in keys}
+        return {
+            "spots": len(keys),
+            "flagged_spots": sum(b.flagged for b in flags.values()),
+            "flagged_by_dispersion": sum(b.by_dispersion for b in flags.values()),
+            "flagged_by_concentration": sum(b.by_concentration for b in flags.values()),
+            "originals": len(incidents),
+            "flagged_originals": sum(self.is_bursty(i) for i in incidents),
+        }
 
     def dense_share(self, opens: np.ndarray, live: LiveSpot) -> np.ndarray:
         """Share of sliding WINDOW_DAYS windows that contain a report, for the dense estimator (REQ-STAT-BASE.1, ops#131).
@@ -562,19 +630,57 @@ class ExcessRow:
     expected_nbr: float | None
     excess_nbr: float | None
     n_fallback: int
+    n_bursty: int = 0  # originals at spots flagged bursty (REQ-STAT-BASE.2)
+    unflagged: ExcessUnflagged | None = None  # the same row without the flagged spots; None when none is left
 
     def to_json(self) -> dict:
         return {
             "kind": self.kind, "name": self.name, "tier_set": self.tier_set, "observed": self.observed,
             "expected": self.expected, "excess": self.excess, "lo": self.lo, "hi": self.hi,
             "n_originals": self.n_originals, "expected_nbr": self.expected_nbr, "excess_nbr": self.excess_nbr,
-            "n_fallback": self.n_fallback,
+            "n_fallback": self.n_fallback, "n_bursty": self.n_bursty,
+            "without_bursty": None if self.unflagged is None else self.unflagged.to_json(),
         }  # fmt: skip
+
+
+@dataclass(frozen=True)
+class ExcessUnflagged:
+    """An excess row restricted to the originals at spots that are not flagged bursty (REQ-STAT-BASE.2)."""
+
+    observed: int
+    expected: float
+    excess: float
+    lo: float
+    hi: float
+    n_originals: int
+
+    def to_json(self) -> dict:
+        return {"observed": self.observed, "expected": self.expected, "excess": self.excess, "lo": self.lo,
+                "hi": self.hi, "n_originals": self.n_originals}  # fmt: skip
 
 
 def zombie_by_incident(zombies: list[Zombie], tier_set: TierSet) -> dict[str, Zombie]:
     """Each incident's resurrection in the tier set: headline only, or every tier (REQ-STAT-TIER.2)."""
     return {z.incident_id: z for z in zombies if tier_set == "all" or z.tier == "headline"}
+
+
+def excess_interval(vals: list[tuple], rng: np.random.Generator, boot: int) -> tuple[float, float]:
+    """Seeded bootstrap interval of the excess of `vals` (REQ-STAT-INT.1, REQ-STAT-BASE.2).
+
+    Each row is (outcome, p, expected_nbr, fallback, cell, n_eff, cluster, bursty). Whole spots are resampled and every pooled
+    p is drawn again from its windows."""
+    cell_ids: dict[tuple, int] = {}
+    cells = [-1 if v[4] is None else cell_ids.setdefault(v[4], len(cell_ids)) for v in vals]
+    cell_p = [0.0] * len(cell_ids)
+    cell_n = [0.0] * len(cell_ids)
+    for v, c in zip(vals, cells, strict=True):
+        if c >= 0:
+            cell_p[c], cell_n[c] = v[1], float(v[5])
+    cluster_ids: dict[tuple, int] = {}
+    clusters = [-1 if v[6] is None else cluster_ids.setdefault(v[6], len(cluster_ids)) for v in vals]
+    ci = bootstrap_sum_cells([v[0] - v[1] for v in vals], cells, cell_p, cell_n, rng, boot, clusters=clusters)
+    assert ci is not None
+    return ci
 
 
 def excess_rows(
@@ -584,8 +690,12 @@ def excess_rows(
 
     Originals without an estimate (no spot, neighborhood or pooled windows) are left out of the cohort and counted
     nowhere in `observed` either, so observed and expected always cover the same originals.
+
+    Every row also carries the same excess without the originals at spots flagged bursty (REQ-STAT-BASE.2, ops#141). Its
+    interval comes from a second generator seeded (seed, 1), so the intervals of the full rows never depend on the flag.
     """
     rng = np.random.Generator(np.random.PCG64(seed))
+    rng_flag = np.random.Generator(np.random.PCG64(np.random.SeedSequence([seed, 1])))
     rows: list[ExcessRow] = []
     for tier_set in ("headline", "all"):
         zs = zombie_by_incident(model.result.zombies, tier_set)
@@ -595,7 +705,7 @@ def excess_rows(
             if est.p is None:
                 continue
             row = (1.0 if inc.incident_id in zs else 0.0, est.p, est.expected_nbr, est.source != "spot", est.cell, est.n_eff,
-                   est.cluster)
+                   est.cluster, model.is_bursty(inc))
             for kind, name in (("department", inc.department or UNKNOWN), ("family", inc.type_family),
                                ("neighborhood", inc.neighborhood or UNKNOWN)):  # fmt: skip
                 groups[(kind, name)].append(row)
@@ -605,17 +715,14 @@ def excess_rows(
             exp = sum(v[1] for v in vals)
             nbr = [v[2] for v in vals]
             e_nbr = None if any(x is None for x in nbr) else float(sum(nbr))  # type: ignore[arg-type]
-            cell_ids: dict[tuple, int] = {}
-            cells = [-1 if v[4] is None else cell_ids.setdefault(v[4], len(cell_ids)) for v in vals]
-            cell_p = [0.0] * len(cell_ids)
-            cell_n = [0.0] * len(cell_ids)
-            for v, c in zip(vals, cells, strict=True):
-                if c >= 0:
-                    cell_p[c], cell_n[c] = v[1], float(v[5])
-            cluster_ids: dict[tuple, int] = {}
-            clusters = [-1 if v[6] is None else cluster_ids.setdefault(v[6], len(cluster_ids)) for v in vals]
-            ci = bootstrap_sum_cells([v[0] - v[1] for v in vals], cells, cell_p, cell_n, rng, boot, clusters=clusters)
-            assert ci is not None
+            ci = excess_interval(vals, rng, boot)
+            kept = [v for v in vals if not v[7]]
+            without = None
+            if kept:
+                k_obs, k_exp = sum(v[0] for v in kept), sum(v[1] for v in kept)
+                k_ci = excess_interval(kept, rng_flag, boot)
+                without = ExcessUnflagged(int(k_obs), k_exp, k_obs - k_exp, k_ci[0], k_ci[1], len(kept))
             rows.append(ExcessRow(kind, name, tier_set, int(obs), exp, obs - exp, ci[0], ci[1], len(vals), e_nbr,
-                                  None if e_nbr is None else obs - e_nbr, sum(1 for v in vals if v[3])))  # fmt: skip
+                                  None if e_nbr is None else obs - e_nbr, sum(1 for v in vals if v[3]),
+                                  len(vals) - len(kept), without))  # fmt: skip
     return rows

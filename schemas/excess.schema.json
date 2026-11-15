@@ -85,6 +85,54 @@
                 "type": "null"
               }
             ]
+          },
+          "n_bursty": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "originals at spots flagged bursty (REQ-STAT-BASE.2, methods.md burstiness flag, ops#141)"
+          },
+          "without_bursty": {
+            "anyOf": [
+              {
+                "type": "object",
+                "description": "the same row without the originals at flagged spots; its interval is a seeded bootstrap of those originals",
+                "properties": {
+                  "observed": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "expected": {
+                    "type": "number"
+                  },
+                  "excess": {
+                    "type": "number"
+                  },
+                  "lo": {
+                    "type": "number"
+                  },
+                  "hi": {
+                    "type": "number"
+                  },
+                  "n_originals": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "excess",
+                  "expected",
+                  "hi",
+                  "lo",
+                  "n_originals",
+                  "observed"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "null",
+                "description": "every original of the row is at a flagged spot"
+              }
+            ]
           }
         },
         "required": [
@@ -205,6 +253,37 @@
     },
     "params": {
       "type": "object"
+    },
+    "burstiness": {
+      "type": "object",
+      "description": "REQ-STAT-BASE.2: spots and headline-scope originals by burstiness flag (dispersion above 2, or reports in fewer than a quarter of the observed months)",
+      "properties": {
+        "spots": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "flagged_spots": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "flagged_by_dispersion": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "flagged_by_concentration": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "originals": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "flagged_originals": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
     }
   },
   "required": [

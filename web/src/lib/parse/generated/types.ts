@@ -439,6 +439,19 @@ export interface ExcessFile {
      */
     n_fallback?: number;
     reports_per_km?: number | null;
+    /**
+     * originals at spots flagged bursty (REQ-STAT-BASE.2, methods.md burstiness flag, ops#141)
+     */
+    n_bursty?: number;
+    without_bursty?: {
+      observed: number;
+      expected: number;
+      excess: number;
+      lo: number;
+      hi: number;
+      n_originals: number;
+      [k: string]: unknown;
+    } | null;
     [k: string]: unknown;
   }[];
   /**
@@ -475,6 +488,18 @@ export interface ExcessFile {
   dataset?: "sample" | "full";
   seed?: number | null;
   params?: {};
+  /**
+   * REQ-STAT-BASE.2: spots and headline-scope originals by burstiness flag (dispersion above 2, or reports in fewer than a quarter of the observed months)
+   */
+  burstiness?: {
+    spots?: number;
+    flagged_spots?: number;
+    flagged_by_dispersion?: number;
+    flagged_by_concentration?: number;
+    originals?: number;
+    flagged_originals?: number;
+    [k: string]: unknown;
+  };
   [k: string]: unknown;
 }
 
