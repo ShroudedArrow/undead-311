@@ -35,6 +35,16 @@ describe("contrast floor (REQ-WEB-A11Y.1, design-system.md contrast rules)", () 
   });
 });
 
+describe("pressed buttons stay readable (REQ-WEB-STREET.1, UX-38)", () => {
+  it("the chosen street button is Crew white on Asphalt, not Crew white on Crew white", () => {
+    const rule = rules.find((r) => r.sel === '.street-results button[aria-pressed="true"]') as { body: string };
+    expect(rule).toBeDefined();
+    const bg = /background:\s*var\(--([a-z-]+)\)/.exec(rule.body)?.[1] as string;
+    const fg = /(?:^|[;\s])color:\s*var\(--([a-z-]+)\)/.exec(rule.body)?.[1] as string;
+    expect(contrast(hex(fg), hex(bg))).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
 describe("keyboard and motion (REQ-WEB-A11Y.1)", () => {
   it("has a visible focus style and never removes outlines", () => {
     expect(css).toMatch(/:focus-visible\s*\{[^}]*outline:\s*var\(--focus-ring\)/);
