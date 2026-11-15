@@ -47,6 +47,7 @@ Requirement IDs: REQ-OPS-HOST.1 to .4, REQ-OPS-NIGHTLY.2.
 2. Open `ShroudedArrow/undead-311`, then the same **Secrets and variables**, **Actions** page, and add `CHANNEL_TOKEN` again (the CI result post uses it).
 3. GitHub does not allow an Actions secret name that starts with `GITHUB_`, so the secret is called `CHANNEL_TOKEN`. Each workflow maps it to the name the scripts read: `env: GITHUB_CHANNEL_TOKEN: ${{ secrets.CHANNEL_TOKEN }}` (the scripts `scripts/hooklib.py` and `scripts/ci_channel.py` read `GITHUB_CHANNEL_TOKEN`).
 4. The judged repo never needs `NETLIFY_AUTH_TOKEN` or `NETLIFY_SITE_ID`.
+5. In `ShroudedArrow/undead-311-data`, on the same page, open the **Variables** tab and add the variable `JUDGED_TAG`: the freeze tag in the judged repo. The nightly job checks out that tag. The workflow template and its setup steps are in `ops/undead-311-data/README.md` (REQ-OPS-NIGHTLY.1).
 
 ### 7. Production URL
 Copy the site URL from the top of the Netlify site page (`https://<name>.netlify.app`; rename it under **Site configuration**, **Change site name**). Put it in `README.md`.
@@ -55,6 +56,12 @@ Copy the site URL from the top of the Netlify site page (`https://<name>.netlify
 - The production URL loads with no login.
 - A test pull request shows a **Deploy Preview** check and a comment with the preview URL.
 - The page footer reads "Independent project. Not affiliated with the City of Boston." and the browser console shows no blocked requests.
+
+## Caching and routes
+`make build` ends by adding cache rules to `web/dist/_headers` (`ops/cache-headers/cache-headers.mjs`): hashed files under `assets/` are cached for a year as immutable, and `index.html`, `status.json` and everything under `data/` must be revalidated on each visit (REQ-OPS-CACHE.1). Netlify compresses text files itself, so no precompressed files are built. `netlify.toml` serves `index.html` for the app's own routes (`/judge`, `/methods` and the rest), so a shared link opens on a first visit.
+
+## Pull request checks that need nothing from you
+`.github/workflows/ci.yml` runs the tests, copy-lint, an axe scan of judge mode, the first-view budget, `pip-audit` and `npm audit --audit-level=high`, then posts one line to the channel when `CHANNEL_TOKEN` is set (it posts nothing and still passes when it is not). `.github/workflows/deep-pbt.yml` runs the property tests at ten times the examples every night.
 
 ## Known interaction
 The nightly job deploys the whole site with fresh data from the CLI. A later push to `main` triggers Netlify's own build from the data committed in the repo. After the freeze tag no more pushes land, so the nightly deploy is the last one. Before the freeze, the next nightly run replaces such a build. The generated data files under `web/public/data/` are built by the pipeline: a Netlify build serves whatever is committed there, so commit a current export before relying on a production build from `main`.

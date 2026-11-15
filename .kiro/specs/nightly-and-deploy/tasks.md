@@ -25,7 +25,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
   - Generated headers: immutable for hashed assets, `no-cache` for `index.html`, `status.json` and manifests; `.gz` use.
   - [x] 5.1 Check O3: the header generator never marks an unhashed file immutable (property over generated file lists). _REQ-OPS-CACHE.1_
   - _Requirements: REQ-OPS-CACHE.1_
-- [ ] 6. [credibility] Nightly refresh template and alerts
+- [x] 6. [credibility] Nightly refresh template and alerts
   - `ops/undead-311-data/.github/workflows/nightly.yml` and README (checkout at the frozen tag, download, pipeline, build, deploy, Release with Parquet; keep the last good deploy; `needs-human` alert issue).
   - _Requirements: REQ-OPS-NIGHTLY.1–4, REQ-OPS-ALERT.1_
 - [ ] 7. [credibility] Frozen judging snapshot

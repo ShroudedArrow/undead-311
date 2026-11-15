@@ -1,0 +1,151 @@
+# Nightly data refresh. TEMPLATE: copy this file to `.github/workflows/nightly.yml` in ShroudedArrow/undead-311-data
+# (agents have no access to that repo). REQ-OPS-NIGHTLY.1 to .4, REQ-OPS-ALERT.1. Setup steps: ops/undead-311-data/README.md.
+#
+# Flow: check out the judged repo at the frozen release tag, download the 311 data, run the pipeline, build the site with
+# the new data, deploy the WHOLE site to Netlify (so data is always served from the site's own origin), attach the
+# processed data to a GitHub Release. The deploy is the last step that changes anything public, and a failed night
+# never reaches it, so Netlify keeps the last good deploy. On failure the job writes a failure entry (kept in the release
+# `nightly-state`, merged into the next good deploy's status.json `history`) and opens a needs-human alert.
+#
+# Every action is pinned to a tag and the job sets its own permissions (pipeline/tests/unit/test_workflows_pinned.py).
+# Event and variable data reaches scripts through env vars, never inside run text. Secrets used here: NETLIFY_AUTH_TOKEN,
+# NETLIFY_SITE_ID (deploy step only) and CHANNEL_TOKEN (alert only), mapped to GITHUB_CHANNEL_TOKEN.
+name: nightly
+
+on:
+  schedule:
+    - cron: "41 3 * * *"   # nightly, 03:41 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: refresh (download, pipeline, build, deploy, release)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    # contents: write is for the GitHub Releases (data snapshot, failure history). Nothing else is written.
+    permissions:
+      contents: write
+    env:
+      JUDGED_REPO: ShroudedArrow/undead-311
+      # A repository variable (Settings, Secrets and variables, Actions, Variables), set once to the freeze tag.
+      JUDGED_TAG: ${{ vars.JUDGED_TAG }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      DATA_REPO: ${{ github.repository }}
+    steps:
+      - name: Require the frozen tag
+        run: |
+          if [ -z "$JUDGED_TAG" ]; then echo "Set the repository variable JUDGED_TAG to the frozen release tag (README.md)." >&2; exit 1; fi
+
+      - name: Check out the judged repo at the frozen tag
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ShroudedArrow/undead-311
+          ref: ${{ vars.JUDGED_TAG }}
+          path: judged
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: judged/.nvmrc
+          cache: npm
+          cache-dependency-path: judged/web/package-lock.json
+
+      - name: Install dependencies
+        id: setup
+        working-directory: judged
+        run: |
+          mkdir -p "$UV_CACHE_DIR"
+          make setup
+
+      - name: Download the 311 data
+        id: download
+        working-directory: judged
+        run: make data-download
+
+      - name: Run the pipeline
+        id: pipeline
+        working-directory: judged
+        run: make pipeline
+
+      # A pipeline that wrote `ok: false` (or no status) must never be deployed.
+      - name: Check the pipeline status
+        id: check
+        run: python3 judged/ops/undead-311-data/status_history.py check --status judged/web/public/data/status.json
+
+      - name: Merge earlier failures into status.json history
+        id: history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download nightly-state --repo "$DATA_REPO" --pattern failure-history.json --dir "$RUNNER_TEMP" --clobber || echo "no failure history yet"
+          python3 judged/ops/undead-311-data/status_history.py merge --status judged/web/public/data/status.json --history "$RUNNER_TEMP/failure-history.json"
+
+      - name: Build the site with the new data
+        id: build
+        working-directory: judged
+        run: make build
+
+      - name: Deploy the whole site (production)
+        id: deploy
+        working-directory: judged
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: npx --yes netlify-cli@27.19.0 deploy --prod --dir web/dist --message "nightly $GITHUB_RUN_ID"
+
+      - name: Clear the failure history (the deploy that carries it succeeded)
+        id: clear
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 judged/ops/undead-311-data/status_history.py clear --history "$RUNNER_TEMP/failure-history.json"
+          gh release view nightly-state --repo "$DATA_REPO" > /dev/null 2>&1 || gh release create nightly-state --repo "$DATA_REPO" --title "nightly state" --notes "Failure history for the nightly refresh. Not a data release."
+          gh release upload nightly-state "$RUNNER_TEMP/failure-history.json" --repo "$DATA_REPO" --clobber
+
+      - name: Attach the processed data to a release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          day="$(date -u +%F)"
+          tag="data-$day"
+          tar -czf "$RUNNER_TEMP/processed-$day.tar.gz" -C judged/.local-data/data processed
+          (cd "$RUNNER_TEMP" && sha256sum "processed-$day.tar.gz" > "processed-$day.sha256")
+          gh release view "$tag" --repo "$DATA_REPO" > /dev/null 2>&1 || gh release create "$tag" --repo "$DATA_REPO" --title "Processed data $day" --notes "Processed Parquet and DuckDB files from the nightly run. Download one file instead of rebuilding."
+          gh release upload "$tag" "$RUNNER_TEMP/processed-$day.tar.gz" "$RUNNER_TEMP/processed-$day.sha256" --repo "$DATA_REPO" --clobber
+
+      # ---- failure path: the last good deploy stays up; record the failure and alert the team -----------------
+      - name: Record the failure for the next good deploy
+        if: ${{ failure() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          S_CHECKOUT: ${{ steps.checkout.outcome }}
+          S_SETUP: ${{ steps.setup.outcome }}
+          S_DOWNLOAD: ${{ steps.download.outcome }}
+          S_PIPELINE: ${{ steps.pipeline.outcome }}
+          S_CHECK: ${{ steps.check.outcome }}
+          S_BUILD: ${{ steps.build.outcome }}
+          S_DEPLOY: ${{ steps.deploy.outcome }}
+          S_RELEASE: ${{ steps.release.outcome }}
+        run: |
+          gh release download nightly-state --repo "$DATA_REPO" --pattern failure-history.json --dir "$RUNNER_TEMP" --clobber || echo "no failure history yet"
+          python3 judged/ops/undead-311-data/status_history.py record --history "$RUNNER_TEMP/failure-history.json" --run-url "$RUN_URL" --outcomes "checkout=$S_CHECKOUT" "setup=$S_SETUP" "download=$S_DOWNLOAD" "pipeline=$S_PIPELINE" "check=$S_CHECK" "build=$S_BUILD" "deploy=$S_DEPLOY" "release=$S_RELEASE"
+          gh release view nightly-state --repo "$DATA_REPO" > /dev/null 2>&1 || gh release create nightly-state --repo "$DATA_REPO" --title "nightly state" --notes "Failure history for the nightly refresh. Not a data release."
+          gh release upload nightly-state "$RUNNER_TEMP/failure-history.json" --repo "$DATA_REPO" --clobber
+
+      - name: Open a needs-human alert in the channel
+        if: ${{ failure() }}
+        continue-on-error: true
+        env:
+          GITHUB_CHANNEL_TOKEN: ${{ secrets.CHANNEL_TOKEN }}
+        run: python3 judged/scripts/ci_channel.py alert --title "Nightly data refresh failed" --detail "The nightly refresh failed; the last good deploy is still live." --run-url "$RUN_URL"
