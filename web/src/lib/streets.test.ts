@@ -2,7 +2,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import index from "../generated/streets.json";
 import { haversineM } from "./geo";
-import { addFromSamCsv, boundsOf, IndexBuilder, MAX_POINTS, nearStreet, normalizeStreet, searchStreets, streetsOf, type StreetIndex } from "./streets";
+import { addFromSamCsv, addFromSamSegments, boundsOf, IndexBuilder, MAX_POINTS, MAX_POINTS_SAM, nearStreet, normalizeStreet, searchStreets, streetsOf, type StreetIndex } from "./streets";
 
 const idx = index as StreetIndex;
 
@@ -24,13 +24,14 @@ describe("street names (REQ-WEB-STREET.1)", () => {
 });
 
 describe("street search (REQ-WEB-STREET.1)", () => {
-  it("the committed index is sorted, unique by key, and has at most MAX_POINTS points per street", () => {
+  it("the committed index is sorted, unique by key, and is built from SAM, and has at most MAX_POINTS_SAM points per street", () => {
+    expect(idx.source).toBe("sam");
     const keys = idx.streets.map((s) => s.k);
     expect(keys).toEqual([...keys].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)));
     expect(new Set(keys).size).toBe(keys.length);
     for (const s of idx.streets) {
       expect(s.p.length).toBeGreaterThan(0);
-      expect(s.p.length).toBeLessThanOrEqual(MAX_POINTS);
+      expect(s.p.length).toBeLessThanOrEqual(MAX_POINTS_SAM);
     }
   });
   it("finds a street by a partial, differently spelled name", () => {
@@ -106,5 +107,43 @@ describe("SAM address registry input (REQ-WEB-STREET.1)", () => {
     expect(e.p).toHaveLength(MAX_POINTS);
     expect(e.p[0][0]).toBe(42.3);
     expect(e.p[MAX_POINTS - 1][0]).toBe(42.399);
+  });
+});
+
+describe("SAM street segments input (REQ-WEB-STREET.1, UX-45)", () => {
+  const seg = (name: Record<string, string | null>, coords: number[][], type = "LineString") => ({ properties: name, geometry: { type, coordinates: coords } });
+  it("names a street from its direction, name, type and suffix, and keeps the first, middle and last vertex of each segment", () => {
+    const b = new IndexBuilder();
+    const n = addFromSamSegments(b, {
+      features: [
+        seg({ PRE_DIR: "W", ST_NAME: "BROADWAY", ST_TYPE: null, SUF_DIR: null }, [[-71.05, 42.34], [-71.051, 42.341], [-71.052, 42.342]]),
+        seg({ PRE_DIR: null, ST_NAME: "BEACON", ST_TYPE: "ST", SUF_DIR: null }, [[-71.07, 42.35], [-71.071, 42.351]]),
+        seg({ PRE_DIR: null, ST_NAME: "BEACON", ST_TYPE: "ST", SUF_DIR: null }, [[-71.08, 42.36], [-71.081, 42.361]]),
+      ],
+    });
+    const out = b.build("sam", MAX_POINTS_SAM);
+    expect(n).toBe(3);
+    expect(out.streets.map((s) => s.k)).toEqual(["BEACON ST", "W BROADWAY"]);
+    expect(out.streets[0].p).toHaveLength(4);
+    expect(out.streets[1].p).toHaveLength(3);
+  });
+  it("skips segments with no street name or no line, and reads MultiLineString", () => {
+    const b = new IndexBuilder();
+    const n = addFromSamSegments(b, {
+      features: [
+        seg({ PRE_DIR: null, ST_NAME: null, ST_TYPE: "ST", SUF_DIR: null }, [[-71, 42], [-71.1, 42.1]]),
+        seg({ ST_NAME: "A", ST_TYPE: "ST" }, [], "LineString"),
+        { properties: { ST_NAME: "ELM", ST_TYPE: "ST" }, geometry: null },
+        seg({ ST_NAME: "OAK", ST_TYPE: "ST" }, [[[-71, 42], [-71.1, 42.1]]] as unknown as number[][], "MultiLineString"),
+      ],
+    });
+    expect(n).toBe(1);
+    expect(b.build("sam").streets.map((s) => s.k)).toEqual(["OAK ST"]);
+  });
+  it("keeps every point of a long street up to MAX_POINTS_SAM, so a point lies every few blocks", () => {
+    const b = new IndexBuilder();
+    for (let i = 0; i < 400; i++) b.add("Long St", 42.3 + i / 10000, -71.1);
+    expect(b.build("sam", MAX_POINTS_SAM).streets[0].p).toHaveLength(MAX_POINTS_SAM);
+    expect(MAX_POINTS_SAM).toBeGreaterThan(MAX_POINTS);
   });
 });

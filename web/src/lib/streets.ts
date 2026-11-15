@@ -19,6 +19,8 @@ export interface StreetIndex {
 }
 
 export const MAX_POINTS = 12;
+/** Points kept per street when the index is built from SAM street segments, so a long street keeps a point every few blocks (REQ-WEB-STREET.1). */
+export const MAX_POINTS_SAM = 150;
 
 const SUFFIX: Record<string, string> = {
   STREET: "ST", AVENUE: "AVE", ROAD: "RD", BOULEVARD: "BLVD", PLACE: "PL", DRIVE: "DR", LANE: "LN", COURT: "CT", SQUARE: "SQ",
@@ -66,10 +68,10 @@ export class IndexBuilder {
     const p: [number, number] = [Math.round(lat * 1e5) / 1e5, Math.round(lon * 1e5) / 1e5];
     e.pts.set(`${p[0]},${p[1]}`, p);
   }
-  build(source: StreetIndex["source"]): StreetIndex {
+  build(source: StreetIndex["source"], maxPoints = MAX_POINTS): StreetIndex {
     const streets = [...this.map.entries()]
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-      .map(([k, e]) => ({ k, n: e.n, p: spread([...e.pts.values()].sort((a, b) => a[0] - b[0] || a[1] - b[1]), MAX_POINTS) }));
+      .map(([k, e]) => ({ k, n: e.n, p: spread([...e.pts.values()].sort((a, b) => a[0] - b[0] || a[1] - b[1]), maxPoints) }));
     return { source, streets };
   }
 }
@@ -116,6 +118,33 @@ export function boundsOf(entry: StreetEntry): [number, number, number, number] {
   const lats = entry.p.map((p) => p[0]);
   const lons = entry.p.map((p) => p[1]);
   return [Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)];
+}
+
+interface SamFeature {
+  properties?: { PRE_DIR?: string | null; ST_NAME?: string | null; ST_TYPE?: string | null; SUF_DIR?: string | null } | null;
+  geometry?: { type?: string; coordinates?: unknown } | null;
+}
+
+/**
+ * Read the Analyze Boston SAM street segments GeoJSON (Open Data Commons PDDL) into the builder: one street per name
+ * (PRE_DIR, ST_NAME, ST_TYPE, SUF_DIR), with the first, middle and last vertex of every segment as its points.
+ * Segments without a name are skipped. Returns the number of segments used (REQ-WEB-STREET.1, UX-45).
+ */
+export function addFromSamSegments(builder: IndexBuilder, geojson: { features?: SamFeature[] }): number {
+  let n = 0;
+  for (const f of geojson.features ?? []) {
+    const p = f.properties ?? {};
+    if (!p.ST_NAME || !/[A-Za-z0-9]/.test(p.ST_NAME)) continue;
+    const name = [p.PRE_DIR, p.ST_NAME, p.ST_TYPE, p.SUF_DIR].filter((x): x is string => !!x && x.trim() !== "").join(" ").trim();
+    const g = f.geometry;
+    if (!name || !g || (g.type !== "LineString" && g.type !== "MultiLineString")) continue;
+    const lines = (g.type === "LineString" ? [g.coordinates] : g.coordinates) as [number, number][][];
+    const verts = lines.flat().filter((c) => Array.isArray(c) && c.length >= 2);
+    if (verts.length === 0) continue;
+    for (const [lon, lat] of [verts[0], verts[Math.floor(verts.length / 2)], verts[verts.length - 1]]) builder.add(name, lat, lon);
+    n++;
+  }
+  return n;
 }
 
 /** Read a SAM address-registry CSV (one row per address) into the builder. Column names are looked up case-insensitively. */
