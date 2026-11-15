@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { drawAtlas, iconFor, iconMapping, OUTLINE_VARIANTS, rng, SPRITE_COUNT, SPRITE_OUTLINE_NAMES, SPRITE_SIZE, SPRITE_SOLID_NAMES, SPRITE_VARIANTS, variantFor } from "./sprites";
+import { drawAtlas, iconFor, sprayPlan, spraySvg, iconMapping, OUTLINE_VARIANTS, rng, SPRITE_COUNT, SPRITE_OUTLINE_NAMES, SPRITE_SIZE, SPRITE_SOLID_NAMES, SPRITE_VARIANTS, variantFor } from "./sprites";
 import { buildStyle, tilesUrl } from "./style";
 
 describe("sprite atlas (REQ-WEB-MAP.1)", () => {
@@ -39,6 +39,26 @@ describe("sprite atlas (REQ-WEB-MAP.1)", () => {
     expect(a.n).toBe(SPRITE_COUNT);
     expect(a.calls).toEqual(run().calls);
     expect(rng(1)()).toBe(rng(1)());
+  });
+});
+
+describe("spray circle as an SVG for the share images (REQ-WEB-LINKS.2, UX-44)", () => {
+  it("draws the same plan the atlas draws: the first sprite's ring arc matches sprayPlan", () => {
+    const arcs: number[][] = [];
+    const ctx = { strokeStyle: "", fillStyle: "", lineWidth: 0, lineCap: "", beginPath: () => undefined, stroke: () => undefined, fill: () => undefined, clearRect: () => undefined, setLineDash: () => undefined, arc: (...a: number[]) => arcs.push(a) };
+    drawAtlas(ctx as never);
+    const p = sprayPlan(0);
+    expect(arcs[0]).toEqual([p.cx, p.cy, p.r, p.edge[0], p.edge[1]]);
+    expect(arcs[1]).toEqual([p.cx, p.cy, p.r, p.ring[0], p.ring[1]]);
+    expect(arcs).toHaveLength(SPRITE_VARIANTS * (2 + 46) + OUTLINE_VARIANTS * 2);
+  });
+  it("is a standalone pink ring with an Asphalt edge and speckle, deterministic per variant", () => {
+    const svg = spraySvg(0, 64);
+    expect(svg.startsWith("<svg ")).toBe(true);
+    expect(svg).toContain("#ff3ea5");
+    expect(svg.match(/<circle /g)).toHaveLength(46);
+    expect(spraySvg(0)).toBe(spraySvg(0));
+    expect(spraySvg(1)).not.toBe(spraySvg(0));
   });
 });
 

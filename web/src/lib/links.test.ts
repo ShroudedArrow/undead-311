@@ -58,6 +58,15 @@ describe("share file names and templates (REQ-WEB-LINKS.2)", () => {
   it("property: the build script words a gap exactly as the card does", () => {
     fc.assert(fc.property(fc.double({ min: 0, max: 400, noNaN: true }), (d) => gapWords(d, en.card as GapText) === formatGap(d)));
   });
+  it("draws the spray-circle marker, not a CSS circle, on both share pages (REQ-WEB-LINKS.2, UX-44)", () => {
+    const z = zombieShareHtml({ familyLabel: "Pothole", neighborhood: "Dorchester", gap: "3 days" }, text);
+    const n = neighborhoodShareHtml({ neighborhood: "Dorchester", count: 4, topFamilyLabel: null, topFamilyCount: 0 }, text);
+    for (const html of [z, n]) {
+      expect(html).toContain('<img class="circle" alt="" src="data:image/svg+xml;base64,');
+      expect(html).not.toContain("border-radius:50%");
+      expect(html).not.toMatch(/https?:\/\/(?!www\.w3\.org)/);
+    }
+  });
   it("the committed template files are in sync with en.json share keys", () => {
     const src = readFileSync(join(__dirname, "..", "..", "scripts", "make-share-images.ts"), "utf8");
     for (const k of ["zombie_where", "zombie_line", "neighborhood_line", "unknown_neighborhood"]) expect(Object.keys(en.share)).toContain(k);

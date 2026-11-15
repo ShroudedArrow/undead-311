@@ -4,6 +4,8 @@
  * Share images are static files rendered at build time from a template; there is no runtime service.
  */
 
+import { spraySvg } from "../map/sprites.ts";
+
 export const SHARE_W = 1200;
 export const SHARE_H = 630;
 
@@ -69,13 +71,16 @@ export interface NeighborhoodShare {
   topFamilyCount: number;
 }
 
+/** The map's spray-circle marker, inlined as an image so the share card carries the signature mark (UX-44). */
+const sprayImg = (): string => `<img class="circle" alt="" src="data:image/svg+xml;base64,${btoa(spraySvg(0, 64))}">`;
+
 const css = (fonts: string): string => `
 ${fonts}
 *{box-sizing:border-box}
 html,body{margin:0;width:${SHARE_W}px;height:${SHARE_H}px}
 body{background:${PALETTE.concrete};color:${PALETTE.asphalt};font-family:"Public Sans",system-ui,sans-serif;display:flex;flex-direction:column;justify-content:space-between;padding:56px 64px}
 .kicker{font-size:32px;font-weight:700;margin:0}
-.circle{display:inline-block;width:26px;height:26px;border:6px solid ${PALETTE.pink};border-radius:50%;vertical-align:-3px;margin-right:14px}
+.circle{display:inline-block;width:64px;height:64px;vertical-align:-14px;margin-right:14px}
 h1{font-size:76px;line-height:1.05;margin:20px 0 0;max-width:1000px}
 .line{font-size:36px;line-height:1.3;margin:24px 0 0;max-width:1000px}
 .stamps{display:flex;gap:24px;margin:0}
@@ -90,7 +95,7 @@ export function zombieShareHtml(d: ZombieShare, text: ShareText, fonts = ""): st
   const where = fill(text.zombie_where, { family: d.familyLabel, neighborhood: d.neighborhood });
   return page(
     fonts,
-    `<div><p class="kicker"><span class="circle"></span>${esc(text.zombie_kicker)}</p><h1>${esc(where)}</h1><p class="line">${esc(fill(text.zombie_line, { gap: d.gap }))}</p></div>` +
+    `<div><p class="kicker">${sprayImg()}${esc(text.zombie_kicker)}</p><h1>${esc(where)}</h1><p class="line">${esc(fill(text.zombie_line, { gap: d.gap }))}</p></div>` +
       `<p class="stamps"><span class="stamp closed">${esc(text.stamp_closed)}</span><span class="stamp">${esc(text.stamp_again)}</span></p><p class="foot">${esc(text.footer)}</p>`,
   );
 }
@@ -100,7 +105,7 @@ export function neighborhoodShareHtml(d: NeighborhoodShare, text: ShareText, fon
   const top = d.topFamilyLabel ? `<p class="line">${esc(fill(text.neighborhood_top, { family: d.topFamilyLabel, count: d.topFamilyCount }))}</p>` : "";
   return page(
     fonts,
-    `<div><p class="kicker"><span class="circle"></span>${esc(text.neighborhood_kicker)}</p><h1>${esc(d.neighborhood)}</h1><p class="line">${esc(fill(text.neighborhood_line, { count: d.count }))}</p>${top}</div>` +
+    `<div><p class="kicker">${sprayImg()}${esc(text.neighborhood_kicker)}</p><h1>${esc(d.neighborhood)}</h1><p class="line">${esc(fill(text.neighborhood_line, { count: d.count }))}</p>${top}</div>` +
       `<p class="foot">${esc(text.footer)}</p>`,
   );
 }
