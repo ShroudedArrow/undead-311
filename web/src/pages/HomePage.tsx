@@ -8,6 +8,7 @@ import { ZombieTable } from "../components/ZombieTable";
 import { visibleSet } from "../lib/filter";
 import { useData } from "../lib/data";
 import { parsePoints, parseZombies } from "../lib/parse";
+import { neighborhoodLabels } from "../lib/placeLabels";
 import { pointsToRows } from "../lib/points";
 import { buildTableRows, bulkIds } from "../lib/table";
 import { t } from "../lib/t";
@@ -28,6 +29,8 @@ export default function HomePage() {
   const zombieById = useMemo(() => (zombies.status === "ok" ? new Map(zombies.data.zombies.map((z) => [z.zombie_id, z])) : null), [zombies]);
   const visible = useMemo(() => visibleSet(rows, state.filters, state.tierMode), [rows, state]);
 
+  // names come from every point, so they do not jump around as filters change what is drawn
+  const placeLabels = useMemo(() => neighborhoodLabels(rows), [rows]);
   const bulkSet = useMemo(() => (state.bulk ? bulkIds(visible.items, zombieById) : null), [state.bulk, visible, zombieById]);
   // filter menus count what the current tier mode can show, so an option's number matches what picking it yields
   const optionRows = useMemo(() => (state.tierMode === "all" ? rows : rows.filter((r) => r.tier === "headline")), [rows, state.tierMode]);
@@ -94,7 +97,7 @@ export default function HomePage() {
         </div>
         {state.view === "map" ? (
           <Suspense fallback={<p>{t("map.loading")}</p>}>
-            <MapView rows={visible.items} selectedId={selectedId} onSelect={select} bulkIds={bulkSet} />
+            <MapView rows={visible.items} selectedId={selectedId} onSelect={select} bulkIds={bulkSet} labels={placeLabels} />
           </Suspense>
         ) : (
           <>

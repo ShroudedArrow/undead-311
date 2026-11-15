@@ -2,13 +2,14 @@
  * Haunted map (REQ-WEB-MAP.1, .5). MapLibre draws the self-hosted PMTiles basemap; a deck.gl IconLayer draws the
  * possible zombies as spray-circle sprites. Loaded lazily from the page so the first view stays small (REQ-WEB-PERF.1).
  */
-import { IconLayer, ScatterplotLayer } from "@deck.gl/layers";
+import { IconLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { Protocol } from "pmtiles";
 import { useEffect, useRef, useState } from "react";
+import type { PlaceLabel } from "../lib/placeLabels";
 import type { PointRow } from "../lib/points";
 import { t } from "../lib/t";
 import { iconFor, iconMapping, makeAtlasCanvas } from "./sprites";
@@ -23,6 +24,8 @@ function ensureProtocol(): void {
   protocolAdded = true;
 }
 
+const NO_LABELS: readonly PlaceLabel[] = [];
+
 const prefersReducedMotion = (): boolean => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 
 interface Props {
@@ -33,9 +36,11 @@ interface Props {
   bulkIds?: ReadonlySet<string> | null;
   /** Zoom to this box, [west, south, east, north] ("Check my street", REQ-WEB-STREET.1). */
   bounds?: [number, number, number, number] | null;
+  /** Neighborhood names drawn under the markers (ops#18); empty or absent draws none. */
+  labels?: readonly PlaceLabel[];
 }
 
-export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bounds = null }: Props) {
+export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bounds = null, labels = NO_LABELS }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const overlayRef = useRef<MapboxOverlay | null>(null);
@@ -43,6 +48,7 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
   const onSelectRef = useRef(onSelect);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
+  const [fontReady, setFontReady] = useState(false);
   onSelectRef.current = onSelect;
 
   useEffect(() => {
@@ -86,11 +92,32 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
     };
   }, []);
 
+  // deck.gl draws label glyphs from the page's own self-hosted Public Sans, so wait for it before the first label is drawn
+  useEffect(() => {
+    let live = true;
+    const done = () => live && setFontReady(true);
+    if (typeof document !== "undefined" && document.fonts?.load) document.fonts.load('600 14px "Public Sans"').then(done, done);
+    else done();
+    return () => {
+      live = false;
+    };
+  }, []);
+
   useEffect(() => {
     const overlay = overlayRef.current;
     if (!overlay || !atlasRef.current) return;
     overlay.setProps({
       layers: [
+        ...(fontReady && labels.length > 0
+          ? [
+              new TextLayer<PlaceLabel>({
+                id: "place-labels", data: labels as PlaceLabel[], pickable: false, getPosition: (d) => [d.lon, d.lat], getText: (d) => d.name,
+                getSize: 14, sizeUnits: "pixels", fontFamily: '"Public Sans", system-ui, sans-serif', fontWeight: 600, fontSettings: { sdf: true },
+                getColor: [46, 49, 52, 255], outlineWidth: 3, outlineColor: [205, 203, 198, 255], getTextAnchor: "middle", getAlignmentBaseline: "center",
+                characterSet: "auto",
+              }),
+            ]
+          : []),
         // Cone orange rings under the markers: a warning, never text (design-system.md). Asphalt ring beneath keeps 3:1 on Concrete.
         ...(bulkIds && bulkIds.size > 0
           ? [
@@ -124,7 +151,7 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
         }),
       ],
     });
-  }, [rows, selectedId, ready, bulkIds]);
+  }, [rows, selectedId, ready, bulkIds, labels, fontReady]);
 
   useEffect(() => {
     const map = mapRef.current;
