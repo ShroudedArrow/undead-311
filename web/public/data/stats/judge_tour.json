@@ -1,1 +1,1 @@
-{"data_version":"fixture-2026-11-11","params":{"WINDOW_DAYS":60,"RADIUS_M":30,"matching":"segment"},"provisional":true,"zombie_ids":["I-101001244541:101001279489","I-101001245457:101001323306","I-101001245548:101001250665"],"source":"most_reports","seed":null}
+{"data_version":"2026-11-12+7194cf9+89e078da","dataset":"sample","params":{"RADIUS_M":30,"WINDOW_DAYS":60,"matching":"segment"},"provisional":true,"seed":null,"source":"most_reports","zombie_ids":["101005635082:101005693312","101006699983:BCS-00340111","101002066131:101002074113"]}
