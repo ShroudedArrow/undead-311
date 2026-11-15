@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Link, Outlet, useLocation } from "react-router-dom";
 import { useLang } from "../lib/lang";
 import { t } from "../lib/t";
@@ -10,11 +10,17 @@ import { Footer } from "./Footer";
 export function Shell() {
   const { lang, setLang, spanish } = useLang();
   const [open, setOpen] = useState(false);
+  const toggle = useRef<HTMLButtonElement>(null);
   const { pathname } = useLocation();
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    // Escape hides the links, so focus goes back to the Menu button rather than dropping to the page body (UX-48).
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      toggle.current?.focus();
+    };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
@@ -27,7 +33,7 @@ export function Shell() {
         <p className="site-title">
           <Link to="/">{t("app.title")}</Link>
         </p>
-        <button type="button" className="nav-toggle" aria-expanded={open} aria-controls="site-nav" onClick={() => setOpen((o) => !o)}>
+        <button ref={toggle} type="button" className="nav-toggle" aria-expanded={open} aria-controls="site-nav" onClick={() => setOpen((o) => !o)}>
           {t("nav.menu")}
         </button>
         <nav id="site-nav" className="site-nav" data-open={open} aria-label={t("nav.label")}>

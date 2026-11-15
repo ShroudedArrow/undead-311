@@ -59,8 +59,10 @@ describe("Shell (REQ-WEB-DESIGN.3, REQ-WEB-FRESH.1)", () => {
     fireEvent.click(menu);
     expect(menu.getAttribute("aria-expanded")).toBe("true");
     expect(nav.getAttribute("data-open")).toBe("true");
+    screen.getByRole("link", { name: "Map" }).focus();
     fireEvent.keyDown(document, { key: "Escape" });
     expect(menu.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(menu); // UX-48: focus returns to the Menu button
     fireEvent.click(menu);
     fireEvent.click(screen.getByRole("link", { name: "Methods" }));
     expect(menu.getAttribute("aria-expanded")).toBe("false");
