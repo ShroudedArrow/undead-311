@@ -7,6 +7,9 @@ import { num1 } from "../lib/methods";
 import { t } from "../lib/t";
 import { PanelError } from "./PanelError";
 
+/** "15, 30 and 50": the settings that were run, written out under a slider (REQ-WEB-SLIDERS.1, UX-42). */
+const stopsText = (steps: readonly number[], and: string): string => `${steps.slice(0, -1).join(", ")} ${and} ${steps[steps.length - 1]}`;
+
 /**
  * Sensitivity sliders (REQ-WEB-SLIDERS.1): matching mode, distance and re-report window switch instantly between
  * precomputed grid points, with the run without Street Light Other beneath. Each slider is a native range input
@@ -38,17 +41,19 @@ export function Sliders() {
         ))}
       </fieldset>
       <div className="slider-group">
-        <label htmlFor={`${id}-r`}>
+        <label htmlFor={`${id}-r`} className="slider-label">
           {t("sliders.radius")}: <output htmlFor={`${id}-r`} data-testid="radius-value">{s.radius_m}</output>
         </label>
         <input id={`${id}-r`} type="range" min={0} max={RADII.length - 1} step={1} value={stepOf(RADII, s.radius_m)} aria-valuetext={`${s.radius_m} m`} aria-describedby={radiusIsMinor(s.matching) ? `${id}-rn` : undefined} onChange={(e) => setPick({ ...s, radius_m: RADII[Number(e.target.value)] })} />
+        <p className="count-note slider-stops">{t("sliders.stops", { stops: stopsText(RADII, t("sliders.stops_and")) })}</p>
         {radiusIsMinor(s.matching) ? <p className="count-note" id={`${id}-rn`}>{t("sliders.radius_note_segment")}</p> : null}
       </div>
       <div className="slider-group">
-        <label htmlFor={`${id}-w`}>
+        <label htmlFor={`${id}-w`} className="slider-label">
           {t("sliders.window")}: <output htmlFor={`${id}-w`} data-testid="window-value">{s.window_days}</output>
         </label>
         <input id={`${id}-w`} type="range" min={0} max={WINDOWS.length - 1} step={1} value={stepOf(WINDOWS, s.window_days)} aria-valuetext={`${s.window_days} days`} onChange={(e) => setPick({ ...s, window_days: WINDOWS[Number(e.target.value)] })} />
+        <p className="count-note slider-stops">{t("sliders.stops", { stops: stopsText(WINDOWS, t("sliders.stops_and")) })}</p>
       </div>
       <div role="group" aria-label={t("sliders.result_label")} aria-live="polite" data-testid="slider-result">
         {point ? (
@@ -61,15 +66,16 @@ export function Sliders() {
             <dd>{point.city_rereport}</dd>
             <dt>{t("sliders.sensitivity")}</dt>
             <dd>{point.sensitivity}</dd>
-            <dt>{t("sliders.excess")}</dt>
+            <dt>{t("sliders.excess_point")}</dt>
             <dd data-testid="slider-excess">{point.excess === null ? na : num1(point.excess)}</dd>
-            <dt>{t("sliders.stayed_fixed")}</dt>
+            <dt>{t("sliders.stayed_fixed_point")}</dt>
             <dd>{point.stayed_fixed_rate === null ? na : pct(point.stayed_fixed_rate)}</dd>
           </dl>
         ) : (
           <p data-testid="slider-no-point">{t("sliders.no_point")}</p>
         )}
       </div>
+      <p className="count-note" data-testid="slider-no-interval">{t("sliders.no_interval")}</p>
       <p className="count-note">{isDefault ? t("sliders.is_default") : t("sliders.not_default", { matching: t(`sliders.matching_${base.matching}`).toLowerCase(), radius: base.radius_m, window: base.window_days })}</p>
       <p data-testid="slider-slo">{slo ? t("sliders.without_slo", { headline: slo.headline, all: slo.all_tiers }) : t("sliders.without_slo_missing")}</p>
     </section>

@@ -55,4 +55,20 @@ describe("Sensitivity sliders (REQ-WEB-SLIDERS.1)", () => {
     render(<Sliders />);
     expect(await screen.findByText(/sensitivity_grid.json/)).toBeTruthy();
   });
+  it("puts each label on its own line above its input, prints the stops that were run, and calls the two rows point estimates (REQ-WEB-SLIDERS.1, UX-41, UX-42)", async () => {
+    serve(GRID);
+    const { container } = render(<Sliders />);
+    await screen.findByTestId("slider-headline");
+    for (const name of [/Distance/, /Days to re-report/]) {
+      const input = screen.getByRole("slider", { name });
+      const label = container.querySelector(`label[for="${input.id}"]`) as HTMLElement;
+      expect(label.className).toContain("slider-label");
+      expect(label.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    expect(screen.getByText("Settings that were run: 15, 30 and 50.")).toBeTruthy();
+    expect(screen.getByText("Settings that were run: 30, 60 and 90.")).toBeTruthy();
+    expect(screen.getByText("Stayed fixed (point estimate)")).toBeTruthy();
+    expect(screen.getByText("Excess re-reports (point estimate)")).toBeTruthy();
+    expect(screen.getByTestId("slider-no-interval").textContent).toMatch(/no interval/);
+  });
 });

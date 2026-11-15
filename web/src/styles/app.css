@@ -261,6 +261,8 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .rate-interval { fill: var(--asphalt); }
 .rate-point { fill: var(--asphalt); stroke: var(--crew-white); stroke-width: 0.4; }
 .slider-group { margin: var(--space-3) 0; border: 0; padding: 0; }
+.slider-label { display: block; font-weight: 600; }
+.slider-stops { margin: 0; }
 .slider-group input[type="range"] { width: min(24rem, 100%); min-height: 2.75rem; accent-color: var(--asphalt); }
 .slider-radio { display: flex; align-items: center; gap: var(--space-2); min-height: 2.75rem; }
 .slider-result { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-3); }
