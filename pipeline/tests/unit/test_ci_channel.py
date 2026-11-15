@@ -61,7 +61,7 @@ FAILURES = {
     "http 500": http_error(500),
     "http 503": http_error(503),
     "timeout": TimeoutError("timed out"),
-    "socket timeout": socket.timeout("timed out"),
+    "socket timeout": socket.timeout("timed out"),  # noqa: UP041 (the name the stdlib documents)
     "no network": urllib.error.URLError("unreachable"),
     "os error": OSError("broken pipe"),
     "bad json": json.JSONDecodeError("bad", "x", 0),
@@ -151,7 +151,7 @@ def test_a_result_comments_on_the_existing_issue():
     """REQ-OPS-CI.3: when "CI results" is open, the line goes in as ONE comment."""
     rec = Recorder([{"number": 77, "title": "CI results"}, {"number": 78, "title": "Run x: y"}])
     ci_channel.main(["result", "--results", "python=success"], request=rec)
-    (method, path, body), = rec.posts()
+    (_, path, body), = rec.posts()
     assert path.endswith("/issues/77/comments")
     assert body["body"].startswith("```yaml\nfrom: ci\nto: human\ntype: status\n")
 
