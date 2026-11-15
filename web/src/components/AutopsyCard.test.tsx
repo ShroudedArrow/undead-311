@@ -82,6 +82,18 @@ describe("AutopsyCard content (REQ-WEB-CARD.1, .3, .6)", () => {
     expect(screen.getByText("CLOSED").className).toContain("stamp-closed");
     expect(screen.getByText("REPORTED AGAIN").className).toContain("stamp-again");
   });
+  it("writes the case system without nested parentheses and explains why a current-system ID has no link (REQ-WEB-CARD.2; ops#118, ops#119)", () => {
+    render(<AutopsyCard card={CARD} />);
+    const [orig, again] = [screen.getByRole("region", { name: "Original case" }), screen.getByRole("region", { name: "Reported again" })];
+    const line = (el: HTMLElement) => el.querySelector("dd")?.textContent ?? "";
+    expect(line(orig)).toContain("101001 (Earlier 311 system)");
+    expect(within(orig).queryByTestId("new-case-note")).toBeNull();
+    expect(within(orig).getByRole("link", { name: /101001/ })).toBeTruthy();
+    expect(line(again)).toContain("BCS-2 (Current 311 system, from August 2025)");
+    expect(line(again)).not.toMatch(/\([^)]*\([^)]*\)/);
+    expect(within(again).queryByRole("link")).toBeNull();
+    expect(within(again).getByTestId("new-case-note").textContent).toMatch(/not linked yet.*Search this case number/);
+  });
 });
 
 describe("AutopsyCard styling (REQ-WEB-CARD.2, .5, .6)", () => {
