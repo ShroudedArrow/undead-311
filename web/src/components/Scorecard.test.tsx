@@ -3,9 +3,10 @@ import { render, screen, within } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseScorecard, type Scorecard as Sc, type ScorecardFile } from "../lib/parse";
+import { parseExcess, parseScorecard, type Scorecard as Sc, type ScorecardFile } from "../lib/parse";
 import { headlineScorecards, pct, stayedFixedShown } from "../lib/rates";
-import { Scorecard } from "./Scorecard";
+import { ExcessLines, Scorecard } from "./Scorecard";
+import type { ExcessFile, ExcessRow } from "../lib/parse";
 
 const rate = (r: number, n = 100) => ({ rate: r, lo: Math.max(0, r - 0.05), hi: Math.min(1, r + 0.05), k: Math.round(r * n), n });
 const sc = (family: string, adj: boolean, tier_set: "headline" | "all" = "headline"): Sc => ({
@@ -66,5 +67,54 @@ describe("fixture scorecard (REQ-WEB-DATA.3, testing.md #10, #17)", () => {
       expect(s.stayed_fixed_raw.rate as number).toBeLessThanOrEqual(s.on_time.rate as number);
       if (s.stayed_fixed_adj) expect(s.stayed_fixed_adj.rate as number).toBeLessThanOrEqual(s.on_time.rate as number);
     }
+  });
+});
+
+
+const exRow = (over: Partial<ExcessRow> = {}): ExcessRow => ({
+  kind: "family", name: "sign", tier_set: "headline", observed: 90, expected: 26.6, excess: 63.4, lo: 41.3, hi: 86, n_originals: 1504, n_bursty: 1479,
+  without_bursty: { observed: 10, expected: 12.9, excess: -2.9, lo: -12.1, hi: 6.1, n_originals: 25 }, ...over,
+});
+const exFile = (rows: ExcessRow[]): ExcessFile => ({ data_version: "v", rows } as ExcessFile);
+
+describe("Scorecard excess with and without bursty spots (REQ-STAT-BASE.2, REQ-WEB-SCORE.1, ops#130)", () => {
+  it("shows both excess figures with intervals and the bursty share under each case type, and says it is not the headline", () => {
+    render(<Scorecard file={file([sc("sign", true)])} excess={exFile([exRow()])} />);
+    const row = screen.getByRole("heading", { name: "Signs" }).closest("li") as HTMLElement;
+    expect(within(row).getByTestId("excess-all").textContent).toContain("excess of 63.4 re-reports (95% interval 41.3 to 86)");
+    expect(within(row).getByTestId("excess-without").textContent).toContain("Without bursty spots: excess of -2.9 re-reports (95% interval -12.1 to 6.1)");
+    expect(within(row).getByTestId("excess-without").textContent).toContain("from 25 closed cases");
+    expect(within(row).getByTestId("excess-bursty").textContent).toContain("1479 of the 1504");
+    expect(screen.getByText(/never the headline|A secondary check, never the headline/)).toBeTruthy();
+  });
+  it("says too few cases are left when no spot is left after removing bursty ones", () => {
+    render(<ExcessLines row={exRow({ without_bursty: null })} />);
+    expect(screen.getByTestId("excess-without").textContent).toBe("Without bursty spots: too few closed cases are left to say.");
+  });
+  it("shows nothing extra when the excess file has no row for the case type or is missing", () => {
+    const { rerender } = render(<Scorecard file={file([sc("sign", true)])} excess={exFile([exRow({ name: "sidewalk" })])} />);
+    expect(screen.queryByTestId("score-excess")).toBeNull();
+    rerender(<Scorecard file={file([sc("sign", true)])} />);
+    expect(screen.queryByTestId("score-excess")).toBeNull();
+  });
+  it("renders both lines for every case type in the exported excess file", () => {
+    const ex = parseExcess(JSON.parse(readFileSync(join(__dirname, "..", "..", "public", "data", "stats", "excess.json"), "utf8")));
+    const scf = parseScorecard(JSON.parse(readFileSync(join(__dirname, "..", "..", "public", "data", "stats", "scorecard.json"), "utf8")));
+    if (!ex.ok || !scf.ok) throw new Error("exports do not parse");
+    render(<Scorecard file={scf.data} excess={ex.data} />);
+    expect(screen.getAllByTestId("excess-all").length).toBeGreaterThan(0);
+    expect(screen.getAllByTestId("excess-without").length).toBe(screen.getAllByTestId("excess-all").length);
+  });
+  it("property: any finite row renders both lines without throwing", () => {
+    const n = fc.double({ min: -1000, max: 1000, noNaN: true });
+    fc.assert(
+      fc.property(n, n, n, fc.nat(5000), fc.boolean(), (a, b, c, k, none) => {
+        const { unmount } = render(<ExcessLines row={exRow({ excess: a, lo: Math.min(a, b), hi: Math.max(a, c), n_originals: k, n_bursty: Math.min(k, 7), without_bursty: none ? null : { observed: 1, expected: 2, excess: b, lo: b - 1, hi: b + 1, n_originals: k } })} />);
+        const ok = screen.getByTestId("excess-all").textContent !== "" && screen.getByTestId("excess-without").textContent !== "";
+        unmount();
+        return ok;
+      }),
+      { numRuns: 40 },
+    );
   });
 });

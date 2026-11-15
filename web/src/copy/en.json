@@ -291,7 +291,13 @@
     "raw_detail": "Raw stayed-fixed rate: {rate}, 95% interval {lo} to {hi}, n = {n}.",
     "not_enough": "Not enough cases for a rate.",
     "counts": "Counts: {headline} headline, {source_unknown} source unknown, {sensitivity} sensitivity.",
-    "floor": "Stayed fixed counts only cases nobody reported again, so it is an upper bound on how many fixes held."
+    "floor": "Stayed fixed counts only cases nobody reported again, so it is an upper bound on how many fixes held.",
+    "excess_heading": "Re-reports beyond chance",
+    "excess_note": "A secondary check, never the headline. It is a floor in places that get a report every month or two, and it can read high where reports come in bursts.",
+    "excess_all": "All spots: excess of {excess} re-reports (95% interval {lo} to {hi}), {observed} seen against {expected} expected, from {n} closed cases.",
+    "excess_without": "Without bursty spots: excess of {excess} re-reports (95% interval {lo} to {hi}), {observed} seen against {expected} expected, from {n} closed cases.",
+    "excess_without_none": "Without bursty spots: too few closed cases are left to say.",
+    "excess_bursty_share": "{bursty} of the {n} closed cases are at spots flagged bursty: their reports come in bursts or sit in a few months."
   },
   "charts": {
     "title": "How long fixes last",
