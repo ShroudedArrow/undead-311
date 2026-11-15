@@ -7,6 +7,7 @@ import DurabilityPage from "./pages/DurabilityPage";
 import HomePage from "./pages/HomePage";
 import JudgePage from "./pages/JudgePage";
 import MethodsPage from "./pages/MethodsPage";
+import RepeatPage from "./pages/RepeatPage";
 import ScorecardPage from "./pages/ScorecardPage";
 import StreetPage from "./pages/StreetPage";
 
@@ -29,6 +30,7 @@ export default function App() {
         </Route>
         <Route path="scorecard" element={<ScorecardPage />} />
         <Route path="durability" element={<DurabilityPage />} />
+        <Route path="repeat" element={<RepeatPage />} />
         <Route path="street" element={<StreetPage />} />
         <Route path="methods" element={<MethodsPage />} />
         <Route path="corrections" element={<CorrectionsPage />} />

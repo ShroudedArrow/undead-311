@@ -70,7 +70,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 - [x] 18. [delight] "Check my street"
   - Build-time address index from the SAM address registry; search, zoom, nearby list, empty state.
   - _Requirements: REQ-WEB-STREET.1_
-- [ ] 19. [delight] Repeat offenders view
+- [x] 19. [delight] Repeat offenders view
   - _Requirements: REQ-WEB-REPEAT.1_
 - [ ] 20. [delight] Permalinks and share images
   - [ ] 20.1 Property W7: URL state round-trips. _REQ-WEB-LINKS.1_
