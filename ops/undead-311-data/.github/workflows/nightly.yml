@@ -100,10 +100,16 @@ jobs:
           gh release download nightly-state --repo "$DATA_REPO" --pattern failure-history.json --dir "$RUNNER_TEMP" --clobber || echo "no failure history yet"
           uv run python ops/undead-311-data/status_history.py merge --status web/public/data/status.json --history "$RUNNER_TEMP/failure-history.json" --schema schemas/status.schema.json
 
+      # REQ-WEB-LINKS.2 (UX-39): share images need a browser. It is installed inside this step, so a failure is recorded as `build`,
+      # and SHARE_IMAGES=required fails the build if no browser starts.
       - name: Build the site with the new data
         id: build
         working-directory: judged
-        run: make build
+        env:
+          SHARE_IMAGES: required
+        run: |
+          npm --prefix web exec playwright install --with-deps chromium
+          make build
 
       # What is about to ship must still carry the snapshot's judge-mode files, byte for byte.
       - name: Verify the frozen judge-mode files in the built site

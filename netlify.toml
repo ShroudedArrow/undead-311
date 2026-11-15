@@ -10,19 +10,20 @@
 # directory. This file sets no security header, so Netlify never sends two policies (ops#59, ops#64).
 # Cache headers (REQ-OPS-CACHE.1) come from the same file: `make build` runs ops/cache-headers/cache-headers.mjs after the web
 # build, which adds immutable rules for hashed assets only and no-cache rules for index.html, status.json and data/.
-# Netlify compresses text files itself, so no precompressed .gz files are produced.
+# Share images (REQ-WEB-LINKS.2, UX-39): the build installs Chromium and sets SHARE_IMAGES=required, so a build that cannot draw them fails
+# instead of shipping without them. Netlify compresses text files itself, so no precompressed .gz files are produced.
 
 [build]
-  command = "npm --prefix web ci && make build"
+  command = "npm --prefix web ci && npm --prefix web exec playwright install chromium && SHARE_IMAGES=required make build"
   publish = "web/dist"
 
 # Production deploys come from the branch set in the Netlify UI (main). Deploy previews are built for pull requests.
 # Branch deploys are switched off in the UI (docs/DEPLOY.md, step 3), because the toml cannot turn them off.
 [context.production]
-  command = "npm --prefix web ci && make build"
+  command = "npm --prefix web ci && npm --prefix web exec playwright install chromium && SHARE_IMAGES=required make build"
 
 [context.deploy-preview]
-  command = "npm --prefix web ci && make build"
+  command = "npm --prefix web ci && npm --prefix web exec playwright install chromium && SHARE_IMAGES=required make build"
 
 # REQ-OPS-HOST.1: the app uses BrowserRouter, so a direct visit or a shared permalink to one of its routes must serve
 # index.html (web/src/App.tsx lists the routes; test_netlify_config.py keeps the two lists equal). Only these routes

@@ -166,3 +166,11 @@ def test_make_build_adds_the_cache_rules_after_the_web_build_with_plain_node():
 def test_the_toml_sets_no_cache_header_either():
     """REQ-OPS-CACHE.1: one source for headers (the generated `_headers`), so the host never merges two."""
     assert not config().get("headers")
+
+
+def test_share_images_are_required_in_every_deploy_build():
+    """REQ-WEB-LINKS.2 (UX-39): the build installs Chromium first and a missing browser fails the build, never drops the feature."""
+    cfg = config()
+    for cmd in (cfg["build"]["command"], cfg["context"]["production"]["command"], cfg["context"]["deploy-preview"]["command"]):
+        assert "playwright install chromium" in cmd and "SHARE_IMAGES=required" in cmd
+        assert cmd.index("web ci") < cmd.index("playwright install") < cmd.index("make build")
