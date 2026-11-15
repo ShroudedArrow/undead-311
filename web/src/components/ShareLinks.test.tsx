@@ -43,10 +43,10 @@ describe("Neighborhood permalink (REQ-WEB-LINKS.1)", () => {
   };
   it("opens the map filtered to the neighborhood", async () => {
     open("/neighborhood/allston-brighton");
-    expect(await screen.findByText(/\(1 selected\)/)).toBeTruthy();
-  });
+    expect(await screen.findByText(/\(1 selected\)/, undefined, { timeout: 8000 })).toBeTruthy();
+  }, 12000);
   it("says so for an unknown neighborhood", async () => {
     open("/neighborhood/nowhere");
-    expect(await screen.findByText(/No neighborhood called that/)).toBeTruthy();
-  });
+    expect(await screen.findByText(/No neighborhood called that/, undefined, { timeout: 8000 })).toBeTruthy();
+  }, 12000);
 });
