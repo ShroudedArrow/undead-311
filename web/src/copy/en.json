@@ -26,7 +26,28 @@
     "methods": "Methods",
     "corrections": "Corrections log",
     "street": "Check my street",
-    "repeat": "Repeat offenders"
+    "repeat": "Repeat offenders",
+    "timelapse": "Night of the Living 311"
+  },
+  "timelapse": {
+    "title": "Night of the Living 311",
+    "intro": "Every headline possible zombie appears on the day it was reported again, from {from} to {to}. Each one stays on the map once it appears.",
+    "play": "Play the time-lapse",
+    "pause": "Pause",
+    "resume": "Resume",
+    "skip": "Skip to the end",
+    "restart": "Play again",
+    "scrub": "Date shown",
+    "now": "{date}: {count} of {total} possible zombies so far",
+    "map_label": "Map of possible zombies appearing over time",
+    "reduced_note": "Your device is set to reduce motion, so the animation does not play. The map shows every possible zombie, and the table gives the count for each year.",
+    "summary_heading": "Possible zombies by year",
+    "col_year": "Year",
+    "col_count": "Reported again that year",
+    "col_total": "Total so far",
+    "caption": "Headline possible zombies by the year they were reported again",
+    "empty": "There are no dated possible zombies to show.",
+    "floor": "A measured count is a floor: a possible zombie appears only when someone reports again."
   },
   "share": {
     "copy_link": "Copy link to this view",

@@ -266,6 +266,12 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .copy-link { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .copy-link button, .card-share a { min-height: 2.75rem; padding: 0 var(--space-3); border: 2px solid var(--asphalt); border-radius: 2px; background: var(--crew-white); font: inherit; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; color: var(--asphalt); }
 .card-share, .filters-share { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.timelapse-controls { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin: var(--space-3) 0; }
+.timelapse-controls button { min-height: 2.75rem; padding: 0 var(--space-3); border: 2px solid var(--asphalt); border-radius: 2px; background: var(--crew-white); font: inherit; font-weight: 600; cursor: pointer; }
+.timelapse-controls button:disabled { opacity: .6; cursor: default; }
+.timelapse-controls input[type="range"] { width: min(24rem, 100%); min-height: 2.75rem; accent-color: var(--asphalt); }
+.timelapse-map { height: 32rem; margin: var(--space-3) 0; border: 2px solid var(--asphalt); }
+.timelapse-map .map-host { height: 100%; min-height: 0; }
 .street-near { display: grid; gap: var(--space-2); margin: var(--space-3) 0; }
 .score-excess { margin-top: var(--space-3); padding-top: var(--space-2); border-top: 1px solid var(--asphalt); }
 .score-excess h3 { margin: 0 0 var(--space-1); font-size: 1rem; }

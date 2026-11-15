@@ -9,6 +9,7 @@ import JudgePage from "./pages/JudgePage";
 import MethodsPage from "./pages/MethodsPage";
 import NeighborhoodRoute from "./pages/NeighborhoodRoute";
 import RepeatPage from "./pages/RepeatPage";
+import TimeLapsePage from "./pages/TimeLapsePage";
 import ScorecardPage from "./pages/ScorecardPage";
 import StreetPage from "./pages/StreetPage";
 
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="scorecard" element={<ScorecardPage />} />
         <Route path="durability" element={<DurabilityPage />} />
         <Route path="neighborhood/:slug" element={<NeighborhoodRoute />} />
+        <Route path="timelapse" element={<TimeLapsePage />} />
         <Route path="repeat" element={<RepeatPage />} />
         <Route path="street" element={<StreetPage />} />
         <Route path="methods" element={<MethodsPage />} />

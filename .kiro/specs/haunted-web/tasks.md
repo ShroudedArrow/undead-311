@@ -75,7 +75,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 - [x] 20. [delight] Permalinks and share images
   - [x] 20.1 Property W7: URL state round-trips. _REQ-WEB-LINKS.1_
   - _Requirements: REQ-WEB-LINKS.1–2_
-- [ ] 21. [delight] Night of the Living 311 time-lapse
+- [x] 21. [delight] Night of the Living 311 time-lapse
   - _Requirements: REQ-WEB-TIMELAPSE.1_
 - [ ] 22. [delight] Spanish evidence cards
   - `es.json` drafts marked `needs-review`, hidden in production until reviewed.
