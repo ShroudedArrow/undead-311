@@ -168,3 +168,120 @@ def test_ci_creates_the_uv_cache_folder_before_setup():
     setup = next(i for i, r in enumerate(runs) if "make setup" in r)
     cache = next(i for i, s in enumerate(steps) if str(s.get("uses", "")).startswith("astral-sh/setup-uv"))
     assert cache < mk < setup
+
+
+# ---- credibility layer: the jobs REQ-OPS-CI.2 and REQ-OPS-CI.3 add ------------------------------------------------
+
+def ci_jobs() -> dict:
+    return load(REPO / ".github" / "workflows" / "ci.yml")["jobs"]
+
+
+def job_text(job: dict) -> str:
+    return "\n".join(str(s.get("run", "")) for s in job["steps"])
+
+
+def test_ci_runs_the_credibility_checks():
+    """REQ-OPS-CI.2: copy-lint, an axe scan of judge mode, the bundle budget, pip-audit and npm audit."""
+    jobs = ci_jobs()
+    assert {"copy-lint", "axe", "budget", "audit", "channel"} <= set(jobs)
+    assert "make copy-lint" in job_text(jobs["copy-lint"])
+    axe = job_text(jobs["axe"])
+    assert "playwright test e2e/a11y.spec.ts" in axe and "playwright install" in axe
+    assert "make build" in job_text(jobs["budget"])
+    audit = job_text(jobs["audit"])
+    assert "pip-audit" in audit and "npm audit --audit-level=high" in audit
+
+
+def test_the_budget_job_runs_the_strict_first_view_check():
+    """REQ-OPS-CI.2: `make build` ends with check-build.mjs --strict, the 3 MB first-view gate."""
+    pkg = (REPO / "web" / "package.json").read_text()
+    assert "check-build.mjs --strict" in pkg
+    assert "BUDGET_BYTES = 3 * 1024 * 1024" in (REPO / "web" / "scripts" / "check-build.mjs").read_text()
+
+
+def test_the_axe_spec_scans_judge_mode():
+    """REQ-OPS-CI.2: the spec the axe job runs covers /judge and fails only on serious or critical violations."""
+    spec = (REPO / "web" / "e2e" / "a11y.spec.ts").read_text()
+    assert 'page.goto("/judge")' in spec and '"serious"' in spec and '"critical"' in spec
+
+
+def test_the_channel_job_posts_after_everything_and_cannot_fail_the_build():
+    """REQ-OPS-CI.3: runs always, after every check, maps CHANNEL_TOKEN, and its post step is fail-open."""
+    ci = load(REPO / ".github" / "workflows" / "ci.yml")
+    job = ci["jobs"]["channel"]
+    assert set(job["needs"]) == set(ci["jobs"]) - {"channel"}
+    assert "always()" in str(job["if"])
+    assert job["env"]["GITHUB_CHANNEL_TOKEN"] == "${{ secrets.CHANNEL_TOKEN }}"
+    post = next(s for s in job["steps"] if "ci_channel.py" in str(s.get("run", "")))
+    assert post.get("continue-on-error") is True
+    assert job["permissions"] == {"contents": "read"}
+
+
+def test_event_data_reaches_the_channel_script_through_env_not_shell_text():
+    """REQ-OPS-CI.3 (injection): no `${{ ... }}` expression sits inside a run script, so a branch name cannot inject."""
+    for name, job in ci_jobs().items():
+        for step in job["steps"]:
+            assert "${{" not in str(step.get("run", "")), f"{name}: expression inside run: {step['run']!r}"
+
+
+def test_the_ci_checks_have_no_continue_on_error():
+    """REQ-OPS-CI.2: a check that cannot fail the build is not a check. Only the channel post is fail-open."""
+    for name, job in ci_jobs().items():
+        for step in job["steps"]:
+            if name != "channel":
+                assert not step.get("continue-on-error"), f"{name}: {step.get('name')}"
+
+
+# ---- deep property tests (REQ-OPS-PBT) ------------------------------------------------------------------------------
+
+DEEP = REPO / ".github" / "workflows" / "deep-pbt.yml"
+
+
+def test_deep_pbt_runs_nightly_with_the_deep_profile_and_a_cached_example_database():
+    """REQ-OPS-PBT.1: nightly schedule, HYPOTHESIS_PROFILE=deep, `.hypothesis` cached with actions/cache."""
+    doc = load(DEEP)
+    triggers = doc.get(True, doc.get("on"))
+    assert triggers["schedule"] and "workflow_dispatch" in triggers
+    py = doc["jobs"]["python"]
+    assert py["env"]["HYPOTHESIS_PROFILE"] == "deep"
+    cache = next(s for s in py["steps"] if str(s.get("uses", "")).startswith("actions/cache@"))
+    assert cache["with"]["path"] == ".hypothesis"
+    assert "restore-keys" in cache["with"]            # a new night starts from the last night's database
+
+
+def test_the_deep_profile_is_ten_times_the_fast_profile_and_stores_its_database_under_dot_hypothesis():
+    """REQ-OPS-PBT.1: 10x examples, and the database folder is the one the workflow caches."""
+    from hypothesis import settings
+
+    fast, deep = settings.get_profile("fast"), settings.get_profile("deep")
+    assert deep.max_examples == 10 * fast.max_examples
+    assert str(deep.database.path).replace("\\", "/").startswith(".hypothesis")
+
+
+def test_deep_pbt_runs_fast_check_ten_times_through_a_separate_vitest_config():
+    """REQ-OPS-PBT.1: the 10x factor lives in ops/deep-pbt (never in the normal `npm test`)."""
+    web = "\n".join(str(s.get("run", "")) for s in load(DEEP)["jobs"]["web"]["steps"])
+    assert "--config ../ops/deep-pbt/vitest.deep.config.ts" in web
+    setup = (REPO / "ops" / "deep-pbt" / "fast-check-deep.setup.ts").read_text()
+    assert "FACTOR = 10" in setup and "configureGlobal" in setup
+    assert "deep" not in (REPO / "web" / "package.json").read_text().split('"test"')[1].split(",")[0]
+
+
+def test_a_deep_pbt_failure_opens_a_finding_and_a_needs_human_alert_but_still_ends_red():
+    """REQ-OPS-PBT.2, REQ-OPS-ALERT.1: finding with the shrunk example, alert, and the job still fails."""
+    for name, target in (("python", "engine"), ("web", "web")):
+        steps = load(DEEP)["jobs"][name]["steps"]
+        pbt = next(s for s in steps if s.get("id") == "pbt")
+        assert pbt.get("continue-on-error") is True
+        report = next(s for s in steps if "ci_channel.py" in str(s.get("run", "")))
+        text = report["run"]
+        assert f"finding --target {target}" in text and "--example-file" in text and "ci_channel.py alert" in text
+        assert report.get("continue-on-error") is True and "failure" in report["if"]
+        assert steps[-1]["run"].strip() == "exit 1" and "failure" in steps[-1]["if"]
+
+
+def test_deep_pbt_passes_event_data_through_env_only():
+    """REQ-OPS-PBT.2 (injection): no `${{` inside a run script."""
+    for job in load(DEEP)["jobs"].values():
+        for step in job["steps"]:
+            assert "${{" not in str(step.get("run", ""))

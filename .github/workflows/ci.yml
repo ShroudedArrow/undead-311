@@ -1,7 +1,8 @@
 # Pull-request checks: CI is the independent judge (testing.md). REQ-OPS-CI.1, REQ-OPS-CI.4.
 # Every action is pinned to a tag and every job sets its own least-privilege `permissions:` (checked by
-# pipeline/tests/unit/test_workflows_pinned.py, check O1). The copy-lint, axe, bundle budget, audit and channel-post
-# jobs arrive with the credibility layer (REQ-OPS-CI.2, REQ-OPS-CI.3).
+# pipeline/tests/unit/test_workflows_pinned.py, check O1). The credibility jobs (REQ-OPS-CI.2, REQ-OPS-CI.3) are
+# copy-lint, axe (judge mode), budget (first view under 3 MB), audit (pip-audit, npm audit) and channel (one-line
+# result to the agent channel; it never fails the build).
 name: ci
 
 on:
@@ -72,3 +73,110 @@ jobs:
         run: npx tsc --noEmit
       - name: Vitest
         run: npm test
+
+  # REQ-OPS-CI.2: banned words and patterns (voice.md, design-system.md); also counts TODO-COPY markers.
+  copy-lint:
+    name: copy-lint (make copy-lint)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - run: make copy-lint
+
+  # REQ-OPS-CI.2: axe scan of judge mode and the other pages; serious or critical violations fail (web/e2e/a11y.spec.ts).
+  # Playwright's webServer runs `npm run build` and `vite preview`, so this also proves the production build serves.
+  axe:
+    name: axe (judge mode, Playwright)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+      - name: axe scan
+        run: npx playwright test e2e/a11y.spec.ts
+
+  # REQ-OPS-CI.2: first view under 3 MB transferred. `npm run build` ends with check-build.mjs --strict, which fails
+  # when the gzip size of what "/" loads is over the budget (web/scripts/check-build.mjs).
+  budget:
+    name: budget (production build, first view under 3 MB)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm --prefix web ci
+      - name: Build and check the first-view budget
+        run: make build
+
+  # REQ-OPS-CI.2 (tech.md): known-vulnerability audits. pip-audit reads the locked runtime dependencies from uv.lock.
+  audit:
+    name: audit (pip-audit, npm audit)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: pip-audit (locked runtime dependencies)
+        run: |
+          uv export --frozen --no-hashes --no-emit-project --no-annotate --no-header -o "$RUNNER_TEMP/requirements.txt"
+          uvx pip-audit --no-deps --disable-pip -r "$RUNNER_TEMP/requirements.txt"
+      - name: npm audit (high and critical)
+        working-directory: web
+        run: npm audit --audit-level=high
+
+  # REQ-OPS-CI.3: one line to the agent channel. The secret `CHANNEL_TOKEN` (issues on undead-311-ops only) is mapped
+  # to the env name the scripts read. On a fork PR there is no secret and the script exits 0. A failure to post never
+  # fails the build, so this job has no `needs` result of its own. On main it also opens a needs-human alert
+  # (REQ-OPS-ALERT.1). Event data reaches the script through env vars, never inside the shell text.
+  channel:
+    name: channel (post the one-line result)
+    if: ${{ always() }}
+    needs: [python, web, copy-lint, axe, budget, audit]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      GITHUB_CHANNEL_TOKEN: ${{ secrets.CHANNEL_TOKEN }}
+      REF_NAME: ${{ github.head_ref || github.ref_name }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      ALERT_FLAG: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') && '--alert-on-main' || '' }}
+      R_PYTHON: ${{ needs.python.result }}
+      R_WEB: ${{ needs.web.result }}
+      R_COPY_LINT: ${{ needs.copy-lint.result }}
+      R_AXE: ${{ needs.axe.result }}
+      R_BUDGET: ${{ needs.budget.result }}
+      R_AUDIT: ${{ needs.audit.result }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Post the result
+        continue-on-error: true
+        run: >
+          python3 scripts/ci_channel.py result
+          --results "python=$R_PYTHON" "web=$R_WEB" "copy-lint=$R_COPY_LINT" "axe=$R_AXE" "budget=$R_BUDGET" "audit=$R_AUDIT"
+          --ref "$REF_NAME" --sha "$GITHUB_SHA" --run-url "$RUN_URL" $ALERT_FLAG
