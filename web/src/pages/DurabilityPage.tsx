@@ -71,9 +71,12 @@ function SurvivalPanel() {
 function FunnelPanel() {
   const funnel = useData("funnel.json", parseFunnel);
   const groups = useData("groups.json", parseGroups);
-  const [kind, setKind] = useState<Group["kind"]>("neighborhood");
+  const [picked, setKind] = useState<Group["kind"] | null>(null);
   const id = useId();
   const ok = funnel.status === "ok" && groups.status === "ok";
+  // open on neighborhoods when the data has them, else on the first kind that has groups (the sample has no neighborhood groups)
+  const firstWithGroups = ok ? KINDS.find((k) => funnel.data.groups.some((g) => g.kind === k)) : undefined;
+  const kind: Group["kind"] = picked ?? firstWithGroups ?? "neighborhood";
   return (
     <section className="chart-section" aria-labelledby={`${id}-h`}>
       <h2 id={`${id}-h`}>{t("charts.funnel_heading")}</h2>

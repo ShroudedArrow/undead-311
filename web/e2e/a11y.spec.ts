@@ -95,3 +95,25 @@ test("methods and corrections pages (REQ-WEB-METHODS.1, REQ-WEB-FRESH.3, REQ-WEB
   await expect(page.getByRole("heading", { name: "Corrections log" })).toBeVisible();
   await scan(page, "corrections");
 });
+
+test("delight pages: street, repeat offenders, time-lapse, districts, methods sliders (REQ-WEB-A11Y.2)", async ({ page }) => {
+  await page.goto("/street");
+  await page.getByLabel("Street name").fill("commonwealth");
+  await page.getByRole("button", { name: "Commonwealth Ave" }).click();
+  await expect(page.getByTestId("street-result")).toBeVisible();
+  await scan(page, "street");
+  await page.goto("/repeat");
+  await expect(page.getByTestId("repeat-table")).toBeVisible();
+  await scan(page, "repeat offenders");
+  await page.goto("/timelapse");
+  await expect(page.getByTestId("timelapse-now")).toBeVisible();
+  await scan(page, "time-lapse");
+  await page.goto("/districts");
+  await scan(page, "districts");
+  await page.goto("/methods");
+  await expect(page.getByTestId("sliders")).toBeVisible();
+  await scan(page, "methods with sliders and open data");
+  await page.goto("/scorecard");
+  await expect(page.getByTestId("score-excess").first()).toBeVisible();
+  await scan(page, "scorecard with excess");
+});
