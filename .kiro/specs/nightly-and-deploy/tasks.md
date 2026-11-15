@@ -28,9 +28,9 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 - [x] 6. [credibility] Nightly refresh template and alerts
   - `ops/undead-311-data/.github/workflows/nightly.yml` and README (checkout at the frozen tag, download, pipeline, build, deploy, Release with Parquet; keep the last good deploy; `needs-human` alert issue).
   - _Requirements: REQ-OPS-NIGHTLY.1–4, REQ-OPS-ALERT.1_
-- [ ] 7. [credibility] Frozen judging snapshot
+- [x] 7. [credibility] Frozen judging snapshot
   - `pipeline/scripts/snapshot.py` and `make snapshot` (hashes into `data/SNAPSHOT.md` judging section; tag instructions for the owner).
-  - [ ] 7.1 Check O4: the same input gives the same hashes. _REQ-OPS-SNAP.1_
+  - [x] 7.1 Check O4: the same input gives the same hashes. _REQ-OPS-SNAP.1_
   - _Requirements: REQ-OPS-SNAP.1–2_
 - [ ] 8. [credibility] Codespaces dev container
   - `.devcontainer/devcontainer.json` (Python 3.11, uv, Node from `.nvmrc`, `DATA_DIR`, forwarded port; `make setup && make pipeline-sample && make web` works).

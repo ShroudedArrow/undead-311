@@ -10,7 +10,7 @@ export UV_CACHE_DIR
 UV ?= uv
 STUB = @echo "[stub] $@: not implemented yet"
 
-.PHONY: web-deps cloud-sync-check pipeline-sample validation-sample typecheck schema-check test-town setup data-download data-sample pipeline test test-fast web build e2e copy-lint validate coroner-eval snapshot channel-export trace kiro-stats capture lint
+.PHONY: web-deps cloud-sync-check pipeline-sample validation-sample typecheck schema-check test-town setup data-download data-sample pipeline test test-fast web build e2e copy-lint validate coroner-eval snapshot snapshot-check channel-export trace kiro-stats capture lint
 
 setup:
 	$(UV) sync
@@ -87,8 +87,14 @@ validate:
 coroner-eval:
 	PYTHONPATH=pipeline $(UV) run python -m undead311 coroner-eval
 
+# REQ-OPS-SNAP.1: hashes the served data and the processed Parquet into the judging section of data/SNAPSHOT.md.
+# The owner tags the release afterwards (the script prints the commands and never tags or pushes).
 snapshot:
-	$(STUB)
+	PYTHONPATH=pipeline $(UV) run python pipeline/scripts/snapshot.py
+
+# Exits 1 when the files no longer match the committed judging section.
+snapshot-check:
+	PYTHONPATH=pipeline $(UV) run python pipeline/scripts/snapshot.py --check
 
 channel-export:
 	$(STUB)

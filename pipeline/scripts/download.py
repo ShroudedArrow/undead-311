@@ -95,8 +95,14 @@ def geo_resource(pkg: dict, fmt: str) -> dict | None:
 def upsert_geo_rows(snapshot_text: str, rows: list[tuple]) -> str:
     """`snapshot_text` with the geography rows replaced by `rows` (name, resource, last_modified, bytes, sha256), appended
     after the table's last row. The 311 rows are left as they are (REQ-ING-SNAP.1)."""
-    kept = GEO_ROW_RE.sub("", snapshot_text).rstrip("\n")
-    return kept + "\n" + "".join(f"| {a} | {b} | {c} | {d} | {e} |\n" for a, b, c, d, e in rows)
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from undead311.snapshot import BEGIN, extract_section, upsert_section
+
+    judging = extract_section(snapshot_text)  # the judging section stays below the download table
+    table = snapshot_text if judging is None else snapshot_text[: snapshot_text.find(BEGIN)]
+    kept = GEO_ROW_RE.sub("", table).rstrip("\n")
+    out = kept + "\n" + "".join(f"| {a} | {b} | {c} | {d} | {e} |\n" for a, b, c, d, e in rows)
+    return out if judging is None else upsert_section(out, judging)
 
 
 def download_geo(raw: Path) -> list[tuple]:
@@ -126,6 +132,15 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def write_snapshot(snap: Path, text: str) -> None:
+    """Write the download table, keeping the judging section that `make snapshot` wrote (REQ-OPS-SNAP.1)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from undead311.snapshot import extract_section, upsert_section
+
+    kept = extract_section(snap.read_text()) if snap.exists() else None
+    snap.write_text(upsert_section(text, kept) if kept else text)
 
 
 def main() -> None:
@@ -163,7 +178,7 @@ def main() -> None:
         "|---|---|---|---|---|",
     ]
     lines += [f"| {a} | {b} | {c} | {d} | {e} |" for a, b, c, d, e in rows]
-    snap.write_text("\n".join(lines) + "\n")
+    write_snapshot(snap, "\n".join(lines) + "\n")
     print(f"wrote {snap}")
 
 
