@@ -28,6 +28,7 @@ from jsonschema import Draft202012Validator
 
 from undead311.detect.model import Case, DetectionResult, Zombie
 from undead311.detect.params import DEFAULT, Params
+from undead311.export.privacy import SegmentInfo, chain_resurrection_ids, offender_location, resident_driven
 from undead311.ingest.pii import scrub_text
 from undead311.paths import repo_root
 
@@ -136,6 +137,8 @@ class ExportContext:
     data_end: str | None = None
     city_origin: Mapping[str, Any] | None = None
     dataset: str | None = None  # "sample" or "full" (REQ-STAT-EXP.1)
+    #: SAM segment ID -> midpoint and class, for block-level repeat offenders (REQ-EXP-PRIV.1); None without the SAM file
+    segment_info: Mapping[str, SegmentInfo] | None = None
     ok: bool = True
 
 
@@ -241,11 +244,13 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
     for c in sorted(result.repeat_offenders, key=lambda c: c.chain_id):
         first = by_inc[c.chain_id]
         rep = min((cases[m] for m in first.member_ids), key=lambda x: (x.open_utc, x.id))
+        driven = resident_driven(chain_resurrection_ids(result.zombies, c.chain_id), cases)  # REQ-EXP-PRIV.1
+        lat, lon, block = offender_location((rep.lat, rep.lon), first.segment_id, driven, ctx.segment_info)
         offenders.append(
             {
                 "chain_id": c.chain_id, "times_risen": c.times_risen, "headline_count": c.headline_count,
-                "incident_ids": sorted(c.incident_ids), "lat": round(rep.lat, 6), "lon": round(rep.lon, 6),
-                "block_level": False, "type_family": first.type_family, "neighborhood": first.neighborhood,
+                "incident_ids": sorted(c.incident_ids), "lat": round(lat, 6), "lon": round(lon, 6),
+                "block_level": block, "type_family": first.type_family, "neighborhood": first.neighborhood,
             }
         )  # fmt: skip
     out["repeat_offenders.json"] = {"data_version": dv, "repeat_offenders": offenders}

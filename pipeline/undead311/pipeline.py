@@ -30,6 +30,7 @@ from undead311.detect.grid import run_grid, store_grid
 from undead311.detect.model import ZOMBIE_TIERS, DetectionResult
 from undead311.detect.params import DEFAULT, Params
 from undead311.detect.skeptic import build_input, join_objections, write_input
+from undead311.export.privacy import load_segment_info
 from undead311.export.writers import (
     FIRST_VIEW_BUDGET_BYTES,
     ExportContext,
@@ -327,6 +328,7 @@ def run_pipeline(
             bulk_closures=state.get("bulk", []),
             dataset=dataset,
             city_origin=report.city_origin,
+            segment_info=None if sample else load_segment_info((raw_dir or base / "raw") / SEGMENTS_FILE),
             data_end=max(c.open_utc for c in cases).strftime("%Y-%m-%d") if cases else None,
         )
         export_all(result, by_id, stage_out, ctx)
