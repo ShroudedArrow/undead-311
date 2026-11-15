@@ -17,6 +17,7 @@ const requested: string[] = [];
 
 function setup(opts: { provisional?: boolean; reduced?: boolean; noFrozen?: boolean } = {}) {
   requested.length = 0;
+  clearDataCache();
   vi.stubGlobal("matchMedia", (q: string) => ({ matches: !!opts.reduced && q.includes("reduce"), addEventListener() {}, removeEventListener() {}, media: q }));
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
     const u = String(url);

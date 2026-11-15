@@ -1,3 +1,4 @@
+import { Sliders } from "../components/Sliders";
 import { LeavesOut } from "../components/LeavesOut";
 import { PanelError } from "../components/PanelError";
 import { ReportError } from "../components/ReportError";
@@ -215,6 +216,7 @@ export default function MethodsPage() {
       <Definitions />
       <Baselines />
       <NullTowns />
+      <Sliders />
       <Validation />
       <section className="chart-section" aria-labelledby="limits-h">
         <h2 id="limits-h">{t("methods.limits_heading")}</h2>
