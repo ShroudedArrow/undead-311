@@ -1,12 +1,23 @@
-import { NavLink, Link, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Link, Outlet, useLocation } from "react-router-dom";
 import { useLang } from "../lib/lang";
 import { t } from "../lib/t";
 import { DataAsOf } from "./DataAsOf";
 import { Footer } from "./Footer";
 
-/** Page frame on every route: skip link, header with nav and data date, footer (REQ-WEB-DESIGN.3, REQ-WEB-FRESH.1). */
+/** Page frame on every route: skip link, header with nav and data date, footer (REQ-WEB-DESIGN.3, REQ-WEB-FRESH.1).
+ * Under 640 px the links sit behind one Menu button so the map stays the first thing on the phone (REQ-WEB-MAP.1, UX-40). */
 export function Shell() {
   const { lang, setLang, spanish } = useLang();
+  const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
   return (
     <div className="shell">
       <a className="skip-link" href="#main">
@@ -16,7 +27,10 @@ export function Shell() {
         <p className="site-title">
           <Link to="/">{t("app.title")}</Link>
         </p>
-        <nav className="site-nav" aria-label={t("nav.label")}>
+        <button type="button" className="nav-toggle" aria-expanded={open} aria-controls="site-nav" onClick={() => setOpen((o) => !o)}>
+          {t("nav.menu")}
+        </button>
+        <nav id="site-nav" className="site-nav" data-open={open} aria-label={t("nav.label")}>
           <NavLink to="/" end>
             {t("nav.map")}
           </NavLink>

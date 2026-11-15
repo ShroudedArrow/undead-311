@@ -17,6 +17,7 @@
   },
   "nav": {
     "label": "Main",
+    "menu": "Menu",
     "map": "Map",
     "scorecard": "Scorecard",
     "judge": "Start the 60-second tour",

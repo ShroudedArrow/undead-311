@@ -104,7 +104,16 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .site-title { font-size: var(--step-1); font-weight: 700; margin: 0; }
 .site-title a { text-decoration: none; }
 .site-nav { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.nav-toggle { display: none; }
 .site-nav a[aria-current="page"] { font-weight: 700; text-decoration-thickness: 3px; }
+@media (max-width: 640px) {
+  .nav-toggle { display: inline-flex; align-items: center; margin-left: auto; min-height: 2.75rem; background: var(--asphalt); color: var(--crew-white); border-color: var(--crew-white); font: inherit; font-weight: 600; }
+  .nav-toggle[aria-expanded="true"] { background: var(--crew-white); color: var(--asphalt); }
+  .site-nav[data-open="false"] { display: none; }
+  .site-nav { flex-direction: column; flex-basis: 100%; gap: var(--space-1); }
+  .site-nav a { display: block; padding: var(--space-2) 0; }
+  .site-header .data-status { flex-basis: 100%; margin-left: 0; }
+}
 .site-header .data-status { margin-left: auto; font-size: var(--step--1); max-width: 34rem; }
 .site-header .data-status p { margin: 0; max-width: none; }
 .site-header .fixture-notice { border: 2px dashed var(--crew-white); padding: var(--space-1) var(--space-2); margin-top: var(--space-1); font-weight: 600; }

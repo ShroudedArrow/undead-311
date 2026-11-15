@@ -45,6 +45,15 @@ describe("pressed buttons stay readable (REQ-WEB-STREET.1, UX-38)", () => {
   });
 });
 
+describe("phone header (REQ-WEB-MAP.1, UX-40)", () => {
+  it("hides the nav behind the Menu button under 640 px and shows the button only there", () => {
+    expect(rules.find((r) => r.sel === ".nav-toggle")?.body).toMatch(/display:\s*none/);
+    const phone = css.slice(css.indexOf(".site-nav[data-open=\"false\"]") - 400);
+    expect(phone).toMatch(/\.site-nav\[data-open="false"\]\s*\{\s*display:\s*none/);
+    expect(css.lastIndexOf("max-width: 640px", css.indexOf('.site-nav[data-open="false"]'))).toBeGreaterThan(css.indexOf(".nav-toggle { display: none"));
+  });
+});
+
 describe("keyboard and motion (REQ-WEB-A11Y.1)", () => {
   it("has a visible focus style and never removes outlines", () => {
     expect(css).toMatch(/:focus-visible\s*\{[^}]*outline:\s*var\(--focus-ring\)/);
