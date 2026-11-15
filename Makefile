@@ -96,14 +96,17 @@ snapshot:
 snapshot-check:
 	PYTHONPATH=pipeline $(UV) run python pipeline/scripts/snapshot.py --check
 
+# REQ-OPS-EVID.1: needs a read-only token in GITHUB_CHANNEL_READ_TOKEN at run time; it is never written to the output.
 channel-export:
-	$(STUB)
+	python3 scripts/channel_export.py --out docs/AGENT_CHANNEL.md
 
+# REQ-OPS-EVID.1: requirement -> code -> tests -> status, from the specs and the IDs cited in code and test names.
 trace:
-	$(STUB)
+	python3 scripts/trace.py --out docs/TRACEABILITY.md
 
+# REQ-OPS-EVID.1: commits, files and tests per agent and per run, from the Kiro-Agent and Kiro-Run trailers.
 kiro-stats:
-	$(STUB)
+	python3 scripts/kiro_stats.py --out docs/KIRO_STATS.md
 
 # REQ-OPS-CAPTURE.1, .2: needs `make build` first. Writes screenshots, the judge-tour video and the time-lapse GIF to docs/media/.
 capture: web-deps
