@@ -8,6 +8,7 @@ import HomePage from "./pages/HomePage";
 import JudgePage from "./pages/JudgePage";
 import MethodsPage from "./pages/MethodsPage";
 import ScorecardPage from "./pages/ScorecardPage";
+import StreetPage from "./pages/StreetPage";
 
 function NotFound() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
         </Route>
         <Route path="scorecard" element={<ScorecardPage />} />
         <Route path="durability" element={<DurabilityPage />} />
+        <Route path="street" element={<StreetPage />} />
         <Route path="methods" element={<MethodsPage />} />
         <Route path="corrections" element={<CorrectionsPage />} />
         <Route path="judge" element={<JudgePage />} />

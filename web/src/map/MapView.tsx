@@ -31,9 +31,11 @@ interface Props {
   onSelect: (id: string) => void;
   /** IDs to ring in Cone orange (bulk-closure layer, REQ-WEB-DEATHS.1); null when the layer is off. */
   bulkIds?: ReadonlySet<string> | null;
+  /** Zoom to this box, [west, south, east, north] ("Check my street", REQ-WEB-STREET.1). */
+  bounds?: [number, number, number, number] | null;
 }
 
-export default function MapView({ rows, selectedId, onSelect, bulkIds = null }: Props) {
+export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bounds = null }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const overlayRef = useRef<MapboxOverlay | null>(null);
@@ -132,6 +134,16 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null }: 
     // Only re-center when the selection changes, not when filters change the rows.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
+
+  const boundsKey = bounds ? bounds.join(",") : "";
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !bounds) return;
+    const [w, so, e, n] = bounds;
+    map.fitBounds([[w, so], [e, n]], { padding: 48, maxZoom: 17, duration: prefersReducedMotion() ? 0 : 600 });
+    // Only when the box changes; the array identity changes on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boundsKey, ready]);
 
   if (failed) return <p className="panel-error" role="status">{t("map.unsupported")}</p>;
   return (

@@ -67,7 +67,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
 
 - [x] 17. [delight] Sensitivity sliders
   - _Requirements: REQ-WEB-SLIDERS.1_
-- [ ] 18. [delight] "Check my street"
+- [x] 18. [delight] "Check my street"
   - Build-time address index from the SAM address registry; search, zoom, nearby list, empty state.
   - _Requirements: REQ-WEB-STREET.1_
 - [ ] 19. [delight] Repeat offenders view
