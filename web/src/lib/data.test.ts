@@ -47,7 +47,7 @@ describe("loadData (REQ-WEB-DATA.1-2)", () => {
 describe("stats files load from data/stats/ (REQ-WEB-DATA.1, ops#101)", () => {
   it("maps every statistics file under stats/ and leaves the other files flat", () => {
     for (const f of STATS_FILES) expect(dataUrl(f)).toMatch(/\/data\/stats\/[a-z_]+\.json$/);
-    for (const f of ["status.json", "points.json", "zombies.json", "exclusions.json", "bulk_closures.json", "cards/a-2020.json"]) {
+    for (const f of ["status.json", "points.json", "points/city_rereport.json", "zombies/index.json", "zombies/a-2020.json", "exclusions.json", "bulk_closures.json", "cards/a-2020.json"]) {
       expect(dataUrl(f)).toMatch(/\/data\/(?!stats\/)/);
       expect(statsPath(f)).toBe(f);
     }

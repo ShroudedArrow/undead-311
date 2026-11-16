@@ -6,11 +6,12 @@ import App from "../App";
 import { clearDataCache } from "../lib/data";
 
 const Z = { after_temporary_fix: false, baseline_p: 0, bulk_closure: false, chain_id: "c", city_rereport: false, close_year: 2015, confidence: 0.8, confidence_partial: false, coroner_label: "resolved", department: null, distance_m: 0, district: "3", gap_days: 3, incident_id: "i", is_planned_followup: false, match_mode: "segment", neighborhood: "Dorchester", reports_after: 1, resurrection_id: "r", segment_id: null, skeptic_notes: "", skeptic_verdict: "not_reviewed", source_unknown: false, tier: "headline", times_risen: 1, type_family: "sign", resurrection_date: "2020-05-01" };
-const withDistrict = { data_version: "v", zombies: [{ ...Z, zombie_id: "1" }, { ...Z, zombie_id: "2", type_family: "sidewalk" }, { ...Z, zombie_id: "3", district: null }] };
-const noDistrict = { data_version: "v", zombies: [{ ...Z, zombie_id: "1", district: null }] };
+// districts.json is counted by the engine (REQ-EXP-SIZE.3): two headline zombies in district 3, a third one with no district left out
+const withDistrict = { data_version: "v", districts: [{ district: "3", count: 2, by_family: [{ family: "sidewalk", count: 1 }, { family: "sign", count: 1 }], by_year: [{ year: 2020, count: 2 }] }] };
+const noDistrict = { data_version: "v", districts: [] };
 
 function open(path: string, zombies: unknown) {
-  vi.stubGlobal("fetch", vi.fn(async (u: string) => ({ ok: true, status: 200, headers: new Headers(), json: async () => (String(u).endsWith("zombies.json") ? zombies : { data_version: "v", last_run: "2026-11-11T00:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" }) }) as Response));
+  vi.stubGlobal("fetch", vi.fn(async (u: string) => ({ ok: true, status: 200, headers: new Headers(), json: async () => (String(u).endsWith("districts.json") ? zombies : { data_version: "v", last_run: "2026-11-11T00:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" }) }) as Response));
   return render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>);
 }
 afterEach(() => { vi.unstubAllGlobals(); clearDataCache(); });
@@ -49,9 +50,16 @@ describe("Open data on the methods page (REQ-WEB-OPEN.1, .3)", () => {
   it("links JSON, makes the CSV on request, and shows the ODC-PDDL license with its text link, no compressed link, and the before/after note", async () => {
     const created: Blob[] = [];
     vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: (b: Blob) => { created.push(b); return "blob:x"; }, revokeObjectURL: () => undefined }));
-    open("/methods", withDistrict);
+    const idx = { data_version: "v", kind: "zombies", shards: [{ shard: "dorchester-2020", neighborhood: "Dorchester", year: 2020, n: 2, districts: ["3"] }, { shard: "dorchester-2021", neighborhood: "Dorchester", year: 2021, n: 1, districts: [] }] };
+    const rows = [{ ...Z, zombie_id: "1" }, { ...Z, zombie_id: "2", type_family: "sidewalk" }, { ...Z, zombie_id: "3", district: null }];
+    vi.stubGlobal("fetch", vi.fn(async (u: string) => {
+      const url = String(u);
+      const body = url.endsWith("zombies/index.json") ? idx : url.endsWith("dorchester-2020.json") ? { data_version: "v", shard: "dorchester-2020", zombies: rows.slice(0, 2) } : url.endsWith("dorchester-2021.json") ? { data_version: "v", shard: "dorchester-2021", zombies: rows.slice(2) } : { data_version: "v", last_run: "2026-11-11T00:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" };
+      return { ok: true, status: 200, headers: new Headers(), json: async () => body } as Response;
+    }));
+    render(<MemoryRouter initialEntries={["/methods"]}><App /></MemoryRouter>);
     const section = await screen.findByTestId("open-data");
-    expect(within(section).getByRole("link", { name: "Download as JSON" }).getAttribute("href")).toBe("/data/zombies.json");
+    expect(within(section).getByRole("link", { name: "List of the JSON files, one per neighborhood and year" }).getAttribute("href")).toBe("/data/zombies/index.json");
     expect(within(section).queryByRole("link", { name: /compressed/ })).toBeNull();
     const license = within(section).getByTestId("open-license-dataset");
     expect(license.textContent).toContain("ODC-PDDL");

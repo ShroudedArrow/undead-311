@@ -8,11 +8,12 @@ counted as `unlabeled`. Labels outside the allowed set are rejected (REQ-COR-1.4
 from __future__ import annotations
 
 import csv
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import duckdb
 
+from undead311.coroner.phrases import phrase_label
 from undead311.coroner.templates import mask_template
 from undead311.ingest.closure_flags import new_system_closure_label
 
@@ -43,18 +44,30 @@ def load_template_labels(path: Path | None) -> dict[str, str]:
     return labels
 
 
+def assign_label_source(
+    system: str, closure_code: str | None, template: str, template_labels: dict[str, str]
+) -> tuple[str, bool, str]:
+    """(label, unlabeled, source) by the precedence above; `source` is table, code, phrase or none (REQ-COR-1.2-1.3,
+    REQ-COR-PHRASE.2). The leading-phrase labeler comes last: the table and the new-system closure code are more specific."""
+    code_label = new_system_closure_label(closure_code) if system == "new" else None
+    if code_label == "referred":
+        return "referred", False, "code"
+    if template in template_labels:
+        return check_label(template_labels[template]), False, "table"
+    if code_label:
+        return check_label(code_label), False, "code"
+    phrase = phrase_label(template)
+    if phrase is not None:
+        return check_label(phrase), False, "phrase"
+    return "other", True, "none"
+
+
 def assign_label(
     system: str, closure_code: str | None, template: str, template_labels: dict[str, str]
 ) -> tuple[str, bool]:
     """(label, unlabeled) by the precedence above (REQ-COR-1.2-1.3)."""
-    code_label = new_system_closure_label(closure_code) if system == "new" else None
-    if code_label == "referred":
-        return "referred", False
-    if template in template_labels:
-        return check_label(template_labels[template]), False
-    if code_label:
-        return check_label(code_label), False
-    return "other", True
+    label, unlabeled, _source = assign_label_source(system, closure_code, template, template_labels)
+    return label, unlabeled
 
 
 @dataclass
@@ -62,6 +75,7 @@ class JoinReport:
     closed_in_scope: int = 0
     unlabeled: int = 0
     labels_file_missing: bool = False
+    by_source: dict[str, int] = field(default_factory=dict)  # cases by label source: table, code, phrase, none
 
     @property
     def covered_share(self) -> float:
@@ -79,8 +93,9 @@ def join_labels(con: duckdb.DuckDBPyConnection, labels_csv: Path | None, table: 
     con.execute("create or replace temp table label_map(system varchar, closure_code varchar, closure_text varchar, label varchar)")
     rows = []
     for system, code, text, n in combos:
-        label, unlabeled = assign_label(system, code, mask_template(text), template_labels)
+        label, unlabeled, source = assign_label_source(system, code, mask_template(text), template_labels)
         rows.append((system, code, text, label))
+        report.by_source[source] = report.by_source.get(source, 0) + n
         report.closed_in_scope += n
         report.unlabeled += n if unlabeled else 0
     if rows:

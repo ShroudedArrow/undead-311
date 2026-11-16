@@ -1,15 +1,18 @@
 # Nightly data refresh. TEMPLATE: copy this file to `.github/workflows/nightly.yml` in ShroudedArrow/undead-311-data
 # (agents have no access to that repo). REQ-OPS-NIGHTLY.1 to .4, REQ-OPS-ALERT.1. Setup steps: ops/undead-311-data/README.md.
 #
-# Flow: check out the judged repo at the frozen release tag, copy judge mode's files from the tag into web/public/data/frozen/
-# (so judge mode stays on the judging snapshot), download the 311 data, run the pipeline, build the site with the new data, deploy the WHOLE site to Netlify (so data is always served from the site's own origin), attach the
-# processed data to a GitHub Release. The deploy is the last step that changes anything public, and a failed night
-# never reaches it, so Netlify keeps the last good deploy. On failure the job writes a failure entry (kept in the release
+# Flow (fix/fulldata-2): the pipeline does NOT run here. Each full-data run publishes its exports as a release asset of this
+# repo (`exports-<run_id>`: pipeline/scripts/exports_release.py publish). This job checks out the judged repo at the frozen
+# release tag, copies judge mode's files from the tag into web/public/data/frozen/ (so judge mode stays on the judging snapshot),
+# downloads the newest `exports-*` release asset, verifies its SHA-256 and manifest, unpacks it into web/public/data/, builds the
+# site with it and deploys the WHOLE site to Netlify (so data is always served from the site's own origin). The deploy is the
+# last step that changes anything public, and a failed night never reaches it, so Netlify keeps the last good deploy. On failure the job writes a failure entry (kept in the release
 # `nightly-state`, merged into the next good deploy's status.json `history`) and opens a needs-human alert.
 #
 # Every action is pinned to a tag and the job sets its own permissions (pipeline/tests/unit/test_workflows_pinned.py).
 # Event and variable data reaches scripts through env vars, never inside run text. Secrets used here: NETLIFY_AUTH_TOKEN,
-# NETLIFY_SITE_ID (deploy step only) and CHANNEL_TOKEN (alert only), mapped to GITHUB_CHANNEL_TOKEN.
+# NETLIFY_SITE_ID (deploy step only) and CHANNEL_TOKEN (alert only), mapped to GITHUB_CHANNEL_TOKEN. The release download uses
+# the job's own github.token (same repo), so it needs no extra secret.
 name: nightly
 
 on:
@@ -25,10 +28,10 @@ concurrency:
 
 jobs:
   refresh:
-    name: refresh (download, pipeline, build, deploy, release)
+    name: refresh (download exports, build, deploy)
     runs-on: ubuntu-24.04
-    timeout-minutes: 240
-    # contents: write is for the GitHub Releases (data snapshot, failure history). Nothing else is written.
+    timeout-minutes: 60
+    # contents: write is for the failure history in the `nightly-state` release. The exports release is only read.
     permissions:
       contents: write
     env:
@@ -67,25 +70,34 @@ jobs:
           mkdir -p "$UV_CACHE_DIR"
           make setup
 
-      # Judge mode stays on the judging snapshot (REQ-OPS-SNAP.2). The pipeline below rewrites stats/judge_tour.json,
+      # Judge mode stays on the judging snapshot (REQ-OPS-SNAP.2). The unpacked exports rewrite stats/judge_tour.json,
       # points.json and the card shards, so judge mode's copy is taken from the tag first, into web/public/data/frozen/
-      # (a folder the pipeline never writes), and only if each file matches data/SNAPSHOT.md.
+      # (a folder the exports never touch), and only if each file matches data/SNAPSHOT.md.
       - name: Freeze the judge-mode files from the tag
         id: freeze
         working-directory: judged
         run: python3 pipeline/scripts/snapshot.py --freeze-judge
 
-      - name: Download the 311 data
+      # The newest `exports-*` release of this repo, by creation date (a run that did not pass its own checks is never published:
+      # `exports_release.py pack` refuses a status that is not ok or carries a DRY RUN ONLY anomaly).
+      - name: Download the newest exports release asset
         id: download
         working-directory: judged
-        run: make data-download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$(uv run python pipeline/scripts/exports_release.py latest --repo "$DATA_REPO")"
+          echo "exports release: $tag"
+          mkdir -p "$RUNNER_TEMP/exports"
+          gh release download "$tag" --repo "$DATA_REPO" --dir "$RUNNER_TEMP/exports" --pattern "exports-*.tar.gz" --pattern "exports-*.sha256" --clobber
 
-      - name: Run the pipeline
-        id: pipeline
+      - name: Verify and unpack the exports
+        id: exports
         working-directory: judged
-        run: make pipeline
+        run: |
+          uv run python pipeline/scripts/exports_release.py unpack --archive "$(ls "$RUNNER_TEMP"/exports/exports-*.tar.gz)" --sha256 "$(ls "$RUNNER_TEMP"/exports/exports-*.sha256)" --dest web/public/data
 
-      # A pipeline that wrote `ok: false` (or no status) must never be deployed.
+      # Exports whose status says `ok: false` (or no status) must never be deployed.
       - name: Check the pipeline status
         id: check
         run: python3 judged/ops/undead-311-data/status_history.py check --status judged/web/public/data/status.json
@@ -134,18 +146,6 @@ jobs:
           gh release view nightly-state --repo "$DATA_REPO" > /dev/null 2>&1 || gh release create nightly-state --repo "$DATA_REPO" --title "nightly state" --notes "Failure history for the nightly refresh. Not a data release."
           gh release upload nightly-state "$RUNNER_TEMP/failure-history.json" --repo "$DATA_REPO" --clobber
 
-      - name: Attach the processed data to a release
-        id: release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          day="$(date -u +%F)"
-          tag="data-$day"
-          tar -czf "$RUNNER_TEMP/processed-$day.tar.gz" -C judged/.local-data/data processed
-          (cd "$RUNNER_TEMP" && sha256sum "processed-$day.tar.gz" > "processed-$day.sha256")
-          gh release view "$tag" --repo "$DATA_REPO" > /dev/null 2>&1 || gh release create "$tag" --repo "$DATA_REPO" --title "Processed data $day" --notes "Processed Parquet and DuckDB files from the nightly run. Download one file instead of rebuilding."
-          gh release upload "$tag" "$RUNNER_TEMP/processed-$day.tar.gz" "$RUNNER_TEMP/processed-$day.sha256" --repo "$DATA_REPO" --clobber
-
       # ---- failure path: the last good deploy stays up; record the failure and alert the team -----------------
       - name: Record the failure for the next good deploy
         if: ${{ failure() }}
@@ -157,17 +157,16 @@ jobs:
           S_SETUP: ${{ steps.setup.outcome }}
           S_FREEZE: ${{ steps.freeze.outcome }}
           S_DOWNLOAD: ${{ steps.download.outcome }}
-          S_PIPELINE: ${{ steps.pipeline.outcome }}
+          S_EXPORTS: ${{ steps.exports.outcome }}
           S_CHECK: ${{ steps.check.outcome }}
           S_HISTORY: ${{ steps.history.outcome }}
           S_BUILD: ${{ steps.build.outcome }}
           S_VERIFY: ${{ steps.verify.outcome }}
           S_DEPLOY: ${{ steps.deploy.outcome }}
           S_CLEAR: ${{ steps.clear.outcome }}
-          S_RELEASE: ${{ steps.release.outcome }}
         run: |
           gh release download nightly-state --repo "$DATA_REPO" --pattern failure-history.json --dir "$RUNNER_TEMP" --clobber || echo "no failure history yet"
-          python3 judged/ops/undead-311-data/status_history.py record --history "$RUNNER_TEMP/failure-history.json" --run-url "$RUN_URL" --outcomes "tag=$S_TAG" "checkout=$S_CHECKOUT" "setup=$S_SETUP" "freeze=$S_FREEZE" "download=$S_DOWNLOAD" "pipeline=$S_PIPELINE" "check=$S_CHECK" "history=$S_HISTORY" "build=$S_BUILD" "verify=$S_VERIFY" "deploy=$S_DEPLOY" "clear=$S_CLEAR" "release=$S_RELEASE"
+          python3 judged/ops/undead-311-data/status_history.py record --history "$RUNNER_TEMP/failure-history.json" --run-url "$RUN_URL" --outcomes "tag=$S_TAG" "checkout=$S_CHECKOUT" "setup=$S_SETUP" "freeze=$S_FREEZE" "download=$S_DOWNLOAD" "exports=$S_EXPORTS" "check=$S_CHECK" "history=$S_HISTORY" "build=$S_BUILD" "verify=$S_VERIFY" "deploy=$S_DEPLOY" "clear=$S_CLEAR"
           gh release view nightly-state --repo "$DATA_REPO" > /dev/null 2>&1 || gh release create nightly-state --repo "$DATA_REPO" --title "nightly state" --notes "Failure history for the nightly refresh. Not a data release."
           gh release upload nightly-state "$RUNNER_TEMP/failure-history.json" --repo "$DATA_REPO" --clobber
 

@@ -78,10 +78,11 @@ def test_req_cor_1_3_unlabeled_closures_are_other_and_counted():
     path = None
     report = join_labels(con, path)
     got = dict(con.execute("select id, coroner_label from cases_clean").fetchall())
-    assert got == {"1": "other", "2": "other", "3": "resolved", "4": "other", "5": None}
-    assert report.closed_in_scope == 4 and report.unlabeled == 3
+    # REQ-COR-PHRASE.1: "Case Resolved" has no template row here, but its leading phrase places it
+    assert got == {"1": "resolved", "2": "other", "3": "resolved", "4": "other", "5": None}
+    assert report.closed_in_scope == 4 and report.unlabeled == 2 and report.by_source["phrase"] == 1
     assert report.labels_file_missing is True
-    assert report.covered_share == pytest.approx(0.25)
+    assert report.covered_share == pytest.approx(0.5)
 
 
 def test_req_cor_1_2_join_uses_the_label_file(tmp_path):

@@ -35,10 +35,10 @@
   "open": {
     "heading": "Download the data",
     "intro": "The possible zombie dataset, one row per possible zombie, in every tier. The tier column says which ones the headline count includes.",
-    "json": "Download as JSON",
+    "json": "List of the JSON files, one per neighborhood and year",
     "csv": "Download as CSV",
     "csv_preparing": "Loading the data for the CSV",
-    "csv_error": "The CSV could not be made because zombies.json did not load.",
+    "csv_error": "The CSV could not be made because the zombie files did not load.",
     "csv_rows": "{count} rows, one per possible zombie.",
     "license_dataset": "The possible zombie dataset is released under the Open Data Commons Public Domain Dedication and License (ODC-PDDL). The code is under the MIT license.",
     "license_text": "Read the ODC-PDDL text",

@@ -7,7 +7,7 @@ import random
 
 import duckdb
 import pytest
-from helpers import mk
+from helpers import mk, payload_zombies, read_zombies
 
 from undead311.detect.cases import cases_from_table
 from undead311.detect.core import detect
@@ -55,24 +55,30 @@ def test_req_exp_1_1_every_file_validates_and_status_is_written_last(tmp_path):
     written = export_all(result, cases, tmp_path, ctx)
     assert written[-1].name == "status.json"
     names = {str(p.relative_to(tmp_path)) for p in written}
-    assert {"zombies.json", "incidents.json", "points.json", "exclusions.json", "separate_deaths.json",
+    assert {"zombies/index.json", "incidents/index.json", "points.json", "points/source_unknown.json", "points/city_rereport.json",
+            "points/sensitivity.json", "districts.json", "exclusions.json", "separate_deaths.json",
             "repeat_offenders.json", "bulk_closures.json", "status.json"} <= names  # fmt: skip
+    assert "zombies.json" not in names and "incidents.json" not in names  # REQ-EXP-SIZE.3: sharded
     assert any(n.startswith("cards/") for n in names)
     status = json.loads((tmp_path / "status.json").read_text())
     assert status["headline_count"] == 16 and status["source_unknown_count"] == 2 and status["sensitivity_count"] == 2
-    z = json.loads((tmp_path / "zombies.json").read_text())
-    assert len(z["zombies"]) == 20 and z["data_version"] == ctx.data_version
+    zs = read_zombies(tmp_path)
+    assert len(zs) == 20
+    assert all(json.loads(f.read_text())["data_version"] == ctx.data_version for f in (tmp_path / "zombies").glob("*.json"))
 
 
 def test_req_exp_1_2_records_are_sorted_by_stable_ids(tmp_path):
     """REQ-EXP-1.2: zombie_id = incident_id:resurrection_id, sorted; points are parallel arrays of equal length."""
     result, cases, ctx = town_inputs()
     p = build_payloads(result, cases, ctx)
-    ids = [z["zombie_id"] for z in p["zombies.json"]["zombies"]]
+    ids = [z["zombie_id"] for z in payload_zombies(p)]
     assert ids == sorted(ids) and ids[0] == "101099001001:101099001002"
     pts = p["points.json"]
-    assert pts["n"] == len(ids) and all(len(pts[k]) == pts["n"] for k in ("id", "lat", "lon", "tier", "family", "year"))
-    assert pts["id"] == ids
+    assert all(len(pts[k]) == pts["n"] for k in ("id", "lat", "lon", "tier", "family", "year", "date"))
+    # REQ-EXP-SIZE.4: points.json is the headline tier; each other tier is its own file; together they are every zombie
+    assert set(pts["tier"]) <= {"headline"}
+    rest = [i for t in ("source_unknown", "city_rereport", "sensitivity") for i in p[f"points/{t}.json"]["id"]]
+    assert pts["id"] == [z for z in ids if z in set(pts["id"])] and sorted(pts["id"] + rest) == ids
 
 
 def test_req_exp_1_3_two_runs_and_shuffled_input_give_byte_identical_files(tmp_path):
@@ -90,7 +96,7 @@ def test_req_exp_1_1_an_invalid_record_is_refused_before_anything_is_written(tmp
     result, cases, ctx = town_inputs()
     bad = result.zombies[0].__class__(**{**result.zombies[0].__dict__, "confidence": 1.5})
     result.zombies[0] = bad
-    with pytest.raises(ContractError, match="zombies"):
+    with pytest.raises(ContractError, match="maximum of 1"):  # the card shard and the zombie shard both carry the confidence
         export_all(result, cases, tmp_path, ctx)
     assert list(tmp_path.iterdir()) == []
 
@@ -155,7 +161,7 @@ def test_req_exp_1_web_contract_shard_names_resurrection_date_and_card_partial_f
     resurrection_date, cards carry confidence_partial, and points.year is the re-report year."""
     result, cases, ctx = town_inputs()
     p = build_payloads(result, cases, ctx)
-    z = {x["zombie_id"]: x for x in p["zombies.json"]["zombies"]}
+    z = {x["zombie_id"]: x for x in payload_zombies(p)}
     first = z["101099001001:101099001002"]
     assert first["resurrection_date"] == "2024-03-26"
     shard = "cards/dorchester-2024.json"
@@ -192,7 +198,7 @@ def test_req_det_pf_planned_followups_are_counted_in_status(tmp_path):
     export_all(result, {c.id: c for c in cs}, tmp_path, ExportContext(data_version="v", run_time="t"))
     status = json.loads((tmp_path / "status.json").read_text())
     assert status["planned_followup_count"] == 1 and status["headline_count"] == 0
-    assert all(not z["is_planned_followup"] for z in json.loads((tmp_path / "zombies.json").read_text())["zombies"])
+    assert all(not z["is_planned_followup"] for z in read_zombies(tmp_path))
 
 
 def test_req_ing_pii_3_points_and_pii_counts_use_the_card_original(tmp_path):

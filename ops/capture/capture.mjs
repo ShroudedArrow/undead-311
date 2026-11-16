@@ -7,7 +7,7 @@
 // Third-party logos (the MapLibre logo and anything matching hide_selectors in capture.config.json) are hidden before every
 // screenshot and the video starts; the OpenStreetMap attribution is kept (tech.md).
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,9 +39,12 @@ const slug = (s) => (s || "unknown").toLowerCase().replace(/[^a-z0-9]+/g, "-").r
  * dataset. When no headline zombie has a council district (the sample data), {first_district} falls back to "1" and the
  * page shows its "not found" state, which is still a page of the site (ops#205). */
 function resolvePath(path) {
-  const zombies = JSON.parse(readFileSync(join(web, "public", "data", "zombies.json"), "utf8")).zombies;
+  // zombies are sharded (REQ-EXP-SIZE.3): read the shards, in file order
+  const dir = join(web, "public", "data", "zombies");
+  const zombies = readdirSync(dir).filter((f) => f.endsWith(".json") && f !== "index.json").sort()
+    .flatMap((f) => JSON.parse(readFileSync(join(dir, f), "utf8")).zombies);
   const first = zombies[0];
-  if (!first) throw new Error("capture: zombies.json has no zombies");
+  if (!first) throw new Error("capture: the zombies/ shards have no zombies");
   const withDistrict = zombies.find((z) => z.tier === "headline" && z.district);
   return path
     .replace("{first_zombie}", encodeURIComponent(first.zombie_id))

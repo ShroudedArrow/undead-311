@@ -20,11 +20,20 @@ const POINTS = {
   tier: ["headline", "headline", "headline", "sensitivity"], family: ["sign", "sign", "sidewalk", "sign"],
   department: ["PWDx", "BTDT", null, "PWDx"], neighborhood: ["Dorchester", "Roxbury", "Roxbury", "Roxbury"], year: [2020, 2021, 2021, 2021],
 };
+// REQ-EXP-SIZE.4: points.json is the headline tier; the other tiers are their own files, loaded when the tier switch is on
+const col = <K extends keyof typeof POINTS>(k: K, idx: number[]) => idx.map((i) => (POINTS[k] as unknown[])[i]);
+const subset = (idx: number[]) => ({ data_version: "v", n: idx.length, id: col("id", idx), lat: col("lat", idx), lon: col("lon", idx), tier: col("tier", idx), family: col("family", idx), department: col("department", idx), neighborhood: col("neighborhood", idx), year: col("year", idx) });
+const HEAD = subset([0, 1, 2]);
+const SENSITIVITY = subset([3]);
+const EMPTY = subset([]);
+const SHARD_OF: Record<string, string> = { a: "dorchester-2020", b: "roxbury-2021", c: "roxbury-2021", d: "roxbury-2021" };
 
 function stubFetch(bulkFlags: [boolean, boolean, boolean, boolean] = [false, true, true, false]) {
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
     const zz = (id: string, bulk: boolean) => ({ zombie_id: id, incident_id: `I-${id}`, resurrection_id: `R-${id}`, reports_after: 1, gap_days: 3, match_mode: "radius", distance_m: 5, tier: "headline", baseline_p: 0.1, confidence: 0.8, confidence_partial: false, is_planned_followup: false, after_temporary_fix: false, source_unknown: false, city_rereport: false, chain_id: `C-${id}`, times_risen: 1, skeptic_verdict: "survives", skeptic_notes: "", type_family: "sign", department: null, neighborhood: "Roxbury", coroner_label: "resolved", bulk_closure: bulk, close_year: 2020, resurrection_date: "2021-01-01" });
-    const body = String(url).endsWith("zombies.json") ? { data_version: "v", zombies: [zz("a", bulkFlags[0]), zz("b", bulkFlags[1]), zz("c", bulkFlags[2]), zz("d", bulkFlags[3])] } : String(url).endsWith("points.json") ? POINTS : { data_version: "v", last_run: "2026-11-11T00:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" };
+    const shard = /\/zombies\/([a-z0-9-]+)\.json$/.exec(String(url))?.[1];
+    const all = [zz("a", bulkFlags[0]), zz("b", bulkFlags[1]), zz("c", bulkFlags[2]), zz("d", bulkFlags[3])];
+    const body = shard ? { data_version: "v", shard, zombies: all.filter((z) => SHARD_OF[z.zombie_id] === shard) } : String(url).endsWith("points/sensitivity.json") ? SENSITIVITY : /points\/[a-z_]+\.json$/.test(String(url)) ? EMPTY : String(url).endsWith("points.json") ? HEAD : { data_version: "v", last_run: "2026-11-11T00:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" };
     return { ok: true, status: 200, json: async () => body } as Response;
   }));
 }
@@ -115,7 +124,7 @@ describe("Bulk-closure layer (REQ-WEB-DEATHS.1)", () => {
     render(<MemoryRouter><App /></MemoryRouter>);
     await screen.findByText("3 possible zombies match these filters");
     expect(screen.getByTestId("map").getAttribute("data-bulk-ids")).toBe("");
-    expect((vi.mocked(fetch).mock.calls as unknown[][]).some((c) => String(c[0]).endsWith("zombies.json"))).toBe(false);
+    expect((vi.mocked(fetch).mock.calls as unknown[][]).some((c) => String(c[0]).includes("/zombies/"))).toBe(false);
   });
   it("rings only the visible zombies whose closure was part of a bulk closure, and says how many", async () => {
     stubFetch();

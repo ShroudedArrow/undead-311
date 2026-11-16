@@ -1,12 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://undead-311/schemas/zombies.schema.json",
-  "title": "Possible zombies (all tiers)",
-  "description": "REQ-EXP-1. Sorted by zombie_id = incident_id:resurrection_id.",
+  "title": "Possible zombies (all tiers) (one shard)",
+  "description": "REQ-EXP-1, REQ-EXP-SIZE.3. One shard `zombies/<neighborhood>-<resurrection year>.json` (same key as the card shards). Sorted by zombie_id = incident_id:resurrection_id.",
   "type": "object",
   "properties": {
     "data_version": {
       "type": "string"
+    },
+    "shard": {
+      "type": "string",
+      "description": "shard key, the file name without .json"
     },
     "zombies": {
       "type": "array",

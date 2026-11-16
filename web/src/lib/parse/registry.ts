@@ -1,6 +1,7 @@
 /** Every generated validator by schema stem. Used by the contract test (REQ-WEB-DATA.1, testing.md #16); not by the app. */
 import validateBulkClosures from "./generated/validators/bulk_closures";
 import validateCard from "./generated/validators/card";
+import validateDistricts from "./generated/validators/districts";
 import validateExcess from "./generated/validators/excess";
 import validateExclusions from "./generated/validators/exclusions";
 import validateFunnel from "./generated/validators/funnel";
@@ -11,6 +12,7 @@ import validatePoints from "./generated/validators/points";
 import validateRepeatOffenders from "./generated/validators/repeat_offenders";
 import validateScorecard from "./generated/validators/scorecard";
 import validateSensitivityGrid from "./generated/validators/sensitivity_grid";
+import validateShardIndex from "./generated/validators/shard_index";
 import validateSeparateDeaths from "./generated/validators/separate_deaths";
 import validateStatus from "./generated/validators/status";
 import validateSurvival from "./generated/validators/survival";
@@ -24,6 +26,7 @@ export const REGISTRY: Record<string, (d: unknown) => ParseResult<unknown>> = Ob
   Object.entries({
     bulk_closures: validateBulkClosures,
     card: validateCard,
+    districts: validateDistricts,
     excess: validateExcess,
     exclusions: validateExclusions,
     funnel: validateFunnel,
@@ -35,6 +38,7 @@ export const REGISTRY: Record<string, (d: unknown) => ParseResult<unknown>> = Ob
     scorecard: validateScorecard,
     sensitivity_grid: validateSensitivityGrid,
     separate_deaths: validateSeparateDeaths,
+    shard_index: validateShardIndex,
     status: validateStatus,
     survival: validateSurvival,
     temporary_fixes: validateTemporaryFixes,

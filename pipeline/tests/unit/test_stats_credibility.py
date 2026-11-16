@@ -11,7 +11,7 @@ from datetime import date
 import duckdb
 import numpy as np
 import pytest
-from helpers import day, mk
+from helpers import day, mk, read_zombies
 from test_pipeline import raw_folder
 
 from undead311.detect.core import detect
@@ -589,7 +589,7 @@ def test_req_stat_exp_1_a_pipeline_run_writes_and_validates_every_stats_file(tmp
         if p.name != "stats_status.json":
             validate(p.stem, payload)
             assert payload["data_version"] == rep.data_version and "params" in payload and "seed" in payload
-    z = json.loads((out / "zombies.json").read_text())["zombies"][0]
+    z = read_zombies(out)[0]
     assert z["baseline_p"] is not None and rep.baseline_zombies == 1  # REQ-STAT-BASE.4, REQ-CONF.2
 
 

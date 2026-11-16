@@ -207,6 +207,13 @@ def test_every_repeat_stop_file_is_written_by_its_own_review_step(recipe):
         stop = check["path"]
         assert (check["jsonPath"], check["value"]) == ("$.done", True), r["id"]
         inner = [s for s in walk(r["steps"]) if s.get("type") == "step"]
+        if stop.endswith("/{{run_id}}.done.json"):
+            # fix/fulldata-2: a leg loop. `run_full.py` itself writes `<run_id>.done.json` after every leg (done true only when
+            # the pipeline finished), so there is no review step; the leg step must pass that exact path to the script.
+            legs = [s for s in inner if "run_full.py" in s["prompt"] and f"--done-file {stop}" in s["prompt"]]
+            assert len(legs) == 1 and legs[0] is inner[-1], f"{r['id']}: the leg step must run run_full.py with --done-file {stop}"
+            assert "--budget-min" in legs[0]["prompt"], f"{r['id']}: a leg needs a time budget"
+            continue
         writers = [s for s in inner if any(m[2] == stop for m in LOOP_CALL.findall(s["prompt"]))]
         assert len(writers) == 1, f"{r['id']}: {len(writers)} steps inside the loop write {stop}"
         writer = writers[0]

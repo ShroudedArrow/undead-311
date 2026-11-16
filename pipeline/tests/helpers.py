@@ -87,3 +87,19 @@ def examples(n: int) -> int:
     from hypothesis import settings
 
     return n * max(1, settings.default.max_examples // settings.get_profile("fast").max_examples)
+
+
+def read_zombies(folder) -> list[dict]:
+    """Every zombie of an export folder, from its `zombies/` shards, sorted by zombie_id (REQ-EXP-SIZE.3)."""
+    import json
+    from pathlib import Path
+
+    rows = [z for f in sorted((Path(folder) / "zombies").glob("*.json")) if f.name != "index.json"
+            for z in json.loads(f.read_text())["zombies"]]
+    return sorted(rows, key=lambda z: z["zombie_id"])
+
+
+def payload_zombies(payloads: dict) -> list[dict]:
+    """The same from `build_payloads` output (file name -> payload)."""
+    rows = [z for k, v in payloads.items() if k.startswith("zombies/") and k != "zombies/index.json" for z in v["zombies"]]
+    return sorted(rows, key=lambda z: z["zombie_id"])

@@ -65,14 +65,16 @@ def test_it_checks_out_the_judged_repo_at_the_frozen_tag():
 
 
 def test_stages_run_in_order_and_the_deploy_comes_after_every_check():
-    """REQ-OPS-NIGHTLY.2, .3: download, pipeline, status check, history merge, build, deploy. A failure never reaches the deploy."""
-    order = ["tag", "checkout", "setup", "freeze", "download", "pipeline", "check", "history", "build", "verify", "deploy"]
+    """REQ-OPS-NIGHTLY.2, .3, REQ-OPS-PUBLISH.3: download the exports, unpack, status check, history merge, build, deploy.
+    A failure never reaches the deploy, and the pipeline itself no longer runs here."""
+    order = ["tag", "checkout", "setup", "freeze", "download", "exports", "check", "history", "build", "verify", "deploy"]
     assert [index(i) for i in order] == sorted(index(i) for i in order)
-    for step_id, needle in (("download", "make data-download"), ("pipeline", "make pipeline"), ("build", "make build")):
+    for step_id, needle in (("download", "exports_release.py latest"), ("exports", "exports_release.py unpack"), ("build", "make build")):
         assert needle in steps()[index(step_id)]["run"]
+    assert "make pipeline" not in runs() and "make data-download" not in runs()
     assert "status_history.py check" in steps()[index("check")]["run"]
     assert "netlify-cli@" in steps()[index("deploy")]["run"] and "--prod" in steps()[index("deploy")]["run"]
-    for sid in ("download", "pipeline", "check", "build", "deploy"):
+    for sid in ("download", "exports", "check", "build", "deploy"):
         assert not steps()[index(sid)].get("continue-on-error"), sid   # a failing stage must fail the job
         assert "if" not in steps()[index(sid)], sid
 
@@ -118,9 +120,9 @@ def test_a_failure_keeps_the_last_deploy_records_itself_and_alerts():
         assert "failure()" in s["if"] and s["continue-on-error"] is True
     assert "status_history.py record" in record["run"] and "nightly-state" in record["run"]
     assert "ci_channel.py alert" in alert["run"]
-    assert steps().index(record) > index("release") and steps().index(alert) > steps().index(record)
-    for stage in ("TAG", "CHECKOUT", "SETUP", "FREEZE", "DOWNLOAD", "PIPELINE", "CHECK", "HISTORY", "BUILD", "VERIFY",
-                  "DEPLOY", "CLEAR", "RELEASE"):
+    assert steps().index(record) > index("clear") and steps().index(alert) > steps().index(record)
+    for stage in ("TAG", "CHECKOUT", "SETUP", "FREEZE", "DOWNLOAD", "EXPORTS", "CHECK", "HISTORY", "BUILD", "VERIFY",
+                  "DEPLOY", "CLEAR"):
         assert f"S_{stage}" in record["env"]
 
 
@@ -132,20 +134,23 @@ def test_the_failure_history_is_merged_before_the_build_and_cleared_only_after_t
 
 
 def test_judge_mode_files_are_frozen_before_the_pipeline_and_verified_before_the_deploy():
-    """REQ-OPS-SNAP.2 (ops#157): the copy is taken from the tag before `make pipeline` rewrites the data, and the built
+    """REQ-OPS-SNAP.2 (ops#157): the copy is taken from the tag before the unpacked exports rewrite the data, and the built
     site is checked against data/SNAPSHOT.md before it ships. Neither step may be skipped or allowed to fail quietly."""
     freeze, verify = steps()[index("freeze")], steps()[index("verify")]
-    assert "snapshot.py --freeze-judge" in freeze["run"] and index("freeze") < index("pipeline")
+    assert "snapshot.py --freeze-judge" in freeze["run"] and index("freeze") < index("exports")
     assert "snapshot.py --check-frozen --public web/dist/data" in verify["run"] and index("build") < index("verify") < index("deploy")
     for s in (freeze, verify):
         assert s["working-directory"] == "judged" and not s.get("continue-on-error") and "if" not in s
 
 
-def test_the_release_holds_one_processed_data_file_and_its_hash():
-    """REQ-OPS-NIGHTLY.4: a tar.gz of the processed folder and a SHA-256 file go to a `data-<date>` release."""
-    run = steps()[index("release")]["run"]
-    assert "tar -czf" in run and "processed" in run and "sha256sum" in run
-    assert "gh release create" in run and "--clobber" in run and 'tag="data-$day"' in run
+def test_the_exports_come_from_a_release_asset_of_the_data_repo_with_the_jobs_own_token():
+    """REQ-OPS-PUBLISH.3: the newest `exports-*` release is downloaded with github.token (no extra secret), then verified."""
+    download = steps()[index("download")]
+    assert download["env"]["GH_TOKEN"] == "${{ github.token }}"
+    assert "gh release download" in download["run"] and '--repo "$DATA_REPO"' in download["run"]
+    assert "exports-*.tar.gz" in download["run"] and "exports-*.sha256" in download["run"]
+    unpack = steps()[index("exports")]
+    assert "--sha256" in unpack["run"] and "--dest web/public/data" in unpack["run"] and unpack["working-directory"] == "judged"
 
 
 def test_job_permissions_are_contents_write_only():
@@ -158,7 +163,7 @@ def test_the_readme_gives_the_setup_steps():
     """REQ-OPS-NIGHTLY.1: the owner can copy, set secrets and the tag variable, and run once."""
     text = (OPS / "README.md").read_text()
     for needle in ("JUDGED_TAG", "NETLIFY_AUTH_TOKEN", "NETLIFY_SITE_ID", "CHANNEL_TOKEN", "GITHUB_CHANNEL_TOKEN",
-                   "undead-311-data", "nightly-state", "data-YYYY-MM-DD", "docs/DEPLOY.md", "needs-human"):
+                   "undead-311-data", "nightly-state", "exports-", "exports_release.py", "GH_TOKEN", "docs/DEPLOY.md", "needs-human"):
         assert needle in text, needle
     assert not re.search(r"\b(ghp_|github_pat_|nfp_)[A-Za-z0-9_]{10,}", text)
 
@@ -167,8 +172,8 @@ def test_the_readme_gives_the_setup_steps():
 
 def test_the_first_failed_stage_in_pipeline_order_is_named():
     """REQ-OPS-NIGHTLY.3."""
-    assert sh.failed_stage({"download": "success", "pipeline": "failure", "build": "skipped"}) == "pipeline"
-    assert sh.failed_stage({"pipeline": "cancelled", "deploy": "failure"}) == "pipeline"
+    assert sh.failed_stage({"download": "success", "exports": "failure", "build": "skipped"}) == "exports"
+    assert sh.failed_stage({"exports": "cancelled", "deploy": "failure"}) == "exports"
     assert sh.failed_stage({"download": "success", "deploy": "skipped"}) == "unknown"
     assert sh.failed_stage({"checkout": "", "setup": ""}) == "unknown"          # steps that never ran have an empty outcome
 
@@ -274,9 +279,9 @@ def test_the_cli_round_trip_record_merge_clear(tmp_path):
     hist, status = tmp_path / "failure-history.json", tmp_path / "status.json"
     status.write_text('{"ok": true, "data_version": "v"}')
     r = run_cli("record", "--history", str(hist), "--run-url", "https://x/1", "--at", "2026-12-01T03:41:00Z",
-                "--outcomes", "download=success", "pipeline=failure", "build=skipped")
+                "--outcomes", "download=success", "exports=failure", "build=skipped")
     assert r.returncode == 0
-    assert json.loads(hist.read_text())[0]["stage"] == "pipeline"
+    assert json.loads(hist.read_text())[0]["stage"] == "exports"
     assert run_cli("merge", "--status", str(status), "--history", str(hist)).returncode == 0
     assert json.loads(status.read_text())["history"][0]["run_url"] == "https://x/1"
     assert run_cli("clear", "--history", str(hist)).returncode == 0

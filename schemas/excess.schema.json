@@ -17,7 +17,9 @@
             "enum": [
               "department",
               "family",
-              "neighborhood"
+              "neighborhood",
+              "tier",
+              "distance_band"
             ]
           },
           "name": {
@@ -42,8 +44,12 @@
           "tier_set": {
             "enum": [
               "headline",
+              "source_unknown",
+              "city_rereport",
+              "sensitivity",
               "all"
-            ]
+            ],
+            "description": "the tier whose population the baseline counts (REQ-STAT-POP.1); `all` is the pooled set of earlier runs and is no longer written"
           },
           "n_originals": {
             "type": "integer",
@@ -289,6 +295,38 @@
         }
       },
       "additionalProperties": true
+    },
+    "by_tier": {
+      "type": "object",
+      "description": "shift test and placebo per tier population (REQ-STAT-POP.3)",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "shift": {
+            "type": "object"
+          },
+          "placebo": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "model"
+        ]
+      }
+    },
+    "match_modes": {
+      "type": "object",
+      "description": "zombies by tier and match mode",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
     }
   },
   "required": [

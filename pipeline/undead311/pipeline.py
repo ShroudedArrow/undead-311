@@ -56,6 +56,7 @@ from undead311.export.writers import (
 )
 from undead311.ingest.clean import REASONS, clean, ids_by_reason
 from undead311.ingest.crosswalk import apply_crosswalk
+from undead311.ingest.departments import apply_departments, department_report
 from undead311.ingest.geometry import store_neighborhood_geometry
 from undead311.ingest.load import load
 from undead311.ingest.neighborhoods import BOUNDARIES_FILE
@@ -74,7 +75,9 @@ STATS_STALE_FILES = (
     "sensitivity_grid.json", "temporary_fixes.json", "validation.json", "trends.json", "stats_status.json",
 )  # fmt: skip
 # Files this pipeline owns in the output folder: one that a run does not produce is removed when the run is swapped in.
-ENGINE_JSON = ("zombies", "incidents", "points", "exclusions", "separate_deaths", "repeat_offenders", "bulk_closures", "status")
+ENGINE_JSON = ("points", "exclusions", "separate_deaths", "repeat_offenders", "bulk_closures", "districts", "status")
+ENGINE_FOLDERS = ("cards/", "zombies/", "incidents/", "points/")  # REQ-EXP-SIZE.3-4: sharded sets and the on-demand tiers
+RETIRED_JSON = ("zombies", "incidents")  # written as one file by earlier runs, now sharded: swapped out as stale
 PROCESSED_OWNED = ("skeptic_input.json", "coroner_templates.csv")
 
 
@@ -82,11 +85,11 @@ def owns_output(rel: str) -> bool:
     """True for an exported file that this pipeline owns (REQ-ING-NIGHTLY.1). A `.gz` copy left by an older run counts too,
     so the swap removes it (ops#165: the engine no longer writes precompressed files)."""
     name = rel.removesuffix(".gz")
-    if rel.startswith("cards/"):
+    if rel.startswith(ENGINE_FOLDERS):
         return True
     if name.startswith("stats/"):
         return name.removeprefix("stats/") in STATS_STALE_FILES
-    return name in {f"{n}.json" for n in ENGINE_JSON}
+    return name in {f"{n}.json" for n in (*ENGINE_JSON, *RETIRED_JSON)}
 
 
 def owns_processed(rel: str) -> bool:
@@ -114,8 +117,10 @@ class RunReport:
     baseline_zombies: int = 0  # zombies with a baseline_p from the stats stage (REQ-CONF.2)
     confidence_partial: int = 0  # zombies whose score used a neutral term
     file_sizes: dict[str, int] = field(default_factory=dict)
-    first_view_bytes: int = 0
+    first_view_bytes: int = 0  # gzip transfer size of the first-view files (REQ-EXP-SIZE.2)
+    first_view_raw_bytes: int = 0
     first_view_budget_bytes: int = FIRST_VIEW_BUDGET_BYTES
+    file_gzip_sizes: dict[str, int] = field(default_factory=dict)  # gzip size of every exported file (REQ-EXP-SIZE.3)
     warnings: list[str] = field(default_factory=list)
     stats: str = "not present"
     stages: list[dict] = field(default_factory=list)  # per stage: seconds, sampled peak RSS, rows (REQ-OPS-RUN.1)
@@ -146,7 +151,8 @@ class RunReport:
             f"  PII replacements: {self.pii_counts}",
             f"  stats: {self.stats}",
             f"  files: {len(self.file_sizes)}, {sum(self.file_sizes.values()):,} bytes; "
-            + f"first view {self.first_view_bytes:,} of {self.first_view_budget_bytes:,} bytes",
+            + f"first view {self.first_view_bytes:,} of {self.first_view_budget_bytes:,} bytes gzip ({self.first_view_raw_bytes:,} raw)"
+            + f"; largest file {max(self.file_gzip_sizes.values(), default=0):,} bytes gzip",
         ]
         lines += [f"  warning: {w}" for w in self.warnings]
         return "\n".join(lines)
@@ -180,6 +186,19 @@ def _validation_ids(path: Path) -> list[str]:
         return [r["zombie_id"] for r in csv.DictReader(f) if r.get("zombie_id")]
 
 
+def department_warnings(dept: dict) -> list[str]:
+    """Run-report notes for departments the crosswalk could not map (REQ-ING-DEPT.2). In-scope counts come later; these
+    count every case that went through the crosswalk."""
+    out = []
+    if dept.get("flagged"):
+        out.append("in-scope departments kept under their own value (flagged in department_crosswalk.csv): "
+                   + ", ".join(f"{k} {v:,}" for k, v in sorted(dept["flagged"].items())))
+    if dept.get("unlisted"):
+        out.append("departments missing from department_crosswalk.csv: "
+                   + ", ".join(f"{k} {v:,}" for k, v in sorted(dept["unlisted"].items())))
+    return out
+
+
 def _load_sample(con: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
     register_text_udfs(con)  # ops#214: street names arrive HTML-escaped
     con.execute("create table sample_raw as select * from read_csv(?, all_varchar=true, header=true)", [str(csv_path)])
@@ -196,6 +215,7 @@ def _load_sample(con: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
                NULL::double as segment_snap_m, NULL::varchar as coroner_label
         from sample_raw order by id, system
     """)
+    apply_departments(con, "cases_clean")  # REQ-ING-DEPT.1
     con.execute("update cases_clean set catch_all = predecessor_ids <> '' and system = 'new' and type_raw = 'Street Light Other'")
     return con.execute("select count(*) from cases_clean").fetchone()[0]
 
@@ -227,7 +247,8 @@ def run_pipeline(
     out = Path(out_dir) if out_dir else root / "web" / "public" / "data"
     report = RunReport(sample=sample)
     dataset = "sample" if sample else "full"  # REQ-STAT-EXP.1 (ops#51)
-    snap = snapshot_date(root / "data" / "SNAPSHOT.md")
+    snapshot_file = snapshot_md or root / "data" / "SNAPSHOT.md"  # the file the run was given, never the checkout's own (ops#h)
+    snap = snapshot_date(snapshot_file)
     version = data_version(snap, p, root)
     report.data_version = version
     labels_csv = root / "data" / "labels" / "coroner_labels.csv"
@@ -264,7 +285,7 @@ def run_pipeline(
             register_text_udfs(con)  # a resumed run skips `normalize`, which registers it; a second call is a no-op
 
             def s_load() -> dict:
-                lr = load(con, raw, snapshot_md or root / "data" / "SNAPSHOT.md")
+                lr = load(con, raw, snapshot_file)
                 return {"row_counts": {"raw_legacy": lr.legacy_rows, "raw_new": lr.new_rows}}
 
             def s_normalize() -> dict:
@@ -277,7 +298,9 @@ def run_pipeline(
 
             def s_clean() -> dict:
                 cr = clean(con)
+                dr = department_report(con, "cases_clean")  # REQ-ING-DEPT.2: what the crosswalk could not map, in scope
                 return {
+                    "warnings": department_warnings({"flagged": dr.flagged, "unlisted": dr.unlisted}),
                     "row_counts": {"cases_clean": cr.kept}, "exclusions": cr.counts,
                     "candidate_placeholders": cr.candidate_placeholders,
                 }  # fmt: skip
@@ -320,7 +343,8 @@ def run_pipeline(
         def s_coroner() -> dict:
             jr: JoinReport = join_labels(con, labels_csv)
             d: dict = {"label_coverage": jr.covered_share, "unlabeled": jr.unlabeled,
-                       "stage_rows": {"closed_in_scope": jr.closed_in_scope, "unlabeled": jr.unlabeled}}  # fmt: skip
+                       "stage_rows": {"closed_in_scope": jr.closed_in_scope, "unlabeled": jr.unlabeled,
+                                      **{f"labeled_by_{k}": v for k, v in sorted(jr.by_source.items())}}}  # fmt: skip
             if jr.labels_file_missing:
                 d["warnings"] = ["data/labels/coroner_labels.csv is missing: every closure is labeled `other`"]
             return d
@@ -442,6 +466,7 @@ def run_pipeline(
                 allow_over_budget=allow_over_budget,
             )
             export_all(result, by_id, stage_out, ctx)
+            ns.sizes = ctx.sizes
             report.warnings += [w for w in ctx.anomalies if w.startswith("DRY RUN ONLY")]
             # persist the detector output beside the cases for the MCP server and the stats stage
             con.execute("drop table if exists zombies")  # a resumed run may find the table of a crashed attempt
@@ -470,7 +495,7 @@ def run_pipeline(
 
     if runner.persistent:
         raw_files = {f.name: f.stat().st_size for f in sorted((raw_dir or base / "raw").glob("*")) if f.is_file() and f.suffix != ".part"}
-        snap_text = (snapshot_md or root / "data" / "SNAPSHOT.md").read_text()
+        snap_text = snapshot_file.read_text()
         prepare(runner.stages_dir, processed / "undead311.duckdb.tmp", fingerprint(snap_text, json.dumps(asdict(p), sort_keys=True), raw_files), log)
     try:
         write_duckdb_atomic(processed / "undead311.duckdb", build, commit, rollback, keep_partial=runner.persistent)
@@ -479,7 +504,10 @@ def run_pipeline(
         shutil.rmtree(stage_proc, ignore_errors=True)
     files = swaps[1].paths
     report.file_sizes = {f.relative_to(out).as_posix(): f.stat().st_size for f in sorted(set(files))}
-    report.first_view_bytes = first_view_bytes(report.file_sizes)  # REQ-EXP-SIZE.2: export_all already enforced the budget
+    sizes = getattr(ns, "sizes", {}) or {}
+    report.file_gzip_sizes = dict(sorted(sizes.get("gzip", {}).items()))
+    report.first_view_bytes = first_view_bytes(report.file_gzip_sizes)  # REQ-EXP-SIZE.2: export_all already enforced the budget
+    report.first_view_raw_bytes = first_view_bytes(report.file_sizes)
     report.stages = [{k: v for k, v in r.items() if k != "delta"} for r in runner.records]
     report.seconds = time.time() - t0
     write_text_atomic(processed / "run_report.json", canonical_json(report.to_json()))

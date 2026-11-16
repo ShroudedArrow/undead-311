@@ -88,6 +88,17 @@ IDs use the prefix `REQ-STAT-`. Layers follow docs/PROJECT.md: **demo-critical**
 **User story:** As a judge, I want to change radius, window and matching mode and see the result, so the definition isn't cherry-picked.
 1. THE stats SHALL turn the engine's sensitivity runs (REQ-SENS-RUN) into `sensitivity_grid.json`: headline count, excess and stayed-fixed rate per grid point, plus all-tier counts. It SHALL include the run without Street Light Other.
 
+### REQ-STAT-POP: Baseline population per tier
+**Layer:** credibility
+**User story:** As a reader of the excess, I want each tier compared with the reports it could have come from, never with a pooled count.
+1. THE baseline of a tier SHALL count only reports from that tier's population (`stats/tiers.py`): headline, resident legacy and new-system reports (resident legacy only for originals with a planned-follow-up label); source_unknown, new-system reports; city_rereport, legacy city-originated reports; sensitivity, every report. Closures of every same-family case still open a dead stretch.
+2. Excess SHALL be reported per tier (`tier_set` is the tier) and never pooled across tiers; originals labeled invalid or duplicate are in no cohort.
+3. Each tier SHALL have its own shift test and placebo (`by_tier` in `excess.json`).
+
+### REQ-STAT-BAND: Excess by match distance
+**Layer:** credibility
+1. Observed, expected and excess SHALL also be reported per tier and match-distance band (0-5, 5-15, 15-30, 30-75 m): observed by the zombie's `distance_m`, expected by splitting each original's `p` by the distance distribution of the spot's other live reports. The rows are a diagnostic; `p` still counts the whole spot (docs/METHODS.md).
+
 ### REQ-STAT-TIER: Sensitivity toggle data
 **Layer:** credibility
 **User story:** As a reader, I want to switch the sensitivity tier on and off, so I can see what the headline leaves out.

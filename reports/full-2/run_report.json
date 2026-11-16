@@ -1,0 +1,336 @@
+{
+  "bytes_raw_total": 116506626,
+  "city_origin": {
+    "city_rereport": 33022,
+    "city_rereport_share": 0.6334062224268232,
+    "city_rereport_under_1h": 13304,
+    "headline": 19112
+  },
+  "data_version": "2026-11-16+b840b1f+89e078da",
+  "excluded_pairs": {
+    "linked_successor": 0,
+    "mirror": 22,
+    "transferred_original": 732
+  },
+  "exclusions": {
+    "excluded_type": 861963,
+    "null_coords": 2119,
+    "null_open_time": 0,
+    "out_of_bounds": 0,
+    "placeholder": 792,
+    "unlisted_type": 1877683
+  },
+  "files": 668,
+  "first_view_budget_bytes": 3000000,
+  "first_view_bytes": 327681,
+  "first_view_raw_bytes": 2271641,
+  "label_coverage": 0.9951585357739213,
+  "largest_files_gzip": {
+    "cards/dorchester-2018.json": 109827,
+    "cards/dorchester-2019.json": 83879,
+    "cards/downtown-financial-district-2017.json": 89346,
+    "cards/downtown-financial-district-2019.json": 94135,
+    "cards/east-boston-2019.json": 86138,
+    "cards/roxbury-2018.json": 94375,
+    "points.json": 323933,
+    "points/city_rereport.json": 478427,
+    "stats/survival.json": 211643,
+    "stats/trends.json": 162626
+  },
+  "planned_followups": 4912,
+  "row_counts": {
+    "bulk_closure_cases": 10442,
+    "bulk_closure_groups": 127,
+    "cases_clean": 388483,
+    "cases_norm": 3131040,
+    "edges": 334643,
+    "grid_runs": 19,
+    "in_scope_cases": 388483,
+    "intersections": 11802,
+    "neighborhood_renamed": 49418,
+    "raw_legacy": 3040547,
+    "raw_new": 90493,
+    "snapped_cases": 233615,
+    "unsnapped_cases": 154868,
+    "z_preferred_cases": 4367
+  },
+  "stages": [
+    {
+      "finished_utc": "2026-11-16T19:09:05Z",
+      "peak_rss_mb": 3741.4,
+      "process_peak_mb": 3753.9,
+      "rows": {
+        "raw_legacy": 3040547,
+        "raw_new": 90493
+      },
+      "seconds": 0.0,
+      "seq": 1,
+      "stage": "load",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T19:10:36Z",
+      "peak_rss_mb": 4316.8,
+      "process_peak_mb": 4362.9,
+      "rows": {
+        "cases_norm": 3131040
+      },
+      "seconds": 0.0,
+      "seq": 2,
+      "stage": "normalize",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T19:10:42Z",
+      "peak_rss_mb": 3514.2,
+      "process_peak_mb": 4362.9,
+      "rows": {
+        "cases_x": 3131040
+      },
+      "seconds": 0.0,
+      "seq": 3,
+      "stage": "crosswalk",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T19:10:54Z",
+      "peak_rss_mb": 3223.1,
+      "process_peak_mb": 4362.9,
+      "rows": {
+        "cases_clean": 388483,
+        "cases_excluded": 2742557
+      },
+      "seconds": 0.0,
+      "seq": 4,
+      "stage": "clean",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T19:13:49Z",
+      "peak_rss_mb": 2519.6,
+      "process_peak_mb": 4362.9,
+      "rows": {
+        "cases_clean": 388483,
+        "intersections": 11802,
+        "snapped_cases": 233615,
+        "unsnapped_cases": 154868,
+        "z_preferred_cases": 4367
+      },
+      "seconds": 0.0,
+      "seq": 5,
+      "stage": "snap",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T19:13:52Z",
+      "peak_rss_mb": 2205.2,
+      "process_peak_mb": 4362.9,
+      "rows": {
+        "neighborhood_areas": 18,
+        "neighborhood_renamed": 49418
+      },
+      "seconds": 0.0,
+      "seq": 6,
+      "stage": "neighborhoods",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T20:12:44Z",
+      "peak_rss_mb": 988.4,
+      "process_peak_mb": 988.4,
+      "rows": {},
+      "seconds": 4.79,
+      "seq": 0,
+      "stage": "templates",
+      "status": "done"
+    },
+    {
+      "finished_utc": "2026-11-16T19:16:19Z",
+      "peak_rss_mb": 2539.0,
+      "process_peak_mb": 4362.9,
+      "rows": {
+        "closed_in_scope": 315607,
+        "labeled_by_code": 3343,
+        "labeled_by_none": 1528,
+        "labeled_by_phrase": 112909,
+        "labeled_by_table": 197827,
+        "unlabeled": 1528
+      },
+      "seconds": 0.0,
+      "seq": 7,
+      "stage": "coroner",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T19:17:15Z",
+      "peak_rss_mb": 2596.6,
+      "process_peak_mb": 4362.9,
+      "rows": {
+        "bulk_closure_cases": 10442,
+        "bulk_closure_groups": 127
+      },
+      "seconds": 0.0,
+      "seq": 8,
+      "stage": "bulk",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T20:16:10Z",
+      "peak_rss_mb": 1642.4,
+      "process_peak_mb": 1644.5,
+      "rows": {
+        "edges": 334643,
+        "in_scope_cases": 388483
+      },
+      "seconds": 206.32,
+      "seq": 0,
+      "stage": "detect",
+      "status": "done"
+    },
+    {
+      "finished_utc": "2026-11-16T19:27:01Z",
+      "peak_rss_mb": 3584.8,
+      "process_peak_mb": 4362.9,
+      "rows": {
+        "grid_runs_in_group": 3
+      },
+      "seconds": 0.0,
+      "seq": 9,
+      "stage": "grid-segment-r15",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T19:37:14Z",
+      "peak_rss_mb": 2292.7,
+      "process_peak_mb": 2300.9,
+      "rows": {
+        "grid_runs_in_group": 3
+      },
+      "seconds": 0.0,
+      "seq": 10,
+      "stage": "grid-segment-r30",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T19:43:46Z",
+      "peak_rss_mb": 2358.7,
+      "process_peak_mb": 2366.9,
+      "rows": {
+        "grid_runs_in_group": 3
+      },
+      "seconds": 0.0,
+      "seq": 11,
+      "stage": "grid-segment-r50",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T19:50:18Z",
+      "peak_rss_mb": 2352.3,
+      "process_peak_mb": 2366.9,
+      "rows": {
+        "grid_runs_in_group": 3
+      },
+      "seconds": 0.0,
+      "seq": 12,
+      "stage": "grid-radius-r15",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T20:00:35Z",
+      "peak_rss_mb": 2305.4,
+      "process_peak_mb": 2313.7,
+      "rows": {
+        "grid_runs_in_group": 3
+      },
+      "seconds": 0.0,
+      "seq": 13,
+      "stage": "grid-radius-r30",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T20:06:57Z",
+      "peak_rss_mb": 2319.6,
+      "process_peak_mb": 2327.8,
+      "rows": {
+        "grid_runs_in_group": 3
+      },
+      "seconds": 0.0,
+      "seq": 14,
+      "stage": "grid-radius-r50",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T20:11:11Z",
+      "peak_rss_mb": 2261.4,
+      "process_peak_mb": 2327.8,
+      "rows": {
+        "grid_runs_in_group": 1
+      },
+      "seconds": 0.0,
+      "seq": 15,
+      "stage": "grid-no-street-light-other",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T20:16:12Z",
+      "peak_rss_mb": 1651.2,
+      "process_peak_mb": 1651.2,
+      "rows": {
+        "grid_runs": 19
+      },
+      "seconds": 0.97,
+      "seq": 16,
+      "stage": "grid",
+      "status": "done"
+    },
+    {
+      "finished_utc": "2026-11-16T20:17:04Z",
+      "peak_rss_mb": 2241.3,
+      "process_peak_mb": 2244.0,
+      "rows": {},
+      "seconds": 51.83,
+      "seq": 0,
+      "stage": "baselines",
+      "status": "done"
+    },
+    {
+      "finished_utc": "2026-11-16T20:17:08Z",
+      "peak_rss_mb": 2241.3,
+      "process_peak_mb": 2244.0,
+      "rows": {},
+      "seconds": 3.71,
+      "seq": 0,
+      "stage": "skeptic",
+      "status": "done"
+    },
+    {
+      "finished_utc": "2026-11-16T20:30:57Z",
+      "peak_rss_mb": 3350.5,
+      "process_peak_mb": 3351.9,
+      "rows": {},
+      "seconds": 829.13,
+      "seq": 0,
+      "stage": "stats",
+      "status": "done"
+    },
+    {
+      "finished_utc": "2026-11-16T20:35:20Z",
+      "peak_rss_mb": 2880.4,
+      "process_peak_mb": 3351.9,
+      "rows": {
+        "zombies": 52434
+      },
+      "seconds": 262.76,
+      "seq": 0,
+      "stage": "export",
+      "status": "done"
+    }
+  ],
+  "tier_counts": {
+    "city_rereport": 33022,
+    "headline": 19112,
+    "sensitivity": 202,
+    "source_unknown": 98
+  },
+  "unlabeled": 1528
+}

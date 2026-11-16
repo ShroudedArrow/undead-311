@@ -87,8 +87,8 @@ class _Spots:
 
 
 def _build(model: BaselineModel) -> _Spots | None:
-    incs = list(eligible_originals(model.result.incidents, model.data_end, model.params))
-    zs = {z.incident_id for z in model.result.zombies if z.tier == "headline"}
+    incs = list(eligible_originals(model.incidents, model.data_end, model.params, all_tiers=model.all_tiers))
+    zs = {z.incident_id for z in model.result.zombies if z.tier == model.tier}
     keys = sorted({model._incident_key[i.incident_id] for i in incs})
     keys = [k for k in keys if k in model.groups]
     if not incs or not keys:
@@ -150,7 +150,7 @@ def shift_and_placebo(
 ) -> tuple[ShiftResult | None, PlaceboResult | None]:
     """The shift distribution and the placebo excess (REQ-STAT-SHIFT.1-2, REQ-STAT-PLACEBO.1-2). Deterministic for a seed."""
     sp = _build(model)
-    zombies = sum(1 for z in model.result.zombies if z.tier == "headline")
+    zombies = sum(1 for z in model.result.zombies if z.tier == model.tier)
     if sp is None:
         return None, None
     t_min = min(float(model.groups[k][0][0]) for k in sp.keys)

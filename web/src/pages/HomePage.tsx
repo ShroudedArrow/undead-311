@@ -6,8 +6,8 @@ import { CopyLink, NeighborhoodShareLink } from "../components/ShareLinks";
 import { PanelError } from "../components/PanelError";
 import { ZombieTable } from "../components/ZombieTable";
 import { visibleSet } from "../lib/filter";
-import { useData } from "../lib/data";
-import { parsePoints, parseZombies } from "../lib/parse";
+import { shardKey } from "../lib/shard";
+import { useZombieShards, usePoints } from "../lib/shards";
 import { pointsToRows } from "../lib/points";
 import { buildTableRows, bulkIds } from "../lib/table";
 import { t } from "../lib/t";
@@ -22,11 +22,17 @@ export default function HomePage() {
   const match = useMatch("/zombie/:id");
   const selectedId = match?.params.id ? decodeURIComponent(match.params.id) : null;
   const state = useMemo(() => decodeState(params.toString()), [params]);
-  const points = useData("points.json", parsePoints);
+  const pointsState = usePoints(state.tierMode === "all"); // the first view reads the headline tier only; the others load when switched on
+  const points = pointsState.load;
   const rows = useMemo(() => (points.status === "ok" ? pointsToRows(points.data) : []), [points]);
-  const zombies = useData(state.view === "table" || state.bulk ? "zombies.json" : null, parseZombies);
-  const zombieById = useMemo(() => (zombies.status === "ok" ? new Map(zombies.data.zombies.map((z) => [z.zombie_id, z])) : null), [zombies]);
   const visible = useMemo(() => visibleSet(rows, state.filters, state.tierMode), [rows, state]);
+  // zombie records load per shard, and only the shards the visible rows fall in (table view, bulk layer)
+  const shardKeys = useMemo(
+    () => (state.view === "table" || state.bulk ? visible.items.map((r) => shardKey(r.neighborhood, r.year)) : null),
+    [state.view, state.bulk, visible],
+  );
+  const zombies = useZombieShards(shardKeys);
+  const zombieById = useMemo(() => (zombies.status === "ok" ? new Map(zombies.data.zombies.map((z) => [z.zombie_id, z])) : null), [zombies]);
 
   const bulkSet = useMemo(() => (state.bulk ? bulkIds(visible.items, zombieById) : null), [state.bulk, visible, zombieById]);
   // filter menus count what the current tier mode can show, so an option's number matches what picking it yields
@@ -47,6 +53,8 @@ export default function HomePage() {
           <p className="tagline">{t("app.hero_subtitle")}</p>
         </div>
         {points.status === "error" && <PanelError file={points.file} error={points.error} />}
+        {pointsState.extraError && <PanelError file={pointsState.extraError.file} error={pointsState.extraError.error} />}
+        {pointsState.pending && <p role="status">{t("filters.loading")}</p>}
         {points.status === "loading" && <p>{t("filters.loading")}</p>}
         {points.status === "ok" && (
           <>

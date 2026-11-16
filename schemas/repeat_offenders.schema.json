@@ -51,6 +51,17 @@
                 "type": "null"
               }
             ]
+          },
+          "first_zombie_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the chain's earliest headline possible zombie, to open its first card (optional for earlier runs)"
           }
         },
         "required": [

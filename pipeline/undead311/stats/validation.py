@@ -202,16 +202,29 @@ def run_validate(labels_dir: Path, validation_md: Path, out_json: Path | None, d
     return 0, f"validate: precision {p.get('rate')} ({p.get('k')}/{p.get('n')}), kappa {v.kappa}, confirmed {len(v.confirmed)}"
 
 
+def read_zombie_records(zombies_json: Path) -> list[dict] | None:
+    """The zombie records of an export: one `zombies.json` (earlier runs) or the shards of `zombies/` beside it (REQ-EXP-SIZE.3),
+    sorted by zombie_id as the one-piece file was. None when neither exists."""
+    if zombies_json.is_file():
+        return json.loads(zombies_json.read_text()).get("zombies", [])
+    folder = zombies_json.with_name("zombies")
+    if not folder.is_dir():
+        return None
+    rows = [z for f in sorted(folder.glob("*.json")) if f.name != "index.json" for z in json.loads(f.read_text())["zombies"]]
+    return sorted(rows, key=lambda z: z["zombie_id"])
+
+
 def run_validation_sample(labels_dir: Path, zombies_json: Path, snapshot_end: date) -> tuple[int, str]:
     """`make validation-sample`: draw and write `validation_sample.csv`. Missing owner config or zombies: message, exit 0."""
     config = read_config(labels_dir / CONFIG_FILE)
     if config is None:
         return 0, f"validation-sample: {labels_dir / CONFIG_FILE} is missing or lists no neighborhoods; the owner chooses them"
-    if not zombies_json.is_file():
-        return 0, f"validation-sample: {zombies_json} is missing; run the pipeline first"
+    records = read_zombie_records(zombies_json)
+    if records is None:
+        return 0, f"validation-sample: {zombies_json} (or its zombies/ shards) is missing; run the pipeline first"
     target = labels_dir / SAMPLE_FILE
     if target.is_file():
         return 0, f"validation-sample: {target} already exists and stays as committed (it is drawn once, before any visit)"
-    rows = draw_sample(json.loads(zombies_json.read_text()).get("zombies", []), config, snapshot_end)
+    rows = draw_sample(records, config, snapshot_end)
     write_sample(target, rows)
     return 0, f"validation-sample: wrote {len(rows)} zombies to {target}"

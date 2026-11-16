@@ -34,6 +34,13 @@ IDs use the prefix `REQ-OPS-`. Layers follow docs/PROJECT.md: **demo-critical** 
 **User story:** As a phone user, I want repeat visits to load instantly while data stays fresh, so the site feels fast and never shows stale numbers.
 1. Hashed asset files SHALL be served with `Cache-Control: public, max-age=31536000, immutable`. `index.html`, `status.json` and data manifests SHALL be served with `no-cache`. Data files SHALL be plain JSON; the host compresses responses, and no precompressed `.gz` files are shipped (ops#184).
 
+### REQ-OPS-PUBLISH: Exports as a release asset
+**Layer:** credibility
+**User story:** As the owner, I want each full-data run's exports to reach the live site without running the pipeline on a GitHub runner.
+1. `pipeline/scripts/exports_release.py publish` SHALL pack a run's export folder into `exports-<run-id>.tar.gz` (with a `MANIFEST.json`, status last) and a SHA-256 file and attach both to the release `exports-<run-id>` of `ShroudedArrow/undead-311-data`. It SHALL refuse an export whose status is not `ok: true` or that carries a `DRY RUN ONLY` anomaly.
+2. `unpack` SHALL verify the hash, reject unsafe paths, accept only files the pipeline owns, and never touch `frozen/`.
+3. The nightly job in the data repo SHALL download the newest `exports-*` release with its own token, unpack it, build the site and deploy it to Netlify; it SHALL NOT run the pipeline.
+
 ### REQ-OPS-NIGHTLY: Nightly data refresh (separate repo)
 **Layer:** credibility
 **User story:** As a reader after the deadline, I want fresh data without code changes, so the site stays current until Jan 29, 2027.
@@ -69,6 +76,7 @@ IDs use the prefix `REQ-OPS-`. Layers follow docs/PROJECT.md: **demo-critical** 
 3. EACH finished stage SHALL also be written as `<stages_dir>/NN-<stage>.done.json`.
 4. `pipeline/scripts/run_full.py` SHALL post one comment per finished stage to the run-log issue (a comment that cannot be posted is queued, never fatal), stop the run for good when one stage fails twice (leaving the database, markers and logs in place), and stop when the kill-switch file exists.
 5. AFTER a run it SHALL write the Coroner coverage on closed in-scope cases and the 300 most common unlabeled closure templates (by case count) to `$DATA_DIR/reports/<run-id>/`.
+6. `run_full.py` SHALL write `<run-id>.done.json` after every leg (`--done-file`; default `.kiro/workflow-runs/<run-id>/<run-id>.done.json`) with `done: true` only when the pipeline finished. `.kiro/workflows/fulldata.workflow.yaml` runs one leg per loop iteration (`--budget-min 18`) until that file says `done: true`.
 
 ### REQ-OPS-DEV: Codespaces dev container
 **Layer:** credibility

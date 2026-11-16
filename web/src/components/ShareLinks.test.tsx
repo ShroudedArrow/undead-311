@@ -36,9 +36,10 @@ describe("Permalinks and share links (REQ-WEB-LINKS.1-2)", () => {
 });
 
 describe("Neighborhood permalink (REQ-WEB-LINKS.1)", () => {
+  const INDEX = { data_version: "v", kind: "zombies", shards: [{ shard: "allston-brighton-2024", neighborhood: "Allston / Brighton", year: 2024, n: 1, districts: [] }] };
   const POINTS = { data_version: "v", n: 1, id: ["z1"], lat: [42.3], lon: [-71], tier: ["headline"], family: ["sign"], department: [null], neighborhood: ["Allston / Brighton"], year: [2024] };
   const open = (path: string) => {
-    vi.stubGlobal("fetch", vi.fn(async (u: string) => ({ ok: true, status: 200, headers: new Headers(), json: async () => (String(u).endsWith("points.json") ? POINTS : { data_version: "v", last_run: "2026-11-11T00:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" }) }) as Response));
+    vi.stubGlobal("fetch", vi.fn(async (u: string) => ({ ok: true, status: 200, headers: new Headers(), json: async () => (String(u).endsWith("zombies/index.json") ? INDEX : String(u).endsWith("points.json") ? POINTS : { data_version: "v", last_run: "2026-11-11T00:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" }) }) as Response));
     return render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>);
   };
   it("opens the map filtered to the neighborhood", async () => {

@@ -21,7 +21,7 @@ afterEach(() => { vi.unstubAllGlobals(); clearDataCache(); });
 describe("Repeat offenders page (REQ-WEB-REPEAT.1)", () => {
   it("lists every exported chain with returns, headline count, how it is shown, and a link to its first card", async () => {
     const ro = read("repeat_offenders.json");
-    open({ "repeat_offenders.json": ro, "zombies.json": read("zombies.json"), "status.json": read("status.json") });
+    open({ "repeat_offenders.json": ro, "status.json": read("status.json") });
     const table = await screen.findByTestId("repeat-table");
     // REQ-WEB-REPEAT.1, UX-43: the rule counts headline possible zombies, so the intro says so (times_risen counts every tier).
     expect(screen.getByText(/at least 3 possible zombies in the headline count in one chain/)).toBeTruthy();
@@ -52,7 +52,7 @@ describe("Repeat offenders page (REQ-WEB-REPEAT.1)", () => {
   });
   it("labels block-level chains", async () => {
     const ro = { data_version: "v", repeat_offenders: [{ chain_id: "c", times_risen: 4, headline_count: 3, incident_ids: ["c"], lat: 42.3, lon: -71.1, block_level: true, type_family: "sidewalk", neighborhood: "Dorchester" }] };
-    open({ "repeat_offenders.json": ro, "zombies.json": { data_version: "v", zombies: [] } });
+    open({ "repeat_offenders.json": ro });
     expect(await screen.findByText("Shown at block level")).toBeTruthy();
   });
 });

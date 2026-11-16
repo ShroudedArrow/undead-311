@@ -14,7 +14,14 @@ from hypothesis import strategies as st
 from strategies import town
 
 from undead311.detect.core import detect
-from undead311.export.writers import ContractError, ExportContext, export_all, load_schema, validate
+from undead311.export.writers import (
+    ContractError,
+    ExportContext,
+    export_all,
+    load_schema,
+    schema_name,
+    validate,
+)
 
 CTX = ExportContext(data_version="2026-11-12+abc+def", run_time="2026-11-13T00:00:00Z")
 
@@ -29,10 +36,9 @@ def test_prop_p11_every_exported_file_validates_against_its_schema(cases):
         for folder in (a, b):
             for path in (p for p in export_all(result, by_id, Path(folder), CTX) if p.suffix == ".json"):
                 payload = json.loads(path.read_text())
-                name = "card" if path.parent.name == "cards" else path.stem
-                validate(name, payload)
-        assert {p.name: p.read_bytes() for p in Path(a).rglob("*.json")} == {
-            p.name: p.read_bytes() for p in Path(b).rglob("*.json")
+                validate(schema_name(path.relative_to(folder).as_posix()), payload)
+        assert {p.relative_to(a).as_posix(): p.read_bytes() for p in Path(a).rglob("*.json")} == {
+            p.relative_to(b).as_posix(): p.read_bytes() for p in Path(b).rglob("*.json")
         }
 
 
@@ -54,5 +60,5 @@ def test_prop_p11_an_invalid_record_is_refused_before_anything_is_written(cases,
 def test_prop_p11_every_engine_schema_requires_data_version():
     """REQ-EXP-1.2: files carry data_version (the schemas require it)."""
     for name in ("zombies", "incidents", "points", "card", "exclusions", "separate_deaths", "repeat_offenders",
-                 "bulk_closures", "status"):  # fmt: skip
+                 "bulk_closures", "districts", "shard_index", "status"):  # fmt: skip
         assert "data_version" in load_schema(name)["required"]

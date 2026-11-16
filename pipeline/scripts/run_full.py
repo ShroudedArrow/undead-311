@@ -14,6 +14,12 @@
 * `--budget-min N` ends the process cleanly (exit 4) after the first stage that finishes past N minutes, so a tool-call time
   cap never kills a stage halfway; start the same command again to continue.
 * The Coroner coverage and the 300 most common unlabeled templates are written to `$DATA_DIR/reports/<run-id>/`.
+* After every leg the script writes `<run-id>.done.json` (`--done-file`, default
+  `.kiro/workflow-runs/<run-id>/<run-id>.done.json` under the repo root): `{"done": true}` only when the pipeline finished and
+  the coverage report was written; otherwise `{"done": false, "status": "budget" | "kill_switch" | "stopped" | "failed"}`.
+  `.kiro/workflows/fulldata.workflow.yaml` loops one leg per iteration and stops when this file says `done: true`.
+* Exit codes: 0 finished, 1 a stage failed once (start again), 2 a stage failed twice (STOPPED), 3 kill switch, 4 budget leg
+  ended (start again).
 """
 
 from __future__ import annotations
@@ -64,6 +70,26 @@ def stamp() -> str:
 
 def say(msg: str) -> None:
     print(f"{stamp()} {msg}", flush=True)
+
+
+DONE_STATUS = {0: "finished", 1: "failed", 2: "stopped", 3: "kill_switch", 4: "budget"}
+
+
+def write_done(path: Path, run_id: str, code: int, logs: Path) -> dict:
+    """Write `<run-id>.done.json` after a leg (REQ-OPS-RUN.6). `done` is true only for exit code 0, so a workflow loop that
+    reads `$.done` runs another leg after a budget stop (4) or a first failure (1) and stops for good otherwise."""
+    stages = sorted((logs / f"{run_id}.stages").glob("*.done.json")) if (logs / f"{run_id}.stages").is_dir() else []
+    doc = {
+        "run_id": run_id, "done": code == 0, "exit_code": code, "status": DONE_STATUS.get(code, "failed"),
+        "stages_committed": len(stages), "finished_utc": stamp(),
+        "next": "none" if code == 0 else ("start the same command again" if code in (1, 4) else "a human decides"),
+        "stopped_marker": (logs / f"{run_id}.STOPPED").exists(),
+    }  # fmt: skip
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(doc, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    tmp.replace(path)
+    return doc
 
 
 def git(root: Path, *args: str) -> str:
@@ -128,6 +154,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="DRY RUN ONLY: write an over-budget first view with an anomaly (never for nightly or judging runs)")
     ap.add_argument("--budget-min", type=float, default=None, help="stop cleanly after the stage that passes this many minutes")
     ap.add_argument("--snapshot-md", type=Path, default=None, help="SNAPSHOT.md that lists the raw files (default data/SNAPSHOT.md)")
+    ap.add_argument("--done-file", type=Path, default=None,
+                    help="where to write <run-id>.done.json (default <repo>/.kiro/workflow-runs/<run-id>/<run-id>.done.json)")
     a = ap.parse_args(argv)
 
     root, base = worktree_root(), data_dir()
@@ -136,9 +164,18 @@ def main(argv: list[str] | None = None) -> int:
     log_file = (logs / f"{a.run_id}.log").open("a", encoding="utf-8")
     saved = sys.stdout, sys.stderr
     sys.stdout, sys.stderr = Tee(saved[0], log_file), Tee(saved[1], log_file)
+    code = 1
     try:
-        return _run(a, root, base, logs)
+        try:
+            code = _run(a, root, base, logs)
+        except SystemExit as exc:  # the kill switch (3) and the time budget (4) leave through here
+            code = exc.code if isinstance(exc.code, int) else 1
+        return code
     finally:
+        try:
+            write_done(a.done_file or root / ".kiro" / "workflow-runs" / a.run_id / f"{a.run_id}.done.json", a.run_id, code, logs)
+        except OSError as exc:
+            say(f"done file not written: {exc}")
         sys.stdout, sys.stderr = saved
         log_file.close()
 

@@ -7,6 +7,7 @@ from pathlib import Path
 
 import duckdb
 import pytest
+from helpers import read_zombies
 from test_pipeline import raw_folder
 
 import undead311.pipeline as pl
@@ -145,8 +146,8 @@ def test_req_ops_run_3_a_restart_skips_the_finished_stages_and_matches_an_uninte
     res = run_pipeline(out_dir=tmp_path / "o-res", work_dir=tmp_path / "d-res", stages_dir=stages, **kw)
     skipped = {r["stage"] for r in res.stages if r["status"] == "skipped"}
     assert {"load", "normalize", "crosswalk", "clean", "snap", "neighborhoods", "coroner", "bulk"} <= skipped
-    plain = json.loads((tmp_path / "o-plain" / "zombies.json").read_text())
-    assert json.loads((tmp_path / "o-res" / "zombies.json").read_text()) == plain
+    plain = read_zombies(tmp_path / "o-plain")
+    assert read_zombies(tmp_path / "o-res") == plain
     for field in ("row_counts", "exclusions", "excluded_pairs", "tier_counts", "label_coverage", "unlabeled", "warnings",
                   "normalization_issues", "pii_counts"):  # fmt: skip
         assert getattr(res, field) == getattr(ref, field), field
@@ -280,7 +281,8 @@ def run_main(tmp_path, monkeypatch, *extra):
     raw, snap = (tmp_path / "raw", tmp_path / "SNAPSHOT.md") if (tmp_path / "raw").exists() else raw_folder(tmp_path)
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
     (tmp_path / "data").mkdir(exist_ok=True)
-    return run_full.main(["--run-id", "t1", "--raw", str(raw), "--snapshot-md", str(snap), *extra])
+    return run_full.main(["--run-id", "t1", "--raw", str(raw), "--snapshot-md", str(snap),
+                          "--done-file", str(tmp_path / "t1.done.json"), *extra])
 
 
 def test_req_ops_run_1_run_full_logs_to_data_dir_writes_markers_and_the_coverage_files(tmp_path, monkeypatch):
@@ -298,7 +300,7 @@ def test_req_ops_run_1_run_full_logs_to_data_dir_writes_markers_and_the_coverage
     assert cov["closed_in_scope"] == 1 and 0 <= cov["coverage"] <= 1
     header = (data / "reports" / "t1" / "unlabeled_templates_top300.csv").read_text().splitlines()[0]
     assert header == "template,n_cases,example_id,systems,example_text"
-    assert (data / "exports" / "t1" / "zombies.json").is_file()
+    assert (data / "exports" / "t1" / "zombies" / "index.json").is_file()
     assert (data / "logs" / "t1.comments-pending.jsonl").exists()  # no issue number: every comment was queued
 
 
@@ -380,14 +382,16 @@ def test_req_ops_run_2_a_grid_split_into_committed_groups_equals_one_pass_and_re
 
 def test_req_ops_run_4_a_time_budget_stops_cleanly_after_a_stage_and_the_next_start_resumes(tmp_path, monkeypatch):
     """REQ-OPS-RUN.4: budget 0 stops after the first committed stage (exit 4, no failure recorded); a second start finishes."""
-    with pytest.raises(SystemExit) as stop:
-        run_main(tmp_path, monkeypatch, "--budget-min", "0")
-    assert stop.value.code == 4
+    assert run_main(tmp_path, monkeypatch, "--budget-min", "0") == 4  # main returns the exit code and writes the done file
+    done = json.loads((tmp_path / "t1.done.json").read_text())  # REQ-OPS-RUN.6: a budget stop is not done
+    assert done["done"] is False and done["status"] == "budget" and done["exit_code"] == 4 and done["stages_committed"] == 1
     logs = tmp_path / "data" / "logs"
     assert [p.name for p in (logs / "t1.stages").glob("*.done.json")] == ["01-load.done.json"]
     assert not (logs / "t1.attempts.json").exists() and not (logs / "t1.STOPPED").exists()
     assert run_main(tmp_path, monkeypatch) == 0
     assert "resume: found a partial build" in (logs / "t1.log").read_text()
+    done = json.loads((tmp_path / "t1.done.json").read_text())
+    assert done["done"] is True and done["status"] == "finished" and done["next"] == "none"  # REQ-OPS-RUN.6
 
 
 def test_req_ops_run_4_the_budget_never_stops_after_an_unmarked_step(tmp_path, monkeypatch):
@@ -397,13 +401,11 @@ def test_req_ops_run_4_the_budget_never_stops_after_an_unmarked_step(tmp_path, m
     for p in (tmp_path / "data" / "processed").glob("undead311.duckdb*"):
         p.unlink()
     (tmp_path / "data" / "logs" / "t1.stages" / "fingerprint.txt").unlink()  # fresh start
-    with pytest.raises(SystemExit):
-        run_main(tmp_path, monkeypatch, "--budget-min", "0")  # stops after load, a committed stage
+    assert run_main(tmp_path, monkeypatch, "--budget-min", "0") == 4  # stops after load, a committed stage
     monkeypatch.setattr(run_full, "StageRunner", run_full.StageRunner)
     # second leg: only unmarked steps and later stages remain; the budget fires after the next committed stage, never
     # after `detect` or `export`
-    with pytest.raises(SystemExit):
-        run_main(tmp_path, monkeypatch, "--budget-min", "0")
+    assert run_main(tmp_path, monkeypatch, "--budget-min", "0") == 4
     log = (tmp_path / "data" / "logs" / "t1.log").read_text()
     stops = [line for line in log.splitlines() if "time budget" in line]
     assert stops and not any("after stage detect" in s or "after stage export" in s or "after stage templates" in s for s in stops)

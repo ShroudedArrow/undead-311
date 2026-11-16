@@ -14,6 +14,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const dist = join(here, "..", "dist");
 const strict = process.argv.includes("--strict");
 const BUDGET_BYTES = 3 * 1024 * 1024;
+export const FILE_BUDGET_BYTES = 2_000_000; // REQ-EXP-SIZE.3: no file the site loads is over about 2 MB compressed
 
 /** Hosts that appear in the bundle as inert strings. Reviewed once; add with a reason. */
 export const INERT_HOSTS = new Map([
@@ -135,6 +136,17 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(1);
   }
   console.log(`check-build: origin check ok (${files.length} text files, same-origin only)`);
+
+  // REQ-EXP-SIZE.3: every data file is under the per-file budget (the engine checks this at export; the built site is checked too)
+  const heavy = (existsSync(join(dist, "data")) ? walk(join(dist, "data")) : [])
+    .filter((p) => extname(p) === ".json" && !relative(dist, p).startsWith(join("data", "frozen")))
+    .map((p) => [relative(dist, p), gz(p)])
+    .filter(([, n]) => n > FILE_BUDGET_BYTES);
+  if (heavy.length) {
+    console.error(`check-build: data files over ${FILE_BUDGET_BYTES.toLocaleString("en-US")} bytes gzip (REQ-EXP-SIZE.3):`);
+    for (const [f, n] of heavy) console.error(`  - ${f}: ${n.toLocaleString("en-US")} bytes`);
+    if (strict) process.exit(1);
+  }
 
   const view = firstViewFiles();
   let total = 0;

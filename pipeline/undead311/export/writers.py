@@ -9,6 +9,7 @@ so a failed run never leaves a status that claims success. Free text goes throug
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 import os
@@ -42,7 +43,15 @@ EXCLUDED_ID_CAP = 5000
 # REQ-EXP-SIZE.1: the files the first view loads (status, map points, the two-number scorecard, the judge tour), by path
 # relative to the output folder. Their total, before compression, must stay under the budget.
 FIRST_VIEW_FILES = ("status.json", "points.json", "stats/scorecard.json", "stats/judge_tour.json")
-FIRST_VIEW_BUDGET_BYTES = 3_000_000  # "about 3 MB" (tech.md), taken as 3,000,000 bytes so the check is not generous
+# REQ-EXP-SIZE.2: the 3 MB budget is the gzip transfer size of the first-view files (what a phone downloads), taken as
+# 3,000,000 bytes so the check is not generous. A single first-view file may not exceed the raw ceiling either, because the
+# browser parses it uncompressed. REQ-EXP-SIZE.3: no file the site loads is over FILE_BUDGET_GZIP_BYTES compressed.
+FIRST_VIEW_BUDGET_BYTES = 3_000_000
+FIRST_VIEW_RAW_CEILING_BYTES = 8_000_000
+FILE_BUDGET_GZIP_BYTES = 2_000_000
+GZIP_LEVEL = 6  # the level hosts such as Netlify use for on-the-fly gzip; mtime 0 keeps the size deterministic
+HEADLINE_TIER = "headline"
+OTHER_TIERS = ("source_unknown", "city_rereport", "sensitivity")  # loaded on demand: points/<tier>.json
 
 
 class ContractError(ValueError):
@@ -53,18 +62,57 @@ class PayloadBudgetExceeded(RuntimeError):
     """The first-view files are larger than FIRST_VIEW_BUDGET_BYTES (REQ-EXP-SIZE.2)."""
 
 
+def gzip_size(data: bytes) -> int:
+    """Transfer size of `data` under gzip (REQ-EXP-SIZE.2): deterministic, so a rerun reports the same number."""
+    return len(gzip.compress(data, GZIP_LEVEL, mtime=0))
+
+
 def first_view_bytes(sizes: Mapping[str, int]) -> int:
-    """Total raw size of the first-view files present in `sizes` (name relative to the output folder -> bytes)."""
+    """Total size of the first-view files present in `sizes` (name relative to the output folder -> bytes). Pass gzip sizes
+    for the budget (REQ-EXP-SIZE.2) or raw sizes for a report."""
     return sum(n for name, n in sizes.items() if name in FIRST_VIEW_FILES)
 
 
 def check_first_view_budget(sizes: Mapping[str, int], budget: int = FIRST_VIEW_BUDGET_BYTES) -> int:
-    """Raise PayloadBudgetExceeded when the first-view files exceed `budget` bytes; return their total (REQ-EXP-SIZE.2)."""
+    """Raise PayloadBudgetExceeded when the first-view files exceed `budget` bytes (gzip sizes, REQ-EXP-SIZE.2); return the total."""
     total = first_view_bytes(sizes)
     if total > budget:
         parts = ", ".join(f"{n} {sizes[n]:,} B" for n in FIRST_VIEW_FILES if n in sizes)
-        raise PayloadBudgetExceeded(f"first-view files total {total:,} B, over the {budget:,} B budget ({parts})")
+        raise PayloadBudgetExceeded(f"first-view files total {total:,} B gzip, over the {budget:,} B budget ({parts})")
     return total
+
+
+def check_raw_ceiling(raw_sizes: Mapping[str, int], ceiling: int = FIRST_VIEW_RAW_CEILING_BYTES) -> None:
+    """No single first-view file may be over `ceiling` bytes uncompressed (REQ-EXP-SIZE.2)."""
+    big = {n: raw_sizes[n] for n in FIRST_VIEW_FILES if raw_sizes.get(n, 0) > ceiling}
+    if big:
+        raise PayloadBudgetExceeded(
+            "first-view file over the raw ceiling of " + f"{ceiling:,} B: " + ", ".join(f"{n} {v:,} B" for n, v in sorted(big.items()))
+        )
+
+
+def check_file_budget(gz_sizes: Mapping[str, int], budget: int = FILE_BUDGET_GZIP_BYTES) -> None:
+    """No file the site loads may be over `budget` bytes compressed (REQ-EXP-SIZE.3): shard a file that is."""
+    big = {n: v for n, v in gz_sizes.items() if v > budget}
+    if big:
+        raise PayloadBudgetExceeded(
+            f"files over the {budget:,} B gzip budget: " + ", ".join(f"{n} {v:,} B" for n, v in sorted(big.items()))
+        )
+
+
+def schema_name(path: str) -> str:
+    """The JSON Schema that validates an exported file (REQ-EXP-1.1)."""
+    if path.startswith("cards/"):
+        return "card"
+    if path in ("zombies/index.json", "incidents/index.json"):
+        return "shard_index"
+    if path.startswith("zombies/"):
+        return "zombies"
+    if path.startswith("incidents/"):
+        return "incidents"
+    if path.startswith("points/"):
+        return "points"
+    return path.removesuffix(".json")
 
 
 def load_schema(name: str) -> dict:
@@ -129,6 +177,8 @@ class ExportContext:
     # Dry-run override (owner decision 2026-11-16, option D): an over-budget first view is written with an anomaly instead of
     # failing. Only `run_full.py --dry-run-over-budget` sets it; `make pipeline`, the nightly and judging runs never do.
     allow_over_budget: bool = False
+    #: raw and gzip size of every file of the export, set by export_all (REQ-EXP-SIZE.2)
+    sizes: dict[str, dict[str, int]] = field(default_factory=dict)
     #: SAM segment ID -> midpoint and class, for block-level repeat offenders (REQ-EXP-PRIV.1); None without the SAM file
     segment_info: Mapping[str, SegmentInfo] | None = None
     ok: bool = True
@@ -173,27 +223,72 @@ def exported_case_ids(z: Zombie, cases: Mapping[str, Case]) -> tuple[str, str]:
     return closing_member(z, cases).id, z.resurrection_id
 
 
+def shard_index(dv: str, kind: str, shards: Mapping[str, tuple[tuple[str | None, int, set[str]], int, dict | None]]) -> dict:
+    """The index of a sharded file set (REQ-EXP-SIZE.3): each shard's neighborhood, year, size, districts and tier counts."""
+    rows = []
+    for key in sorted(shards):
+        (neighborhood, year, districts), n, tiers = shards[key]
+        row: dict[str, Any] = {"shard": key, "neighborhood": neighborhood, "year": year, "n": n, "districts": sorted(districts)}
+        if tiers is not None:
+            row["tiers"] = dict(sorted(tiers.items()))
+        rows.append(row)
+    return {"data_version": dv, "kind": kind, "shards": rows}
+
+
+def district_summaries(zombies: list[Zombie]) -> list[dict]:
+    """Headline possible zombies per council district, by family and by year (REQ-EXP-SIZE.3): what the district report cards
+    show, so a page needs no zombie shard. A zombie with no district is left out, never guessed."""
+    by: dict[str, list[Zombie]] = defaultdict(list)
+    for z in zombies:
+        if z.tier == HEADLINE_TIER and z.district:
+            by[z.district].append(z)
+
+    def num_key(d: str) -> tuple[float, str]:
+        return (float(d), d) if re.fullmatch(r"\d+(\.\d+)?", d) else (float("inf"), d)
+
+    out = []
+    for district in sorted(by, key=num_key):
+        zs = by[district]
+        fam: dict[str, int] = defaultdict(int)
+        yr: dict[int, int] = defaultdict(int)
+        for z in zs:
+            fam[z.type_family] += 1
+            yr[int(z.resurrection_date[:4])] += 1
+        out.append({
+            "district": district, "count": len(zs),
+            "by_family": [{"family": f, "count": n} for f, n in sorted(fam.items(), key=lambda kv: (-kv[1], kv[0]))],
+            "by_year": [{"year": y, "count": n} for y, n in sorted(yr.items())],
+        })  # fmt: skip
+    return out
+
+
 def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: ExportContext) -> dict[str, Any]:
     """All payloads keyed by file path (relative to the output folder), unvalidated. `status.json` is not included."""
     dv = ctx.data_version
     zombies = sorted(result.zombies, key=lambda z: z.zombie_id)
     out: dict[str, Any] = {}
-    out["zombies.json"] = {"data_version": dv, "zombies": [zombie_record(z) for z in zombies]}
     with_reports = {z.incident_id for z in zombies} | {f.incident_id for f in result.planned_followups}
     with_reports |= {s.incident_id for s in result.separate_deaths}
-    out["incidents.json"] = {
-        "data_version": dv,
-        "incidents": [
+    inc_shards: dict[str, list[dict]] = defaultdict(list)
+    inc_meta: dict[str, tuple[str | None, int, set[str]]] = {}
+    for i in sorted(result.incidents, key=lambda i: i.incident_id):
+        if i.incident_id not in with_reports:
+            continue
+        key = f"{slug(i.neighborhood)}-{i.close_utc.year}"
+        inc_shards[key].append(
             {
                 "incident_id": i.incident_id, "member_ids": sorted(i.member_ids), "type_family": i.type_family,
                 "department": i.department, "neighborhood": i.neighborhood, "district": i.district,
                 "segment_id": i.segment_id, "close_time": i.close_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "coroner_label": i.coroner_label, "bulk_closure": i.bulk_closure,
             }
-            for i in sorted(result.incidents, key=lambda i: i.incident_id)
-            if i.incident_id in with_reports
-        ],
-    }  # fmt: skip
+        )  # fmt: skip
+        _nb, _yr, ds = inc_meta.setdefault(key, (i.neighborhood, i.close_utc.year, set()))
+        if i.district:
+            ds.add(i.district)
+    for key, rows in sorted(inc_shards.items()):
+        out[f"incidents/{key}.json"] = {"data_version": dv, "shard": key, "incidents": rows}
+    out["incidents/index.json"] = shard_index(dv, "incidents", {k: (inc_meta[k], len(v), None) for k, v in inc_shards.items()})
     # block-level repeat-offender chains: every row that touches the chain's cases carries the block location (REQ-EXP-PRIV.1, ops#167)
     locations = block_level_locations(result, cases, ctx.segment_info)
     block_of = block_location_by_case(result, locations)  # every case that touches a block-level chain (ops#180)
@@ -204,19 +299,35 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
 
     reps = {z.zombie_id: closing_member(z, cases) for z in zombies}  # the card's original (ops#40)
     spot = {z.zombie_id: blk(z) or (reps[z.zombie_id].lat, reps[z.zombie_id].lon) for z in zombies}
-    out["points.json"] = {
-        "data_version": dv, "n": len(zombies),
-        "id": [z.zombie_id for z in zombies],
-        "lat": [round(spot[z.zombie_id][0], 6) for z in zombies],
-        "lon": [round(spot[z.zombie_id][1], 6) for z in zombies],
-        "tier": [z.tier for z in zombies], "family": [z.type_family for z in zombies],
-        "department": [z.department for z in zombies], "neighborhood": [z.neighborhood for z in zombies],
-        "year": [int(z.resurrection_date[:4]) for z in zombies],
-    }  # fmt: skip
+    def points_for(zs: list[Zombie]) -> dict:
+        return {
+            "data_version": dv, "n": len(zs),
+            "id": [z.zombie_id for z in zs],
+            "lat": [round(spot[z.zombie_id][0], 6) for z in zs],
+            "lon": [round(spot[z.zombie_id][1], 6) for z in zs],
+            "tier": [z.tier for z in zs], "family": [z.type_family for z in zs],
+            "department": [z.department for z in zs], "neighborhood": [z.neighborhood for z in zs],
+            "year": [int(z.resurrection_date[:4]) for z in zs],
+            "date": [z.resurrection_date for z in zs],  # the day of the re-report: the time-lapse needs no zombie shard
+        }  # fmt: skip
+
+    # REQ-EXP-SIZE.4: the first view loads the headline tier only; every other tier is its own file, loaded when switched on
+    out["points.json"] = points_for([z for z in zombies if z.tier == HEADLINE_TIER])
+    for tier in OTHER_TIERS:
+        out[f"points/{tier}.json"] = points_for([z for z in zombies if z.tier == tier])
     shards: dict[str, list[dict]] = defaultdict(list)
+    zshards: dict[str, list[dict]] = defaultdict(list)
+    zmeta: dict[str, tuple[str | None, int, set[str]]] = {}
+    ztiers: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for z in zombies:
         res = cases[z.resurrection_id]
-        shards[f"{slug(z.neighborhood)}-{z.resurrection_date[:4]}"].append(
+        zkey = f"{slug(z.neighborhood)}-{z.resurrection_date[:4]}"
+        zshards[zkey].append(zombie_record(z))
+        _nb, _yr, ds = zmeta.setdefault(zkey, (z.neighborhood, int(z.resurrection_date[:4]), set()))
+        if z.district:
+            ds.add(z.district)
+        ztiers[zkey][z.tier] += 1
+        shards[zkey].append(
             {
                 "zombie_id": z.zombie_id, "original": case_record(closing_member(z, cases), blk(z)),
                 "rereport": case_record(res, blk(z)),
@@ -230,6 +341,9 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
         )  # fmt: skip
     for shard, cards in sorted(shards.items()):
         out[f"cards/{shard}.json"] = {"data_version": dv, "shard": shard, "cards": cards}
+    for shard, rows in sorted(zshards.items()):
+        out[f"zombies/{shard}.json"] = {"data_version": dv, "shard": shard, "zombies": rows}
+    out["zombies/index.json"] = shard_index(dv, "zombies", {k: (zmeta[k], len(v), dict(ztiers[k])) for k, v in zshards.items()})
     out["exclusions.json"] = {
         "data_version": dv,
         "counts": dict(sorted(ctx.exclusion_counts.items())),
@@ -245,6 +359,9 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
         ],
     }  # fmt: skip
     by_inc = {i.incident_id: i for i in result.incidents}
+    first_of: dict[str, str] = {}  # chain -> its earliest headline zombie (by re-report date, then ID), to open its first card
+    for z in sorted((z for z in zombies if z.tier == HEADLINE_TIER), key=lambda z: (z.resurrection_date, z.zombie_id)):
+        first_of.setdefault(z.chain_id, z.zombie_id)
     offenders = []
     for c in sorted(result.repeat_offenders, key=lambda c: c.chain_id):
         first = by_inc[c.chain_id]
@@ -254,10 +371,12 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
                 "chain_id": c.chain_id, "times_risen": c.times_risen, "headline_count": c.headline_count,
                 "incident_ids": sorted(c.incident_ids), "lat": round(lat, 6), "lon": round(lon, 6),
                 "block_level": block, "type_family": first.type_family, "neighborhood": first.neighborhood,
+                "first_zombie_id": first_of.get(c.chain_id),
             }
         )  # fmt: skip
     out["repeat_offenders.json"] = {"data_version": dv, "repeat_offenders": offenders}
     out["bulk_closures.json"] = {"data_version": dv, "bulk_closures": ctx.bulk_closures}
+    out["districts.json"] = {"data_version": dv, "districts": district_summaries(zombies)}
     return out
 
 
@@ -286,18 +405,26 @@ def export_all(result: DetectionResult, cases: Mapping[str, Case], out_dir: Path
     payloads = build_payloads(result, cases, ctx)
     status = build_status(result, ctx)
     for name, payload in payloads.items():
-        validate("card" if name.startswith("cards/") else name.removesuffix(".json"), payload)
+        validate(schema_name(name), payload)
     validate("status", status)
     out_dir = Path(out_dir)
     texts = {name: canonical_json(payloads[name]) for name in sorted(payloads)}
     texts["status.json"] = canonical_json(status)
-    sizes = {name: len(t.encode("utf-8")) for name, t in texts.items()}
-    for name in FIRST_VIEW_FILES:  # stats files are written before the export; their size counts too (REQ-EXP-SIZE.2)
-        f = out_dir / name
-        if name not in sizes and f.is_file():
-            sizes[name] = f.stat().st_size
+    blobs = {name: t.encode("utf-8") for name, t in texts.items()}
+    sizes = {name: len(b) for name, b in blobs.items()}
+    gz = {name: gzip_size(b) for name, b in blobs.items()}
+    stats_dir = out_dir / "stats"
+    if stats_dir.is_dir():  # stats files are written before the export; their size counts too (REQ-EXP-SIZE.2-3)
+        for f in sorted(stats_dir.glob("*.json")):
+            name = f"stats/{f.name}"
+            if name not in sizes:
+                data = f.read_bytes()
+                sizes[name], gz[name] = len(data), gzip_size(data)
+    ctx.sizes = {"raw": dict(sizes), "gzip": dict(gz)}
     try:
-        check_first_view_budget(sizes)  # before anything is written: an over-budget run leaves the old files in place
+        check_first_view_budget(gz)  # before anything is written: an over-budget run leaves the old files in place
+        check_raw_ceiling(sizes)
+        check_file_budget(gz)
     except PayloadBudgetExceeded as exc:
         if not ctx.allow_over_budget:
             raise

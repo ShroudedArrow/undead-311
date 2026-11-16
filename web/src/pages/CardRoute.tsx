@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AutopsyCard, type CardWithPartial } from "../components/AutopsyCard";
 import { PanelError } from "../components/PanelError";
 import { useData } from "../lib/data";
+import { usePoints } from "../lib/shards";
 import { isFixtureData } from "../lib/dataAsOf";
 import { parseCardShard, parsePoints, parseStatus } from "../lib/parse";
 import { shardFile } from "../lib/shard";
@@ -17,7 +18,11 @@ export default function CardRoute() {
   const id = rawId ? decodeURIComponent(rawId) : "";
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const points = useData("points.json", parsePoints);
+  const head = useData("points.json", parsePoints);
+  // a card of another tier is not in the headline points: look in every tier before saying it is missing
+  const inHeadline = head.status === "ok" && head.data.id.includes(id);
+  const more = usePoints(head.status === "ok" && !inHeadline);
+  const points = more.pending ? ({ status: "loading" } as const) : more.load;
   const index = points.status === "ok" ? points.data.id.indexOf(id) : -1;
   const file = points.status === "ok" && index >= 0 ? shardFile(points.data.neighborhood[index], points.data.year[index]) : null;
   const shard = useData(file, parseCardShard);
