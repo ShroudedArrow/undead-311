@@ -57,3 +57,54 @@ def test_req_ing_pii_3_counts_per_pattern_and_never_the_text():
 def test_req_ing_pii_1_none_stays_none():
     """REQ-ING-PII.1: missing text is not turned into a string."""
     assert scrub(None)[0] is None
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "See case #101002227052 for status of the permanent repair",
+        "closed as a duplicate of the original's own work order (101002227052).",
+        "Duplicate of Existing Case 101005000000",
+        "cases 101001241069, 101006699983 and BCS-00340111",
+    ],
+)
+def test_req_ing_pii_2_legacy_case_ids_are_kept(text):
+    """REQ-ING-PII.2 (ops#221): legacy case IDs (12 digits starting with 101) are public and kept, like BCS- IDs."""
+    assert scrub_text(text) == text
+    assert scrub(text)[1] == {}
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("call 6175550123 today", "call [removed] today"),  # no separators
+        ("call 16175550123 today", "call [removed] today"),
+        ("call 617-555-0123 today", "call [removed] today"),
+        ("call 617.555.0123 today", "call [removed] today"),
+        ("call 617 555 0123 today", "call [removed] today"),
+        ("call (617) 555-0123 today", "call [removed] today"),
+        ("call +1 617.555.0123 today", "call [removed] today"),
+        ("call 555-0123 today", "call [removed] today"),
+    ],
+)
+def test_req_ing_pii_1_phone_numbers_are_removed_with_and_without_separators(text, expected):
+    """REQ-ING-PII.1 (ops#221): keeping legacy case IDs does not let a phone number through."""
+    assert scrub_text(text) == expected
+
+
+@pytest.mark.parametrize(
+    "run",
+    ["1234567", "12345678", "123456789", "1010022", "10100222705", "99999999999"],  # 7 to 11 digits
+)
+def test_req_ing_pii_1_other_7_to_11_digit_runs_are_removed(run):
+    """REQ-ING-PII.1 (ops#221): 7 to 11 digit runs are removed, even when they start with 101."""
+    assert scrub_text(f"ref {run} end") == "ref [removed] end"
+
+
+@pytest.mark.parametrize(
+    "run",
+    ["201002227052", "100002227052", "1010022270521", "10100222705212345"],
+)
+def test_req_ing_pii_1_only_exact_legacy_case_ids_are_kept(run):
+    """REQ-ING-PII.1 (ops#221): a 12-digit run not starting with 101, or a longer run starting with 101, is removed."""
+    assert scrub_text(f"ref {run} end") == "ref [removed] end"
