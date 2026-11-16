@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 
 import duckdb
 
+from undead311.ingest.text import register_text_udfs
 from undead311.ingest.times import (
     LOCAL_AMBIGUOUS,
     LOCAL_NONEXISTENT,
@@ -81,6 +82,7 @@ def normalize(con: duckdb.DuckDBPyConnection) -> NormReport:
         con.create_function("undead_time", time_udf, ["VARCHAR", "VARCHAR"], "VARCHAR")
     except duckdb.NotImplementedException:
         pass  # already registered on this connection
+    register_text_udfs(con)  # ops#214: street names arrive HTML-escaped
     lc, nc = _columns(con, "raw_legacy"), _columns(con, "raw_new")
     lg, nw = (lambda n: _col(lc, n)), (lambda n: _col(nc, n))
     con.execute("drop table if exists norm_stage")
@@ -91,7 +93,7 @@ def normalize(con: duckdb.DuckDBPyConnection) -> NormReport:
                {_first_col(lc, 'on_time', 'ontime')} as on_time_raw, {lg('case_status')} as status,
                {lg('closure_reason')} as closure_text, NULL::VARCHAR as closure_code, {lg('type')} as type_raw,
                {lg('queue')} as queue, {lg('department')} as department, {lg('neighborhood')} as neighborhood,
-               {lg('pwd_district')} as district, {lg('location_street_name')} as street,
+               {lg('pwd_district')} as district, undead_unescape({lg('location_street_name')}) as street,
                {lg('latitude')} as lat_raw, {lg('longitude')} as lon_raw, {lg('source')} as source,
                {lg('filename')} as filename
         from raw_legacy
@@ -100,7 +102,7 @@ def normalize(con: duckdb.DuckDBPyConnection) -> NormReport:
                {nw('on_time')}, {nw('case_status')},
                coalesce({nw('closure_comments')}, {nw('closure_reason')}), {nw('closure_reason')}, {nw('service_name')},
                {nw('assigned_team')}, {nw('assigned_department')}, {nw('neighborhood')}, {nw('public_works_district')},
-               {nw('street_name')}, {nw('latitude')}, {nw('longitude')}, {nw('report_source')}, {nw('filename')}
+               undead_unescape({nw('street_name')}), {nw('latitude')}, {nw('longitude')}, {nw('report_source')}, {nw('filename')}
         from raw_new
     """)  # fmt: skip
     con.execute("drop table if exists norm_timed")

@@ -55,6 +55,7 @@ from undead311.ingest.normalize import normalize
 from undead311.ingest.pii import PiiCounter
 from undead311.ingest.quality import on_time_anomalies, on_time_coverage
 from undead311.ingest.snap import SEGMENTS_FILE, snap_cases
+from undead311.ingest.text import register_text_udfs
 from undead311.paths import data_dir, worktree_root
 
 STATS_ABSENT_NAMES = ("undead311.stats", "undead311.stats.pipeline")  # the only ModuleNotFoundError names that mean "absent"
@@ -169,6 +170,7 @@ def _validation_ids(path: Path) -> list[str]:
 
 
 def _load_sample(con: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
+    register_text_udfs(con)  # ops#214: street names arrive HTML-escaped
     con.execute("create table sample_raw as select * from read_csv(?, all_varchar=true, header=true)", [str(csv_path)])
     con.execute("""
         create table cases_clean as
@@ -178,7 +180,7 @@ def _load_sample(con: duckdb.DuckDBPyConnection, csv_path: Path) -> int:
                lower(city_originated_type) = 'true' as city_originated_type, false as catch_all,
                case on_time when 'true' then true when 'false' then false end as on_time,
                predecessor_ids, nullif(department, '') as department, nullif(neighborhood, '') as neighborhood,
-               NULL::varchar as district, nullif(street, '') as street, try_cast(lat as double) as lat,
+               NULL::varchar as district, undead_unescape(nullif(street, '')) as street, try_cast(lat as double) as lat,
                try_cast(lon as double) as lon, nullif(source, '') as source, NULL::varchar as segment_id,
                NULL::double as segment_snap_m, NULL::varchar as coroner_label
         from sample_raw order by id, system

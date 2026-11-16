@@ -12,6 +12,7 @@ from pathlib import Path
 import duckdb
 
 from undead311.detect.model import Case
+from undead311.ingest.text import register_text_udfs
 
 
 def _aware(value) -> datetime | None:
@@ -86,6 +87,7 @@ def cases_from_table(con: duckdb.DuckDBPyConnection, table: str = "cases_clean")
 def cases_from_sample_csv(path: Path) -> list[Case]:
     """Load data/sample/sample_311.csv (already crosswalked, core scope) as Cases (REQ-ING-SAMPLE)."""
     con = duckdb.connect()
+    register_text_udfs(con)  # ops#214: street names arrive HTML-escaped
     con.execute(
         "create table s as select * from read_csv(?, all_varchar=true, header=true)", [str(path)]
     )
@@ -94,7 +96,7 @@ def cases_from_sample_csv(path: Path) -> list[Case]:
         select id, system, try_cast(open_time_utc as timestamp) as open_time_utc,
                try_cast(close_time_utc as timestamp) as close_time_utc, status, closure_text,
                nullif(closure_code, '') as closure_code, type_raw, type_family, scope_tier,
-               city_originated_type, predecessor_ids, department, neighborhood, street,
+               city_originated_type, predecessor_ids, department, neighborhood, undead_unescape(street) as street,
                try_cast(lat as double) as lat, try_cast(lon as double) as lon, source
         from s
     """)
