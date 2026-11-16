@@ -1,0 +1,26 @@
+{
+  "delta": {
+    "row_counts": {
+      "intersections": 11802,
+      "snapped_cases": 233615,
+      "unsnapped_cases": 154868,
+      "z_preferred_cases": 4367
+    },
+    "state": {
+      "segments": "available"
+    }
+  },
+  "finished_utc": "2026-11-16T04:46:18Z",
+  "peak_rss_mb": 2517.0,
+  "process_peak_mb": 4339.2,
+  "rows": {
+    "cases_clean": 388483,
+    "intersections": 11802,
+    "snapped_cases": 233615,
+    "unsnapped_cases": 154868,
+    "z_preferred_cases": 4367
+  },
+  "seconds": 135.53,
+  "seq": 5,
+  "stage": "snap"
+}

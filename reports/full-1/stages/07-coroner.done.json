@@ -1,0 +1,20 @@
+{
+  "delta": {
+    "label_coverage": 0.6374066481415177,
+    "stage_rows": {
+      "closed_in_scope": 315607,
+      "unlabeled": 114437
+    },
+    "unlabeled": 114437
+  },
+  "finished_utc": "2026-11-16T04:48:22Z",
+  "peak_rss_mb": 2563.1,
+  "process_peak_mb": 4339.2,
+  "rows": {
+    "closed_in_scope": 315607,
+    "unlabeled": 114437
+  },
+  "seconds": 116.19,
+  "seq": 7,
+  "stage": "coroner"
+}

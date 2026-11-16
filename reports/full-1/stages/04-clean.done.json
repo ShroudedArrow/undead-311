@@ -1,0 +1,42 @@
+{
+  "delta": {
+    "candidate_placeholders": [
+      {
+        "lat": 42.3906,
+        "lon": -70.9964,
+        "n": 224
+      },
+      {
+        "lat": 42.3475,
+        "lon": -71.0686,
+        "n": 223
+      },
+      {
+        "lat": 42.3832,
+        "lon": -71.0393,
+        "n": 207
+      }
+    ],
+    "exclusions": {
+      "excluded_type": 861963,
+      "null_coords": 2119,
+      "null_open_time": 0,
+      "out_of_bounds": 0,
+      "placeholder": 792,
+      "unlisted_type": 1877683
+    },
+    "row_counts": {
+      "cases_clean": 388483
+    }
+  },
+  "finished_utc": "2026-11-16T04:43:58Z",
+  "peak_rss_mb": 3420.7,
+  "process_peak_mb": 4339.2,
+  "rows": {
+    "cases_clean": 388483,
+    "cases_excluded": 2742557
+  },
+  "seconds": 2.41,
+  "seq": 4,
+  "stage": "clean"
+}

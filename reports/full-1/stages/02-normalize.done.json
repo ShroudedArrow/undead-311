@@ -1,0 +1,26 @@
+{
+  "delta": {
+    "normalization_issues": {
+      "close_before_open": 962,
+      "closed_without_close_time": 2,
+      "duplicate_id": 0,
+      "missing_id": 0,
+      "unparseable_close_time": 0,
+      "unparseable_coordinate": 0,
+      "unparseable_open_time": 0,
+      "unparseable_target_time": 0
+    },
+    "row_counts": {
+      "cases_norm": 3131040
+    }
+  },
+  "finished_utc": "2026-11-16T04:43:48Z",
+  "peak_rss_mb": 4337.3,
+  "process_peak_mb": 4339.2,
+  "rows": {
+    "cases_norm": 3131040
+  },
+  "seconds": 74.9,
+  "seq": 2,
+  "stage": "normalize"
+}

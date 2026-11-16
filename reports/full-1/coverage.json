@@ -1,0 +1,21 @@
+{
+  "closed_by_system": {
+    "legacy": 306675,
+    "new": 8932
+  },
+  "closed_in_scope": 315607,
+  "coverage": 0.6374066481415177,
+  "coverage_by_system": {
+    "legacy": 0.6302111355669683,
+    "new": 0.8844603672189879
+  },
+  "coverage_if_listed_were_labeled": 0.6814867857810505,
+  "distinct_unlabeled_templates": 78211,
+  "listed_cases": 13912,
+  "listed_templates": 300,
+  "unlabeled": 114437,
+  "unlabeled_by_system": {
+    "legacy": 113405,
+    "new": 1032
+  }
+}

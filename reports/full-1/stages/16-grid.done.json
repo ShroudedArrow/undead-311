@@ -1,0 +1,16 @@
+{
+  "delta": {
+    "row_counts": {
+      "grid_runs": 19
+    }
+  },
+  "finished_utc": "2026-11-16T15:46:14Z",
+  "peak_rss_mb": 1658.2,
+  "process_peak_mb": 1658.4,
+  "rows": {
+    "grid_runs": 19
+  },
+  "seconds": 1.0,
+  "seq": 16,
+  "stage": "grid"
+}

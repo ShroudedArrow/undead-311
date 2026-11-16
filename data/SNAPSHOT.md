@@ -1,6 +1,6 @@
 # Data snapshot
 
-Downloaded: 2026-11-12 (source: Analyze Boston, dataset 311-service-requests)
+Downloaded: 2026-11-16 (source: Analyze Boston, dataset 311-service-requests)
 
 | file | resource | last_modified | bytes | sha256 |
 |---|---|---|---|---|
@@ -15,7 +15,7 @@ Downloaded: 2026-11-12 (source: Analyze Boston, dataset 311-service-requests)
 | 311_2023.csv | 311 Service Requests - 2023 | 2026-09-18T01:27:26.805931 | 184129946 | 9f647c5ddb20d161c0f04d56985eae597b367fa8d8e0ccc8ca133f68ed34212b |
 | 311_2024.csv | 311 Service Requests - 2024 | 2026-09-18T01:27:27.630670 | 182147317 | a3f80f43cc03e00a87fcb26bf2c66bc9ed63dc7ee349b8d3aa803ebac288502d |
 | 311_2025.csv | 311 Service Requests - 2025 | 2026-09-18T01:27:22.633344 | 159465243 | 9924067503d044b376001f3fa3ddfc8d378f321e5da8c761d47e8a863a957a56 |
-| 311_2026.csv | 311 Service Requests - 2026 | 2026-11-12T14:49:25.778845 | 107894233 | 32ddf1e90c90065a9facc087feff60848b26c3f6f135b7021125af626f59c59a |
-| 311_new_system.csv | 311 Service Requests - NEW SYSTEM | 2026-11-11T17:41:09.318944 | 31026342 | bfc9038fda4c8ee5a073d1faef7586637d8160fa1666b67d9c264080e03f3ad4 |
+| 311_2026.csv | 311 Service Requests - 2026 | 2026-11-15T18:19:31.440690 | 107894233 | 7b3e5f6734a7eb2d595d5916a040298b5de31089b0c2bb2c644f07c943c5e9cf |
+| 311_new_system.csv | 311 Service Requests - NEW SYSTEM | 2026-11-15T18:17:42.543182 | 31923853 | cf0deb6a23710d79c059304f1629642cfec915224b60b4cb4f2c6941764db51b |
 | street_segments_sam.geojson | GeoJSON | 2026-11-11T04:01:37.882687 | 22444036 | cac462b30ca0dda84d493a6176a6025ee971879ff3e6997942445304273c0da2 |
 | neighborhood_boundaries.geojson | GeoJSON | 2026-11-08T15:02:58.282024 | 1317938 | d69407f3a1db76af7fb2510102afd0ec77d97cf5f7e070943c6535513032b7df |

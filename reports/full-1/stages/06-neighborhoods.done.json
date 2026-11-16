@@ -1,0 +1,17 @@
+{
+  "delta": {
+    "row_counts": {
+      "neighborhood_renamed": 49418
+    }
+  },
+  "finished_utc": "2026-11-16T04:46:21Z",
+  "peak_rss_mb": 2154.9,
+  "process_peak_mb": 4339.2,
+  "rows": {
+    "neighborhood_areas": 18,
+    "neighborhood_renamed": 49418
+  },
+  "seconds": 2.07,
+  "seq": 6,
+  "stage": "neighborhoods"
+}

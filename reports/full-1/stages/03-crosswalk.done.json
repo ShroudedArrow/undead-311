@@ -1,0 +1,12 @@
+{
+  "delta": {},
+  "finished_utc": "2026-11-16T04:43:53Z",
+  "peak_rss_mb": 3441.2,
+  "process_peak_mb": 4339.2,
+  "rows": {
+    "cases_x": 3131040
+  },
+  "seconds": 2.49,
+  "seq": 3,
+  "stage": "crosswalk"
+}

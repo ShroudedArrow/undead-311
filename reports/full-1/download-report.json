@@ -1,0 +1,129 @@
+{
+  "changed": [
+    "311_2026.csv",
+    "311_new_system.csv"
+  ],
+  "date": "2026-11-16",
+  "files": [
+    {
+      "bytes": 106065055,
+      "name": "311_2015.csv",
+      "old_bytes": 106065055,
+      "old_sha256": "40bd4dae61bd69a31c1ce8da2bd4215418d91bbf64295f916d988ab6d9c850f1",
+      "sha256": "40bd4dae61bd69a31c1ce8da2bd4215418d91bbf64295f916d988ab6d9c850f1",
+      "status": "unchanged"
+    },
+    {
+      "bytes": 112977664,
+      "name": "311_2016.csv",
+      "old_bytes": 112977664,
+      "old_sha256": "eea4ac70397407f904263b9936ab6b7a44ae68be38a3a84cf8c916b9a721fe6d",
+      "sha256": "eea4ac70397407f904263b9936ab6b7a44ae68be38a3a84cf8c916b9a721fe6d",
+      "status": "unchanged"
+    },
+    {
+      "bytes": 133502902,
+      "name": "311_2017.csv",
+      "old_bytes": 133502902,
+      "old_sha256": "ee6ed4f881899514ee4713adcea772a7f50a1ad9727d065e651cbd9de74583cf",
+      "sha256": "ee6ed4f881899514ee4713adcea772a7f50a1ad9727d065e651cbd9de74583cf",
+      "status": "unchanged"
+    },
+    {
+      "bytes": 139050171,
+      "name": "311_2018.csv",
+      "old_bytes": 139050171,
+      "old_sha256": "255c17263666ef37ef67a4eaf7769dbe21341a7e4fa23743d8cc49487df65961",
+      "sha256": "255c17263666ef37ef67a4eaf7769dbe21341a7e4fa23743d8cc49487df65961",
+      "status": "unchanged"
+    },
+    {
+      "bytes": 135852874,
+      "name": "311_2019.csv",
+      "old_bytes": 135852874,
+      "old_sha256": "76ebd634ce3c92a894d951601599c052181b8aebe15e4c49387e292e2e2196ce",
+      "sha256": "76ebd634ce3c92a894d951601599c052181b8aebe15e4c49387e292e2e2196ce",
+      "status": "unchanged"
+    },
+    {
+      "bytes": 133750649,
+      "name": "311_2020.csv",
+      "old_bytes": 133750649,
+      "old_sha256": "739a1c689253087187967ef714586082838f7b2bbb290218a1a9a5a89f9774f8",
+      "sha256": "739a1c689253087187967ef714586082838f7b2bbb290218a1a9a5a89f9774f8",
+      "status": "unchanged"
+    },
+    {
+      "bytes": 156065195,
+      "name": "311_2021.csv",
+      "old_bytes": 156065195,
+      "old_sha256": "f22ab1e845dde506c685b8f27c265d9cd4ca276a08d0d116eaef85139777b3c2",
+      "sha256": "f22ab1e845dde506c685b8f27c265d9cd4ca276a08d0d116eaef85139777b3c2",
+      "status": "unchanged"
+    },
+    {
+      "bytes": 157972014,
+      "name": "311_2022.csv",
+      "old_bytes": 157972014,
+      "old_sha256": "391d082b2d6503fc3ba454c0d6c723b862c42df83897879dd8965d01c0cfa160",
+      "sha256": "391d082b2d6503fc3ba454c0d6c723b862c42df83897879dd8965d01c0cfa160",
+      "status": "unchanged"
+    },
+    {
+      "bytes": 184129946,
+      "name": "311_2023.csv",
+      "old_bytes": 184129946,
+      "old_sha256": "9f647c5ddb20d161c0f04d56985eae597b367fa8d8e0ccc8ca133f68ed34212b",
+      "sha256": "9f647c5ddb20d161c0f04d56985eae597b367fa8d8e0ccc8ca133f68ed34212b",
+      "status": "unchanged"
+    },
+    {
+      "bytes": 182147317,
+      "name": "311_2024.csv",
+      "old_bytes": 182147317,
+      "old_sha256": "a3f80f43cc03e00a87fcb26bf2c66bc9ed63dc7ee349b8d3aa803ebac288502d",
+      "sha256": "a3f80f43cc03e00a87fcb26bf2c66bc9ed63dc7ee349b8d3aa803ebac288502d",
+      "status": "unchanged"
+    },
+    {
+      "bytes": 159465243,
+      "name": "311_2025.csv",
+      "old_bytes": 159465243,
+      "old_sha256": "9924067503d044b376001f3fa3ddfc8d378f321e5da8c761d47e8a863a957a56",
+      "sha256": "9924067503d044b376001f3fa3ddfc8d378f321e5da8c761d47e8a863a957a56",
+      "status": "unchanged"
+    },
+    {
+      "bytes": 107894233,
+      "name": "311_2026.csv",
+      "old_bytes": 107894233,
+      "old_sha256": "32ddf1e90c90065a9facc087feff60848b26c3f6f135b7021125af626f59c59a",
+      "sha256": "7b3e5f6734a7eb2d595d5916a040298b5de31089b0c2bb2c644f07c943c5e9cf",
+      "status": "changed"
+    },
+    {
+      "bytes": 31923853,
+      "name": "311_new_system.csv",
+      "old_bytes": 31026342,
+      "old_sha256": "bfc9038fda4c8ee5a073d1faef7586637d8160fa1666b67d9c264080e03f3ad4",
+      "sha256": "cf0deb6a23710d79c059304f1629642cfec915224b60b4cb4f2c6941764db51b",
+      "status": "changed"
+    },
+    {
+      "bytes": 22444036,
+      "name": "street_segments_sam.geojson",
+      "old_bytes": 22444036,
+      "old_sha256": "cac462b30ca0dda84d493a6176a6025ee971879ff3e6997942445304273c0da2",
+      "sha256": "cac462b30ca0dda84d493a6176a6025ee971879ff3e6997942445304273c0da2",
+      "status": "unchanged"
+    },
+    {
+      "bytes": 1317938,
+      "name": "neighborhood_boundaries.geojson",
+      "old_bytes": 1317938,
+      "old_sha256": "d69407f3a1db76af7fb2510102afd0ec77d97cf5f7e070943c6535513032b7df",
+      "sha256": "d69407f3a1db76af7fb2510102afd0ec77d97cf5f7e070943c6535513032b7df",
+      "status": "unchanged"
+    }
+  ]
+}

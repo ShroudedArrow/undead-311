@@ -1,0 +1,18 @@
+{
+  "delta": {
+    "row_counts": {
+      "raw_legacy": 3040547,
+      "raw_new": 90493
+    }
+  },
+  "finished_utc": "2026-11-16T04:42:29Z",
+  "peak_rss_mb": 3872.5,
+  "process_peak_mb": 3878.4,
+  "rows": {
+    "raw_legacy": 3040547,
+    "raw_new": 90493
+  },
+  "seconds": 15.11,
+  "seq": 1,
+  "stage": "load"
+}
