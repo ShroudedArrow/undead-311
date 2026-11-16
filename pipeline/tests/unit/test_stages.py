@@ -155,8 +155,9 @@ def test_req_ops_run_3_a_restart_skips_the_finished_stages_and_matches_an_uninte
 def test_req_ops_run_2_a_restart_after_a_failure_in_the_export_step_resumes_from_the_grid(tmp_path, monkeypatch):
     """REQ-OPS-RUN.2: the grid stage is expensive on the full data; once committed it is not run again."""
     _plain, kw, stages = plain_and_resumed(tmp_path, monkeypatch, "export_all")
-    assert any(p.name.endswith("-grid.done.json") for p in stages.glob("*.done.json"))
-    monkeypatch.setattr(pl, "run_grid", lambda *a, **k: (_ for _ in ()).throw(AssertionError("grid ran again")))
+    done = sorted(p.name for p in stages.glob("*.done.json"))
+    assert any(n.endswith("-grid.done.json") for n in done) and sum("-grid-" in n for n in done) == 7
+    monkeypatch.setattr(pl, "run_grid_group", lambda *a, **k: (_ for _ in ()).throw(AssertionError("grid ran again")))
     res = run_pipeline(out_dir=tmp_path / "o-res", work_dir=tmp_path / "d-res", stages_dir=stages, **kw)
     assert res.ok and "grid" in {r["stage"] for r in res.stages if r["status"] == "skipped"}
     assert res.row_counts["grid_runs"] > 0  # the stored delta restored the count
@@ -337,3 +338,53 @@ def test_req_ops_run_4_the_kill_switch_file_stops_the_run_before_it_starts(tmp_p
     (tmp_path / "fake-root" / ".kiro" / "STOP").write_text("")
     assert not stop.exists()  # the real repo has no STOP file
     assert run_main(tmp_path, monkeypatch) == 3
+
+
+def test_req_ops_run_2_a_grid_split_into_committed_groups_equals_one_pass_and_resumes_mid_grid(tmp_path, monkeypatch):
+    """REQ-OPS-RUN.2, REQ-SENS-RUN.1: the 7 grid groups give the same grid tables as `run_grid`, and a crash in the 4th group
+    reruns only groups 4 to 7."""
+    from undead311.detect import grid as grid_mod
+
+    raw, snap = raw_folder(tmp_path)
+    kw = {"raw_dir": raw, "snapshot_md": snap, **RUN}
+    run_pipeline(out_dir=tmp_path / "o1", work_dir=tmp_path / "d1", **kw)
+    con = duckdb.connect(str(tmp_path / "d1" / "processed" / "undead311.duckdb"), read_only=True)
+    stored = con.execute("select * from grid_run_index order by run_id").fetchall()
+    cases = pl.cases_from_table(con, "cases_clean")
+    expected = sorted(r.run_id for r in grid_mod.run_grid(con, cases))
+    con.close()
+    assert sorted(r[0] for r in stored) == expected and len(expected) == 19
+
+    real, calls, crashed = pl.run_grid_group, [], []
+
+    def flaky(con, cases, group, *a, **k):
+        calls.append(group)
+        if group == "radius-r15" and not crashed:
+            crashed.append(group)
+            raise RuntimeError("cap reached")
+        return real(con, cases, group, *a, **k)
+
+    monkeypatch.setattr(pl, "run_grid_group", flaky)
+    stages = tmp_path / "stages"
+    with pytest.raises(RuntimeError, match="cap reached"):
+        run_pipeline(out_dir=tmp_path / "o2", work_dir=tmp_path / "d2", stages_dir=stages, **kw)
+    assert calls == ["segment-r15", "segment-r30", "segment-r50", "radius-r15"]
+    calls.clear()
+    run_pipeline(out_dir=tmp_path / "o2", work_dir=tmp_path / "d2", stages_dir=stages, **kw)
+    assert calls == ["radius-r15", "radius-r30", "radius-r50", "no-street-light-other"]
+    con = duckdb.connect(str(tmp_path / "d2" / "processed" / "undead311.duckdb"), read_only=True)
+    assert con.execute("select * from grid_run_index order by run_id").fetchall() == stored
+    con.close()
+    assert (tmp_path / "o2" / "stats" / "sensitivity_grid.json").read_text() == (tmp_path / "o1" / "stats" / "sensitivity_grid.json").read_text()
+
+
+def test_req_ops_run_4_a_time_budget_stops_cleanly_after_a_stage_and_the_next_start_resumes(tmp_path, monkeypatch):
+    """REQ-OPS-RUN.4: budget 0 stops after the first committed stage (exit 4, no failure recorded); a second start finishes."""
+    with pytest.raises(SystemExit) as stop:
+        run_main(tmp_path, monkeypatch, "--budget-min", "0")
+    assert stop.value.code == 4
+    logs = tmp_path / "data" / "logs"
+    assert [p.name for p in (logs / "t1.stages").glob("*.done.json")] == ["01-load.done.json"]
+    assert not (logs / "t1.attempts.json").exists() and not (logs / "t1.STOPPED").exists()
+    assert run_main(tmp_path, monkeypatch) == 0
+    assert "resume: found a partial build" in (logs / "t1.log").read_text()

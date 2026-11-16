@@ -11,6 +11,8 @@
 * A stage that raises twice stops the run for good (`<run-id>.STOPPED`): the failure is posted, and the database, markers and
   logs stay where they are. Delete the STOPPED file to try again.
 * `.kiro/STOP` stops the run after the current stage (steering: kill switch).
+* `--budget-min N` ends the process cleanly (exit 4) after the first stage that finishes past N minutes, so a tool-call time
+  cap never kills a stage halfway; start the same command again to continue.
 * The Coroner coverage and the 300 most common unlabeled templates are written to `$DATA_DIR/reports/<run-id>/`.
 """
 
@@ -122,6 +124,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=None, help="export folder (default $DATA_DIR/exports/<run-id>)")
     ap.add_argument("--skip-grid", action="store_true")
     ap.add_argument("--raw", type=Path, default=None, help="raw input folder (default $DATA_DIR/raw)")
+    ap.add_argument("--budget-min", type=float, default=None, help="stop cleanly after the stage that passes this many minutes")
     ap.add_argument("--snapshot-md", type=Path, default=None, help="SNAPSHOT.md that lists the raw files (default data/SNAPSHOT.md)")
     a = ap.parse_args(argv)
 
@@ -163,12 +166,17 @@ def _run(a: argparse.Namespace, root: Path, base: Path, logs: Path) -> int:
     say(f"data dir {base}; exports {out}; stages {stages_dir}; run-log issue {issue}")
     say("duckdb settings " + json.dumps(duck.settings()))
 
+    t_start = time.time()
+
     def on_stage(rec: dict) -> None:
         summary, evidence = stage_comment(rec)
         channel.post(channel.body("status", summary, evidence))
         if stop_file.exists():
             say("kill switch: .kiro/STOP found after a stage; stopping")
             raise SystemExit(3)
+        if a.budget_min is not None and time.time() - t_start > a.budget_min * 60:
+            say(f"time budget of {a.budget_min:g} min used after stage {rec['stage']}; stopping cleanly, start again to resume")
+            raise SystemExit(4)
 
     runner = StageRunner(stages_dir, say, on_stage)
     attempts_file = logs / f"{a.run_id}.attempts.json"

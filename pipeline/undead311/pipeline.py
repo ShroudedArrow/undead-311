@@ -28,7 +28,14 @@ from undead311.detect.bulk import bulk_closures, flag_cases
 from undead311.detect.cases import cases_from_table
 from undead311.detect.core import city_origin_summary, detect
 from undead311.detect.edges import sql_edges
-from undead311.detect.grid import run_grid, store_grid
+from undead311.detect.grid import (
+    grid_cases,
+    grid_groups,
+    run_grid_group,
+    runs_from_json,
+    runs_to_json,
+    store_grid,
+)
 from undead311.detect.model import ZOMBIE_TIERS
 from undead311.detect.params import DEFAULT, Params
 from undead311.detect.skeptic import build_input, join_objections, write_input
@@ -341,17 +348,27 @@ def run_pipeline(
         merge(runner.always("detect", s_detect))
         stats = _stats_module()
 
-        def s_grid() -> dict:  # REQ-SENS-RUN.1-2: 18 grid points plus the run without Street Light Other, into `grid_runs`
+        def s_grid_group(group: str) -> dict:  # REQ-SENS-RUN.1-2, REQ-OPS-RUN.2: one committed piece of the grid
             make_metrics = getattr(stats, "make_grid_metrics", None)  # REQ-STAT-GRID.1: excess and stayed-fixed per run
             metrics = make_metrics(con) if callable(make_metrics) else None
-            runs = run_grid(con, ns.cases, p, metrics)
+            runs = run_grid_group(con, grid_cases(ns.cases), group, p, metrics)
+            rows = {k: list(v) for k, v in metrics.rows.items()} if metrics is not None else None
+            return {"grid_part": {"runs": runs_to_json(runs), "metrics": rows}, "stage_rows": {"grid_runs_in_group": len(runs)}}
+
+        def s_grid(parts: list[dict]) -> dict:  # REQ-SENS-RUN.1-2: 18 grid points plus the run without Street Light Other
+            runs = [r for part in parts for r in runs_from_json(part["runs"])]
             store_grid(con, runs)
-            if metrics is not None:
+            make_metrics = getattr(stats, "make_grid_metrics", None)
+            if callable(make_metrics) and all(part["metrics"] is not None for part in parts):
+                metrics = make_metrics(con)
+                for part in parts:
+                    metrics.rows.update({k: tuple(v) for k, v in part["metrics"].items()})
                 stats.store_grid_metrics(con, metrics)  # type: ignore[union-attr]
             return {"row_counts": {"grid_runs": len(runs)}}
 
         if grid:
-            merge(runner.run("grid", s_grid, ("grid_runs",)))
+            parts = [runner.run(f"grid-{g}", lambda g=g: s_grid_group(g))["grid_part"] for g in grid_groups()]
+            merge(runner.run("grid", lambda: s_grid(parts), ("grid_runs",)))
 
         def s_baselines() -> None:
             result = ns.result

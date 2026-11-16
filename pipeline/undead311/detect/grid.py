@@ -89,28 +89,57 @@ def edges_for_window(
     return {k: m for k, m in wide.items() if time_related(by_id[k[0]], by_id[k[1]], p)}
 
 
+GROUP_WITHOUT = "no-street-light-other"
+
+
+def grid_groups() -> list[str]:
+    """The 7 resumable pieces of the grid, in run order: one per (matching, RADIUS_M), then the run without Street Light
+    Other (REQ-SENS-RUN.1-2, REQ-OPS-RUN.2). Each piece builds its edges once and fits in one committed stage."""
+    return [f"{m}-r{r:g}" for m in GRID_MATCHING for r in GRID_RADIUS_M] + [GROUP_WITHOUT]
+
+
+def grid_cases(cases: list[Case]) -> list[Case]:
+    return sorted((c for c in cases if c.scope_tier in ("core", "sensitivity")), key=lambda c: c.id)
+
+
+def run_grid_group(
+    con: duckdb.DuckDBPyConnection, cases: list[Case], group: str, base: Params = DEFAULT, observer: Observer | None = None
+) -> list[GridRun]:
+    """The runs of one grid group (see `grid_groups`); `cases` must come from `grid_cases`."""
+    widest = max(GRID_WINDOW_DAYS)
+    if group == GROUP_WITHOUT:
+        kept = [c for c in cases if c.type_raw != CATCH_ALL_TYPE]  # REQ-SENS-RUN.2: default parameters, all tiers
+        keep_ids = {c.id for c in kept}
+        default_edges = edges_for_window(
+            sql_edges(con, kept, replace(base, WINDOW_DAYS=widest)), {c.id: c for c in kept}, base
+        ) if len(kept) > 1 else {}  # fmt: skip
+        assert all(a in keep_ids and b in keep_ids for a, b in default_edges)
+        return [_count(kept, base, default_edges, True, observer)]
+    matching, radius = group.split("-r")
+    by_id = {c.id: c for c in cases}
+    wide = sql_edges(con, cases, replace(base, matching=matching, RADIUS_M=float(radius), WINDOW_DAYS=widest))  # type: ignore[arg-type]
+    runs = []
+    for window in GRID_WINDOW_DAYS:
+        p = replace(base, matching=matching, RADIUS_M=float(radius), WINDOW_DAYS=window)  # type: ignore[arg-type]
+        runs.append(_count(cases, p, edges_for_window(wide, by_id, p), False, observer))
+    return runs
+
+
 def run_grid(
     con: duckdb.DuckDBPyConnection, cases: list[Case], base: Params = DEFAULT, observer: Observer | None = None
 ) -> list[GridRun]:
     """All 19 sensitivity runs, in a fixed order (REQ-SENS-RUN.1-2)."""
-    cases = sorted((c for c in cases if c.scope_tier in ("core", "sensitivity")), key=lambda c: c.id)
-    by_id = {c.id: c for c in cases}
-    runs: list[GridRun] = []
-    widest = max(GRID_WINDOW_DAYS)
-    for matching in GRID_MATCHING:
-        for radius in GRID_RADIUS_M:
-            wide = sql_edges(con, cases, replace(base, matching=matching, RADIUS_M=radius, WINDOW_DAYS=widest))  # type: ignore[arg-type]
-            for window in GRID_WINDOW_DAYS:
-                p = replace(base, matching=matching, RADIUS_M=radius, WINDOW_DAYS=window)  # type: ignore[arg-type]
-                runs.append(_count(cases, p, edges_for_window(wide, by_id, p), False, observer))
-    kept = [c for c in cases if c.type_raw != CATCH_ALL_TYPE]  # REQ-SENS-RUN.2: default parameters, all tiers
-    keep_ids = {c.id for c in kept}
-    default_edges = edges_for_window(
-        sql_edges(con, kept, replace(base, WINDOW_DAYS=widest)), {c.id: c for c in kept}, base
-    ) if len(kept) > 1 else {}  # fmt: skip
-    assert all(a in keep_ids and b in keep_ids for a, b in default_edges)
-    runs.append(_count(kept, base, default_edges, True, observer))
-    return runs
+    cases = grid_cases(cases)
+    return [r for g in grid_groups() for r in run_grid_group(con, cases, g, base, observer)]
+
+
+def runs_to_json(runs: list[GridRun]) -> list[dict]:
+    """GridRuns as JSON-friendly dicts (a resumed run reads them back with `runs_from_json`)."""
+    return [{**r.__dict__, "counts": [list(c) for c in r.counts]} for r in runs]
+
+
+def runs_from_json(rows: list[dict]) -> list[GridRun]:
+    return [GridRun(**{**r, "counts": tuple(tuple(c) for c in r["counts"])}) for r in rows]
 
 
 def store_grid(con: duckdb.DuckDBPyConnection, runs: list[GridRun]) -> None:
