@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { tickPct, yTitle, chartDims, curveKind, curvesFor, intensityText, isUnusual, isValidCurve, leaderboard, limitAt, linePath, linear, logScale, niceTicks, unusualDirection } from "./charts";
+import { tickPct, yTitle, chartDims, curveKind, curvesFor, intensityText, isUnusual, isValidCurve, leaderboard, limitAt, linePath, linear, logScale, niceTicks, unusualDirection, dayTicks } from "./charts";
 import { parseFunnel, parseGroups, parseSurvival, type FunnelLimit, type Group } from "./parse";
 import { statsPath } from "./statsFiles";
 
@@ -193,5 +193,24 @@ describe("chart ticks and phone size (REQ-WEB-CHARTS.1, REQ-WEB-A11Y.1; UX-19, U
       const w = yTitle(chartDims(false, tall));
       expect(w.transform).toContain("rotate(-90)");
     }
+  });
+});
+
+describe("survival chart day ticks (UX-58, REQ-WEB-CHARTS.1)", () => {
+  it("has no 0 label and always labels the last follow-up day", () => {
+    expect(dayTicks(365, 1.5)).toContain(365);
+    expect(dayTicks(42, 13)).toEqual([7, 30, 42]);
+    expect(dayTicks(365, 1.5)).not.toContain(0);
+    expect(dayTicks(0, 5)).toEqual([]);
+  });
+  it("never puts two labels closer than the minimum gap, for any width", () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 1, max: 800 }), fc.double({ min: 0.2, max: 15, noNaN: true }), (maxDay, pxPerDay) => {
+        const ticks = dayTicks(maxDay, pxPerDay);
+        expect(ticks[ticks.length - 1]).toBe(maxDay);
+        expect(ticks).toEqual([...ticks].sort((a, b) => a - b));
+        for (let i = 1; i < ticks.length; i++) expect((ticks[i] - ticks[i - 1]) * pxPerDay).toBeGreaterThanOrEqual(32 - 1e-9);
+      }),
+    );
   });
 });

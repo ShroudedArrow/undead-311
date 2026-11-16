@@ -334,7 +334,8 @@
     "traffic_signal": "Traffic signals",
     "pavement_marking": "Pavement markings",
     "street_fixture": "Street fixtures",
-    "all": "All case types"
+    "all": "All case types",
+    "citywide": "Citywide"
   },
   "table": {
     "caption": "Possible zombies matching the current filters",

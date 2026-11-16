@@ -36,20 +36,24 @@ export function Filters({ rows, filters, onChange }: Props) {
               {options(rows, by).map((key) => {
                 const value = by === "year" ? Number(key) : key;
                 const checked = selected.includes(value);
+                const note = groupTitle(by, key);
+                const noteId = `${field}-note-${key}`;
                 return (
                   <li key={key}>
                     <label>
                       <input
                         type="checkbox"
                         checked={checked}
+                        aria-describedby={note ? noteId : undefined}
                         onChange={() => {
                           const next = checked ? selected.filter((v) => v !== value) : [...selected, value];
                           onChange({ ...filters, [field]: next });
                         }}
                       />
-                      <span title={groupTitle(by, key)}>
+                      <span title={note}>
                         {groupLabel(by, key)} ({counts.get(key) ?? 0})
                       </span>
+                      {note ? <span id={noteId} className="visually-hidden">{note}</span> : null}
                     </label>
                   </li>
                 );

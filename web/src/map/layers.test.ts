@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PointRow } from "../lib/points";
-import { buildLayers } from "./layers";
+import { buildLayers, markerSize } from "./layers";
 
 const row = (id: string): PointRow => ({ id, lat: 42.35, lon: -71.06, tier: "headline" }) as unknown as PointRow;
 const atlas = {} as HTMLCanvasElement;
@@ -22,5 +22,13 @@ describe("map layer order (REQ-WEB-MAP.1, decision 11, issue 190)", () => {
 
   it("keeps the markers pickable so a click opens the card", () => {
     expect(buildLayers(base).find((x) => x.id === "zombies")?.props.pickable).toBe(true);
+  });
+});
+
+describe("marker size on a phone (UX-60, REQ-WEB-MAP.1)", () => {
+  it("is smaller on a phone, and a selected marker is always larger than the others", () => {
+    expect(markerSize(false, true)).toBeLessThan(markerSize(false, false));
+    expect(markerSize(true, true)).toBeGreaterThan(markerSize(false, true));
+    expect(markerSize(true, false)).toBeGreaterThan(markerSize(false, false));
   });
 });

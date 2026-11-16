@@ -12,10 +12,18 @@ export interface LayerInput {
   atlas: HTMLCanvasElement;
   bulkIds: ReadonlySet<string> | null;
   onSelect: (id: string) => void;
+  /** Phone-sized screen: smaller markers so neighbours can be told apart and tapped (UX-60). */
+  compact?: boolean;
+}
+
+/** Marker size in pixels: 30 (44 when selected), and 20 (36) on a phone. */
+export function markerSize(selected: boolean, compact: boolean): number {
+  return compact ? (selected ? 36 : 20) : selected ? 44 : 30;
 }
 
 export function buildLayers(i: LayerInput) {
   const { rows, selectedId, atlas, bulkIds, onSelect } = i;
+  const compact = i.compact ?? false;
   return [
     // Cone orange rings under the markers: a warning, never text (design-system.md). Asphalt ring beneath keeps 3:1 on Concrete.
     ...(bulkIds && bulkIds.size > 0
@@ -40,10 +48,10 @@ export function buildLayers(i: LayerInput) {
       iconMapping: iconMapping(),
       getIcon: (d) => iconFor(d.id, d.tier),
       getPosition: (d) => [d.lon, d.lat],
-      getSize: (d) => (d.id === selectedId ? 44 : 30),
+      getSize: (d) => markerSize(d.id === selectedId, compact),
       sizeUnits: "pixels",
-      sizeMinPixels: 14,
-      updateTriggers: { getSize: [selectedId] },
+      sizeMinPixels: compact ? 12 : 14,
+      updateTriggers: { getSize: [selectedId, compact] },
       onClick: (info) => {
         if (info.object) onSelect(info.object.id);
       },

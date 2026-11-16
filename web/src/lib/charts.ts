@@ -117,6 +117,20 @@ export function niceTicks(lo: number, hi: number, maxTicks = 5): number[] {
   return out;
 }
 
+/**
+ * Day ticks for the survival chart's x axis (UX-58): round day counts up to the last follow-up day, which is always labeled so
+ * the right edge has a value. No 0 label. Ticks are kept from the right, and one that would sit closer than `minGapPx` to
+ * its right neighbour is dropped, so labels never touch.
+ */
+export function dayTicks(maxDay: number, pxPerDay: number, minGapPx = 32): number[] {
+  const last = Math.round(maxDay);
+  if (!(last > 0)) return [];
+  const candidates = [7, 30, 60, 90, 180, 365, 730].filter((d) => d < last).reverse();
+  const kept = [last];
+  for (const d of candidates) if ((kept[kept.length - 1] - d) * pxPerDay >= minGapPx) kept.push(d);
+  return kept.reverse();
+}
+
 export interface ChartDims {
   W: number;
   H: number;

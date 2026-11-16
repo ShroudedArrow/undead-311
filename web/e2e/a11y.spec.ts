@@ -82,6 +82,12 @@ test("axis titles never overlap tick labels (REQ-WEB-CHARTS.1, REQ-WEB-A11Y.1; U
       const overlap = a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
       expect(overlap, `${id} axis title overlaps a tick label`).toBe(false);
     }
+    // UX-58: tick labels never touch each other either
+    for (let i = 0; i < boxes.ticks.length; i++) for (let j = i + 1; j < boxes.ticks.length; j++) {
+      const a = boxes.ticks[i], b = boxes.ticks[j];
+      const overlap = a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+      expect(overlap, `${id} tick labels ${i} and ${j} touch`).toBe(false);
+    }
   }
 });
 
@@ -116,4 +122,28 @@ test("delight pages: street, repeat offenders, time-lapse, districts, methods sl
   await page.goto("/scorecard");
   await expect(page.getByTestId("score-excess").first()).toBeVisible();
   await scan(page, "scorecard with excess");
+});
+
+test("the map page has one labeled map stop and the site focus style on its controls (UX-56, UX-57, REQ-WEB-A11Y.1)", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByTestId("map")).toHaveAttribute("data-ready", "true");
+  const overlay = page.locator("canvas#deckgl-overlay");
+  await expect(overlay).toHaveAttribute("tabindex", "-1");
+  await expect(overlay).toHaveAttribute("aria-hidden", "true");
+  // every focusable element on the page has an accessible name
+  const unnamed = await page.evaluate(() => {
+    const focusable = [...document.querySelectorAll<HTMLElement>("a[href], button, input, select, textarea, canvas, [tabindex]")]
+      .filter((e) => e.tabIndex >= 0 && !e.closest("[hidden], [aria-hidden='true']") && getComputedStyle(e).visibility !== "hidden");
+    return focusable.filter((e) => !(e.getAttribute("aria-label") || e.getAttribute("aria-labelledby") || e.getAttribute("title") || (e.textContent ?? "").trim() || (e as HTMLInputElement).labels?.length)).map((e) => e.outerHTML.slice(0, 80));
+  });
+  expect(unnamed).toEqual([]);
+  // MapLibre's blue glow is replaced by the Asphalt outline
+  const zoom = page.getByRole("button", { name: /zoom in/i });
+  await zoom.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  const style = await zoom.evaluate((b) => { const c = getComputedStyle(b); return { shadow: c.boxShadow, outline: c.outlineStyle, width: c.outlineWidth }; });
+  expect(style.shadow).toBe("none");
+  expect(style.outline).toBe("solid");
+  expect(style.width).toBe("3px");
 });

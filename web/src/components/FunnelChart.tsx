@@ -117,9 +117,13 @@ export function Leaderboard({ groups, limits, kind }: { groups: readonly Group[]
         <tbody>
           {rows.map((g) => {
             const intensity = intensityText(g);
+            const note = groupTitle(kind === "family" ? "family" : kind, g.name);
             return (
               <tr key={g.name} data-unusual={g.unusualShown ? "true" : "false"} data-direction={g.direction ?? ""}>
-                <th scope="row" title={groupTitle(kind === "family" ? "family" : kind, g.name)}>{groupLabel(kind === "family" ? "family" : kind, g.name)}</th>
+                <th scope="row" title={note}>
+                  {groupLabel(kind === "family" ? "family" : kind, g.name)}
+                  {note ? <span className="visually-hidden"> {note}</span> : null}
+                </th>
                 <td>{pct(g.shrunk)}</td>
                 <td>{g.lo === null || g.hi === null ? "" : t("charts.interval_text", { lo: pct(g.lo), hi: pct(g.hi) })}</td>
                 <td>{pct(g.raw)}</td>

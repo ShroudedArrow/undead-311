@@ -123,6 +123,7 @@
     "traffic_signal": "Semáforos",
     "pavement_marking": "Marcas en el pavimento",
     "street_fixture": "Elementos de la calle",
-    "all": "Todos los tipos de caso"
+    "all": "Todos los tipos de caso",
+    "citywide": "Toda la ciudad"
   }
 }

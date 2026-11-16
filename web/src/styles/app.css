@@ -359,6 +359,19 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
   background: var(--crew-white);
   position: relative;
 }
+/* UX-57: MapLibre's default blue focus glow is not a palette colour; use the site focus ring on every map control. */
+.map-host .maplibregl-ctrl-group button:focus,
+.map-host .maplibregl-ctrl-attrib-button:focus,
+.map-host .maplibregl-ctrl-group button:focus:focus-visible,
+.map-host .maplibregl-ctrl-attrib-button:focus:focus-visible {
+  box-shadow: none;
+  border-radius: 0;
+}
+.map-host .maplibregl-ctrl-group button:focus-visible,
+.map-host .maplibregl-ctrl-attrib-button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -3px;
+}
 .map-host .maplibregl-ctrl-group button + button { border-top: 2px solid var(--asphalt); }
 .map-host .maplibregl-ctrl-group button .maplibregl-ctrl-icon { background-image: none !important; }
 .map-host .maplibregl-ctrl-group button .maplibregl-ctrl-icon::before,

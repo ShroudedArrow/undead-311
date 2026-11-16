@@ -9,6 +9,7 @@ import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { Protocol } from "pmtiles";
 import { useEffect, useRef, useState } from "react";
 import type { PointRow } from "../lib/points";
+import { watchOverlay } from "./overlayA11y";
 import { t } from "../lib/t";
 import { buildLayers } from "./layers";
 import { makeAtlasCanvas } from "./sprites";
@@ -48,6 +49,7 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
   useEffect(() => {
     if (!host.current) return;
     let map: maplibregl.Map;
+    let stopWatch: (() => void) | undefined;
     try {
       ensureProtocol();
       atlasRef.current = makeAtlasCanvas();
@@ -73,12 +75,14 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
       map.addControl(overlay as unknown as maplibregl.IControl);
       overlayRef.current = overlay;
       mapRef.current = map;
+      if (host.current) stopWatch = watchOverlay(host.current);
       map.on("load", () => setReady(true));
     } catch {
       setFailed(true);
       return;
     }
     return () => {
+      stopWatch?.();
       overlayRef.current = null;
       mapRef.current = null;
       setReady(false);
@@ -90,7 +94,7 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
     const overlay = overlayRef.current;
     if (!overlay || !atlasRef.current) return;
     overlay.setProps({
-      layers: buildLayers({ rows, selectedId, atlas: atlasRef.current, bulkIds, onSelect: (id) => onSelectRef.current(id) }),
+      layers: buildLayers({ rows, selectedId, atlas: atlasRef.current, bulkIds, onSelect: (id) => onSelectRef.current(id), compact: typeof window.matchMedia === "function" && window.matchMedia("(max-width: 640px)").matches }),
     });
   }, [rows, selectedId, ready, bulkIds]);
 

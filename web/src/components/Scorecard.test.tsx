@@ -45,6 +45,10 @@ describe("Scorecard (REQ-WEB-SCORE.1-2)", () => {
     const rows = headlineScorecards([sc("sign", true), sc("all", true), sc("sidewalk", true), sc("sign", true, "all")]);
     expect(rows.map((r) => r.family)).toEqual(["all", "sidewalk", "sign"]);
   });
+  it("writes the citywide group heading with a capital letter (UX-59, voice.md sentence case)", () => {
+    render(<Scorecard file={file([sc("citywide", true), sc("sign", true)])} />);
+    expect(screen.getByRole("heading", { name: "Citywide" })).toBeTruthy();
+  });
   it("picks adjusted whenever it exists", () => {
     fc.assert(fc.property(fc.boolean(), (adj) => {
       expect(stayedFixedShown(sc("sign", adj)).kind).toBe(adj ? "adjusted" : "raw");

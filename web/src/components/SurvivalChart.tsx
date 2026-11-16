@@ -1,4 +1,4 @@
-import { bandPath, tickPct, yTitle, yTitleAttrs, chartDims, curveKind, linePath, linear, niceTicks } from "../lib/charts";
+import { bandPath, dayTicks, tickPct, yTitle, yTitleAttrs, chartDims, curveKind, linePath, linear, niceTicks } from "../lib/charts";
 import { groupLabel } from "../lib/labels";
 import type { Curve } from "../lib/parse";
 import { pct } from "../lib/rates";
@@ -26,12 +26,13 @@ function share(c: Curve, at: "at_7" | "at_30" | "at_90"): string {
  */
 export function SurvivalChart({ curve, baseline, tierLabel }: { curve: Curve; baseline: Curve | null; tierLabel: string }) {
   const { W, H, M, narrow } = chartDims(useNarrow(), 320);
-  const x = linear(0, Math.max(...curve.times, 1), M.l, W - M.r);
+  const lastDay = Math.max(...curve.times, 1);
+  const x = linear(0, lastDay, M.l, W - M.r);
   // the vertical range starts below the lowest interval bound (rounded down to 5%), so the band is readable when most fixes hold
   const floor = Math.max(0, Math.min(0.95, Math.floor(Math.min(...curve.lo, ...(baseline?.lo ?? [1])) * 20) / 20));
   const y = linear(floor, 1, H - M.b, M.t);
   const xs = curve.times.map(x);
-  const ticksX = [0, 7, 30, 60, 90].filter((d) => d <= Math.max(...curve.times));
+  const ticksX = dayTicks(lastDay, (W - M.r - M.l) / lastDay);
   const ticksY = niceTicks(floor, 1, narrow ? 4 : 5);
   const unknown = t("charts.share_unknown");
   const label = t("charts.survival_label", {
