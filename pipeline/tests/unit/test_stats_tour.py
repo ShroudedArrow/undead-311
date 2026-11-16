@@ -136,3 +136,19 @@ def test_req_stat_tour_1_provisional_ranking_needs_three_zombies_past_the_gap():
     for n in range(3):
         cs += [mk(f"S{n}-O", 0, 1, x=500.0 * n), mk(f"S{n}-R", 1, x=500.0 * n, open_hours=0.2)]
     assert build_tour(detect(cs).zombies) is None
+
+
+def test_req_stat_tour_1_survives_first_weakened_only_to_fill():
+    """REQ-STAT-TOUR.1 (owner decision ops#215): "survives" zombies come first, even with fewer re-reports;
+    "weakened" ones fill only when fewer than three survive; "explained_away" is never featured."""
+    from dataclasses import replace
+
+    zs = detect(town_with_reports()).zombies
+    verdicts = {"Z1-O:Z1-R0": "weakened", "Z2-O:Z2-R0": "survives", "Z3-O:Z3-R0": "explained_away", "Z4-O:Z4-R0": "survives"}
+    zs = [replace(z, skeptic_verdict=verdicts.get(z.zombie_id, z.skeptic_verdict)) for z in zs]
+    tour = build_tour(zs)
+    # Z4 has the fewest re-reports but survives, so it ranks before the weakened Z1, which only fills the third place.
+    assert tour.zombie_ids == ("Z2-O:Z2-R0", "Z4-O:Z4-R0", "Z1-O:Z1-R0")
+    three_survive = [replace(z, skeptic_verdict="survives") if z.zombie_id == "Z1-O:Z1-R0" else z for z in zs]
+    three_survive = [replace(z, skeptic_verdict="weakened") if z.zombie_id == "Z3-O:Z3-R0" else z for z in three_survive]
+    assert build_tour(three_survive).zombie_ids == ("Z1-O:Z1-R0", "Z2-O:Z2-R0", "Z4-O:Z4-R0")  # weakened Z3 left out

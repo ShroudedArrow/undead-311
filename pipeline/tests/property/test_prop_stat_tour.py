@@ -9,7 +9,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from undead311.detect.model import Zombie
-from undead311.stats.tour import build_tour
+from undead311.stats.tour import VERDICT_RANK, build_tour
 
 
 def zombie(i: int, reports: int, tier: str, confidence: float, verdict: str = "not_reviewed") -> Zombie:
@@ -39,7 +39,8 @@ def test_prop_stat_10_tour_does_not_change_when_confidence_is_permuted(zs, seed)
 
 @given(zombies, st.integers(0, 10_000))
 def test_prop_stat_10_tour_is_headline_only_three_distinct_and_order_invariant(zs, seed):
-    """REQ-STAT-TOUR.1: three distinct headline IDs with the most re-reports; input order does not matter."""
+    """REQ-STAT-TOUR.1: three distinct headline IDs, ranked by Skeptic verdict ("survives" before "weakened" before
+    "not_reviewed", owner decision ops#215), then by most re-reports; input order does not matter."""
     tour = build_tour(zs)
     headline = [z for z in zs if z.tier == "headline" and z.skeptic_verdict != "explained_away"]  # ops#50
     if len(headline) < 3:
@@ -48,8 +49,9 @@ def test_prop_stat_10_tour_is_headline_only_three_distinct_and_order_invariant(z
     assert tour.provisional and len(set(tour.zombie_ids)) == 3
     by_id = {z.zombie_id: z for z in headline}
     assert set(tour.zombie_ids) <= set(by_id)  # never an explained_away zombie
-    chosen = min(by_id[i].reports_after for i in tour.zombie_ids)
-    assert all(z.reports_after <= chosen for z in headline if z.zombie_id not in tour.zombie_ids)
+    key = lambda z: (VERDICT_RANK[z.skeptic_verdict], -z.reports_after)
+    worst_chosen = max(key(by_id[i]) for i in tour.zombie_ids)
+    assert all(key(z) >= worst_chosen for z in headline if z.zombie_id not in tour.zombie_ids)
     shuffled = list(zs)
     random.Random(seed).shuffle(shuffled)
     assert build_tour(shuffled) == tour

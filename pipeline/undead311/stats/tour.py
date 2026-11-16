@@ -1,8 +1,10 @@
 """Provisional judge-mode tour (REQ-STAT-TOUR.1).
 
 Three headline zombies the Skeptic has not explained away: the owner's override
-(`data/labels/judge_tour_override.json`) when it names exactly three such zombies, else the three with the most
-re-reports, ties by zombie ID. The provisional ranking only counts resident-reported zombies (headline tier, which
+(`data/labels/judge_tour_override.json`) when it names exactly three such zombies, else a ranking. The ranking takes the
+Skeptic's "survives" zombies first and uses "weakened" ones only to fill when fewer than three survive (owner decision,
+ops#215; the card shows the Skeptic's note); "not_reviewed" ones fill last, which only happens before a Skeptic pass.
+Within a verdict, most re-reports first, ties by zombie ID. The provisional ranking only counts resident-reported zombies (headline tier, which
 leaves out city re-reports and planned follow-ups) whose re-report opened at least `MIN_TOUR_GAP_HOURS` after the closure
 (owner decision, ops#44: a re-report seconds after a closure is a crew's work log, not a resurrection to show). The confidence
 score is never read, so the tour cannot be tuned by it (design property P10). `provisional` is true until the
@@ -23,6 +25,8 @@ from undead311.stats.meta import params_json
 
 TOUR_SIZE = 3
 MIN_TOUR_GAP_HOURS = 1.0  # ops#44: the provisional ranking skips re-reports that opened sooner than this after the closure
+# ops#215: the order verdicts fill the tour in. "explained_away" is never featured (filtered before ranking).
+VERDICT_RANK = {"survives": 0, "weakened": 1, "not_reviewed": 2}
 
 
 @dataclass(frozen=True)
@@ -63,6 +67,7 @@ def build_tour(
 
     An override is used only if it lists exactly three distinct headline zombies; otherwise it is ignored. A zombie the
     Skeptic explained away is never featured, in the override or the ranking (REQ-SKEP, ops#45).
+    The ranking puts "survives" before "weakened" before "not_reviewed" (ops#215), then most re-reports, ties by ID.
     """
     headline = {z.zombie_id: z for z in zombies if z.tier == "headline" and z.skeptic_verdict != "explained_away"}
     sure = {i for i in (confirmed or ()) if i in headline}
@@ -80,5 +85,5 @@ def build_tour(
         headline = {i: z for i, z in headline.items() if z.gap_days * 24.0 >= MIN_TOUR_GAP_HOURS and not z.city_rereport}
         if len(headline) < TOUR_SIZE:
             return None
-    ranked = sorted(headline.values(), key=lambda z: (-z.reports_after, z.zombie_id))
+    ranked = sorted(headline.values(), key=lambda z: (VERDICT_RANK.get(z.skeptic_verdict, 3), -z.reports_after, z.zombie_id))
     return JudgeTour(provisional, tuple(z.zombie_id for z in ranked[:TOUR_SIZE]), "most_reports")
