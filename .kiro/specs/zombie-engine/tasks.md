@@ -106,7 +106,7 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
   - `detect/grid.py`: 18 grid points plus the run without Street Light Other into the `grid_runs` table.
   - _Requirements: REQ-SENS-RUN.1–2_
 - [x] 25. [credibility] Payload budget
-  - Shard cards by neighborhood and year, write `.gz` copies, report sizes, fail over the 3 MB first-view budget.
+  - Shard cards by neighborhood and year, write plain JSON (ops#184), report sizes, fail over the 3 MB first-view budget.
   - _Requirements: REQ-EXP-SIZE.1–2_
 - [x] 26. [credibility] Safe re-runs
   - Build outputs into a temporary folder and swap only on success; a failed stage leaves the previous outputs untouched (test with an injected failure).

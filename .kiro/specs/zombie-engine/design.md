@@ -39,7 +39,7 @@ $DATA_DIR/raw/*.csv ─► ingest.load (DuckDB) ─► ingest.normalize ─► i
 | `detect/confidence.py` | Score and `confidence_partial` | `confidence(z, ctx) -> float` | REQ-CONF |
 | `detect/skeptic.py` | Skeptic input/output files | `write_input(...)`, `join(...)` | REQ-SKEP |
 | `detect/grid.py` | Sensitivity runs | `run_grid(cases, edges_fn) -> GridResult` | REQ-SENS-RUN |
-| `export/*` | Schema validation (`jsonschema`), deterministic JSON writers, cards, columnar points, sizes, `.gz` | `export_all(result, out_dir)` | REQ-EXP-1, -SIZE, -PRIV |
+| `export/*` | Schema validation (`jsonschema`), deterministic JSON writers, cards, columnar points, sizes (plain JSON, ops#184) | `export_all(result, out_dir)` | REQ-EXP-1, -SIZE, -PRIV |
 | `cli.py` | `python -m undead311 pipeline [--sample]`, atomic DuckDB write | `main()` | REQ-ING-NIGHTLY, REQ-EXP-1.4 |
 | `fixtures.py` | Test-town loader: reads RAW fixture rows into the `cases_norm` table, then runs the normal crosswalk, catch-all, clean and detect path. Uses pre-snapped segments and `coroner_label`; ignores `scenario`/`note` | `load_test_town(con, path)`, `golden_result(result, excluded) -> dict` (the worksheet format) | REQ-DET-GOLD |
 

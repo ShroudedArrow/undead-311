@@ -22,7 +22,7 @@ Layer tags drive the build order: all `[demo-critical]` tasks in every spec firs
   - Hypothesis `deep` profile (10× examples, database in `.hypothesis/` cached with `actions/cache`), fast-check 10× runs, finding issues on failure.
   - _Requirements: REQ-OPS-PBT.1–2_
 - [x] 5. [credibility] Caching headers
-  - Generated headers: immutable for hashed assets, `no-cache` for `index.html`, `status.json` and manifests; `.gz` use.
+  - Generated headers: immutable for hashed assets, `no-cache` for `index.html`, `status.json` and manifests; plain JSON, host compression (ops#184).
   - [x] 5.1 Check O3: the header generator never marks an unhashed file immutable (property over generated file lists). _REQ-OPS-CACHE.1_
   - _Requirements: REQ-OPS-CACHE.1_
 - [x] 6. [credibility] Nightly refresh template and alerts

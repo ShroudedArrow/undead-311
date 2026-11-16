@@ -24,7 +24,7 @@ make snapshot → data/SNAPSHOT.md (judging section) + tag;  make capture → do
 | `ops/undead-311-data/` | `nightly.yml` template plus README for the data repo | REQ-OPS-NIGHTLY |
 | `.devcontainer/devcontainer.json` | Python 3.11 + Node feature, `postCreateCommand: pip install uv && make setup`, `DATA_DIR` | REQ-OPS-DEV |
 | `pipeline/scripts/snapshot.py` | `make snapshot` | REQ-OPS-SNAP |
-| `web/scripts/capture.ts` | `make capture` | REQ-OPS-CAPTURE |
+| `ops/capture/capture.mjs`, `ops/capture/gif.mjs`, `ops/capture/capture.config.json` | `make capture` (plain Node, no build step, ops#208) | REQ-OPS-CAPTURE |
 | `scripts/channel_export.py`, `scripts/trace.py`, `scripts/kiro_stats.py` | Evidence commands | REQ-OPS-EVID |
 
 Secrets (all human-created, documented in DEPLOY.md, never committed):
