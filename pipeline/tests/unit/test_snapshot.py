@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -45,13 +46,98 @@ def rows(public, processed):
     return snap.collect(public, processed)
 
 
-def test_collect_lists_served_files_and_processed_parquet_but_not_the_duckdb_file(site):
-    """REQ-OPS-SNAP.1: served data and processed Parquet, sorted; the DuckDB file and stray files are left out."""
+def test_collect_lists_served_files_and_the_run_report_but_not_parquet_or_the_duckdb_file(site):
+    """REQ-OPS-SNAP.1: served data and the run report, sorted. The pipeline writes no Parquet, so a stray one, the DuckDB file
+    and other files are left out."""
     labels = [r[0] for r in rows(*site)]
     assert labels == sorted(labels)
-    assert "web/public/data/cards/a.json" in labels and "processed/cases.parquet" in labels
-    assert "processed/run_report.json" in labels
-    assert not any("duckdb" in x or "notes" in x for x in labels)
+    assert "web/public/data/cards/a.json" in labels and "processed/run_report.json" in labels
+    assert not any("parquet" in x or "notes" in x or x.endswith(".duckdb") for x in labels)
+
+
+def make_db(path, tables):
+    import duckdb
+
+    con = duckdb.connect(str(path))
+    for name, n in tables.items():
+        con.execute(f"create table {name} as select range as x from range({n})")
+    con.close()
+
+
+def test_req_ops_snap_1_table_row_counts_come_from_the_duckdb_file(tmp_path):
+    """REQ-OPS-SNAP.1: one count per base table, sorted; a missing or unreadable file gives {}."""
+    make_db(tmp_path / "undead311.duckdb", {"zebra": 3, "cases_clean": 7, "empty_t": 0})
+    assert snap.table_row_counts(tmp_path / "undead311.duckdb") == {"cases_clean": 7, "empty_t": 0, "zebra": 3}
+    assert snap.table_row_counts(tmp_path / "missing.duckdb") == {}
+    (tmp_path / "bad.duckdb").write_bytes(b"not a database")
+    assert snap.table_row_counts(tmp_path / "bad.duckdb") == {}
+
+
+def test_req_ops_snap_1_the_row_counts_are_hashed_as_one_pseudo_file(site):
+    """REQ-OPS-SNAP.1: the table counts enter the table and the combined hash; a different count changes both."""
+    public, processed = site
+    (processed / "undead311.duckdb").unlink()
+    make_db(processed / "undead311.duckdb", {"cases_clean": 5, "zombies": 2})
+    by = {r[0]: r for r in rows(public, processed)}
+    text = b"cases_clean\t5\nzombies\t2\n"
+    assert by[snap.COUNTS_LABEL] == (snap.COUNTS_LABEL, len(text), hashlib.sha256(text).hexdigest())
+    before = snap.combined_hash(rows(public, processed))
+    (processed / "undead311.duckdb").unlink()
+    make_db(processed / "undead311.duckdb", {"cases_clean": 6, "zombies": 2})
+    assert snap.combined_hash(rows(public, processed)) != before
+
+
+def test_req_ops_snap_1_the_same_counts_give_the_same_hash_even_for_different_duckdb_bytes(site, tmp_path):
+    """REQ-OPS-SNAP.1 (check O4): DuckDB bytes differ between builds; the counts row does not."""
+    public, processed = site
+    other = tmp_path / "other"
+    other.mkdir()
+    for d, order in ((processed, ("a", "b")), (other, ("b", "a"))):
+        (d / "undead311.duckdb").unlink(missing_ok=True)
+        make_db(d / "undead311.duckdb", {t: 4 for t in order})
+    pick = lambda d: [r for r in rows(public, d) if r[0] == snap.COUNTS_LABEL]
+    assert pick(processed) == pick(other) != []
+
+
+def test_req_ops_snap_1_raw_input_files_are_hashed_and_part_files_are_not(site, tmp_path):
+    """REQ-OPS-SNAP.1: every raw download is listed as raw/<name> with its sha256."""
+    public, processed = site
+    raw = tmp_path / "raw"
+    make_tree(raw, {"311_2024.csv": b"id\n1\n", "street_segments_sam.geojson": b"{}", "311_2025.csv.part": b"half"})
+    by = {r[0]: r for r in snap.collect(public, processed, raw)}
+    assert by["raw/311_2024.csv"] == ("raw/311_2024.csv", 5, hashlib.sha256(b"id\n1\n").hexdigest())
+    assert "raw/street_segments_sam.geojson" in by and "raw/311_2025.csv.part" not in by
+    assert not any(label.startswith("raw/") for label in (r[0] for r in snap.collect(public, processed)))
+
+
+def test_req_ops_snap_1_the_section_lists_the_table_counts_and_says_there_is_no_parquet(site, tmp_path):
+    """REQ-OPS-SNAP.1."""
+    public, processed = site
+    (processed / "undead311.duckdb").unlink()
+    make_db(processed / "undead311.duckdb", {"cases_clean": 5})
+    section = snap.build(public, processed, None, None, tmp_path / "noraw")
+    assert "| DuckDB table | rows |" in section and "| cases_clean | 5 |" in section
+    assert snap.COUNTS_LABEL in section and "writes no Parquet" in section
+    assert snap.section_hashes(section)  # the served-file rows still parse (the freeze logic reads them)
+
+
+def test_req_ops_snap_1_the_cli_hashes_raw_files_beside_processed_by_default(site, tmp_path):
+    """REQ-OPS-SNAP.1: `--processed D/processed` reads `D/raw` unless `--raw` says otherwise."""
+    public, processed = site
+    d = tmp_path / "d"
+    (d / "processed").mkdir(parents=True)
+    for f in processed.iterdir():
+        (d / "processed" / f.name).write_bytes(f.read_bytes())
+    make_tree(d / "raw", {"311_2024.csv": b"id\n1\n"})
+    r, snapshot = run_cli(tmp_path, public, d / "processed")
+    assert r.returncode == 0, r.stderr
+    assert "| raw/311_2024.csv | 5 |" in snapshot.read_text()
+
+
+def test_req_ops_snap_1_decisions_records_that_the_pipeline_uses_duckdb_not_parquet():
+    """REQ-OPS-SNAP.1: docs/DECISIONS.md carries the decision."""
+    text = (REPO / "docs" / "DECISIONS.md").read_text()
+    assert re.search(r"pipeline uses DuckDB, not Parquet", text)
 
 
 def test_hashes_are_the_sha256_of_the_bytes(site):

@@ -18,14 +18,13 @@ import csv
 import sys
 from pathlib import Path
 
-import duckdb
-
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent))
 
 import download
 
+from undead311.duck import connect
 from undead311.ingest.closure_flags import (
     extract_linked_case_id,
     is_mirror_pair,
@@ -86,7 +85,7 @@ def fmt(d, pattern):
 def main() -> None:
     data_dir = download.resolve_data_dir()
     root = download.repo_root()
-    c = duckdb.connect(str(data_dir / "processed" / "undead311.duckdb"), read_only=True)
+    c = connect(data_dir / "processed" / "undead311.duckdb", read_only=True)  # REQ-OPS-DUCK.3
     c.execute(f"create temp table fam as select * from read_csv('{root}/pipeline/undead311/ingest/type_families.csv')")
     # naive wall-clock strings; the '+00' suffix on new-system stamps is stripped here and by times.py
     c.execute(f"""create temp table n as

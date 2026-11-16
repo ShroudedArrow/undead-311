@@ -12,6 +12,7 @@ from pathlib import Path
 import duckdb
 
 from undead311.detect.model import Case
+from undead311.duck import connect
 from undead311.ingest.text import register_text_udfs
 
 
@@ -86,7 +87,7 @@ def cases_from_table(con: duckdb.DuckDBPyConnection, table: str = "cases_clean")
 
 def cases_from_sample_csv(path: Path) -> list[Case]:
     """Load data/sample/sample_311.csv (already crosswalked, core scope) as Cases (REQ-ING-SAMPLE)."""
-    con = duckdb.connect()
+    con = connect()  # REQ-OPS-DUCK.3
     register_text_udfs(con)  # ops#214: street names arrive HTML-escaped
     con.execute(
         "create table s as select * from read_csv(?, all_varchar=true, header=true)", [str(path)]

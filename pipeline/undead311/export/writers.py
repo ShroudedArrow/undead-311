@@ -27,6 +27,7 @@ from jsonschema import Draft202012Validator
 
 from undead311.detect.model import Case, DetectionResult, Zombie
 from undead311.detect.params import DEFAULT, Params
+from undead311.duck import connect
 from undead311.export.privacy import (
     SegmentInfo,
     block_level_locations,
@@ -125,6 +126,9 @@ class ExportContext:
     data_end: str | None = None
     city_origin: Mapping[str, Any] | None = None
     dataset: str | None = None  # "sample" or "full" (REQ-STAT-EXP.1)
+    # Dry-run override (owner decision 2026-11-16, option D): an over-budget first view is written with an anomaly instead of
+    # failing. Only `run_full.py --dry-run-over-budget` sets it; `make pipeline`, the nightly and judging runs never do.
+    allow_over_budget: bool = False
     #: SAM segment ID -> midpoint and class, for block-level repeat offenders (REQ-EXP-PRIV.1); None without the SAM file
     segment_info: Mapping[str, SegmentInfo] | None = None
     ok: bool = True
@@ -292,7 +296,13 @@ def export_all(result: DetectionResult, cases: Mapping[str, Case], out_dir: Path
         f = out_dir / name
         if name not in sizes and f.is_file():
             sizes[name] = f.stat().st_size
-    check_first_view_budget(sizes)  # before anything is written: an over-budget run leaves the old files in place
+    try:
+        check_first_view_budget(sizes)  # before anything is written: an over-budget run leaves the old files in place
+    except PayloadBudgetExceeded as exc:
+        if not ctx.allow_over_budget:
+            raise
+        ctx.anomalies.append(f"DRY RUN ONLY, over the first-view budget: {exc}")
+        texts["status.json"] = canonical_json(build_status(result, ctx))
     written = []
     for name in sorted(texts):
         if name == "status.json":
@@ -466,8 +476,12 @@ def write_duckdb_atomic(
     build: Callable[[duckdb.DuckDBPyConnection], None],
     commit: Callable[[], None] | None = None,
     rollback: Callable[[], None] | None = None,
+    keep_partial: bool = False,
 ) -> Path:
     """Build the DuckDB file under a temporary name, then rename it, so a reader never sees a half-written file.
+
+    `keep_partial` (a resumable run, REQ-OPS-RUN.2) opens the temporary file as it is instead of deleting it first, and keeps
+    it when the build, the commit or the rename fails, so a restart can continue from the stages already committed in it.
 
     `commit` runs after a successful build and before the rename (the pipeline swaps its output files in there). If it or
     the rename fails, `rollback` runs, the temporary file is removed and the error is raised: the previous DuckDB file
@@ -475,15 +489,17 @@ def write_duckdb_atomic(
     final = Path(final)
     final.parent.mkdir(parents=True, exist_ok=True)
     tmp = final.with_name(final.name + ".tmp")
-    for stale in (tmp, tmp.with_name(tmp.name + ".wal")):
-        stale.unlink(missing_ok=True)
-    con = duckdb.connect(str(tmp))
+    if not keep_partial:
+        for stale in (tmp, tmp.with_name(tmp.name + ".wal")):
+            stale.unlink(missing_ok=True)
+    con = connect(tmp)  # REQ-OPS-DUCK.3
     try:
         build(con)
         con.execute("checkpoint")
     except BaseException:
         con.close()
-        tmp.unlink(missing_ok=True)
+        if not keep_partial:
+            tmp.unlink(missing_ok=True)
         raise
     con.close()
     try:
@@ -493,6 +509,7 @@ def write_duckdb_atomic(
     except BaseException:
         if rollback is not None:
             rollback()
-        tmp.unlink(missing_ok=True)
+        if not keep_partial:
+            tmp.unlink(missing_ok=True)
         raise
     return final

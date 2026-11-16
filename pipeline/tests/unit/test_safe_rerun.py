@@ -36,7 +36,9 @@ def no_staging_left(tmp_path):
     return not [p for p in tmp_path.rglob("*") if ".staging-" in p.name]
 
 
-@pytest.mark.parametrize("failing", ["detect", "run_grid", "export_all", "swap_outputs"])
+# `run_grid_group` is what the pipeline calls since the grid was split into per-group stages (REQ-OPS-RUN.2); a failure in any
+# grid group must leave the previous outputs untouched, like a failure anywhere else.
+@pytest.mark.parametrize("failing", ["detect", "run_grid_group", "export_all", "swap_outputs"])
 def test_req_ing_nightly_1_a_failed_stage_leaves_the_previous_outputs_untouched(tmp_path, monkeypatch, failing):
     raw, snap, out, work = first_run(tmp_path)
     before_out, before_work = snapshot(out), snapshot(work)
