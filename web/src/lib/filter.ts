@@ -2,9 +2,12 @@
  * Filtering and aggregation (REQ-WEB-MAP.2-4, REQ-WEB-TABLE.1). Pure functions; the map, the table and the count all call
  * `visibleSet`, so they can never disagree (property W4).
  */
-export type Tier = "headline" | "source_unknown" | "city_rereport" | "sensitivity";
-/** Every tier, in display order. A copy test (REQ-WEB-TIER.1) requires a label and a card note for each. */
-export const TIERS: readonly Tier[] = ["headline", "source_unknown", "city_rereport", "sensitivity"];
+/**
+ * Every tier, in display order. The `Tier` type is derived from this list, so a tier cannot exist without being listed here,
+ * and the copy test (REQ-WEB-TIER.1) requires a label and a card note for each (UX-55).
+ */
+export const TIERS = ["headline", "source_unknown", "city_rereport", "sensitivity"] as const;
+export type Tier = (typeof TIERS)[number];
 /** "headline" shows the headline tier only (REQ-WEB-MAP.4); "all" adds the other tiers (REQ-WEB-TIER). */
 export type TierMode = "headline" | "all";
 
