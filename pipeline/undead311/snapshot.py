@@ -1,8 +1,8 @@
 """Frozen judging snapshot (REQ-OPS-SNAP.1, REQ-OPS-SNAP.2).
 
-`make snapshot` hashes the files the site serves (`web/public/data/**`) and the processed files the pipeline wrote
-(`$DATA_DIR/processed`: Parquet and `run_report.json`), and writes the table into the judging section of
-`data/SNAPSHOT.md`. The section sits between two marker comments, so the download table above it is never touched, and
+`make snapshot` hashes what a run actually leaves behind (the pipeline writes DuckDB, not Parquet; see docs/DECISIONS.md):
+the raw input files (`$DATA_DIR/raw`), the row count of every table in `processed/undead311.duckdb`, `run_report.json`,
+and every file the site serves (`web/public/data/**`). It writes the table into the judging section of `data/SNAPSHOT.md`. The section sits between two marker comments, so the download table above it is never touched, and
 `download.py` keeps the section when it rewrites the file.
 
 Reproducible (check O4): the output depends only on the file bytes, the data end date and the tag name. No wall clock,
@@ -26,10 +26,16 @@ import re
 import shutil
 from pathlib import Path
 
+import duckdb
+
+from undead311.duck import connect
+
 BEGIN = "<!-- BEGIN judging snapshot (written by make snapshot; do not edit) -->"
 END = "<!-- END judging snapshot -->"
-PROCESSED_SUFFIXES = {".parquet"}
 PROCESSED_NAMES = {"run_report.json"}
+DUCKDB_FILE = "undead311.duckdb"
+COUNTS_LABEL = f"processed/{DUCKDB_FILE}#table-row-counts"  # a hashed text of `table<TAB>rows` lines (REQ-OPS-SNAP.1)
+RAW_PREFIX = "raw/"
 FROZEN_DIR = "frozen"                      # under web/public/data; judge mode's copy of the snapshot (REQ-OPS-SNAP.2)
 JUDGE_TOUR = "stats/judge_tour.json"
 POINTS = "points.json"
@@ -44,11 +50,36 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def collect(public_dir: Path, processed_dir: Path | None) -> list[tuple[str, int, str]]:
-    """(label, bytes, sha256) for every served data file and processed file, sorted by label.
+def table_row_counts(db_path: Path) -> dict[str, int]:
+    """Row count of every base table in the DuckDB file, by table name (sorted); bookkeeping tables (`_...`) are left out. {} when the file is missing or unreadable.
 
-    Labels are `web/public/data/<relative path>` and `processed/<relative path>` with `/` separators, so the table does
-    not depend on where the checkout lives."""
+    The file is opened read-only, so it can be checked while no run is writing it."""
+    if not Path(db_path).is_file():
+        return {}
+    try:
+        con = connect(db_path, read_only=True)
+    except duckdb.Error:
+        return {}
+    try:
+        tables = [r[0] for r in con.execute(
+            "select table_name from information_schema.tables where table_schema = 'main' and table_type = 'BASE TABLE' "
+            "and table_name not like '\\_%' escape '\\' order by table_name").fetchall()]  # fmt: skip
+        return {t: con.execute(f'select count(*) from "{t}"').fetchone()[0] for t in tables}
+    finally:
+        con.close()
+
+
+def counts_text(counts: dict[str, int]) -> str:
+    return "".join(f"{t}\t{n}\n" for t, n in sorted(counts.items()))
+
+
+def collect(public_dir: Path, processed_dir: Path | None, raw_dir: Path | None = None) -> list[tuple[str, int, str]]:
+    """(label, bytes, sha256) for every raw input file, the DuckDB table row counts, `run_report.json` and every served
+    data file, sorted by label.
+
+    Labels are `raw/<name>`, `web/public/data/<relative path>` and `processed/<relative path>` with `/` separators, so the
+    table does not depend on where the checkout lives. The DuckDB file is represented by one pseudo-file whose bytes are the
+    `table<TAB>rows` lines (DuckDB does not write identical bytes for identical data, but the counts are stable)."""
     rows: list[tuple[str, int, str]] = []
     if public_dir.is_dir():
         for p in public_dir.rglob("*"):
@@ -56,8 +87,16 @@ def collect(public_dir: Path, processed_dir: Path | None) -> list[tuple[str, int
                 rows.append((f"web/public/data/{p.relative_to(public_dir).as_posix()}", p.stat().st_size, sha256_file(p)))
     if processed_dir is not None and processed_dir.is_dir():
         for p in processed_dir.rglob("*"):
-            if p.is_file() and (p.suffix in PROCESSED_SUFFIXES or p.name in PROCESSED_NAMES):
+            if p.is_file() and p.name in PROCESSED_NAMES:
                 rows.append((f"processed/{p.relative_to(processed_dir).as_posix()}", p.stat().st_size, sha256_file(p)))
+        counts = table_row_counts(processed_dir / DUCKDB_FILE)
+        if counts:
+            text = counts_text(counts).encode()
+            rows.append((COUNTS_LABEL, len(text), hashlib.sha256(text).hexdigest()))
+    if raw_dir is not None and raw_dir.is_dir():
+        for p in raw_dir.iterdir():
+            if p.is_file() and not p.name.endswith(".part"):
+                rows.append((f"{RAW_PREFIX}{p.name}", p.stat().st_size, sha256_file(p)))
     return sorted(rows)
 
 
@@ -71,8 +110,10 @@ def default_tag(data_end: str) -> str:
     return f"judged-{data_end}"
 
 
-def render_section(rows: list[tuple[str, int, str]], data_end: str, tag: str) -> str:
-    """The judging section, markers included."""
+def render_section(
+    rows: list[tuple[str, int, str]], data_end: str, tag: str, counts: dict[str, int] | None = None
+) -> str:
+    """The judging section, markers included. `counts` (DuckDB table row counts) is listed under the file table."""
     lines = [
         BEGIN,
         "## Judging snapshot",
@@ -84,7 +125,12 @@ def render_section(rows: list[tuple[str, int, str]], data_end: str, tag: str) ->
         "|---|---|---|",
         *[f"| {label} | {size} | {digest} |" for label, size, digest in rows],
         "",
-        "The DuckDB file is not listed: DuckDB does not write identical bytes for identical data. The raw downloads above are listed with their hashes.",
+        *(
+            ["| DuckDB table | rows |", "|---|---|", *[f"| {t} | {n} |" for t, n in sorted(counts.items())], ""]
+            if counts
+            else []
+        ),
+        f"The DuckDB file itself is not hashed: DuckDB does not write identical bytes for identical data. Its table row counts are listed above and hashed as `{COUNTS_LABEL}`. The pipeline writes no Parquet.",
         "",
         "Owner steps after `make snapshot` (the script never tags or pushes):",
         "",
@@ -135,7 +181,9 @@ def status_data_end(public_dir: Path) -> str | None:
     return end if isinstance(end, str) and end else None
 
 
-def build(public_dir: Path, processed_dir: Path | None, data_end: str | None, tag: str | None) -> str:
+def build(
+    public_dir: Path, processed_dir: Path | None, data_end: str | None, tag: str | None, raw_dir: Path | None = None
+) -> str:
     """The judging section. REQ-OPS-SNAP.1: `--data-end` that disagrees with status.json is refused (ops#160), because
     the section would name a "Data through" date the hashed files do not run through."""
     actual = status_data_end(public_dir)
@@ -143,7 +191,8 @@ def build(public_dir: Path, processed_dir: Path | None, data_end: str | None, ta
         raise SystemExit(f"snapshot: --data-end {data_end} differs from data_end {actual} in {public_dir / 'status.json'}; "
                          "rerun without --data-end, or rebuild the data")
     end = data_end or data_end_of(public_dir)
-    return render_section(collect(public_dir, processed_dir), end, tag or default_tag(end))
+    counts = table_row_counts(processed_dir / DUCKDB_FILE) if processed_dir is not None else {}
+    return render_section(collect(public_dir, processed_dir, raw_dir), end, tag or default_tag(end), counts)
 
 
 # ---- judge mode on the frozen snapshot (REQ-OPS-SNAP.2) -------------------------------------------------------------

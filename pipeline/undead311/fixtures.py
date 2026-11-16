@@ -18,6 +18,7 @@ from undead311.detect.cases import cases_from_table
 from undead311.detect.core import detect
 from undead311.detect.model import DetectionResult
 from undead311.detect.params import DEFAULT, Params
+from undead311.duck import connect
 from undead311.ingest.clean import clean, ids_by_reason
 from undead311.ingest.crosswalk import apply_crosswalk
 from undead311.ingest.normalize import NORM_COLUMNS
@@ -58,7 +59,7 @@ def run_test_town(
     path: Path = FIXTURE, p: Params = DEFAULT, con: duckdb.DuckDBPyConnection | None = None
 ) -> tuple[DetectionResult, dict[str, list[str]]]:
     """Load, crosswalk, clean and detect. Returns (result, excluded ids by reason)."""
-    con = con or duckdb.connect()
+    con = con or connect()  # REQ-OPS-DUCK.3
     load_test_town(con, path)
     apply_crosswalk(con)
     clean(con)

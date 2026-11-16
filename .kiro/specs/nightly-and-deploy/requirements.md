@@ -52,6 +52,23 @@ IDs use the prefix `REQ-OPS-`. Layers follow docs/PROJECT.md: **demo-critical** 
 **User story:** As a judge, I want the numbers in the video and on the site to match, so the demo is reproducible.
 1. `make snapshot` SHALL freeze the data through a fixed date: it writes the processed files and their SHA-256 hashes to `data/SNAPSHOT.md` (judging section) and tags the release.
 2. Judge mode and the video SHALL use the frozen snapshot. IF the nightly refresh fails or is disabled, THEN the site SHALL keep serving the frozen snapshot.
+3. THE judging section SHALL hash what a run leaves behind, not a file type the pipeline never writes: the raw input files (`raw/<name>`), the row count of every DuckDB table (one hashed pseudo-file plus a table in the section; the DuckDB file's own bytes differ between identical builds), `run_report.json`, and every file under `web/public/data` except `frozen/`. The pipeline writes no Parquet (docs/DECISIONS.md, 2026-11-16).
+
+### REQ-OPS-DUCK: DuckDB connection settings
+**Layer:** credibility
+**User story:** As the owner of a full-data run, I want DuckDB to leave room for the Python stages and to spill under `$DATA_DIR`, so a run on 3 million rows neither runs out of memory nor loses its temp files.
+1. EVERY DuckDB connection the pipeline opens (ingest, export, sample builders, fixtures, in-memory ones included) SHALL go through `undead311.duck` and get: `memory_limit` 65% of RAM (the cgroup limit when lower), `threads` equal to the CPUs the process may use, `temp_directory` `$DATA_DIR/tmp` (tech.md fallback), and `max_temp_directory_size` 20 GB.
+2. An environment variable (`UNDEAD311_DUCKDB_MEMORY_LIMIT`, `_THREADS`, `_TEMP_DIR`, `_MAX_TEMP`) SHALL override the matching default.
+3. A test SHALL fail when pipeline code calls `duckdb.connect` directly.
+
+### REQ-OPS-RUN: Resumable full run
+**Layer:** credibility
+**User story:** As the owner, I want a long run that survives an agent restart and tells me where it is, so one interruption does not cost an hour.
+1. EACH pipeline stage SHALL be timed and its peak resident memory sampled; the stage table (seconds, peak MB, rows) SHALL be in `run_report.json` and in the run log.
+2. WHEN `stages_dir` is given, THE pipeline SHALL commit each database stage and its done-marker in one transaction, and a restart with the same inputs (snapshot text, parameters, raw file sizes) SHALL skip the finished stages and return their stored report fields. Changed inputs SHALL start fresh.
+3. EACH finished stage SHALL also be written as `<stages_dir>/NN-<stage>.done.json`.
+4. `pipeline/scripts/run_full.py` SHALL post one comment per finished stage to the run-log issue (a comment that cannot be posted is queued, never fatal), stop the run for good when one stage fails twice (leaving the database, markers and logs in place), and stop when the kill-switch file exists.
+5. AFTER a run it SHALL write the Coroner coverage on closed in-scope cases and the 300 most common unlabeled closure templates (by case count) to `$DATA_DIR/reports/<run-id>/`.
 
 ### REQ-OPS-DEV: Codespaces dev container
 **Layer:** credibility

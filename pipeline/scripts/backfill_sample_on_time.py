@@ -13,14 +13,13 @@ import csv
 import sys
 from pathlib import Path
 
-import duckdb
-
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent))
 
 import download
 
+from undead311.duck import connect
 from undead311.ingest.load import load
 from undead311.ingest.normalize import normalize
 
@@ -31,7 +30,7 @@ def stamp(t) -> str:
 
 def on_time_by_key(raw_dir: Path, snapshot_md: Path) -> dict[tuple[str, str], tuple[str, str, str]]:
     """(system, id) -> (open UTC, close UTC, 'true' | 'false' | '') from the normalized raw files."""
-    con = duckdb.connect()
+    con = connect()  # REQ-OPS-DUCK.3
     load(con, raw_dir, snapshot_md)
     normalize(con)
     return {

@@ -6,7 +6,7 @@
                                                          pipeline runs); exit 1 unless each matches the committed section
   python pipeline/scripts/snapshot.py --check-frozen     exit 1 unless <public>/frozen/ equals the committed section
                                                          (nightly, on web/dist/data, BEFORE the deploy)
-  options: --data-end YYYY-MM-DD  --tag NAME  --public DIR  --processed DIR  --snapshot FILE
+  options: --data-end YYYY-MM-DD  --tag NAME  --public DIR  --processed DIR  --raw DIR  --snapshot FILE
 
 Paths default to the checkout this script lives in (so a git worktree writes its own SNAPSHOT.md) and to
 $DATA_DIR/processed with the tech.md fallback. Logic and format: pipeline/undead311/snapshot.py.
@@ -36,6 +36,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--tag", default=None, help="git tag name to record (default: judged-<data end>)")
     p.add_argument("--public", type=Path, default=CHECKOUT / "web" / "public" / "data")
     p.add_argument("--processed", type=Path, default=None, help="default: $DATA_DIR/processed")
+    p.add_argument("--raw", type=Path, default=None, help="raw input files; default: the `raw` folder beside --processed")
     p.add_argument("--snapshot", type=Path, default=CHECKOUT / "data" / "SNAPSHOT.md")
     args = p.parse_args(argv)
 
@@ -51,7 +52,8 @@ def main(argv: list[str] | None = None) -> int:
         print("snapshot: frozen judge-mode files match the judging section" if not problems else "snapshot: frozen files do not match")
         return 1 if problems else 0
     processed = args.processed if args.processed is not None else data_dir() / "processed"
-    section = snap.build(args.public, processed, args.data_end, args.tag)
+    raw = args.raw if args.raw is not None else processed.parent / "raw"
+    section = snap.build(args.public, processed, args.data_end, args.tag, raw)
     current = args.snapshot.read_text() if args.snapshot.exists() else ""
     if args.check:
         same = snap.extract_section(current) == section

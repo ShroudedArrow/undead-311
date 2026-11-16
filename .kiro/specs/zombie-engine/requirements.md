@@ -241,6 +241,14 @@ In this requirement, R is the incident's resurrection (its earliest attached re-
 1. `make pipeline` SHALL rebuild all outputs from `$DATA_DIR/raw/` without manual steps, and leave the previous outputs untouched if any stage fails.
 2. `make pipeline-sample` SHALL run the same pipeline on `data/sample/` into `$DATA_DIR/processed-sample/`, export to `web/public/data/`, and need no network access. This is a new target: structure.md lists `make pipeline` but not this one, so the owner adds it to structure.md.
 
+### REQ-ING-DL: Reliable downloads
+**Layer:** credibility
+**User story:** As the owner of a full-data run, I want downloads that survive a bad connection and tell me when the city changed a file, so a run never uses a short or stale file without saying so.
+1. EACH download SHALL be tried up to 5 times with exponential backoff (1, 2, 4, 8 s) on network errors, HTTP 408, 425, 429 and 5xx, and short bodies. Other HTTP errors and disk errors SHALL NOT be retried.
+2. A partial download SHALL be kept as `<file>.part` and resumed with an HTTP Range request. A server that ignores Range, or a part that does not fit the file, SHALL restart the file from byte 0.
+3. THE downloaded size SHALL equal the size the server announced (Content-Length, or the total in Content-Range) before the file is renamed into place.
+4. A file already on disk SHALL be kept only when its hash, size and CKAN `last_modified` equal the previous `data/SNAPSHOT.md` row and the server reports the same size. Otherwise it SHALL be fetched again, and a file whose hash differs from the previous row SHALL be reported as CHANGED (console and `$DATA_DIR/logs/download-report.json`).
+
 ### REQ-ING-SAMPLE: Committed sample
 **Layer:** demo-critical (exists; keep working)
 1. `make data-sample` SHALL keep producing `data/sample/sample_311.csv` under 10 MB with the current columns, and its existing tests SHALL keep passing.

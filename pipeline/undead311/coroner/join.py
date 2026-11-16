@@ -96,3 +96,50 @@ def join_labels(con: duckdb.DuckDBPyConnection, labels_csv: Path | None, table: 
     """)
     con.execute("drop table label_map")
     return report
+
+
+def unlabeled_templates(
+    con: duckdb.DuckDBPyConnection, labels_csv: Path | None, top: int = 300, table: str = "cases_clean"
+) -> tuple[list[dict], dict]:
+    """The `top` most common closure templates that no label covers, and a coverage summary (REQ-COR-1.3, REQ-OPS-RUN.5).
+
+    Uses the same rule as `join_labels` (`assign_label`): a closed case is unlabeled when its masked template is not in the
+    label table and the new-system closure code gives no label. Rows are `template, n_cases, example_id, systems, example_text`,
+    sorted by n_cases (descending) then template. The summary has the closed in-scope count, the unlabeled count, coverage,
+    the split by system, and how many unlabeled cases the listed templates account for."""
+    template_labels = load_template_labels(labels_csv)
+    groups = con.execute(
+        f"select system, closure_code, closure_text, count(*), min(id) from {table} where status = 'Closed' group by all"
+    ).fetchall()
+    merged: dict[str, dict] = {}
+    closed = {"legacy": 0, "new": 0}
+    missed = {"legacy": 0, "new": 0}
+    for system, code, text, n, example_id in groups:
+        template = mask_template(text)
+        _label, unlabeled = assign_label(system, code, template, template_labels)
+        closed[system] = closed.get(system, 0) + n
+        if not unlabeled:
+            continue
+        missed[system] = missed.get(system, 0) + n
+        slot = merged.setdefault(template, {"template": template, "n_cases": 0, "example_id": example_id,
+                                            "systems": {}, "example_text": text or "", "_best": 0})  # fmt: skip
+        slot["n_cases"] += n
+        slot["systems"][system] = slot["systems"].get(system, 0) + n
+        if n > slot["_best"]:
+            slot["_best"], slot["example_id"], slot["example_text"] = n, example_id, text or ""
+    ranked = sorted(merged.values(), key=lambda r: (-r["n_cases"], r["template"]))[:top]
+    rows = [
+        {"template": r["template"] or "(empty closure text)", "n_cases": r["n_cases"], "example_id": r["example_id"],
+         "systems": ";".join(f"{k}:{v}" for k, v in sorted(r["systems"].items())), "example_text": r["example_text"][:300]}
+        for r in ranked
+    ]  # fmt: skip
+    total, miss = sum(closed.values()), sum(missed.values())
+    summary = {
+        "closed_in_scope": total, "unlabeled": miss, "coverage": 1.0 if not total else 1 - miss / total,
+        "closed_by_system": closed, "unlabeled_by_system": missed,
+        "coverage_by_system": {k: (1.0 if not closed[k] else 1 - missed[k] / closed[k]) for k in closed},
+        "distinct_unlabeled_templates": len(merged), "listed_templates": len(rows),
+        "listed_cases": sum(r["n_cases"] for r in rows),
+        "coverage_if_listed_were_labeled": 1.0 if not total else 1 - (miss - sum(r["n_cases"] for r in rows)) / total,
+    }  # fmt: skip
+    return rows, summary

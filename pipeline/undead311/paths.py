@@ -33,17 +33,20 @@ def _usable(path: Path) -> bool:
     return path.is_dir() and os.access(path, os.W_OK | os.X_OK)
 
 
-def data_dir(start: Path | None = None) -> Path:
-    """DATA_DIR if it is an existing writable directory, else `<repo root>/.local-data/data` (created). REQ-ING-PATH.1."""
+def data_dir(start: Path | None = None, quiet: bool = False) -> Path:
+    """DATA_DIR if it is an existing writable directory, else `<repo root>/.local-data/data` (created). REQ-ING-PATH.1.
+
+    `quiet` skips the stderr notes (used by `duck.configure`, which resolves the folder on every connection)."""
     env = os.environ.get("DATA_DIR")
     if env and _usable(Path(env)):
         chosen = Path(env).resolve()
     else:
         chosen = repo_root(start) / ".local-data" / "data"
         chosen.mkdir(parents=True, exist_ok=True)
-        if env:
+        if env and not quiet:
             print(f"[paths] DATA_DIR={env!r} is missing or not writable; using {chosen}", file=sys.stderr)
-    print(f"[paths] data dir: {chosen}", file=sys.stderr)
+    if not quiet:
+        print(f"[paths] data dir: {chosen}", file=sys.stderr)
     return chosen
 
 
