@@ -3,7 +3,7 @@
 Replaced with `[removed]`: email addresses, phone numbers, names after an honorific (Mr, Mrs, Ms, Miss, Mx, Dr) or
 after "called by", "spoke with" and "per", and digit runs of 7 or more. Addresses and street names are public case
 locations and are kept (REQ-ING-PII.2). Case IDs are public identifiers and are kept: new-system IDs written
-`BCS-<digits>`, and legacy IDs, which are exactly 12 digits starting with 101 (for example 101002227052; every legacy
+`BCS-<digits>` in any letter case (`bcs-` too), and legacy IDs, which are exactly 12 digits starting with 101 (for example 101002227052; every legacy
 `case_enquiry_id` has this form, ops#221). A longer digit run that starts with 101 is still removed.
 Replacements are counted per pattern; the removed text is never logged or returned (REQ-ING-PII.3).
 The scrub is idempotent: `[removed]` contains nothing any pattern matches.
@@ -34,7 +34,7 @@ PATTERNS: tuple[tuple[str, re.Pattern[str], str], ...] = (
         rf"\1{REMOVED}",
     ),
     # ops#221: a legacy case ID (12 digits starting with 101, not part of a longer run) is kept, like BCS- IDs.
-    ("digit_run", re.compile(r"(?<!BCS-)(?<!\d)(?!" + LEGACY_CASE_ID + r"(?!\d))\d{7,}"), REMOVED),
+    ("digit_run", re.compile(r"(?<![Bb][Cc][Ss]-)(?<!\d)(?!" + LEGACY_CASE_ID + r"(?!\d))\d{7,}"), REMOVED),
 )
 
 

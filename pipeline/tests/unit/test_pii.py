@@ -108,3 +108,18 @@ def test_req_ing_pii_1_other_7_to_11_digit_runs_are_removed(run):
 def test_req_ing_pii_1_only_exact_legacy_case_ids_are_kept(run):
     """REQ-ING-PII.1 (ops#221): a 12-digit run not starting with 101, or a longer run starting with 101, is removed."""
     assert scrub_text(f"ref {run} end") == "ref [removed] end"
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["Existing Case sent to Parks bcs-00217744", "see Bcs-00340111 and bCs-00912002", "Resubmitted as BCS-00912002"],
+)
+def test_req_ing_pii_2_bcs_case_ids_are_kept_in_any_letter_case(text):
+    """REQ-ING-PII.2: new-system case IDs are kept whether written BCS-, bcs- or mixed case."""
+    assert scrub_text(text) == text
+
+
+def test_req_ing_pii_1_seven_digit_runs_after_a_bcs_word_without_dash_are_removed():
+    """REQ-ING-PII.1: only the BCS- prefix (with the dash) protects digits; a 7-digit run could be a local phone number."""
+    assert scrub_text("new case bcs 0031234 failed") == "new case bcs [removed] failed"
+    assert scrub_text("call 5550123 today") == "call [removed] today"
