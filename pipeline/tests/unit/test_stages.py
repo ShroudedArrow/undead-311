@@ -407,3 +407,27 @@ def test_req_ops_run_4_the_budget_never_stops_after_an_unmarked_step(tmp_path, m
     log = (tmp_path / "data" / "logs" / "t1.log").read_text()
     stops = [line for line in log.splitlines() if "time budget" in line]
     assert stops and not any("after stage detect" in s or "after stage export" in s or "after stage templates" in s for s in stops)
+
+
+def test_req_exp_size_2_the_dry_run_override_writes_an_over_budget_view_with_an_anomaly(tmp_path, monkeypatch):
+    """REQ-EXP-SIZE.2 (owner decision 2026-11-16, option D): without the override the run fails on the budget; with
+    `--dry-run-over-budget` it writes the files and status.json names the overrun."""
+    from undead311.export import writers
+
+    monkeypatch.setattr(writers, "FIRST_VIEW_BUDGET_BYTES", 10)
+    monkeypatch.setattr(writers.check_first_view_budget, "__defaults__", (10,))
+    assert run_main(tmp_path, monkeypatch) == 1  # the gate holds by default
+    assert run_main(tmp_path, monkeypatch, "--dry-run-over-budget") == 0
+    status = json.loads((tmp_path / "data" / "exports" / "t1" / "status.json").read_text())
+    assert any(a.startswith("DRY RUN ONLY, over the first-view budget") for a in status["anomalies"])
+
+
+def test_req_exp_size_2_no_production_entry_point_can_set_the_dry_run_override():
+    """REQ-EXP-SIZE.2: `make pipeline` (the CLI), the Makefile and the CI and nightly workflows never pass it."""
+    from undead311.cli import build_parser
+
+    root = Path(__file__).resolve().parents[3]
+    assert "over_budget" not in " ".join(a.dest for p in build_parser()._subparsers._group_actions[0].choices.values() for a in p._actions)
+    for f in [root / "Makefile", *(root / ".github" / "workflows").glob("*.yml"), *(root / "ops").rglob("*.yml")]:
+        text = f.read_text()
+        assert "over-budget" not in text and "over_budget" not in text, f

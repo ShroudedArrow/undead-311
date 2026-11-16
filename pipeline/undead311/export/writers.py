@@ -126,6 +126,9 @@ class ExportContext:
     data_end: str | None = None
     city_origin: Mapping[str, Any] | None = None
     dataset: str | None = None  # "sample" or "full" (REQ-STAT-EXP.1)
+    # Dry-run override (owner decision 2026-11-16, option D): an over-budget first view is written with an anomaly instead of
+    # failing. Only `run_full.py --dry-run-over-budget` sets it; `make pipeline`, the nightly and judging runs never do.
+    allow_over_budget: bool = False
     #: SAM segment ID -> midpoint and class, for block-level repeat offenders (REQ-EXP-PRIV.1); None without the SAM file
     segment_info: Mapping[str, SegmentInfo] | None = None
     ok: bool = True
@@ -293,7 +296,13 @@ def export_all(result: DetectionResult, cases: Mapping[str, Case], out_dir: Path
         f = out_dir / name
         if name not in sizes and f.is_file():
             sizes[name] = f.stat().st_size
-    check_first_view_budget(sizes)  # before anything is written: an over-budget run leaves the old files in place
+    try:
+        check_first_view_budget(sizes)  # before anything is written: an over-budget run leaves the old files in place
+    except PayloadBudgetExceeded as exc:
+        if not ctx.allow_over_budget:
+            raise
+        ctx.anomalies.append(f"DRY RUN ONLY, over the first-view budget: {exc}")
+        texts["status.json"] = canonical_json(build_status(result, ctx))
     written = []
     for name in sorted(texts):
         if name == "status.json":

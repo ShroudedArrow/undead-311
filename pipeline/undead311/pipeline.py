@@ -212,6 +212,7 @@ def run_pipeline(
     stages_dir: Path | None = None,
     stage_runner: StageRunner | None = None,
     log: Callable[[str], None] = print,
+    allow_over_budget: bool = False,
 ) -> RunReport:
     """Run every stage and export (REQ-ING-NIGHTLY.1). Outputs are built in staging folders beside their targets and
     swapped in only after every stage succeeded, so a stage that raises leaves the previous outputs untouched.
@@ -438,8 +439,10 @@ def run_pipeline(
                 city_origin=report.city_origin,
                 segment_info=None if sample else load_segment_info(raw / SEGMENTS_FILE),
                 data_end=max(c.open_utc for c in cases).strftime("%Y-%m-%d") if cases else None,
+                allow_over_budget=allow_over_budget,
             )
             export_all(result, by_id, stage_out, ctx)
+            report.warnings += [w for w in ctx.anomalies if w.startswith("DRY RUN ONLY")]
             # persist the detector output beside the cases for the MCP server and the stats stage
             con.execute("drop table if exists zombies")  # a resumed run may find the table of a crashed attempt
             con.execute("create table zombies(zombie_id varchar, incident_id varchar, resurrection_id varchar, tier varchar, "

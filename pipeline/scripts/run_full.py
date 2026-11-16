@@ -124,6 +124,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=None, help="export folder (default $DATA_DIR/exports/<run-id>)")
     ap.add_argument("--skip-grid", action="store_true")
     ap.add_argument("--raw", type=Path, default=None, help="raw input folder (default $DATA_DIR/raw)")
+    ap.add_argument("--dry-run-over-budget", action="store_true",
+                    help="DRY RUN ONLY: write an over-budget first view with an anomaly (never for nightly or judging runs)")
     ap.add_argument("--budget-min", type=float, default=None, help="stop cleanly after the stage that passes this many minutes")
     ap.add_argument("--snapshot-md", type=Path, default=None, help="SNAPSHOT.md that lists the raw files (default data/SNAPSHOT.md)")
     a = ap.parse_args(argv)
@@ -186,7 +188,7 @@ def _run(a: argparse.Namespace, root: Path, base: Path, logs: Path) -> int:
     try:
         report = run_pipeline(
             out_dir=out, stages_dir=stages_dir, stage_runner=runner, grid=not a.skip_grid, log=say,
-            raw_dir=a.raw, snapshot_md=a.snapshot_md, work_dir=None,
+            raw_dir=a.raw, snapshot_md=a.snapshot_md, work_dir=None, allow_over_budget=a.dry_run_over_budget,
         )  # fmt: skip
     except Exception as exc:  # noqa: BLE001 - recorded, posted, then the exit code says what happened
         stage = runner.current or "unknown"
