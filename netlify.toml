@@ -1,0 +1,90 @@
+# Netlify build settings (REQ-OPS-HOST.1 to .4). No secret lives here. Account linking is a human step: docs/DEPLOY.md.
+#
+# The build is web-only. Netlify's build image has Node (version read from .nvmrc) and make, but not `uv`, so the build
+# never runs the Python pipeline: the site is built from the data already under web/public/data. `make build` runs
+# `cd web && npm run build` (tsc, then vite). Dependencies are installed first because package.json sits in web/, not
+# at the repo root where Netlify looks by default.
+#
+# Headers (REQ-OPS-HOST.3, REQ-OPS-CACHE.1): the Content-Security-Policy lives in ONE place, the `_headers` file the web
+# build writes into web/dist (web/scripts/write-headers.ts, from web/src/lib/csp.ts), which Netlify reads from the publish
+# directory. This file sets no security header, so Netlify never sends two policies (ops#59, ops#64).
+# Cache headers (REQ-OPS-CACHE.1) come from the same file: `make build` runs ops/cache-headers/cache-headers.mjs after the web
+# build, which adds immutable rules for hashed assets only and no-cache rules for index.html, status.json and data/.
+# Share images (REQ-WEB-LINKS.2, UX-39): the build installs Chromium and sets SHARE_IMAGES=required, so a build that cannot draw them fails
+# instead of shipping without them. Netlify compresses text files itself, so no precompressed .gz files are produced.
+
+[build]
+  command = "npm --prefix web ci && npm --prefix web exec playwright install chromium && SHARE_IMAGES=required make build"
+  publish = "web/dist"
+
+# Production deploys come from the branch set in the Netlify UI (main). Deploy previews are built for pull requests.
+# Branch deploys are switched off in the UI (docs/DEPLOY.md, step 3), because the toml cannot turn them off.
+[context.production]
+  command = "npm --prefix web ci && npm --prefix web exec playwright install chromium && SHARE_IMAGES=required make build"
+
+[context.deploy-preview]
+  command = "npm --prefix web ci && npm --prefix web exec playwright install chromium && SHARE_IMAGES=required make build"
+
+# REQ-OPS-HOST.1: the app uses BrowserRouter, so a direct visit or a shared permalink to one of its routes must serve
+# index.html (web/src/App.tsx lists the routes; test_netlify_config.py keeps the two lists equal). Only these routes
+# fall back: a missing data file or asset stays a real 404 instead of an HTML page that looks like a JSON parse error.
+# Without `force`, a real file is always served as itself.
+[[redirects]]
+  from = "/zombie/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/scorecard"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/durability"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/methods"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/corrections"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/judge"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/neighborhood/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/timelapse"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/repeat"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/districts"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/districts/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/street"
+  to = "/index.html"
+  status = 200

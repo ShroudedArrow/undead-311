@@ -7,7 +7,8 @@ Catch-all types (type_families.csv catch_all, i.e. Street Light Other) inherit t
 the legacy case(s) whose closure text links to them ("Resubmitted as BCS-N"); unlinked or ambiguous ones
 are sensitivity-only and left out. predecessor_ids lists those legacy ids (semicolon-joined).
 closure_code is the new-system closure_reason code (empty for legacy); pair_survives uses it to drop
-'Transitioned' originals.
+'Transitioned' originals. on_time is 'true' (ONTIME), 'false' (OVERDUE) or empty (unknown), as normalize.py reads it
+(REQ-STAT-SF.1). `backfill_sample_on_time.py` adds the column to an existing sample without reselecting rows.
 Run: make data-sample
 """
 
@@ -40,6 +41,7 @@ COLUMNS = [
     "id", "system", "open_time_utc", "close_time_utc", "open_time_local", "close_time_local",
     "local_ambiguous", "status", "closure_text", "closure_code", "type_raw", "type_family", "scope_tier",
     "city_originated_type", "predecessor_ids", "department", "neighborhood", "street", "lat", "lon", "source",
+    "on_time",
 ]  # fmt: skip
 PLACEHOLDERS = [(42.3603, -71.0583), (42.3595, -71.0588)]
 
@@ -91,12 +93,12 @@ def main() -> None:
       select 'legacy' as system, case_enquiry_id as id, open_dt::timestamp as open_time, closed_dt::timestamp as close_time,
         case_status as status, nullif({scrub('closure_reason')},'') as closure_text, null::varchar as closure_code, type as type_raw, department,
         neighborhood, location_street_name as street, try_cast(latitude as double) lat,
-        try_cast(longitude as double) lon, source from raw_legacy
+        try_cast(longitude as double) lon, source, on_time as on_time_raw from raw_legacy
       union all
       select 'new', case_id, try_cast(regexp_replace(open_date,'\\+00$','') as timestamp),
         try_cast(regexp_replace(close_date,'\\+00$','') as timestamp), case_status,
         nullif({scrub('coalesce(closure_comments, closure_reason)')},''), nullif(closure_reason,''), service_name, assigned_department,
-        neighborhood, street_name, try_cast(latitude as double), try_cast(longitude as double), report_source
+        neighborhood, street_name, try_cast(latitude as double), try_cast(longitude as double), report_source, on_time
       from raw_new""")
     c.execute("create temp table link(id varchar, type_family varchar, scope_tier varchar, predecessor_ids varchar)")
     c.executemany(
@@ -122,11 +124,13 @@ def main() -> None:
     # timestamps are cast to text to keep the exact wall-clock digits
     rows = c.execute(f"""select id, system, strftime(open_time,'%Y-%m-%d %H:%M:%S'), strftime(close_time,'%Y-%m-%d %H:%M:%S'),
         status, closure_text, closure_code, type_raw, type_family, scope_tier, city_originated_type, predecessor_ids, department, neighborhood, street,
-        round(lat,6), round(lon,6), source from s where id in (select id from pick1)
+        round(lat,6), round(lon,6), source,
+        case upper(on_time_raw) when 'ONTIME' then 'true' when 'OVERDUE' then 'false' else '' end
+        from s where id in (select id from pick1)
         or id in (select id from pick2 where (system='legacy' and rn<={FILL_LEGACY}) or (system='new' and rn<={FILL_NEW}))
         order by system, open_time, id""").fetchall()
     out, by_id = [], {}
-    for (rid, system, ot, ct, status, ctext, ccode, traw, fam, tier, city, pred, dept, nb, street, lat, lon, src) in rows:
+    for (rid, system, ot, ct, status, ctext, ccode, traw, fam, tier, city, pred, dept, nb, street, lat, lon, src, on_time) in rows:
         o_utc, o_loc, o_flags = to_utc_and_local(stamp(system, ot))
         c_utc = c_loc = c_flags = None
         if ct:
@@ -136,7 +140,7 @@ def main() -> None:
             rid, system, fmt(o_utc, "%Y-%m-%dT%H:%M:%SZ"), fmt(c_utc, "%Y-%m-%dT%H:%M:%SZ"),
             fmt(o_loc, "%Y-%m-%dT%H:%M:%S"), fmt(c_loc, "%Y-%m-%dT%H:%M:%S"), str(amb).lower(), status,
             ctext or "", ccode or "", traw, fam, tier, str(bool(city)).lower(), pred, dept or "", nb or "", street or "",
-            lat, lon, src or "",
+            lat, lon, src or "", on_time,
         ])  # fmt: skip
         by_id[rid] = {"system": system, "open_utc": o_utc, "id": rid, "predecessor_ids": pred.split(";") if pred else [], "type_family": fam, "closure_text": ctext, "closure_code": ccode}
     out_path = root / "data" / "sample" / "sample_311.csv"

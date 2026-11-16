@@ -1,0 +1,22 @@
+{
+  "name": "The Undead 311",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" }
+  },
+  "containerEnv": {
+    "DATA_DIR": "${containerWorkspaceFolder}/.local-data/data",
+    "UV_CACHE_DIR": "${containerWorkspaceFolder}/.local-data/uv-cache"
+  },
+  "onCreateCommand": "mkdir -p .local-data/data .local-data/uv-cache",
+  "postCreateCommand": "pip install uv==0.13.5 && make setup",
+  "forwardPorts": [5173],
+  "portsAttributes": {
+    "5173": { "label": "The Undead 311 (make web)", "onAutoForward": "openBrowser" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "charliermarsh.ruff"]
+    }
+  }
+}

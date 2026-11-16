@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/status.schema.json",
+  "title": "Pipeline status",
+  "description": "REQ-EXP-1, REQ-OPS-ALERT. Written last.",
+  "type": "object",
+  "properties": {
+    "data_version": {
+      "type": "string"
+    },
+    "last_run": {
+      "type": "string"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "row_counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "anomalies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "segments": {
+      "enum": [
+        "available",
+        "missing"
+      ]
+    },
+    "calibration_warning": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "headline_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_unknown_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sensitivity_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "data_end": {
+      "type": "string"
+    },
+    "planned_followup_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Re-reports kept out of zombies as planned city follow-ups (ZD step 6); REQ-DET-PF"
+    },
+    "city_rereport_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Zombies in the city_rereport tier: legacy city-originated re-reports that are not planned follow-ups, outside the headline; ZD step 6, REQ-DET-TIER.3"
+    },
+    "headline_city_originated_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "DEPRECATED, no longer written: the headline holds no city-originated re-report (see city_rereport_count)"
+    },
+    "city_rereport_under_1h_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Of the city_rereport zombies, those opened under 1 h after the closure; REQ-DET-TIER.3"
+    },
+    "headline_city_originated_under_1h_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "DEPRECATED, no longer written (see city_rereport_under_1h_count)"
+    },
+    "dataset": {
+      "enum": [
+        "sample",
+        "full"
+      ],
+      "description": "Whether the run read the committed sample or the full data; a sample rate is not a citywide figure. REQ-STAT-EXP.1"
+    },
+    "mirror_copies_merged": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Later copies of cross-system pairs opened within MIRROR_WINDOW_HOURS: one report filed twice, so the later copy joins no incident and every denominator counts the pair once (ZD step 9, ops#30, ops#46)"
+    },
+    "history": {
+      "type": "array",
+      "description": "REQ-OPS-NIGHTLY.3: nights that failed since the last good deploy, newest last (at most 10). Added by the nightly refresh after the pipeline's own export, so a pipeline run never writes it; the entry is validated again at merge time (ops/undead-311-data/status_history.py).",
+      "items": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "description": "UTC time of the failure, YYYY-MM-DDTHH:MM:SSZ"
+          },
+          "ok": {
+            "enum": [
+              false
+            ]
+          },
+          "stage": {
+            "type": "string",
+            "description": "First stage that did not succeed (tag, checkout, setup, download, pipeline, check, history, build, deploy, clear, release) or unknown"
+          },
+          "run_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "ok",
+          "stage",
+          "run_url"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "anomalies",
+    "data_version",
+    "last_run",
+    "ok",
+    "row_counts",
+    "segments"
+  ],
+  "additionalProperties": true
+}

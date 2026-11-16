@@ -1,4 +1,4 @@
-"""Transfer-closure and cross-system mirror detection (REQ-ING-MIRROR).
+"""Transfer-closure and cross-system mirror detection (REQ-DET-2.2-2.4, REQ-ING-CATCH).
 
 A legacy case closed with "Resubmitted as BCS-..." was re-created in the new system at
 migration; the pair (original, re-report) is a hand-off copy, not a zombie. Likewise a legacy and
@@ -52,7 +52,7 @@ def resolve_catch_all(
     predecessors: Sequence[tuple[str, str]],
     families: Mapping[str, tuple[str, str]],
 ) -> tuple[str, str, list[str]]:
-    """Family and tier for a catch-all new-system case (REQ-ING-MIRROR).
+    """Family and tier for a catch-all new-system case (REQ-DET-2.2-2.4, REQ-ING-CATCH).
 
     predecessors: (legacy case id, legacy type_raw) for each legacy case whose closure text links here.
     families: legacy type_raw -> (type_family, scope_tier). If every predecessor type is listed and all agree,

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/bulk_closures.schema.json",
+  "title": "Bulk closures",
+  "description": "REQ-BULK.",
+  "type": "object",
+  "properties": {
+    "data_version": {
+      "type": "string"
+    },
+    "bulk_closures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "department": {
+            "type": "string"
+          },
+          "close_date": {
+            "type": "string"
+          },
+          "template": {
+            "type": "string"
+          },
+          "n_cases": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "usual_daily": {
+            "type": "number"
+          },
+          "ratio": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "close_date",
+          "department",
+          "n_cases",
+          "ratio",
+          "template",
+          "usual_daily"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": [
+    "bulk_closures",
+    "data_version"
+  ],
+  "additionalProperties": true
+}

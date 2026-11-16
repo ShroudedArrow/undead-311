@@ -1,0 +1,299 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/excess.schema.json",
+  "title": "Excess resurrections",
+  "description": "REQ-STAT-BASE, REQ-STAT-SHIFT, REQ-STAT-PLACEBO. `shift` is the time-shift permutation result and `placebo` the placebo-outcome excess; both optional (ops#64).",
+  "type": "object",
+  "properties": {
+    "data_version": {
+      "type": "string"
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "department",
+              "family",
+              "neighborhood"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "observed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expected": {
+            "type": "number"
+          },
+          "excess": {
+            "type": "number"
+          },
+          "lo": {
+            "type": "number"
+          },
+          "hi": {
+            "type": "number"
+          },
+          "tier_set": {
+            "enum": [
+              "headline",
+              "all"
+            ]
+          },
+          "n_originals": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "eligible originals behind the row"
+          },
+          "expected_nbr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "excess_nbr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "n_fallback": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "originals whose baseline fell back from the same spot (REQ-STAT-BASE.3)"
+          },
+          "reports_per_km": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "n_bursty": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "originals at spots flagged bursty (REQ-STAT-BASE.2, methods.md burstiness flag, ops#141)"
+          },
+          "without_bursty": {
+            "anyOf": [
+              {
+                "type": "object",
+                "description": "the same row without the originals at flagged spots; its interval is a seeded bootstrap of those originals",
+                "properties": {
+                  "observed": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "expected": {
+                    "type": "number"
+                  },
+                  "excess": {
+                    "type": "number"
+                  },
+                  "lo": {
+                    "type": "number"
+                  },
+                  "hi": {
+                    "type": "number"
+                  },
+                  "n_originals": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "excess",
+                  "expected",
+                  "hi",
+                  "lo",
+                  "n_originals",
+                  "observed"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "null",
+                "description": "every original of the row is at a flagged spot"
+              }
+            ]
+          }
+        },
+        "required": [
+          "excess",
+          "expected",
+          "hi",
+          "kind",
+          "lo",
+          "name",
+          "observed",
+          "tier_set"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "shift": {
+      "type": "object",
+      "description": "REQ-STAT-SHIFT: observed count against the distribution of counts under random time shifts.",
+      "properties": {
+        "runs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "observed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mean": {
+          "type": "number"
+        },
+        "q025": {
+          "type": "number"
+        },
+        "q975": {
+          "type": "number"
+        },
+        "headline_zombies": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "runs",
+        "seed",
+        "observed",
+        "mean",
+        "q025",
+        "q975"
+      ],
+      "additionalProperties": true
+    },
+    "placebo": {
+      "type": "object",
+      "description": "REQ-STAT-PLACEBO: excess for a placebo outcome that should be about zero, with its interval.",
+      "properties": {
+        "excess": {
+          "type": "number"
+        },
+        "lo": {
+          "type": "number"
+        },
+        "hi": {
+          "type": "number"
+        },
+        "runs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "calibration_warning": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "excess",
+        "lo",
+        "hi"
+      ],
+      "additionalProperties": true
+    },
+    "baseline_sources": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "neighborhood_check": {
+      "enum": [
+        "ran",
+        "skipped"
+      ]
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "dataset": {
+      "enum": [
+        "sample",
+        "full"
+      ]
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "params": {
+      "type": "object"
+    },
+    "burstiness": {
+      "type": "object",
+      "description": "REQ-STAT-BASE.2: spots and headline-scope originals by burstiness flag (spots with at least 8 reports: dispersion above 2, or reports in fewer than half the distinct months a random spread gives; ops#146)",
+      "properties": {
+        "spots": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "flagged_spots": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "flagged_by_dispersion": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "flagged_by_concentration": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "assessed_spots": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "spots with at least 8 reports (BURST_MIN_REPORTS); the others are never flagged"
+        },
+        "originals": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "flagged_originals": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "data_version",
+    "rows"
+  ],
+  "additionalProperties": true
+}

@@ -17,6 +17,14 @@ import urllib.request
 from pathlib import Path
 
 PACKAGE_URL = "https://data.boston.gov/api/3/action/package_show?id=311-service-requests"
+PACKAGE_API = "https://data.boston.gov/api/3/action/package_show?id="
+# Geography files (REQ-ING-SNAP.1): raw file name -> (CKAN package id, resource format). Recorded in data/SNAPSHOT.md.
+GEO_FILES = {
+    "street_segments_sam.geojson": ("boston-street-segments-sam-system", "GEOJSON"),
+    "neighborhood_boundaries.geojson": ("bpda-neighborhood-boundaries", "GEOJSON"),
+}
+_GEO_NAMES = "|".join(re.escape(n) for n in GEO_FILES)
+GEO_ROW_RE = re.compile(rf"^\|\s*(?:{_GEO_NAMES})\s*\|.*\n?", re.MULTILINE)
 MIN_YEAR = 2015
 UA = "undead-311-pipeline/0.1 (+https://github.com/ShroudedArrow/undead-311)"
 
@@ -76,6 +84,48 @@ def wanted_resources(pkg: dict) -> list[dict]:
     return sorted(out, key=lambda x: x["label"])
 
 
+def geo_resource(pkg: dict, fmt: str) -> dict | None:
+    """The package's resource in `fmt` (GEOJSON, case-insensitive), or None."""
+    for r in pkg.get("resources", []):
+        if (r.get("format") or "").upper() == fmt.upper():
+            return r
+    return None
+
+
+def upsert_geo_rows(snapshot_text: str, rows: list[tuple]) -> str:
+    """`snapshot_text` with the geography rows replaced by `rows` (name, resource, last_modified, bytes, sha256), appended
+    after the table's last row. The 311 rows are left as they are (REQ-ING-SNAP.1)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from undead311.snapshot import BEGIN, extract_section, upsert_section
+
+    judging = extract_section(snapshot_text)  # the judging section stays below the download table
+    table = snapshot_text if judging is None else snapshot_text[: snapshot_text.find(BEGIN)]
+    kept = GEO_ROW_RE.sub("", table).rstrip("\n")
+    out = kept + "\n" + "".join(f"| {a} | {b} | {c} | {d} | {e} |\n" for a, b, c, d, e in rows)
+    return out if judging is None else upsert_section(out, judging)
+
+
+def download_geo(raw: Path) -> list[tuple]:
+    """Fetch the street segments and neighborhood boundaries into `raw` (skips files already present)."""
+    rows = []
+    for name, (package, fmt) in GEO_FILES.items():
+        res = geo_resource(fetch_json(PACKAGE_API + package)["result"], fmt)
+        if res is None:
+            raise RuntimeError(f"no {fmt} resource in CKAN package {package}")
+        dest = raw / name
+        if dest.exists() and dest.stat().st_size > 0:
+            print(f"skip {dest.name}")
+        else:
+            print(f"get  {dest.name}")
+            tmp = dest.with_suffix(".part")
+            with _OPENER.open(urllib.request.Request(res["url"], headers={"User-Agent": UA}), timeout=300) as resp, tmp.open("wb") as out:
+                while chunk := resp.read(1 << 20):
+                    out.write(chunk)
+            tmp.rename(dest)
+        rows.append((dest.name, res.get("name") or package, res.get("last_modified"), dest.stat().st_size, sha256(dest)))
+    return rows
+
+
 def sha256(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as f:
@@ -84,11 +134,25 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def write_snapshot(snap: Path, text: str) -> None:
+    """Write the download table, keeping the judging section that `make snapshot` wrote (REQ-OPS-SNAP.1)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from undead311.snapshot import extract_section, upsert_section
+
+    kept = extract_section(snap.read_text()) if snap.exists() else None
+    snap.write_text(upsert_section(text, kept) if kept else text)
+
+
 def main() -> None:
     data_dir = resolve_data_dir()
     raw = data_dir / "raw"
     raw.mkdir(parents=True, exist_ok=True)
     print(f"DATA_DIR resolved to {data_dir}")
+    snap = Path(repo_root() / "data" / "SNAPSHOT.md")
+    if "--geo-only" in sys.argv:  # fetch only the geography files and update their SNAPSHOT.md rows
+        snap.write_text(upsert_geo_rows(snap.read_text(), download_geo(raw)))
+        print(f"updated {snap}")
+        return
     pkg = fetch_json(PACKAGE_URL)["result"]
     rows = []
     for r in wanted_resources(pkg):
@@ -104,7 +168,7 @@ def main() -> None:
                     out.write(chunk)
             tmp.rename(dest)
         rows.append((dest.name, r["name"], r["last_modified"], dest.stat().st_size, sha256(dest)))
-    snap = Path(repo_root() / "data" / "SNAPSHOT.md")
+    rows += download_geo(raw)
     lines = [
         "# Data snapshot",
         "",
@@ -114,7 +178,7 @@ def main() -> None:
         "|---|---|---|---|---|",
     ]
     lines += [f"| {a} | {b} | {c} | {d} | {e} |" for a, b, c, d, e in rows]
-    snap.write_text("\n".join(lines) + "\n")
+    write_snapshot(snap, "\n".join(lines) + "\n")
     print(f"wrote {snap}")
 
 

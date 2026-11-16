@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/points.schema.json",
+  "title": "Map points (columnar)",
+  "description": "REQ-EXP-1. Parallel arrays, all of length n.",
+  "type": "object",
+  "properties": {
+    "data_version": {
+      "type": "string"
+    },
+    "n": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "id": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "lat": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      }
+    },
+    "lon": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      }
+    },
+    "tier": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "headline",
+          "source_unknown",
+          "city_rereport",
+          "sensitivity"
+        ]
+      }
+    },
+    "family": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "department": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "neighborhood": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "year": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      }
+    }
+  },
+  "required": [
+    "data_version",
+    "department",
+    "family",
+    "id",
+    "lat",
+    "lon",
+    "n",
+    "neighborhood",
+    "tier",
+    "year"
+  ],
+  "additionalProperties": true
+}

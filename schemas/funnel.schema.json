@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/funnel.schema.json",
+  "title": "Funnel plot data",
+  "description": "REQ-STAT-FUNNEL.",
+  "type": "object",
+  "properties": {
+    "data_version": {
+      "type": "string"
+    },
+    "citywide": {
+      "anyOf": [
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "limits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "n": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "lo95": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "hi95": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "lo998": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "hi998": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "hi95",
+          "hi998",
+          "lo95",
+          "lo998",
+          "n"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "department",
+              "neighborhood",
+              "family"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "n": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "k": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "raw": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "shrunk": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lo": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hi": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unusual": {
+            "type": "boolean"
+          },
+          "reports_per_km": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "raw_lo": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "raw_hi": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "hi",
+          "k",
+          "kind",
+          "lo",
+          "n",
+          "name",
+          "raw",
+          "shrunk",
+          "unusual"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "all_tiers": {
+      "type": "object",
+      "description": "the same statistic with source_unknown, city_rereport and sensitivity zombies added (REQ-STAT-TIER.1)"
+    },
+    "dataset": {
+      "enum": [
+        "sample",
+        "full"
+      ]
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "params": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "citywide",
+    "data_version",
+    "groups",
+    "limits"
+  ],
+  "additionalProperties": true
+}

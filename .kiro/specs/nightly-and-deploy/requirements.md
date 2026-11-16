@@ -32,7 +32,7 @@ IDs use the prefix `REQ-OPS-`. Layers follow docs/PROJECT.md: **demo-critical** 
 ### REQ-OPS-CACHE: Caching
 **Layer:** credibility
 **User story:** As a phone user, I want repeat visits to load instantly while data stays fresh, so the site feels fast and never shows stale numbers.
-1. Hashed asset files SHALL be served with `Cache-Control: public, max-age=31536000, immutable`. `index.html`, `status.json` and data manifests SHALL be served with `no-cache`. Precompressed `.gz` files SHALL be used where the host supports them.
+1. Hashed asset files SHALL be served with `Cache-Control: public, max-age=31536000, immutable`. `index.html`, `status.json` and data manifests SHALL be served with `no-cache`. Data files SHALL be plain JSON; the host compresses responses, and no precompressed `.gz` files are shipped (ops#184).
 
 ### REQ-OPS-NIGHTLY: Nightly data refresh (separate repo)
 **Layer:** credibility

@@ -1,0 +1,115 @@
+# Nightly deep property tests (REQ-OPS-PBT.1, .2; testing.md "nightly CI job"). Judged repo only; the data refresh is a
+# separate template under ops/. Every action is pinned and every job sets its own permissions (check O1).
+#
+# python: the whole pytest suite with the Hypothesis `deep` profile (10x the `fast` examples, pipeline/tests/conftest.py).
+#         Properties that pin `max_examples` scale it with `helpers.examples(N)` (10 x N under `deep`; a test enforces it).
+#         The example database `.hypothesis/deep` is restored before the run and saved after it with `if: always()`
+#         (actions/cache/save), so a night that fails still stores the falsifying example and the next run replays it first.
+#         A plain actions/cache step would skip the save on a failed job.
+# web:    vitest with every fast-check run count multiplied by 10, the default and a pinned `numRuns` alike
+#         (ops/deep-pbt/vitest.deep.config.ts aliases "fast-check" to ops/deep-pbt/fast-check.deep.mjs).
+# On a failure each job opens (or updates) a `type:finding` issue with the shrunk example (REQ-OPS-PBT.2) and a
+# `needs-human` alert (REQ-OPS-ALERT.1). Posting is fail-open (scripts/ci_channel.py always exits 0); the job still
+# ends red, so GitHub's own failure email is the fallback.
+name: deep-pbt
+
+on:
+  schedule:
+    - cron: "17 5 * * *"   # nightly, 05:17 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: deep-pbt
+  cancel-in-progress: false
+
+jobs:
+  python:
+    name: python (Hypothesis deep profile)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    env:
+      HYPOTHESIS_PROFILE: deep
+      GITHUB_CHANNEL_TOKEN: ${{ secrets.CHANNEL_TOKEN }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Create the uv cache folder
+        run: mkdir -p "$UV_CACHE_DIR"
+      - name: Restore the example database
+        uses: actions/cache/restore@v4
+        with:
+          path: .hypothesis
+          key: hypothesis-deep-${{ github.run_id }}
+          restore-keys: |
+            hypothesis-deep-
+      - name: Install Python dependencies
+        run: uv sync --locked --group dev
+      - name: Property tests, deep profile
+        id: pbt
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          uv run pytest -q -p no:cacheprovider 2>&1 | tee "$RUNNER_TEMP/pytest-deep.log"
+      # Saved whatever the run did (a failed run holds the falsifying example). The key is new every run; the next
+      # night restores the newest one through the restore-keys prefix.
+      - name: Save the example database
+        if: ${{ always() }}
+        uses: actions/cache/save@v4
+        with:
+          path: .hypothesis
+          key: hypothesis-deep-${{ github.run_id }}
+      - name: Report a failure to the channel
+        if: ${{ steps.pbt.outcome == 'failure' }}
+        continue-on-error: true
+        run: |
+          grep -B3 -A15 -m3 "Falsifying example\|^FAILED\|AssertionError" "$RUNNER_TEMP/pytest-deep.log" | head -80 > "$RUNNER_TEMP/example.txt" || true
+          [ -s "$RUNNER_TEMP/example.txt" ] || tail -60 "$RUNNER_TEMP/pytest-deep.log" > "$RUNNER_TEMP/example.txt"
+          python3 scripts/ci_channel.py finding --target engine --title "Deep property run failed (Hypothesis)" --example-file "$RUNNER_TEMP/example.txt" --run-url "$RUN_URL"
+          python3 scripts/ci_channel.py alert --title "Nightly deep property tests failed (Hypothesis)" --detail "The Hypothesis deep profile found a failure." --run-url "$RUN_URL"
+      - name: Fail the job when the properties failed
+        if: ${{ steps.pbt.outcome == 'failure' }}
+        run: exit 1
+
+  web:
+    name: web (fast-check, 10x runs)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      GITHUB_CHANNEL_TOKEN: ${{ secrets.CHANNEL_TOKEN }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      VITE_CONFIG_NATIVE_IGNORE_WARNING: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm --prefix web ci
+      - name: Property tests, 10x runs
+        id: pbt
+        continue-on-error: true
+        working-directory: web
+        run: |
+          set -o pipefail
+          npx vitest run --config ../ops/deep-pbt/vitest.deep.config.ts 2>&1 | tee "$RUNNER_TEMP/vitest-deep.log"
+      - name: Report a failure to the channel
+        if: ${{ steps.pbt.outcome == 'failure' }}
+        continue-on-error: true
+        run: |
+          grep -B3 -A15 -m3 "Property failed\|Counterexample\|FAIL" "$RUNNER_TEMP/vitest-deep.log" | head -80 > "$RUNNER_TEMP/example.txt" || true
+          [ -s "$RUNNER_TEMP/example.txt" ] || tail -60 "$RUNNER_TEMP/vitest-deep.log" > "$RUNNER_TEMP/example.txt"
+          python3 scripts/ci_channel.py finding --target web --title "Deep property run failed (fast-check)" --example-file "$RUNNER_TEMP/example.txt" --run-url "$RUN_URL"
+          python3 scripts/ci_channel.py alert --title "Nightly deep property tests failed (fast-check)" --detail "The fast-check 10x run found a failure." --run-url "$RUN_URL"
+      - name: Fail the job when the properties failed
+        if: ${{ steps.pbt.outcome == 'failure' }}
+        run: exit 1

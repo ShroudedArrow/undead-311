@@ -5,6 +5,13 @@ description = "The Undead 311: find Boston 311 cases that were closed and then r
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "duckdb>=1.1",
+    "jsonschema>=4.21",   # export contracts (zombie-engine design)
+    "numpy>=1.26",        # durability-stats: seeded resampling
+    "pandas>=2.0",        # neighborhood rewrite (DuckDB .df()); also a lifelines dependency
+    "scipy>=1.11",        # durability-stats: beta-binomial, binomial quantiles
+    "statsmodels>=0.14",  # tech.md statistics
+    "lifelines>=0.28",    # durability-stats: Kaplan-Meier
+    "shapely>=2.0",       # zombie-engine: segment snapping fallback when DuckDB spatial is unavailable
 ]
 
 [dependency-groups]
@@ -24,6 +31,7 @@ src = ["pipeline"]
 
 [tool.pytest.ini_options]
 testpaths = ["pipeline/tests"]
-pythonpath = ["pipeline"]
+pythonpath = ["pipeline", "pipeline/tests"]
 # A test module that cannot be imported is an error (pytest exit code 2), and an uncollectable Test* class is too.
 filterwarnings = ["error::pytest.PytestCollectionWarning"]
+markers = ["slow: full-data checks that need downloaded raw files (skipped when they are absent)"]

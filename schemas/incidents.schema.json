@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/incidents.schema.json",
+  "title": "Incident summary",
+  "description": "REQ-EXP-1. Output table `incidents` of zombie-definition.md.",
+  "type": "object",
+  "properties": {
+    "data_version": {
+      "type": "string"
+    },
+    "incidents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "incident_id": {
+            "type": "string"
+          },
+          "member_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "type_family": {
+            "type": "string"
+          },
+          "department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "neighborhood": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "district": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "segment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "close_time": {
+            "type": "string"
+          },
+          "coroner_label": {
+            "enum": [
+              "resolved",
+              "noted",
+              "invalid",
+              "duplicate",
+              "referred",
+              "made_safe_temporary",
+              "planned_followup",
+              "bulk_backlog",
+              "other"
+            ]
+          },
+          "bulk_closure": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "bulk_closure",
+          "close_time",
+          "coroner_label",
+          "department",
+          "district",
+          "incident_id",
+          "member_ids",
+          "neighborhood",
+          "segment_id",
+          "type_family"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": [
+    "data_version",
+    "incidents"
+  ],
+  "additionalProperties": true
+}

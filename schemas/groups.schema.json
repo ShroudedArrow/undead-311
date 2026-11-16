@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/groups.schema.json",
+  "title": "Group rates (shrunk)",
+  "description": "REQ-STAT-EB, REQ-STAT-REP.",
+  "type": "object",
+  "properties": {
+    "data_version": {
+      "type": "string"
+    },
+    "citywide": {
+      "anyOf": [
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "kappa": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "the concentration of the family groups (the kind whose groups give the citywide rate); every kind's value is in `kappas`"
+    },
+    "kappas": {
+      "type": "object",
+      "description": "beta-binomial concentration fitted per kind over groups that partition the eligible originals (REQ-STAT-EB.1)",
+      "properties": {
+        "department": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "family": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "neighborhood": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "department",
+              "neighborhood",
+              "family"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "n": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "k": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "raw": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "shrunk": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lo": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hi": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unusual": {
+            "type": "boolean"
+          },
+          "reports_per_km": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "raw_lo": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "raw_hi": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "hi",
+          "k",
+          "kind",
+          "lo",
+          "n",
+          "name",
+          "raw",
+          "shrunk",
+          "unusual"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "all_tiers": {
+      "type": "object",
+      "description": "the same statistic with source_unknown, city_rereport and sensitivity zombies added (REQ-STAT-TIER.1)"
+    },
+    "dataset": {
+      "enum": [
+        "sample",
+        "full"
+      ]
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "params": {
+      "type": "object"
+    },
+    "intensity": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "neighborhood": {
+            "type": "string"
+          },
+          "family": {
+            "type": "string"
+          },
+          "reports": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reports_per_km": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "neighborhood",
+          "family",
+          "reports",
+          "reports_per_km"
+        ]
+      }
+    },
+    "intensity_note": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "citywide",
+    "data_version",
+    "groups",
+    "kappa"
+  ],
+  "additionalProperties": true
+}

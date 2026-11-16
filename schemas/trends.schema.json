@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/trends.schema.json",
+  "title": "Rolling 6-month trends",
+  "description": "REQ-STAT-TREND.1: on-time and raw stayed-fixed rates in rolling windows of 6 calendar months (never a single month), by family and citywide, headline and all tiers.",
+  "type": "object",
+  "properties": {
+    "data_version": {
+      "type": "string"
+    },
+    "dataset": {
+      "enum": [
+        "sample",
+        "full"
+      ]
+    },
+    "params": {
+      "type": "object",
+      "properties": {
+        "WINDOW_DAYS": {
+          "type": "integer"
+        },
+        "RADIUS_M": {
+          "type": "number"
+        },
+        "matching": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "WINDOW_DAYS",
+        "RADIUS_M",
+        "matching"
+      ]
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "window_months": {
+      "type": "integer",
+      "minimum": 2,
+      "description": "months pooled in every row; never 1"
+    },
+    "note": {
+      "type": "string"
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "family": {
+            "type": "string"
+          },
+          "tier_set": {
+            "enum": [
+              "headline",
+              "all"
+            ]
+          },
+          "window_start": {
+            "type": "string",
+            "description": "calendar month YYYY-MM (UTC)"
+          },
+          "window_end": {
+            "type": "string",
+            "description": "calendar month YYYY-MM (UTC)"
+          },
+          "n_closed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "n_on_time_known": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "on_time": {
+            "type": "object",
+            "properties": {
+              "rate": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "lo": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "hi": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "k": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "n": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "reason": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "hi",
+              "lo",
+              "n",
+              "rate"
+            ],
+            "additionalProperties": true
+          },
+          "stayed_fixed_raw": {
+            "type": "object",
+            "properties": {
+              "rate": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "lo": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "hi": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "k": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "n": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "reason": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "hi",
+              "lo",
+              "n",
+              "rate"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "family",
+          "tier_set",
+          "window_start",
+          "window_end",
+          "n_closed",
+          "n_on_time_known",
+          "on_time",
+          "stayed_fixed_raw"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "data_version",
+    "window_months",
+    "note",
+    "rows",
+    "params",
+    "seed"
+  ],
+  "additionalProperties": false
+}

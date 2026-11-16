@@ -227,7 +227,7 @@ In this requirement, R is the incident's resurrection (its earliest attached re-
 ### REQ-EXP-SIZE: Payload budget
 **Layer:** credibility
 **User story:** As a phone user, I want the first view to load fast, so judge mode works on a phone.
-1. THE engine SHALL keep the files needed for the first view under 3 MB in total (before compression), shard cards by neighborhood and year, and write precompressed `.gz` copies.
+1. THE engine SHALL keep the files needed for the first view under 3 MB in total (before compression), shard cards by neighborhood and year, and write plain JSON (no precompressed copies; the host compresses responses, owner decision ops#184).
 2. THE engine SHALL report every exported file's size in the run report, and fail if the first-view budget is exceeded.
 
 ### REQ-EXP-PRIV: Block-level privacy for repeat offenders

@@ -1,0 +1,340 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/scorecard.schema.json",
+  "title": "Closed on time vs stayed fixed",
+  "description": "REQ-STAT-SF, REQ-STAT-TIER.",
+  "type": "object",
+  "properties": {
+    "data_version": {
+      "type": "string"
+    },
+    "scorecards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "family": {
+            "type": "string"
+          },
+          "tier_set": {
+            "enum": [
+              "headline",
+              "all"
+            ]
+          },
+          "n_closed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "n_on_time_known": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "on_time": {
+            "type": "object",
+            "properties": {
+              "rate": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "lo": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "hi": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "k": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "n": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "reason": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "hi",
+              "lo",
+              "n",
+              "rate"
+            ],
+            "additionalProperties": true
+          },
+          "stayed_fixed_raw": {
+            "type": "object",
+            "properties": {
+              "rate": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "lo": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "hi": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "k": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "n": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "reason": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "hi",
+              "lo",
+              "n",
+              "rate"
+            ],
+            "additionalProperties": true
+          },
+          "stayed_fixed_adj": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "rate": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lo": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "hi": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "k": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "n": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "reason": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "hi",
+                  "lo",
+                  "n",
+                  "rate"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "family",
+          "n_closed",
+          "n_on_time_known",
+          "on_time",
+          "stayed_fixed_adj",
+          "stayed_fixed_raw",
+          "tier_set"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "counts": {
+      "type": "object",
+      "properties": {
+        "headline": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_unknown": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sensitivity": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "city_rereport": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "city_rereport",
+        "headline",
+        "sensitivity",
+        "source_unknown"
+      ],
+      "additionalProperties": true
+    },
+    "params": {
+      "type": "object",
+      "properties": {
+        "WINDOW_DAYS": {
+          "type": "integer"
+        },
+        "RADIUS_M": {
+          "type": "number"
+        },
+        "matching": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "WINDOW_DAYS",
+        "RADIUS_M",
+        "matching"
+      ]
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "dataset": {
+      "enum": [
+        "sample",
+        "full"
+      ],
+      "description": "Whether the run read the committed sample or the full data; a sample rate is not a citywide figure. REQ-STAT-EXP.1"
+    },
+    "without_city_originated": {
+      "type": "object",
+      "description": "REQ-STAT-CITY.1: the headline scorecards and counts with city-originated re-reports removed",
+      "properties": {
+        "scorecards": {
+          "type": "array"
+        },
+        "counts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "counts",
+    "data_version",
+    "params",
+    "scorecards",
+    "seed"
+  ],
+  "additionalProperties": true
+}

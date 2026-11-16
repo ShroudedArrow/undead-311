@@ -4,119 +4,119 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
 
 ## Demo-critical
 
-- [ ] 1. [demo-critical] Package skeleton, paths and commands
+- [x] 1. [demo-critical] Package skeleton, paths and commands
   - Add `undead311/paths.py` (`data_dir()`, worktree-safe `repo_root()` via `git rev-parse --git-common-dir`), `undead311/cli.py` (`python -m undead311 pipeline [--sample]`), and Makefile targets `pipeline` and `pipeline-sample` (replacing the stub) using the same fallback.
   - Update docstrings that cite `REQ-ING-MIRROR` to cite REQ-DET-2 / REQ-ING-CATCH.
   - Unit tests: unset, missing and unwritable `DATA_DIR`; run from inside a worktree.
   - _Requirements: REQ-ING-PATH.1–3, REQ-ING-NIGHTLY.2_
-- [ ] 2. [demo-critical] Parameters module
+- [x] 2. [demo-critical] Parameters module
   - `detect/params.py` with a frozen `Params` dataclass and `DEFAULT`; MIRROR_WINDOW_HOURS imported from `closure_flags.py`.
   - Unit test that parses the Parameters section of `.kiro/steering/zombie-definition.md` and fails on any mismatch.
   - _Requirements: REQ-DET-PARAM.1–3_
-- [ ] 3. [demo-critical] Load raw files into DuckDB
+- [x] 3. [demo-critical] Load raw files into DuckDB
   - `ingest/load.py`: `raw_legacy`, `raw_new` from `$DATA_DIR/raw/` via `read_csv` (all varchar), row counts, a clear error naming a missing file and `make data-download`.
   - _Requirements: REQ-ING-1.1–3_
-- [ ] 4. [demo-critical] Normalize both systems
+- [x] 4. [demo-critical] Normalize both systems
   - `ingest/normalize.py`: the `cases_norm` view in the normalized schema plus `system`, `closure_code`; times through a DuckDB Python UDF that calls `times.to_utc_and_local`; unparseable values set to null and counted by reason.
-  - [ ] 4.1 Property P4 (part 1): normalization is invariant to input row order. _REQ-ING-2.3_
+  - [x] 4.1 Property P4 (part 1): normalization is invariant to input row order. _REQ-ING-2.3_
   - _Requirements: REQ-ING-2.1–3, REQ-ING-TZ.1–3_
-- [ ] 5. [demo-critical] Crosswalk and catch-all inheritance
+- [x] 5. [demo-critical] Crosswalk and catch-all inheritance
   - `ingest/crosswalk.py`: join `type_families.csv`; link table from legacy closure texts with `extract_linked_case_id`; `predecessor_ids` on successors; `resolve_catch_all` per catch-all case, including the all-excluded case.
   - Unit tests: core inherit, excluded inherit, disagree, unlisted, no link (reuse the patterns in `test_closure_flags.py`).
   - _Requirements: REQ-ING-XWALK.1–3, REQ-ING-CATCH.1–5_
-- [ ] 6. [demo-critical] Cleaning and exclusions
+- [x] 6. [demo-critical] Cleaning and exclusions
   - `ingest/clean.py`: null coordinates, Boston box, the two placeholder points, unlisted and excluded types; excluded IDs and counts by reason; candidate-placeholder report (more than 200 unrelated cases on one point).
   - _Requirements: REQ-ING-CLEAN.1–4_
-- [ ] 7. [demo-critical] PII scrubbing
+- [x] 7. [demo-critical] PII scrubbing
   - `ingest/pii.py` with per-pattern counts; applied to every exported free-text field.
-  - [ ] 7.1 Property P20: scrub is idempotent and removes every generated email and phone number. _REQ-ING-PII.1_
+  - [x] 7.1 Property P20: scrub is idempotent and removes every generated email and phone number. _REQ-ING-PII.1_
   - _Requirements: REQ-ING-PII.1–3_
-- [ ] 8. [demo-critical] Coroner templates and label join
+- [x] 8. [demo-critical] Coroner templates and label join
   - `coroner/templates.py` (masking, deduplication, `coroner_templates.csv`); `coroner/join.py` (precedence: Transitioned → referred, template label, then `NEW_SYSTEM_CLOSURE_LABELS`; `unlabeled` share; reject labels outside the set).
-  - [ ] 8.1 Property P5: every joined label is in the allowed set; an unknown label raises. _REQ-COR-1.4_
+  - [x] 8.1 Property P5: every joined label is in the allowed set; an unknown label raises. _REQ-COR-1.4_
   - _Requirements: REQ-COR-1.1–4_
-- [ ] 9. [demo-critical] Location matching and candidate edges
+- [x] 9. [demo-critical] Location matching and candidate edges
   - `detect/match.py` (haversine, the segment, then intersection, then radius rule exactly as written in zombie-definition.md (radius only when a case is unsnapped), `radius` mode for the grid); `detect/edges.py` (DuckDB grid-bucket join for member and re-report edges); brute-force generator for tests.
-  - [ ] 9.1 Property P6: distance is symmetric, non-negative, zero on identical points. _REQ-DET-MATCH.4_
-  - [ ] 9.2 Equivalence test: the SQL edges equal the brute-force edges on `data/sample`. _REQ-DET-MATCH.4_
-  - [ ] 9.3 Property P21: the matching rule over generated towns (crossing streets, a mid-block split, a dead end, an overpass); a unit test with a three-way intersection and cases 14 m and 16 m from it. _REQ-DET-MATCH.1–3, REQ-ING-SNAP.4_
-  - [ ] 9.4 Property P22: matching is symmetric. _REQ-DET-MATCH.4_
+  - [x] 9.1 Property P6: distance is symmetric, non-negative, zero on identical points. _REQ-DET-MATCH.4_
+  - [x] 9.2 Equivalence test: the SQL edges equal the brute-force edges on `data/sample`. _REQ-DET-MATCH.4_
+  - [x] 9.3 Property P21: the matching rule over generated towns (crossing streets, a mid-block split, a dead end, an overpass); a unit test with a three-way intersection and cases 14 m and 16 m from it. _REQ-DET-MATCH.1–3, REQ-ING-SNAP.4_
+  - [x] 9.4 Property P22: matching is symmetric. _REQ-DET-MATCH.4_
   - _Requirements: REQ-DET-MATCH.1–5_
-- [ ] 10. [demo-critical] Incidents
+- [x] 10. [demo-critical] Incidents
   - `detect/core.py`: the greedy incident pass in (open UTC, ID) order; span limit; close time = latest member close; label = latest-closing member's label; ID = smallest member ID.
-  - [ ] 10.1 Property P7: incidents partition the closed in-scope cases. _REQ-DET-1.1_
-  - [ ] 10.2 Property P12: a case opened at or after an incident's earliest member close is never its member. _REQ-DET-1.4_
+  - [x] 10.1 Property P7: incidents partition the closed in-scope cases. _REQ-DET-1.1_
+  - [x] 10.2 Property P12: a case opened at or after an incident's earliest member close is never its member. _REQ-DET-1.4_
   - _Requirements: REQ-DET-1.1–4_
-- [ ] 11. [demo-critical] Candidate pairs, mirrors and attribution
+- [x] 11. [demo-critical] Candidate pairs, mirrors and attribution
   - Strict `R.open > I.close`; window; family; transferred members; linked successors; mirror R dropped from attribution; exclusion counts; attribution to the most recent eligible incident (ties by ID); resurrection, `reports_after`, `gap_days`.
-  - [ ] 11.1 Property P1: a case is never its own zombie. _REQ-DET-2.1_
-  - [ ] 11.2 Property P2: every attached R opens strictly after its incident's close. _REQ-DET-2.1_
-  - [ ] 11.3 Property P3: raising RADIUS_M or WINDOW_DAYS never removes a case-level candidate pair. _REQ-DET-MATCH, REQ-DET-2_
-  - [ ] 11.4 Property P8: each R attaches to at most one incident; attribution is deterministic. _REQ-DET-3_
-  - [ ] 11.5 Property P14: mirror and transfer pairs never survive; same-system pairs are never mirrors; Transitioned originals never yield zombies. _REQ-DET-2.2, 2.4_
-  - [ ] 11.6 Property P15: a linked successor is never a re-report of its own predecessor's incident. _REQ-DET-2.3, REQ-ING-CATCH.5_
+  - [x] 11.1 Property P1: a case is never its own zombie. _REQ-DET-2.1_
+  - [x] 11.2 Property P2: every attached R opens strictly after its incident's close. _REQ-DET-2.1_
+  - [x] 11.3 Property P3: raising RADIUS_M or WINDOW_DAYS never removes a case-level candidate pair. _REQ-DET-MATCH, REQ-DET-2_
+  - [x] 11.4 Property P8: each R attaches to at most one incident; attribution is deterministic. _REQ-DET-3_
+  - [x] 11.5 Property P14: mirror and transfer pairs never survive; same-system pairs are never mirrors; Transitioned originals never yield zombies. _REQ-DET-2.2, 2.4_
+  - [x] 11.6 Property P15: a linked successor is never a re-report of its own predecessor's incident. _REQ-DET-2.3, REQ-ING-CATCH.5_
   - _Requirements: REQ-DET-2.1–5, REQ-DET-3.1–3_
-- [ ] 12. [demo-critical] Classification and tiers
+- [x] 12. [demo-critical] Classification and tiers
   - Planned follow-ups (legacy city-originated resurrection), `after_temporary_fix`, `source_unknown`, separate deaths, tier precedence, headline count.
-  - [ ] 12.1 Property P16: an unlinked or ambiguous catch-all case never enters the headline. _REQ-DET-TIER.4, REQ-ING-CATCH.3_
-  - [ ] 12.2 Property P17: exactly one tier per zombie; headline count = headline zombies. _REQ-DET-TIER.1–2_
-  - [ ] 12.3 Property P18: the step 6 outcomes for every combination of label, system and source. _REQ-DET-PF_
+  - [x] 12.1 Property P16: an unlinked or ambiguous catch-all case never enters the headline. _REQ-DET-TIER.4, REQ-ING-CATCH.3_
+  - [x] 12.2 Property P17: exactly one tier per zombie; headline count = headline zombies. _REQ-DET-TIER.1–2_
+  - [x] 12.3 Property P18: the step 6 outcomes for every combination of label, system and source. _REQ-DET-PF_
   - _Requirements: REQ-DET-PF.1–4, REQ-DET-TIER.1–4, REQ-DET-SEP.1_
-- [ ] 13. [demo-critical] Chains and repeat offenders
+- [x] 13. [demo-critical] Chains and repeat offenders
   - Link zombie incidents through closed resurrections; `chain_id`; chain-total `times_risen`; repeat-offender flag on headline count ≥ 3.
   - _Requirements: REQ-DET-CHAIN.1–3_
-- [ ] 14. [demo-critical] Metamorphic properties
-  - [ ] 14.1 Property P9: a uniform small translation or a uniform time shift leaves zombie counts per tier unchanged. _testing.md #14_
-  - [ ] 14.2 Property P10: duplicating a closed case never increases the zombie count. _testing.md #15_
-  - [ ] 14.3 Property P4 (part 2): detection and exports are invariant to input row order. _REQ-EXP-1.3_
-- [ ] 15. [demo-critical] Test-town loader and golden test
+- [x] 14. [demo-critical] Metamorphic properties
+  - [x] 14.1 Property P9: a uniform small translation or a uniform time shift leaves zombie counts per tier unchanged. _testing.md #14_
+  - [x] 14.2 Property P10: duplicating a closed case never increases the zombie count. _testing.md #15_
+  - [x] 14.3 Property P4 (part 2): detection and exports are invariant to input row order. _REQ-EXP-1.3_
+- [x] 15. [demo-critical] Test-town loader and golden test
   - `fixtures.py` loads the raw fixture rows into `cases_norm` and runs the normal crosswalk, catch-all, clean and detect path; `golden_result()` builds the worksheet format; `schemas/test_town_expected.schema.json` validates the owner's file.
   - The golden test fails (never skips) when `expected_zombies.json` is missing. Never create or edit that file.
   - _Requirements: REQ-DET-GOLD.1–5_
-- [ ] 16. [demo-critical] Confidence score (partial)
+- [x] 16. [demo-critical] Confidence score (partial)
   - `detect/confidence.py` with the formula in design.md; neutral terms and `confidence_partial`; write the formula and weights into `docs/METHODS.md` (section "Confidence score") marked "pending owner approval".
-  - [ ] 16.1 Property P19: confidence is in [0, 1]; `confidence_partial` is true exactly when a term is neutral. _REQ-CONF.1–2_
+  - [x] 16.1 Property P19: confidence is in [0, 1]; `confidence_partial` is true exactly when a term is neutral. _REQ-CONF.1–2_
   - _Requirements: REQ-CONF.1–3_
-- [ ] 17. [demo-critical] Skeptic input and join
+- [x] 17. [demo-critical] Skeptic input and join
   - `detect/skeptic.py`: `skeptic_input.json` (validation sample, tour zombies, 200 headline zombies with the most re-reports; never by confidence) and the join of `data/labels/skeptic_objections.json` with `not_reviewed` default.
   - _Requirements: REQ-SKEP.1–2_
-- [ ] 18. [demo-critical] Exports and contracts
+- [x] 18. [demo-critical] Exports and contracts
   - JSON Schemas in `/schemas/` for every engine file; deterministic writers (sorted, stable IDs, `data_version`); cards with scrubbed text; columnar points; `status.json` written last (folding in `stats_status.json` when present); atomic DuckDB write.
-  - [ ] 18.1 Property P11: every exported file validates; an invalid record is refused before writing. _REQ-EXP-1.1_
-  - [ ] 18.2 Test: two runs on the same input give byte-identical files. _REQ-EXP-1.3_
+  - [x] 18.1 Property P11: every exported file validates; an invalid record is refused before writing. _REQ-EXP-1.1_
+  - [x] 18.2 Test: two runs on the same input give byte-identical files. _REQ-EXP-1.3_
   - _Requirements: REQ-EXP-1.1–4_
-- [ ] 19. [demo-critical] Pipeline orchestration
+- [x] 19. [demo-critical] Pipeline orchestration
   - `make pipeline` and `make pipeline-sample` run load → normalize → crosswalk → clean → Coroner join → detect → (stats, when present) → export, with a run report (row counts, exclusions, excluded pairs, label coverage, PII counts, file sizes).
   - _Requirements: REQ-ING-1, REQ-ING-NIGHTLY.2, REQ-ING-SAMPLE.1_
-- [ ] 20. [demo-critical] Checkpoint
+- [x] 20. [demo-critical] Checkpoint
   - `make test` passes including the golden test (it fails until the owner's answer key exists; that is expected and reported, not worked around). Ask nothing; post status to the channel.
 
 ## Credibility
 
-- [ ] 21. [credibility] SAM segments and snapping
+- [x] 21. [credibility] SAM segments and snapping
   - Extend `pipeline/scripts/download.py` to fetch Boston Street Segments and neighborhood boundaries into `$DATA_DIR/raw/` and record them in `data/SNAPSHOT.md`; `ingest/snap.py` (DuckDB spatial, or shapely fallback); the `intersections` table and `near_node_ids` (REQ-ING-SNAP.4); `segments: unavailable` status when missing; a test that checks the intersection count against the downloaded file.
   - _Requirements: REQ-ING-SNAP.1–6_
-- [ ] 22. [credibility] Bulk-closure detector
+- [x] 22. [credibility] Bulk-closure detector
   - `detect/bulk.py`: groups by department, close date and template; the separate `bulk_closure` flag (the label is never overwritten); `bulk_closures.json` and schema; BULK_MIN_CASES = 50 and BULK_RATIO = 10 come from `detect/params.py` (zombie-definition.md step 10).
   - _Requirements: REQ-BULK.1–2_
-- [ ] 23. [credibility] Coroner evaluation
+- [x] 23. [credibility] Coroner evaluation
   - `make coroner-eval`: accuracy, Wilson interval and top confusions into `docs/VALIDATION.md`; exits 0 with a message when the hand labels are missing.
   - _Requirements: REQ-COR-EVAL.1–2_
-- [ ] 24. [credibility] Sensitivity runs
+- [x] 24. [credibility] Sensitivity runs
   - `detect/grid.py`: 18 grid points plus the run without Street Light Other into the `grid_runs` table.
   - _Requirements: REQ-SENS-RUN.1–2_
-- [ ] 25. [credibility] Payload budget
-  - Shard cards by neighborhood and year, write `.gz` copies, report sizes, fail over the 3 MB first-view budget.
+- [x] 25. [credibility] Payload budget
+  - Shard cards by neighborhood and year, write plain JSON (ops#184), report sizes, fail over the 3 MB first-view budget.
   - _Requirements: REQ-EXP-SIZE.1–2_
-- [ ] 26. [credibility] Safe re-runs
+- [x] 26. [credibility] Safe re-runs
   - Build outputs into a temporary folder and swap only on success; a failed stage leaves the previous outputs untouched (test with an injected failure).
   - _Requirements: REQ-ING-NIGHTLY.1_
-- [ ] 27. [credibility] Full confidence score
+- [x] 27. [credibility] Full confidence score (unblocked by durability-stats task 5: `stats.pipeline.zombie_baselines` gives every zombie a `baseline_p`; ops#82)
   - Use `baseline_p` from durability-stats and Skeptic verdicts; `confidence_partial` turns false; update METHODS.md.
   - _Requirements: REQ-CONF.1–2, REQ-SKEP.2_
 
 ## Delight
 
-- [ ] 28. [delight] Block-level privacy for repeat offenders
+- [x] 28. [delight] Block-level privacy for repeat offenders
   - Segment midpoint (or 100 m cell center) for resident-driven residential chains; unit tests for each branch.
   - _Requirements: REQ-EXP-PRIV.1_

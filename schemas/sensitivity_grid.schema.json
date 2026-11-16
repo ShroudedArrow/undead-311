@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://undead-311/schemas/sensitivity_grid.schema.json",
+  "title": "Sensitivity grid",
+  "description": "REQ-STAT-GRID, REQ-SENS-RUN.",
+  "type": "object",
+  "properties": {
+    "data_version": {
+      "type": "string"
+    },
+    "points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "matching": {
+            "enum": [
+              "segment",
+              "radius"
+            ]
+          },
+          "radius_m": {
+            "enum": [
+              15,
+              30,
+              50
+            ]
+          },
+          "window_days": {
+            "enum": [
+              30,
+              60,
+              90
+            ]
+          },
+          "headline": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "source_unknown": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "city_rereport": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sensitivity": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "excess": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stayed_fixed_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "excess_lo": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "lower end of the 95% bootstrap interval of `excess` (200 seeded replicates; ops#182); null when `excess` is null"
+          },
+          "excess_hi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "upper end of the 95% bootstrap interval of `excess`"
+          },
+          "stayed_fixed_lo": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "lower end of the 95% Wilson interval of `stayed_fixed_rate`"
+          },
+          "stayed_fixed_hi": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "upper end of the 95% Wilson interval of `stayed_fixed_rate`"
+          }
+        },
+        "required": [
+          "city_rereport",
+          "excess",
+          "headline",
+          "matching",
+          "radius_m",
+          "sensitivity",
+          "source_unknown",
+          "stayed_fixed_rate",
+          "window_days"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "without_street_light_other": {
+      "type": "object",
+      "properties": {
+        "headline": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "all_tiers": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "all_tiers",
+        "headline"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "data_version",
+    "points",
+    "without_street_light_other"
+  ],
+  "additionalProperties": true
+}
