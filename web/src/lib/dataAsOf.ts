@@ -18,3 +18,13 @@ export function dataAsOfLabel(status: { data_end?: string; last_run: string; ok:
 export function isFixtureData(status: { data_version: string } | null | undefined): boolean {
   return Boolean(status && status.data_version.startsWith("fixture-"));
 }
+
+/**
+ * The number of cases behind a sample run, or null for a full-data run (REQ-WEB-FRESH.1, ops issue 216). The sample count is
+ * `row_counts.sample_rows`, falling back to `in_scope_cases`.
+ */
+export function sampleCaseCount(status: { dataset?: "sample" | "full"; row_counts: Record<string, number> } | null | undefined): number | null {
+  if (!status || status.dataset !== "sample") return null;
+  const n = status.row_counts.sample_rows ?? status.row_counts.in_scope_cases;
+  return typeof n === "number" ? n : null;
+}

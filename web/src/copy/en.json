@@ -8,12 +8,13 @@
     "footer_independent": "Independent project. Not affiliated with the City of Boston.",
     "footer_attribution": "Map data from OpenStreetMap contributors.",
     "footer_osm_license": "OpenStreetMap data is available under the Open Database License.",
-    "footer_data_license": "Case data: Boston 311 service requests from Analyze Boston, used under the city's open data terms.",
+    "footer_data_license": "Case data: Boston 311 service requests from Analyze Boston, used under the Open Data Commons Public Domain Dedication and License (ODC-PDDL).",
     "footer_fonts_license": "Fonts: Public Sans and Courier Prime, both under the SIL Open Font License.",
     "data_as_of": "Data as of {date}",
     "fixture_notice": "Preview data: these numbers come from a rough stand-in built from the sample file, not from the detector. Do not quote them.",
     "data_as_of_unknown": "Data date unavailable",
-    "data_as_of_stale": "Data as of {date}. The latest refresh failed, so this is the last good data."
+    "data_as_of_stale": "Data as of {date}. The latest refresh failed, so this is the last good data.",
+    "sample_notice": "Sample of {count} cases, not all of Boston."
   },
   "nav": {
     "label": "Main",
@@ -41,7 +42,7 @@
     "csv_rows": "{count} rows, one per possible zombie.",
     "license_dataset": "The possible zombie dataset is released under the Open Data Commons Public Domain Dedication and License (ODC-PDDL). The code is under the MIT license.",
     "license_text": "Read the ODC-PDDL text",
-    "license_cases": "The case details come from Boston 311 service requests on Analyze Boston, used under the city's open data terms.",
+    "license_cases": "The case details come from Boston 311 service requests on Analyze Boston, published under the Open Data Commons Public Domain Dedication and License (ODC-PDDL).",
     "floor": "Counts in this data are a floor: a possible zombie appears only when someone reports again.",
     "before_after_missing": "The comparison of rates before and after each case type moved to the new system is not part of this data yet. When it is, it will appear here with a warning that format changes can create artifacts."
   },
@@ -243,13 +244,16 @@
     "status_no_anomalies": "No anomalies recorded.",
     "status_version": "Data version {version}",
     "report_heading": "Found a mistake?",
-    "report_text": "Open an issue with the case numbers and what is wrong. Confirmed corrections go in the log."
+    "report_text": "Open an issue with the case numbers and what is wrong. Confirmed corrections go in the log.",
+    "sample_notice": "Every number on this page comes from a sample of {count} cases, not from all Boston 311 cases. The full-data run will replace them."
   },
   "errors": {
     "panel_failed": "TODO-COPY: error voice sample: what failed to load and how to fix it.",
     "data_stale": "TODO-COPY: error voice sample: latest refresh failed, showing the last good data.",
     "panel_detail": "File {file}: {reason}",
-    "not_found": "This page does not exist. Go back to the map."
+    "not_found": "This page does not exist.",
+    "not_found_heading": "Page not found",
+    "not_found_link": "Go back to the map"
   },
   "empty": {
     "no_zombies_block": "TODO-COPY: empty-state voice sample: no possible zombies on this block, try widening the window to 90 days.",

@@ -94,20 +94,21 @@ describe("fixture files follow the schemas (REQ-WEB-DATA.3)", () => {
     const picked = zs.data.zombies.filter((z) => tour.data.zombie_ids.includes(z.zombie_id));
     expect(picked).toHaveLength(3);
     expect(new Set(picked.map((z) => z.type_family)).size).toBeGreaterThan(1);
-    const gaps = picked.map((z) => z.gap_days);
-    expect(Math.max(...gaps) - Math.min(...gaps)).toBeGreaterThan(5);
+    // The gap spread (UX-1) is no longer asserted: the owner's ranking (ops#215, "survives" first) decides the picks, and
+    // on the sample its three survivors are 1.8 to 3.4 days apart. More than one case type still holds.
     expect(tour.data.provisional).toBe(true);
   });
 });
 
 describe("fixture judge tour follows REQ-STAT-TOUR.1 (UX-10)", () => {
-  it("is the three headline zombies with the most re-reports, ties by zombie ID, never by confidence, when no override file exists", () => {
+  it("is the three headline zombies ranked survives, weakened, not_reviewed (ops#215), then most re-reports, ties by zombie ID, never by confidence, when no override file exists", () => {
     const tour = read("judge_tour.json") as { source: string; provisional: boolean; zombie_ids: string[] };
     const zs = parseZombies(read("zombies.json"));
     if (!zs.ok) throw new Error("fixture does not parse");
+    const RANK: Record<string, number> = { survives: 0, weakened: 1, not_reviewed: 2, explained_away: 3 };
     const expected = zs.data.zombies
       .filter((z) => z.tier === "headline" && z.skeptic_verdict !== "explained_away" && z.gap_days * 24 >= 1 && !z.city_rereport)
-      .sort((a, b) => b.reports_after - a.reports_after || (a.zombie_id < b.zombie_id ? -1 : a.zombie_id > b.zombie_id ? 1 : 0))
+      .sort((a, b) => RANK[a.skeptic_verdict] - RANK[b.skeptic_verdict] || b.reports_after - a.reports_after || (a.zombie_id < b.zombie_id ? -1 : a.zombie_id > b.zombie_id ? 1 : 0))
       .slice(0, 3)
       .map((z) => z.zombie_id);
     expect(existsSync(join(__dirname, "..", "..", "..", "data", "labels", "judge_tour_override.json"))).toBe(false);

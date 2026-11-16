@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Route, Routes, useLocation } from "react-router-dom";
+import { Link, Route, Routes, useLocation } from "react-router-dom";
 import { Shell } from "./components/Shell";
 import { LangContext } from "./lib/lang";
 import { setLang, spanishAvailable, t, type Lang } from "./lib/t";
@@ -18,8 +18,11 @@ import StreetPage from "./pages/StreetPage";
 
 function NotFound() {
   return (
-    <div style={{ padding: "var(--space-3)" }}>
-      <p>{t("errors.not_found")}</p>
+    <div className="page" data-testid="not-found">
+      <h1>{t("errors.not_found_heading")}</h1>
+      <p>
+        {t("errors.not_found")} <Link to="/">{t("errors.not_found_link")}</Link>
+      </p>
     </div>
   );
 }

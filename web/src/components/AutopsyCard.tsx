@@ -108,7 +108,8 @@ export function AutopsyCard({ card }: { card: CardWithPartial }) {
 
         <section className="skeptic" aria-label={t("card.skeptic")}>
           <h3>{t("card.skeptic")}</h3>
-          <p>{card.skeptic_notes || t("card.no_notes")}</p>
+          {/* Ops issue 217: an unreviewed card shows only the not-reviewed verdict, so it never reads as cleared. */}
+          {card.skeptic_verdict === "not_reviewed" && !card.skeptic_notes ? null : <p>{card.skeptic_notes || t("card.no_notes")}</p>}
           <p>
             <strong>{t("card.verdict")}:</strong> {t(VERDICTS[card.skeptic_verdict])}
           </p>

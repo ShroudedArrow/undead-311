@@ -116,6 +116,11 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 }
 .site-header .data-status { margin-left: auto; font-size: var(--step--1); max-width: 34rem; }
 .site-header .data-status p { margin: 0; max-width: none; }
+/* Ops issue 216: the sample note shares the "Data as of" line; on small phones the two lines sit tighter so the map stays high. */
+@media (max-width: 380px) {
+  .site-header .data-status p { line-height: 1.25; }
+  .site-header { row-gap: var(--space-1); }
+}
 .site-header .fixture-notice { border: 2px dashed var(--crew-white); padding: var(--space-1) var(--space-2); margin-top: var(--space-1); font-weight: 600; }
 
 .site-footer {

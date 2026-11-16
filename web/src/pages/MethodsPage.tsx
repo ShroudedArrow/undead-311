@@ -5,6 +5,7 @@ import { PanelError } from "../components/PanelError";
 import { ReportError } from "../components/ReportError";
 import { Link } from "react-router-dom";
 import { useData } from "../lib/data";
+import { sampleCaseCount } from "../lib/dataAsOf";
 import { formatDateTime } from "../lib/format";
 import { familyLabel } from "../lib/labels";
 import { familyExcessRows, num1, readPlacebo, readShift } from "../lib/methods";
@@ -208,11 +209,24 @@ function Status() {
   );
 }
 
+/** ops issue 216: on a sample run the methods page says, in its own words, that every number below comes from the sample. */
+function MethodsSampleNotice() {
+  const status = useData("status.json", parseStatus);
+  const n = status.status === "ok" ? sampleCaseCount(status.data) : null;
+  if (n === null) return null;
+  return (
+    <p className="fixture-notice" data-testid="methods-sample-notice" role="note">
+      {t("methods.sample_notice", { count: n.toLocaleString("en-US") })}
+    </p>
+  );
+}
+
 /** Methods page: definitions, baselines, shift test, placebo, validation, limits, nightly status and what the headline leaves out (REQ-WEB-METHODS.1, REQ-WEB-FRESH.2, REQ-WEB-DEATHS.1). */
 export default function MethodsPage() {
   return (
     <div className="page">
       <h1>{t("methods.title")}</h1>
+      <MethodsSampleNotice />
       <p data-testid="methods-intro">{t("methods.intro")}</p>
       <Definitions />
       <Baselines />

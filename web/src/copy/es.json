@@ -8,7 +8,10 @@
     "labels",
     "families",
     "nav",
-    "lang"
+    "lang",
+    "methods",
+    "errors",
+    "open"
   ],
   "tiers": {
     "headline": "Conteo principal",
@@ -19,7 +22,9 @@
   "app": {
     "title": "The Undead 311",
     "footer_independent": "Proyecto independiente. Sin afiliación con la Ciudad de Boston.",
-    "footer_attribution": "Datos del mapa de colaboradores de OpenStreetMap."
+    "footer_attribution": "Datos del mapa de colaboradores de OpenStreetMap.",
+    "sample_notice": "Muestra de {count} casos, no todo Boston.",
+    "footer_data_license": "Datos de casos: solicitudes de servicio del 311 de Boston en Analyze Boston, usadas bajo la licencia Open Data Commons Public Domain Dedication and License (ODC-PDDL)."
   },
   "lang": {
     "label": "Idioma",
@@ -125,5 +130,16 @@
     "street_fixture": "Elementos de la calle",
     "all": "Todos los tipos de caso",
     "citywide": "Toda la ciudad"
+  },
+  "methods": {
+    "sample_notice": "Todas las cifras de esta página vienen de una muestra de {count} casos, no de todos los casos del 311 de Boston. El análisis con todos los datos las reemplazará."
+  },
+  "errors": {
+    "not_found_heading": "Página no encontrada",
+    "not_found": "Esta página no existe.",
+    "not_found_link": "Volver al mapa"
+  },
+  "open": {
+    "license_cases": "Los detalles de los casos vienen de las solicitudes de servicio del 311 de Boston en Analyze Boston, publicadas bajo la licencia Open Data Commons Public Domain Dedication and License (ODC-PDDL)."
   }
 }
