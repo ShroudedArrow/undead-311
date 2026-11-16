@@ -388,3 +388,22 @@ def test_req_ops_run_4_a_time_budget_stops_cleanly_after_a_stage_and_the_next_st
     assert not (logs / "t1.attempts.json").exists() and not (logs / "t1.STOPPED").exists()
     assert run_main(tmp_path, monkeypatch) == 0
     assert "resume: found a partial build" in (logs / "t1.log").read_text()
+
+
+def test_req_ops_run_4_the_budget_never_stops_after_an_unmarked_step(tmp_path, monkeypatch):
+    """REQ-OPS-RUN.4: with every committed stage already done, budget 0 still finishes (detect, stats and export have no
+    marker, so stopping after them would redo them on every leg)."""
+    assert run_main(tmp_path, monkeypatch) == 0
+    for p in (tmp_path / "data" / "processed").glob("undead311.duckdb*"):
+        p.unlink()
+    (tmp_path / "data" / "logs" / "t1.stages" / "fingerprint.txt").unlink()  # fresh start
+    with pytest.raises(SystemExit):
+        run_main(tmp_path, monkeypatch, "--budget-min", "0")  # stops after load, a committed stage
+    monkeypatch.setattr(run_full, "StageRunner", run_full.StageRunner)
+    # second leg: only unmarked steps and later stages remain; the budget fires after the next committed stage, never
+    # after `detect` or `export`
+    with pytest.raises(SystemExit):
+        run_main(tmp_path, monkeypatch, "--budget-min", "0")
+    log = (tmp_path / "data" / "logs" / "t1.log").read_text()
+    stops = [line for line in log.splitlines() if "time budget" in line]
+    assert stops and not any("after stage detect" in s or "after stage export" in s or "after stage templates" in s for s in stops)

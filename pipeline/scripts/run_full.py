@@ -174,7 +174,9 @@ def _run(a: argparse.Namespace, root: Path, base: Path, logs: Path) -> int:
         if stop_file.exists():
             say("kill switch: .kiro/STOP found after a stage; stopping")
             raise SystemExit(3)
-        if a.budget_min is not None and time.time() - t_start > a.budget_min * 60:
+        # Only after a committed stage (seq > 0): stopping after an unmarked step (detect, stats, export) would throw its work
+        # away and the next leg would redo it, so a long tail could loop forever.
+        if a.budget_min is not None and rec.get("seq", 0) > 0 and time.time() - t_start > a.budget_min * 60:
             say(f"time budget of {a.budget_min:g} min used after stage {rec['stage']}; stopping cleanly, start again to resume")
             raise SystemExit(4)
 
