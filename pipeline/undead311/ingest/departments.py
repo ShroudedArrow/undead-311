@@ -4,7 +4,8 @@ The legacy system writes a code (`PWDx`) and the new system a name (`Public Work
 rows in every table. `department_crosswalk.csv` maps each raw value to one key (the legacy code, which the site already uses),
 with the source of every mapping. `status` is `official` (the CRM Value Code Index lists the code), `mapped` (a name or
 abbreviation match, source named in the row) or `flagged` (no mapping found: the value is kept under its own name and the
-owner decides). A value that is missing from the file is also kept as it is and counted as unlisted. A missing (NULL)
+owner decides). Two more statuses record owner decisions (2026-11-16): `as_published` (kept as the code the city
+publishes, shown with that note) and `excluded` (a test queue: `clean` drops its cases as `test_data`). A value that is missing from the file is also kept as it is and counted as unlisted. A missing (NULL)
 department stays NULL.
 """
 
@@ -17,7 +18,7 @@ from pathlib import Path
 import duckdb
 
 DEPARTMENTS_CSV = Path(__file__).with_name("department_crosswalk.csv")
-STATUSES = ("official", "mapped", "flagged")
+STATUSES = ("official", "mapped", "as_published", "excluded", "flagged")
 
 
 @dataclass

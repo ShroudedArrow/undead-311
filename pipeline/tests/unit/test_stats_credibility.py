@@ -263,7 +263,7 @@ def test_req_stat_shift_1_own_member_reports_are_never_counted_when_a_closure_is
     assert sp is not None and sp.own_inc.size == 3  # every member is in the spot's group
     ids = sorted(i.incident_id for i in res.incidents)
     ab = ids.index(next(i.incident_id for i in res.incidents if set(i.member_ids) == {"A", "B"}))
-    t_min = min(float(m.groups[k][0][0]) for k in sp.keys)
+    t_min = min(float(m.groups[k][0][0]) for k in sp.areas)
     early = np.full((len(ids), 1), day(90).timestamp())  # (90, 150] holds A and B (and not Z)
     hits = _hits(sp, t_min, m.window_s, early)[:, 0]
     assert hits[ab] == 0 and hits.sum() == 1  # the A+B incident does not count its own members; Z counts them
@@ -381,7 +381,8 @@ def test_req_stat_grid_1_a_radius_mode_run_keys_snapped_cases_by_cell_not_by_seg
     assert spot_key("SEG-1", 42.3, -71.1, replace(radius, RADIUS_M=15)) != spot_key("SEG-1", 42.3, -71.1015, radius)
     cs = [mk("A", 0, 1, segment="SEG-1"), mk("R", 10, segment="SEG-1", x=300.0)]  # 300 m apart on one long segment
     m = BaselineModel({c.id: c for c in cs}, detect(cs, radius), radius, day(300))
-    assert all(key[1].startswith("cell:") for key in m.groups)
+    assert all(sk[1].startswith("cell:") for sk in m._spot_key.values())  # the spot (clusters, shifts) is the cell ...
+    assert all(len(m.areas.rows[n]) == 1 for n in m._area_no.values())  # ... and the 300 m away report is not in A's match area
 
 
 def test_req_stat_eb_1_kappa_is_fitted_per_kind_over_groups_that_partition_the_originals():
@@ -636,10 +637,10 @@ def test_req_stat_placebo_1_a_shift_of_zero_reproduces_the_excess_with_the_same_
     m = BaselineModel({c.id: c for c in cs}, res, data_end=day(4000))
     sp = _build(m)
     assert sp is not None and sp.spot_based.any()
-    got = _placebo(m, sp, np.zeros((len(sp.keys), 1)), min(float(m.groups[k][0][0]) for k in sp.keys), 311)
+    got = _placebo(m, sp, np.zeros((sp.n_spots, 1)), min(float(m.groups[k][0][0]) for k in sp.areas), 311)
     shift, _ = shift_and_placebo(m, 311, 10, 1)
     expected = sum(m.estimate(i).p or 0.0 for i in eligible_originals(res.incidents, m.data_end, m.params)
-                   if m._incident_key[i.incident_id] in sp.keys)  # fmt: skip
+                   if m._incident_key[i.incident_id] in sp.areas)  # fmt: skip
     assert got is not None and shift is not None
     assert got.excess == pytest.approx(shift.observed - expected, abs=1e-6)
 

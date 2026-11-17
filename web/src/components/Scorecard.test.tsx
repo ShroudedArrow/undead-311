@@ -79,7 +79,8 @@ const exRow = (over: Partial<ExcessRow> = {}): ExcessRow => ({
   kind: "family", name: "sign", tier_set: "headline", observed: 90, expected: 26.6, excess: 63.4, lo: 41.3, hi: 86, n_originals: 1504, n_bursty: 1479,
   without_bursty: { observed: 10, expected: 12.9, excess: -2.9, lo: -12.1, hi: 6.1, n_originals: 25 }, ...over,
 });
-const exFile = (rows: ExcessRow[]): ExcessFile => ({ data_version: "v", rows } as ExcessFile);
+// a placebo that covers 0: the excess may be shown (methods.md); `withheld` is a placebo that does not
+const exFile = (rows: ExcessRow[], placebo = { excess: 1, lo: -3, hi: 4, runs: 10, calibration_warning: false }): ExcessFile => ({ data_version: "v", rows, placebo } as ExcessFile);
 
 describe("Scorecard excess with and without bursty spots (REQ-STAT-BASE.2, REQ-WEB-SCORE.1, ops#130)", () => {
   it("shows both excess figures with intervals and the bursty share under each case type, and says it is not the headline", () => {
@@ -90,6 +91,11 @@ describe("Scorecard excess with and without bursty spots (REQ-STAT-BASE.2, REQ-W
     expect(within(row).getByTestId("excess-without").textContent).toContain("from 25 closed cases");
     expect(within(row).getByTestId("excess-bursty").textContent).toContain("1479 of the 1504");
     expect(screen.getByText(/never the headline|A secondary check, never the headline/)).toBeTruthy();
+  });
+  it("shows no excess anywhere when the headline placebo interval does not cover 0 (methods.md, owner rule 2026-11-16)", () => {
+    render(<Scorecard file={file([sc("sign", true)])} excess={exFile([exRow()], { excess: -3152, lo: -3368, hi: -2932, runs: 10, calibration_warning: true })} />);
+    expect(screen.queryByTestId("excess-all")).toBeNull();
+    expect(screen.queryByTestId("score-excess")).toBeNull();
   });
   it("says too few cases are left when no spot is left after removing bursty ones", () => {
     render(<ExcessLines row={exRow({ without_bursty: null })} />);

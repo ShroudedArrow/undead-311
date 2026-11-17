@@ -37,7 +37,7 @@ IDs use the prefix `REQ-OPS-`. Layers follow docs/PROJECT.md: **demo-critical** 
 ### REQ-OPS-PUBLISH: Exports as a release asset
 **Layer:** credibility
 **User story:** As the owner, I want each full-data run's exports to reach the live site without running the pipeline on a GitHub runner.
-1. `pipeline/scripts/exports_release.py publish` SHALL pack a run's export folder into `exports-<run-id>.tar.gz` (with a `MANIFEST.json`, status last) and a SHA-256 file and attach both to the release `exports-<run-id>` of `ShroudedArrow/undead-311-data`. It SHALL refuse an export whose status is not `ok: true` or that carries a `DRY RUN ONLY` anomaly.
+1. `pipeline/scripts/exports_release.py publish` SHALL pack a run's export folder into `exports-<run-id>.tar.gz` (with a `MANIFEST.json`, status last) and a SHA-256 file and attach both to the release `exports-<run-id>` of `ShroudedArrow/undead-311-data`. It SHALL refuse an export whose status is not `ok: true` or that carries a `DRY RUN ONLY` anomaly. It SHALL read its token from `DATA_RELEASE_TOKEN` (never `GH_TOKEN`) and pass it to `gh` for its own calls only.
 2. `unpack` SHALL verify the hash, reject unsafe paths, accept only files the pipeline owns, and never touch `frozen/`.
 3. The nightly job in the data repo SHALL download the newest `exports-*` release with its own token, unpack it, build the site and deploy it to Netlify; it SHALL NOT run the pipeline.
 

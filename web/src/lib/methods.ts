@@ -34,6 +34,17 @@ export function readPlacebo(file: ExcessFile): PlaceboResult | null {
   return num(p.excess) && num(p.lo) && num(p.hi) ? { excess: p.excess, lo: p.lo, hi: p.hi } : null;
 }
 
+/**
+ * methods.md (Primary baseline, owner rule 2026-11-16): when the headline placebo interval does not cover 0, the excess is not
+ * shown anywhere on the site and the methods page shows the placebo result instead. A file with no placebo shows no excess either:
+ * an excess is only shown once its calibration check has run and passed.
+ */
+export function excessShown(file: ExcessFile | null | undefined): boolean {
+  if (!file) return false;
+  const p = readPlacebo(file);
+  return p !== null && p.lo <= 0 && p.hi >= 0;
+}
+
 /** Headline-tier family rows, biggest excess first (ties by name). */
 export function familyExcessRows(file: ExcessFile): ExcessRow[] {
   return file.rows

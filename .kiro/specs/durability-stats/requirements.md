@@ -95,6 +95,14 @@ IDs use the prefix `REQ-STAT-`. Layers follow docs/PROJECT.md: **demo-critical**
 2. Excess SHALL be reported per tier (`tier_set` is the tier) and never pooled across tiers; originals labeled invalid or duplicate are in no cohort.
 3. Each tier SHALL have its own shift test and placebo (`by_tier` in `excess.json`).
 
+4. The source_unknown cohort SHALL hold only originals whose window ends after the first new-system case (owner decision 2026-11-16): before that no new-system report can exist.
+5. WHEN the headline placebo interval does not cover 0, the excess SHALL be shown nowhere on the site and the methods page SHALL show the placebo result instead (methods.md).
+
+### REQ-STAT-AREA: Match-area baseline
+**Layer:** credibility
+1. Each original's `p` SHALL be estimated from the history of its own match area (`stats/areas.py`): the same-family cases that match any of its members under `detect.match.match` (same segment within MAX_SEGMENT_DIST, the intersection rule, or RADIUS_M when unsnapped). Reports outside the area SHALL never change the original's `p`.
+2. Originals of one segment or cell SHALL be resampled together, and their closures moved together in the shift test and placebo.
+
 ### REQ-STAT-BAND: Excess by match distance
 **Layer:** credibility
 1. Observed, expected and excess SHALL also be reported per tier and match-distance band (0-5, 5-15, 15-30, 30-75 m): observed by the zombie's `distance_m`, expected by splitting each original's `p` by the distance distribution of the spot's other live reports. The rows are a diagnostic; `p` still counts the whole spot (docs/METHODS.md).

@@ -8,7 +8,7 @@ import { useData } from "../lib/data";
 import { sampleCaseCount } from "../lib/dataAsOf";
 import { formatDateTime } from "../lib/format";
 import { familyLabel } from "../lib/labels";
-import { familyExcessRows, num1, readPlacebo, readShift } from "../lib/methods";
+import { excessShown, familyExcessRows, num1, readPlacebo, readShift } from "../lib/methods";
 import { NULL_TOWNS, STRESS_ABOVE, STRESS_TOWNS, signed, sumOf } from "../lib/nullTowns";
 import { parseExcess, parseScorecard, parseStatus, parseValidation } from "../lib/parse";
 import { pct } from "../lib/rates";
@@ -47,7 +47,9 @@ function Baselines() {
       {excess.status === "error" && <PanelError file={excess.file} error={excess.error} />}
       {excess.status === "ok" ? (
         <>
-          {familyExcessRows(excess.data).length === 0 ? (
+          {!excessShown(excess.data) ? (
+            <p data-testid="excess-withheld">{t("methods.excess_withheld")}</p>
+          ) : familyExcessRows(excess.data).length === 0 ? (
             <p>{t("methods.excess_missing")}</p>
           ) : (
             <div className="table-wrap chart-table" tabIndex={0} role="region" aria-label={t("methods.excess_caption")}>

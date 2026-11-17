@@ -2,7 +2,8 @@
 
 `clean` splits `cases_x` into `cases_clean` (in scope, usable) and `cases_excluded(id, system, type_family, reason)`.
 Each excluded case gets exactly one reason, tested in this order:
-`unlisted_type`, `excluded_type`, `null_coords`, `out_of_bounds`, `placeholder`, `null_open_time`.
+`unlisted_type`, `excluded_type`, `null_coords`, `out_of_bounds`, `placeholder`, `null_open_time`, `test_data`.
+`test_data` is a case whose department is `Test` (a test queue in the legacy system; owner decision 2026-11-16).
 Every exclusion is counted by reason, family and system; nothing is dropped silently (REQ-ING-CLEAN.2-3).
 Candidate placeholder points (one rounded coordinate shared by more than 200 cases) are reported, not dropped
 (REQ-ING-CLEAN.4); the owner decides whether to add them to ZD step 1.
@@ -20,7 +21,8 @@ LON_MIN, LON_MAX = -71.2, -70.9
 #: The two real placeholder points of ZD step 1, compared after rounding to 4 decimals.
 PLACEHOLDER_POINTS = ((42.3603, -71.0583), (42.3595, -71.0588))
 PLACEHOLDER_CANDIDATE_MIN = 200
-REASONS = ("unlisted_type", "excluded_type", "null_coords", "out_of_bounds", "placeholder", "null_open_time")
+REASONS = ("unlisted_type", "excluded_type", "null_coords", "out_of_bounds", "placeholder", "null_open_time", "test_data")
+TEST_DEPARTMENT = "Test"
 
 
 @dataclass
@@ -44,6 +46,8 @@ def clean(con: duckdb.DuckDBPyConnection) -> Exclusions:
     """Create `cases_clean` and `cases_excluded` from `cases_x` (REQ-ING-CLEAN.1-4)."""
     placeholder = " or ".join(f"(round(lat, 4) = {a} and round(lon, 4) = {b})" for a, b in PLACEHOLDER_POINTS)
     con.execute("drop table if exists cases_reason")
+    has_dept = any(r[0] == "department" for r in con.execute("describe cases_x").fetchall())
+    test_clause = f"when department = '{TEST_DEPARTMENT}' then 'test_data'" if has_dept else ""
     con.execute(f"""
         create table cases_reason as
         select *, case
@@ -53,6 +57,7 @@ def clean(con: duckdb.DuckDBPyConnection) -> Exclusions:
             when lat not between {LAT_MIN} and {LAT_MAX} or lon not between {LON_MIN} and {LON_MAX} then 'out_of_bounds'
             when {placeholder} then 'placeholder'
             when open_time_utc is null then 'null_open_time'
+            {test_clause}
         end as reason
         from cases_x
     """)

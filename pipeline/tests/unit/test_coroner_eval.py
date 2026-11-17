@@ -70,7 +70,8 @@ def test_req_cor_eval_1_section_replaces_its_own_block_and_keeps_the_rest(tmp_pa
 def test_req_cor_eval_2_a_missing_hand_label_file_says_so_and_exits_zero(tmp_path, capsys):
     md = tmp_path / "VALIDATION.md"
     code, message = run(tmp_path, md)
-    assert code == 0 and "missing" in message and "human input" in message and not md.exists()
+    # owner decision 2026-11-16: there is no hand-label set; the random draw is the evaluation set, and without it nothing is written
+    assert code == 0 and "missing" in message and "coroner_random200.csv is the evaluation set" in message and not md.exists()
     write(tmp_path / "coroner_labels.csv", "template,label\na,resolved\n")
     assert main(["coroner-eval", "--labels-dir", str(tmp_path), "--validation", str(md)]) == 0
     assert "missing" in capsys.readouterr().out and not md.exists()

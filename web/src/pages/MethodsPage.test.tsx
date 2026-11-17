@@ -70,6 +70,13 @@ describe("Methods page (REQ-WEB-METHODS.1)", () => {
     expect(screen.getByText("The placebo result is not part of this data yet.")).toBeTruthy();
     expect(screen.queryByTestId("placebo")).toBeNull();
   });
+  it("withholds the excess and shows the placebo instead when the headline placebo does not cover 0 (methods.md, owner rule 2026-11-16)", async () => {
+    stub({ "excess.json": { ...(FILES["excess.json"] as object), placebo: { excess: -3152, lo: -3368, hi: -2932 } } });
+    open();
+    expect((await screen.findByTestId("excess-withheld")).textContent).toContain("is not shown");
+    expect(screen.queryByTestId("excess-table")).toBeNull();
+    expect(screen.getByTestId("placebo").textContent).toBe("Placebo excess -3152, 95% interval -3368 to -2932");
+  });
   it("shows validation as awaiting field labels, then precision with its interval and kappa once scored", async () => {
     stub();
     const { unmount } = open();

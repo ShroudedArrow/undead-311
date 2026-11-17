@@ -196,7 +196,7 @@ In this requirement, R is the incident's resurrection (its earliest attached re-
 **User story:** As a reader of the cause of death, I want closures with boilerplate openings and free text after them to be labeled, so the labels cover nearly every closed case.
 1. THE engine SHALL label a closed case that the label table does not list by its leading phrase (`coroner/phrases.py`): deterministic rules in a fixed order (backlog wording, made-safe wording, scheduled wording, a hand-off to an agency, then the disposition word after the "Case Closed" boilerplate). A text no rule places stays `other` and counts as unlabeled.
 2. THE precedence SHALL be: new-system Transitioned code, the label table, the new-system closure code, then the leading phrase. The run report SHALL count cases by label source (`labeled_by_table`, `_code`, `_phrase`).
-3. `make coroner-eval` SHALL also score the pipeline rule on `data/labels/coroner_random200.csv` (a seeded random draw of full-data closures labeled by the Coroner agent) and write the agreement with its Wilson interval to docs/VALIDATION.md. The target is at least 95% of in-scope closed cases labeled.
+3. `make coroner-eval` SHALL score the pipeline rule on `data/labels/coroner_random200.csv`, the Coroner's evaluation set (owner decision 2026-11-16: the planned 200 hand labels were never made), with a 20-row owner spot check drawn with a fixed seed in `docs/CORONER_SPOTCHECK.md`. The set is a seeded random draw of full-data closures labeled by the Coroner agent; the command writes the agreement with its Wilson interval to docs/VALIDATION.md. The target is at least 95% of in-scope closed cases labeled.
 
 ### REQ-COR-EVAL: Coroner accuracy
 **Layer:** credibility

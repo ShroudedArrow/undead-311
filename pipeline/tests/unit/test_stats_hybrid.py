@@ -134,11 +134,11 @@ def test_req_stat_placebo_1_the_placebo_uses_the_dense_estimator_so_an_unshifted
     res = detect(cs)
     m = BaselineModel({c.id: c for c in cs}, res, data_end=day(800))  # no closure in the last window: a shift of 0 wraps none
     sp = _build(m)
-    assert sp is not None and any(m.is_dense(k) for k in sp.keys)
-    got = _placebo(m, sp, np.zeros((len(sp.keys), 1)), min(float(m.groups[k][0][0]) for k in sp.keys), 311)
+    assert sp is not None and any(m.is_dense(k) for k in sp.areas)
+    got = _placebo(m, sp, np.zeros((sp.n_spots, 1)), min(float(m.groups[k][0][0]) for k in sp.areas), 311)
     shift, _ = shift_and_placebo(m, 311, 10, 1)
     expected = sum(m.estimate(i).p or 0.0 for i in eligible_originals(res.incidents, m.data_end, m.params)
-                   if m._incident_key[i.incident_id] in sp.keys)  # fmt: skip
+                   if m._incident_key[i.incident_id] in sp.areas)  # fmt: skip
     assert got is not None and shift is not None
     assert got.excess == pytest.approx(shift.observed - expected, abs=1e-6)
 

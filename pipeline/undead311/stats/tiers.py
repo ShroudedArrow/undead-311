@@ -27,13 +27,14 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import numpy as np
 
 from undead311.detect.core import PF_LABELS, SEPARATE_LABELS, is_city_originated
 from undead311.detect.model import Case, DetectionResult, Incident
 from undead311.detect.params import DEFAULT, Params
+from undead311.stats.areas import MatchAreas
 from undead311.stats.baseline import (
     UNKNOWN,
     BaselineModel,
@@ -67,6 +68,11 @@ def tier_models(
     open_ = [i for i in result.incidents if not i.has_transferred_member and i.coroner_label not in SEPARATE_LABELS]
     core = [i for i in open_ if i.tier == "core"]
     pf = [i for i in core if i.coroner_label in PF_LABELS]
+    # REQ-STAT-POP.4: a new-system re-report can only exist from the first new-system case on, so an original whose window
+    # ends before that has no such population to be compared with. The rule reads the closure date and the data period only.
+    new_start = min((c.open_utc for c in cases.values() if c.system == "new"), default=None)
+    window = timedelta(days=params.WINDOW_DAYS)
+    pf_new = [i for i in pf if new_start is not None and i.close_utc + window > new_start]
     plain = [i for i in core if i.coroner_label not in PF_LABELS]
     sens = [i for i in open_ if i.tier == "sensitivity"]
 
@@ -79,13 +85,14 @@ def tier_models(
     specs: list[tuple[str, str, list[Incident], object, bool]] = [
         ("headline", "headline", plain, resident, False),
         ("headline", "headline-after-planned-label", pf, lambda c: resident(c) and c.system == "legacy", False),
-        ("source_unknown", "source_unknown", pf, lambda c: is_core(c) and c.system == "new", False),
+        ("source_unknown", "source_unknown", pf_new, lambda c: is_core(c) and c.system == "new", False),
         ("city_rereport", "city_rereport", plain, lambda c: is_core(c) and is_city_originated(c), False),
         ("sensitivity", "sensitivity", sens, None, True),
     ]
+    shared = MatchAreas(cases, result.incidents, result.mirror_ids, params)  # one set of match areas for every tier model
     return [
         TierModel(tier, tag, BaselineModel(cases, result, params, data_end, areas, incidents=incs, population=pop,  # type: ignore[arg-type]
-                                           tier=tier, all_tiers=all_tiers))
+                                           tier=tier, all_tiers=all_tiers, match_areas=shared))
         for tier, tag, incs, pop, all_tiers in specs
     ]
 
@@ -135,21 +142,23 @@ def tier_excess_rows(tms: list[TierModel], seed: int = 311, boot: int = 1000) ->
 
 
 def band_counts(model: BaselineModel, inc: Incident) -> np.ndarray | None:
-    """Other live reports of the incident's spot in each distance band from the incident (None without a spot or reports)."""
+    """Other live reports of the incident's match area in each distance band from the incident (None without any)."""
     key = model._incident_key[inc.incident_id]
     live = model._spot_info.get(key)
-    geo = model._geo.get(key)
-    if live is None or geo is None:
+    prow = model._geo.get(key)
+    if live is None or prow is None:
         return None
-    t, xy, ids = geo
+    ar = model.areas
+    members = {model.areas.row[m] for m in inc.member_ids if m in model.areas.row}
+    t = ar.open_ts[prow]
+    keep = (t > live.t0) & live.is_live(t) & np.array([r not in members for r in prow], dtype=bool)
+    if not keep.any():
+        return None
     ref = model._incident_of_case[inc.incident_id]
-    mask = (t > live.t0) & live.is_live(t) & ~np.isin(ids, np.array(inc.member_ids))
-    if not mask.any():
-        return None
-    from undead311.stats.cohort import COS_BOSTON, M_PER_DEG
-
-    d = np.hypot(xy[mask, 0] - ref.lat * M_PER_DEG, xy[mask, 1] - ref.lon * M_PER_DEG * COS_BOSTON)
-    limit = MAX_SEGMENT_DIST if key[1].startswith("seg:") else float(model.params.RADIUS_M)
+    rr = ar.row[ref.id]
+    rows = prow[keep]
+    d = np.hypot(ar.x[rows] - ar.x[rr], ar.y[rows] - ar.y[rr])
+    limit = MAX_SEGMENT_DIST if model._spot_key[inc.incident_id][1].startswith("seg:") else float(model.params.RADIUS_M)
     d = d[d <= limit]
     if not d.size:  # the other reports are all farther than a match allows
         return None

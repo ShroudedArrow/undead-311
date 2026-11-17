@@ -163,7 +163,7 @@ def test_the_readme_gives_the_setup_steps():
     """REQ-OPS-NIGHTLY.1: the owner can copy, set secrets and the tag variable, and run once."""
     text = (OPS / "README.md").read_text()
     for needle in ("JUDGED_TAG", "NETLIFY_AUTH_TOKEN", "NETLIFY_SITE_ID", "CHANNEL_TOKEN", "GITHUB_CHANNEL_TOKEN",
-                   "undead-311-data", "nightly-state", "exports-", "exports_release.py", "GH_TOKEN", "docs/DEPLOY.md", "needs-human"):
+                   "undead-311-data", "nightly-state", "exports-", "exports_release.py", "DATA_RELEASE_TOKEN", "docs/DEPLOY.md", "needs-human"):
         assert needle in text, needle
     assert not re.search(r"\b(ghp_|github_pat_|nfp_)[A-Za-z0-9_]{10,}", text)
 

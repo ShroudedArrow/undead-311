@@ -113,10 +113,8 @@ def run(labels_dir: Path, validation_md: Path) -> tuple[int, str]:
     hand_path = Path(labels_dir) / HAND_LABELS_FILE
     extra = run_random(labels_dir, validation_md)
     if not hand_path.is_file():
-        return 0, (
-            f"coroner-eval: {hand_path} is missing. The hand labels are human input; nothing to evaluate "
-            f"(REQ-COR-EVAL.2).\n{extra}"
-        )
+        # owner decision 2026-11-16: no separate hand-label set exists; the evaluation set is the random draw
+        return 0, f"{extra}\ncoroner-eval: no {HAND_LABELS_FILE} (none was made); {RANDOM_FILE} is the evaluation set"
     report = evaluate(load_template_labels(Path(labels_dir) / LABELS_FILE), read_hand_labels(hand_path))
     write_section(validation_md, render_section(report))
     if not report.n:

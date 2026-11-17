@@ -1,9 +1,9 @@
 import { useId, useMemo, useState } from "react";
 import { useData } from "../lib/data";
-import { parseSensitivityGrid } from "../lib/parse";
+import { parseExcess, parseSensitivityGrid } from "../lib/parse";
 import { pct } from "../lib/rates";
 import { defaultSetting, findPoint, MATCHINGS, radiusIsMinor, RADII, stepOf, WINDOWS, type Matching, type Setting } from "../lib/sensitivity";
-import { num1 } from "../lib/methods";
+import { excessShown, num1 } from "../lib/methods";
 import { t } from "../lib/t";
 import { PanelError } from "./PanelError";
 
@@ -17,6 +17,9 @@ const stopsText = (steps: readonly number[], and: string): string => `${steps.sl
  */
 export function Sliders() {
   const grid = useData("sensitivity_grid.json", parseSensitivityGrid);
+  const excessFile = useData("excess.json", parseExcess);
+  // methods.md: the excess is withheld everywhere while the headline placebo does not cover 0 (or has not loaded)
+  const showExcess = excessFile.status === "ok" && excessShown(excessFile.data);
   const base = useMemo(() => defaultSetting(grid.status === "ok" ? (grid.data as { params?: { RADIUS_M?: number; WINDOW_DAYS?: number; matching?: string } }).params : null), [grid]);
   const [pick, setPick] = useState<Setting | null>(null);
   const s = pick ?? base;
@@ -66,8 +69,12 @@ export function Sliders() {
             <dd>{point.city_rereport}</dd>
             <dt>{t("sliders.sensitivity")}</dt>
             <dd>{point.sensitivity}</dd>
-            <dt>{t("sliders.excess_point")}</dt>
-            <dd data-testid="slider-excess">{point.excess === null ? na : num1(point.excess)}</dd>
+            {showExcess ? (
+              <>
+                <dt>{t("sliders.excess_point")}</dt>
+                <dd data-testid="slider-excess">{point.excess === null ? na : num1(point.excess)}</dd>
+              </>
+            ) : null}
             <dt>{t("sliders.stayed_fixed_point")}</dt>
             <dd>{point.stayed_fixed_rate === null ? na : pct(point.stayed_fixed_rate)}</dd>
           </dl>

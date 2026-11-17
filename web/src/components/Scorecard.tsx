@@ -1,6 +1,6 @@
 import { familyLabel } from "../lib/labels";
 import type { ExcessFile, ExcessRow, ScorecardFile } from "../lib/parse";
-import { familyExcessRows, num1 } from "../lib/methods";
+import { excessShown, familyExcessRows, num1 } from "../lib/methods";
 import { headlineScorecards, pct, stayedFixedShown } from "../lib/rates";
 import { t } from "../lib/t";
 import { RateCell } from "./RateCell";
@@ -28,7 +28,8 @@ export function ExcessLines({ row }: { row: ExcessRow }) {
 /** On-time next to stayed-fixed for each case type and citywide, with intervals and n (REQ-WEB-SCORE.1-2). */
 export function Scorecard({ file, excess }: { file: ScorecardFile; excess?: ExcessFile | null }) {
   const rows = headlineScorecards(file.scorecards);
-  const excessByFamily = new Map((excess ? familyExcessRows(excess) : []).map((r) => [r.name, r]));
+  // methods.md: no excess anywhere when the headline placebo does not cover 0
+  const excessByFamily = new Map((excess && excessShown(excess) ? familyExcessRows(excess) : []).map((r) => [r.name, r]));
   return (
     <div className="scorecard">
       <p>{t("score.intro")}</p>

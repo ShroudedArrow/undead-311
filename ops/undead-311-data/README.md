@@ -38,7 +38,7 @@ If any step fails, the deploy step is never reached, so Netlify keeps the last g
 | `undead-311-data` Actions | `NETLIFY_SITE_ID` | secret | deploy step only | the site's API ID (docs/DEPLOY.md step 5) |
 | `undead-311-data` Actions | `CHANNEL_TOKEN` | secret | the failure alert only | fine-grained token, `undead-311-ops` only, Issues read and write |
 | `undead-311-data` Actions | `JUDGED_TAG` | variable | checkout | the freeze tag in the judged repo |
-| where `exports_release.py publish` runs (the Kiro Web sandbox or your machine) | `GH_TOKEN` | secret | publish only | fine-grained token limited to `undead-311-data`, **Contents: read and write**, nothing else |
+| where `exports_release.py publish` runs (the Kiro Web sandbox or your machine) | `DATA_RELEASE_TOKEN` | secret | publish only | fine-grained token limited to `undead-311-data`, **Contents: read and write**, nothing else |
 | `undead-311` Actions | `CHANNEL_TOKEN` | secret | the CI result line | same token as above (already in docs/DEPLOY.md step 6) |
 
 The nightly job downloads the release with its own `github.token` (`contents: write` on its own repo), so the download needs no secret. If `undead-311` is private, the checkout step also needs a read token (setup step 4).

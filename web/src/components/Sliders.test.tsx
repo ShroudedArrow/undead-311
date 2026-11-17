@@ -7,7 +7,11 @@ import { Sliders } from "./Sliders";
 
 const GRID = readFileSync(join(__dirname, "..", "..", "public", "data", "stats", "sensitivity_grid.json"), "utf8");
 afterEach(() => { vi.unstubAllGlobals(); clearDataCache(); });
-const serve = (body: string, ok = true) => vi.stubGlobal("fetch", vi.fn(async () => ({ ok, status: ok ? 200 : 500, json: async () => JSON.parse(body) }) as Response));
+// excess.json gates the excess row (methods.md): a placebo that covers 0 shows it, one that does not withholds it
+const PASS = { data_version: "v", rows: [], placebo: { excess: 1, lo: -2, hi: 3, runs: 10, calibration_warning: false } };
+const FAIL = { ...PASS, placebo: { excess: -3152, lo: -3368, hi: -2932, runs: 10, calibration_warning: true } };
+const serve = (body: string, ok = true, excess: unknown = PASS) =>
+  vi.stubGlobal("fetch", vi.fn(async (u: string) => ({ ok, status: ok ? 200 : 500, json: async () => (String(u).endsWith("excess.json") ? excess : JSON.parse(body)) }) as Response));
 
 describe("Sensitivity sliders (REQ-WEB-SLIDERS.1)", () => {
   it("starts on the headline run and switches instantly between grid points", async () => {
@@ -68,7 +72,15 @@ describe("Sensitivity sliders (REQ-WEB-SLIDERS.1)", () => {
     expect(screen.getByText("Settings that were run: 15, 30 and 50.")).toBeTruthy();
     expect(screen.getByText("Settings that were run: 30, 60 and 90.")).toBeTruthy();
     expect(screen.getByText("Stayed fixed (point estimate)")).toBeTruthy();
-    expect(screen.getByText("Excess re-reports (point estimate)")).toBeTruthy();
+    expect(await screen.findByText("Excess re-reports (point estimate)")).toBeTruthy();
     expect(screen.getByTestId("slider-no-interval").textContent).toMatch(/no interval/);
+  });
+  it("withholds the excess row when the headline placebo does not cover 0 (methods.md, owner rule 2026-11-16)", async () => {
+    serve(GRID, true, FAIL);
+    render(<Sliders />);
+    await screen.findByTestId("slider-headline");
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByTestId("slider-excess")).toBeNull();
+    expect(screen.queryByText("Excess re-reports (point estimate)")).toBeNull();
   });
 });

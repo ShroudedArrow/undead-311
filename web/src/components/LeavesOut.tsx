@@ -16,7 +16,7 @@ function RateWithInterval({ rate }: { rate: Rate }) {
   );
 }
 
-const REASONS = ["excluded_type", "unlisted_type", "null_coords", "out_of_bounds", "placeholder", "null_open_time"];
+const REASONS = ["excluded_type", "unlisted_type", "null_coords", "out_of_bounds", "placeholder", "null_open_time", "test_data"];
 const PAIR_REASONS = ["mirror", "transferred_original", "linked_successor"];
 
 /**

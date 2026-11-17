@@ -12,8 +12,10 @@ manifest, unpacks it into `web/public/data/`, builds the site and deploys it to 
 
 * `pack` refuses an export whose `status.json` is missing, says `ok: false`, or carries a `DRY RUN ONLY` anomaly: a dry run is
   never published (full-1 was over its first-view budget on purpose and says so).
-* `publish` needs the GitHub CLI and a token in `GH_TOKEN` with Contents: read and write on the data repo only. `--dry-run`
-  packs and prints the commands without touching GitHub. Nothing here prints the token or the environment.
+* `publish` needs the GitHub CLI and a token in `DATA_RELEASE_TOKEN` (Contents: read and write on the data repo only). It is
+  passed to `gh` for these calls alone, as `GH_TOKEN`, so it cannot collide with another tool's `GH_TOKEN`; the script never
+  reads `GH_TOKEN` itself. `--dry-run` packs and prints the commands without touching GitHub or needing the token. Nothing
+  here prints the token or the environment. `latest` and `unpack` need no token for a public repo (the nightly job passes its own).
 * `unpack` checks the hash, rejects absolute paths, `..` and links, replaces only the files this pipeline owns
   (`owns_output`) and never touches `frozen/`. `status.json` goes in last.
 """
@@ -165,8 +167,14 @@ def unpack(archive: Path, sha_file: Path, dest: Path) -> dict:
     return manifest
 
 
-def gh(*args: str, check: bool = True) -> subprocess.CompletedProcess:
-    return subprocess.run(["gh", *args], capture_output=True, text=True, check=check, timeout=600)
+TOKEN_VAR = "DATA_RELEASE_TOKEN"
+
+
+def gh(*args: str, check: bool = True, token: str | None = None) -> subprocess.CompletedProcess:
+    """Run `gh`. With `token`, it goes in as GH_TOKEN for this call only (REQ-OPS-PUBLISH.1); otherwise the caller's
+    environment is used as it is (the nightly job's own `github.token`)."""
+    env = {**os.environ, "GH_TOKEN": token} if token else None
+    return subprocess.run(["gh", *args], capture_output=True, text=True, check=check, timeout=600, env=env)
 
 
 def latest_tag(repo: str) -> str:
@@ -191,9 +199,12 @@ def publish(run_id: str, exports: Path, repo: str, dry_run: bool, out: Path) -> 
         for c in cmds:
             print("would run:", " ".join(c))
         return cmds
-    if gh(*cmds[0][1:], check=False).returncode != 0:
-        gh(*cmds[1][1:])
-    gh(*cmds[2][1:])
+    token = os.environ.get(TOKEN_VAR, "").strip()
+    if not token:
+        raise ExportsError(f"{TOKEN_VAR} is not set; publishing needs a token with Contents: read and write on {repo} (docs/DEPLOY.md)")
+    if gh(*cmds[0][1:], check=False, token=token).returncode != 0:
+        gh(*cmds[1][1:], token=token)
+    gh(*cmds[2][1:], token=token)
     return cmds
 
 

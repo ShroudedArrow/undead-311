@@ -149,9 +149,14 @@ def test_req_ing_dept_1_every_row_has_a_source_a_known_status_and_each_raw_value
     rows = read_departments()
     keys = [(r["system"], r["department_raw"]) for r in rows]
     assert len(keys) == len(set(keys)) and all(r["source"].strip() for r in rows)
-    assert {r["status"] for r in rows} == {"official", "mapped", "flagged"}
-    flagged = {r["department_raw"] for r in rows if r["status"] == "flagged"}
-    assert {"GEN", "ISD"} & flagged == {"GEN"}  # ISD is in the CRM Value Code Index, GEN is not
+    assert {r["status"] for r in rows} == {"official", "mapped", "as_published", "excluded", "flagged"}
+    by = {r["department_raw"]: r for r in rows if r["system"] == "legacy"}
+    # owner decisions 2026-11-16: named codes, codes kept as published, and the test queue
+    assert [by[c]["department_name"] for c in ("BHA", "ONS", "DND")] == [
+        "Boston Housing Authority", "Office of Neighborhood Services", "Department of Neighborhood Development"]
+    assert {by[c]["status"] for c in ("GEN", "GRNi", "ECON")} == {"as_published"} and by["Test"]["status"] == "excluded"
+    # every legacy code with in-scope cases is resolved; only Temp (2 raw rows, none in scope) stays flagged
+    assert [r["department_raw"] for r in rows if r["system"] == "legacy" and r["status"] == "flagged"] == ["Temp"]
 
 
 def test_req_ing_dept_1_legacy_codes_and_new_system_names_become_one_key_and_flagged_ones_are_reported():
@@ -159,13 +164,13 @@ def test_req_ing_dept_1_legacy_codes_and_new_system_names_become_one_key_and_fla
     con.execute("create table t(system varchar, department varchar, n int)")
     con.executemany("insert into t values (?,?,?)", [
         ("legacy", "PWDx", 1), ("new", "Public Works Department (PWD)", 2), ("new", "Boston Transportation Department (BTD)", 3),
-        ("legacy", "BTDT", 4), ("legacy", "GEN", 5), ("legacy", "NOPE", 6), ("new", None, 7),
+        ("legacy", "BTDT", 4), ("new", "Eversource", 5), ("legacy", "NOPE", 6), ("new", None, 7),
     ])  # fmt: skip
     apply_departments(con, "t")
     got = dict(con.execute("select n, department from t").fetchall())
-    assert got[1] == got[2] == "PWDx" and got[3] == got[4] == "BTDT" and got[5] == "GEN" and got[6] == "NOPE" and got[7] is None
+    assert got[1] == got[2] == "PWDx" and got[3] == got[4] == "BTDT" and got[5] == "Eversource" and got[6] == "NOPE" and got[7] is None
     rep = department_report(con, "t")
-    assert rep.flagged == {"legacy:GEN": 1} and rep.unlisted == {"legacy:NOPE": 1} and rep.missing == 1
+    assert rep.flagged == {"new:Eversource": 1} and rep.unlisted == {"legacy:NOPE": 1} and rep.missing == 1
 
 
 # ---- REQ-EXP-SIZE.2-4 -------------------------------------------------------------------------------------------------------
@@ -321,3 +326,85 @@ def test_req_exp_1_3_the_shard_index_is_deterministic():
     result, cases, ctx = town_inputs()
     a, b = build_payloads(result, cases, ctx), build_payloads(result, cases, ctx)
     assert a["zombies/index.json"] == b["zombies/index.json"]
+
+
+def test_req_ing_dept_3_a_test_department_case_is_excluded_and_counted():
+    """Owner decision 2026-11-16: department Test is test data, dropped by `clean` and counted under `test_data`."""
+    from undead311.ingest.clean import clean, ids_by_reason
+
+    con = duckdb.connect()
+    con.execute("create table cases_x(id varchar, system varchar, type_family varchar, type_raw varchar, scope_tier varchar, "
+                "lat double, lon double, open_time_utc timestamp, department varchar)")
+    con.executemany("insert into cases_x values (?,?,?,?,?,?,?,try_cast(? as timestamp),?)", [
+        ("a", "legacy", "pothole_roadway", "x", "core", 42.3, -71.1, "2024-01-01 00:00:00", "PWDx"),
+        ("t", "legacy", "pothole_roadway", "x", "core", 42.3, -71.1, "2024-01-01 00:00:00", "Test"),
+    ])  # fmt: skip
+    report = clean(con)
+    assert report.counts["test_data"] == 1 and ids_by_reason(con)["test_data"] == ["t"]
+    assert [r[0] for r in con.execute("select id from cases_clean").fetchall()] == ["a"]
+
+
+def test_req_ops_publish_1_the_token_comes_from_data_release_token_never_gh_token(tmp_path, monkeypatch):
+    """Owner decision 2026-11-16: DATA_RELEASE_TOKEN is read and handed to gh as GH_TOKEN for these calls only."""
+    src = make_export(tmp_path / "e")
+    seen: list[dict] = []
+
+    def fake_run(cmd, **kw):
+        seen.append({"cmd": cmd, "env": kw.get("env")})
+        return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+    monkeypatch.setattr(er.subprocess, "run", fake_run)
+    monkeypatch.setenv("GH_TOKEN", "other-tool-token")
+    monkeypatch.delenv("DATA_RELEASE_TOKEN", raising=False)
+    with pytest.raises(er.ExportsError, match="DATA_RELEASE_TOKEN is not set"):
+        er.publish("r1", src, "ShroudedArrow/undead-311-data", False, tmp_path / "rel")  # GH_TOKEN alone is not enough
+    assert not seen
+    monkeypatch.setenv("DATA_RELEASE_TOKEN", "release-token")
+    er.publish("r1", src, "ShroudedArrow/undead-311-data", False, tmp_path / "rel2")
+    assert seen and all(c["env"]["GH_TOKEN"] == "release-token" for c in seen)
+    assert "release-token" not in " ".join(" ".join(c["cmd"]) for c in seen)  # never on a command line
+
+
+# ---- REQ-STAT-AREA: each original's p comes from its own match area (methods.md, 2026-11-16) -------------------------------
+
+
+def test_req_stat_area_1_the_match_area_is_the_detectors_rule():
+    """Same segment within MAX_SEGMENT_DIST, RADIUS_M when unsnapped; a report 300 m along the same segment is not in the area."""
+    from undead311.stats.areas import MatchAreas
+
+    cs = [mk("A", 0, 1, segment="S"), mk("near", 50, x=40.0, segment="S"), mk("far", 60, x=300.0, segment="S"),
+          mk("loose", 70, x=20.0, segment=None, snap=None), mk("loose_far", 80, x=45.0, segment=None, snap=None),
+          mk("other_seg", 90, x=10.0, segment="T")]  # fmt: skip
+    by = {c.id: c for c in cs}
+    res = detect(cs)
+    inc = next(i for i in res.incidents if "A" in i.member_ids)
+    areas = MatchAreas(by, res.incidents, res.mirror_ids)
+    assert set(areas.ids(areas.of_incident[inc.incident_id])) == {"A", "near", "loose"}
+
+
+def test_req_stat_area_1_reports_outside_the_match_area_never_change_p():
+    """Adding busy reports 300 m along the same segment (outside every match) leaves the original's p as it was."""
+    base = [mk("A", 0, 1, segment="S")] + [mk(f"R{i}", 150 + 150 * i, segment="S", x=10.0) for i in range(6)]
+    extra = [mk(f"F{i}", 30 + 20 * i, segment="S", x=300.0) for i in range(40)]
+    ps = []
+    for cs in (base, base + extra):
+        by = {c.id: c for c in cs}
+        res = detect(cs)
+        m = BaselineModel(by, res, data_end=day(1500))
+        inc = next(i for i in res.incidents if "A" in i.member_ids)
+        ps.append(m.p(inc))
+    assert ps[0] is not None and ps[0] == pytest.approx(ps[1])
+
+
+def test_req_stat_pop_4_source_unknown_counts_only_originals_whose_window_reaches_the_new_system():
+    """Owner decision 2026-11-16: a new-system re-report needs the new system; an original whose window ends before the first
+    new-system case is not in the source_unknown cohort."""
+    cs = [mk("old", 0, 1, label="made_safe_temporary"), mk("late", 400, 401, x=500, label="made_safe_temporary"),
+          mk("N1", 420, system="new", x=900)]  # fmt: skip
+    by = {c.id: c for c in cs}
+    res = detect(cs)
+    su = next(t for t in tier_models(by, res, data_end=day(900)) if t.tier == "source_unknown")
+    members = {m for i in su.model.incidents for m in i.member_ids}
+    assert "late" in members and "old" not in members
+    head = next(t for t in tier_models(by, res, data_end=day(900)) if t.tag == "headline-after-planned-label")
+    assert {m for i in head.model.incidents for m in i.member_ids} >= {"old", "late"}  # the headline cohort is unchanged

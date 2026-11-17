@@ -193,6 +193,7 @@
     "col_excess": "Excess",
     "col_interval": "95% interval",
     "excess_missing": "The baseline is not part of this data yet.",
+    "excess_withheld": "The excess over the baseline is not shown. Its calibration check (the placebo below) does not cover 0, so the baseline is not reliable enough for an excess count on this data.",
     "shift_heading": "Shift test",
     "shift_text": "Closure times were shifted at random {runs} times (seed {seed}) while locations stayed fixed. The re-reports that appear by chance are compared with the observed count.",
     "shift_observed": "Observed: {observed} possible zombies",
@@ -323,7 +324,13 @@
     "ISD": "Inspectional Services Department (ISD)",
     "PARK": "Parks and Recreation Department (PARK)",
     "PROP": "Property Management Department (PROP)",
-    "INFO": "INFO"
+    "INFO": "INFO",
+    "BHA": "Boston Housing Authority (BHA)",
+    "ONS": "Office of Neighborhood Services (ONS)",
+    "DND": "Department of Neighborhood Development (DND)",
+    "GEN": "GEN (as published)",
+    "GRNi": "GRNi (as published)",
+    "ECON": "ECON (as published)"
   },
   "department_code_note": "Department code as published by the City",
   "department_aliases": {
@@ -551,6 +558,7 @@
     "reason_out_of_bounds": "Coordinates outside Boston",
     "reason_placeholder": "Placeholder coordinates",
     "reason_null_open_time": "No opening time",
+    "reason_test_data": "Test data (department Test)",
     "reason_mirror": "Mirror copies across the two systems",
     "reason_transferred_original": "Originals closed as transferred or migrated (legacy system) or as Transitioned (new system)",
     "reason_linked_successor": "Linked successor cases",

@@ -47,7 +47,7 @@ Requirement IDs: REQ-OPS-HOST.1 to .4, REQ-OPS-NIGHTLY.2.
 2. Open `ShroudedArrow/undead-311`, then the same **Secrets and variables**, **Actions** page, and add `CHANNEL_TOKEN` again (the CI result post uses it).
 3. GitHub does not allow an Actions secret name that starts with `GITHUB_`, so the secret is called `CHANNEL_TOKEN`. Each workflow maps it to the name the scripts read: `env: GITHUB_CHANNEL_TOKEN: ${{ secrets.CHANNEL_TOKEN }}` (the scripts `scripts/hooklib.py` and `scripts/ci_channel.py` read `GITHUB_CHANNEL_TOKEN`).
 4. The judged repo never needs `NETLIFY_AUTH_TOKEN` or `NETLIFY_SITE_ID`.
-5. To publish a run's exports you also need `GH_TOKEN` where `exports_release.py publish` runs: a fine-grained token limited to `ShroudedArrow/undead-311-data` with **Contents: read and write**. The full list of secrets and variables is in `ops/undead-311-data/README.md`.
+5. To publish a run's exports you also need `DATA_RELEASE_TOKEN` where `exports_release.py publish` runs (a sandbox secret; the script hands it to `gh` as `GH_TOKEN` for its own calls only): a fine-grained token limited to `ShroudedArrow/undead-311-data` with **Contents: read and write**. The full list of secrets and variables is in `ops/undead-311-data/README.md`.
 6. In `ShroudedArrow/undead-311-data`, on the same page, open the **Variables** tab and add the variable `JUDGED_TAG`: the freeze tag in the judged repo. The nightly job checks out that tag. The workflow template and its setup steps are in `ops/undead-311-data/README.md` (REQ-OPS-NIGHTLY.1).
 
 ### 7. Production URL
