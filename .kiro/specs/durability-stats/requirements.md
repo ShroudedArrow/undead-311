@@ -88,6 +88,29 @@ IDs use the prefix `REQ-STAT-`. Layers follow docs/PROJECT.md: **demo-critical**
 **User story:** As a judge, I want to change radius, window and matching mode and see the result, so the definition isn't cherry-picked.
 1. THE stats SHALL turn the engine's sensitivity runs (REQ-SENS-RUN) into `sensitivity_grid.json`: headline count, excess and stayed-fixed rate per grid point, plus all-tier counts. It SHALL include the run without Street Light Other.
 
+### REQ-STAT-POP: Baseline population per tier
+**Layer:** credibility
+**User story:** As a reader of the excess, I want each tier compared with the reports it could have come from, never with a pooled count.
+1. THE baseline of a tier SHALL count only reports from that tier's population (`stats/tiers.py`): headline, resident legacy and new-system reports (resident legacy only for originals with a planned-follow-up label); source_unknown, new-system reports; city_rereport, legacy city-originated reports; sensitivity, every report. Closures of every same-family case still open a dead stretch.
+2. Excess SHALL be reported per tier (`tier_set` is the tier) and never pooled across tiers; originals labeled invalid or duplicate are in no cohort.
+3. Each tier SHALL have its own shift test and placebo (`by_tier` in `excess.json`).
+
+4. The source_unknown cohort SHALL hold only originals whose window ends after the first new-system case (owner decision 2026-11-16): before that no new-system report can exist.
+5. WHEN the headline placebo interval does not cover 0, the excess SHALL be shown nowhere on the site and the methods page SHALL show the placebo result instead (methods.md).
+
+### REQ-STAT-SF.4: Adjusted rate withheld
+**Layer:** credibility
+1. No export SHALL carry the adjusted stayed-fixed rate (`stayed_fixed_adj` is null) and the site SHALL show only the raw stayed-fixed rate beside the on-time rate (owner decision 2026-11-17); the methods page SHALL say that the adjustment depends on the same uncalibrated baseline as the excess, and that the confidence score's chance term comes from that baseline and the score is used only for ranking.
+
+### REQ-STAT-AREA: Match-area baseline
+**Layer:** credibility
+1. Each original's `p` SHALL be estimated from the history of its own match area (`stats/areas.py`): the same-family cases that match any of its members under `detect.match.match` (same segment within MAX_SEGMENT_DIST, the intersection rule, or RADIUS_M when unsnapped). Reports outside the area SHALL never change the original's `p`.
+2. Originals of one segment or cell SHALL be resampled together, and their closures moved together in the shift test and placebo.
+
+### REQ-STAT-BAND: Excess by match distance
+**Layer:** credibility
+1. Observed, expected and excess SHALL also be reported per tier and match-distance band (0-5, 5-15, 15-30, 30-75 m): observed by the zombie's `distance_m`, expected by splitting each original's `p` by the distance distribution of the spot's other live reports. The rows are a diagnostic; `p` still counts the whole spot (docs/METHODS.md).
+
 ### REQ-STAT-TIER: Sensitivity toggle data
 **Layer:** credibility
 **User story:** As a reader, I want to switch the sensitivity tier on and off, so I can see what the headline leaves out.

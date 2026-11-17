@@ -8,13 +8,11 @@ vi.mock("../map/MapView", () => ({ default: (p: { rows: unknown[] }) => <div dat
 
 const IDS = ["z1", "z2", "z3", "z4"];
 const DATES = ["2016-01-10", "2018-06-01", "2018-09-09", "2024-02-02"];
-const POINTS = { data_version: "v", n: 4, id: IDS, lat: IDS.map(() => 42.3), lon: IDS.map(() => -71), tier: IDS.map(() => "headline"), family: IDS.map(() => "sign"), department: IDS.map(() => null), neighborhood: IDS.map(() => "Dorchester"), year: [2016, 2018, 2018, 2024] };
-const Z = { after_temporary_fix: false, baseline_p: 0, bulk_closure: false, chain_id: "c", city_rereport: false, close_year: 2015, confidence: 0.8, confidence_partial: false, coroner_label: "resolved", department: null, distance_m: 0, district: null, gap_days: 3, incident_id: "i", is_planned_followup: false, match_mode: "segment", neighborhood: "Dorchester", reports_after: 1, resurrection_id: "r", segment_id: null, skeptic_notes: "", skeptic_verdict: "not_reviewed", source_unknown: false, tier: "headline", times_risen: 1, type_family: "sign" };
-const ZOMBIES = { data_version: "v", zombies: IDS.map((id, i) => ({ ...Z, zombie_id: id, resurrection_date: DATES[i] })) };
+const POINTS = { data_version: "v", n: 4, id: IDS, lat: IDS.map(() => 42.3), lon: IDS.map(() => -71), tier: IDS.map(() => "headline"), family: IDS.map(() => "sign"), department: IDS.map(() => null), neighborhood: IDS.map(() => "Dorchester"), year: [2016, 2018, 2018, 2024], date: DATES };
 
-function open(reduced = false, zombies: unknown = ZOMBIES) {
+function open(reduced = false, points: unknown = POINTS) {
   vi.stubGlobal("matchMedia", (q: string) => ({ matches: reduced && q.includes("reduce"), addEventListener() {}, removeEventListener() {}, media: q }));
-  vi.stubGlobal("fetch", vi.fn(async (u: string) => ({ ok: true, status: 200, headers: new Headers(), json: async () => (String(u).endsWith("points.json") ? POINTS : String(u).endsWith("zombies.json") ? zombies : { data_version: "v", last_run: "2026-11-11T00:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" }) }) as Response));
+  vi.stubGlobal("fetch", vi.fn(async (u: string) => ({ ok: true, status: 200, headers: new Headers(), json: async () => (String(u).endsWith("points.json") ? points : { data_version: "v", last_run: "2026-11-11T00:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" }) }) as Response));
   return render(<MemoryRouter initialEntries={["/timelapse"]}><App /></MemoryRouter>);
 }
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ["performance", "requestAnimationFrame", "cancelAnimationFrame", "setTimeout", "clearTimeout"] }));
@@ -52,7 +50,7 @@ describe("Night of the Living 311 (REQ-WEB-TIMELAPSE.1)", () => {
     expect(rows).toEqual(["201611", "201823", "202414"]);
   });
   it("says so when there are no dated possible zombies", async () => {
-    open(false, { data_version: "v", zombies: [] });
+    open(false, { ...POINTS, date: IDS.map(() => "") });
     expect(await screen.findByTestId("timelapse-empty")).toBeTruthy();
   });
 });

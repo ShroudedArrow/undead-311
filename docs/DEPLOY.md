@@ -7,7 +7,7 @@ Requirement IDs: REQ-OPS-HOST.1 to .4, REQ-OPS-NIGHTLY.2.
 ## How the pieces fit
 
 - **Netlify's GitHub app** builds the production site from `main` and a deploy preview for each pull request. Settings come from `netlify.toml` (build `npm --prefix web ci && make build`, publish `web/dist`). The build is web-only: Netlify's build image has Node (taken from `.nvmrc`) and `make`, but not `uv`, so it never runs the Python pipeline.
-- **The data repo's nightly job** (`ShroudedArrow/undead-311-data`, template in `ops/undead-311-data/`, added in the credibility layer) rebuilds the whole site with fresh data and deploys it with the Netlify CLI. The judged repo needs no Netlify secret.
+- **The data repo's nightly job** (`ShroudedArrow/undead-311-data`, template in `ops/undead-311-data/`) downloads the newest `exports-<run-id>` release asset (the pipeline exports of a full-data run, published with `pipeline/scripts/exports_release.py`), builds the whole site with it and deploys it with the Netlify CLI. The pipeline does not run in the nightly job. The judged repo needs no Netlify secret.
 - The site is served from one origin, so the Content Security Policy and the "no third-party requests" rule hold.
 
 ## Steps
@@ -47,7 +47,8 @@ Requirement IDs: REQ-OPS-HOST.1 to .4, REQ-OPS-NIGHTLY.2.
 2. Open `ShroudedArrow/undead-311`, then the same **Secrets and variables**, **Actions** page, and add `CHANNEL_TOKEN` again (the CI result post uses it).
 3. GitHub does not allow an Actions secret name that starts with `GITHUB_`, so the secret is called `CHANNEL_TOKEN`. Each workflow maps it to the name the scripts read: `env: GITHUB_CHANNEL_TOKEN: ${{ secrets.CHANNEL_TOKEN }}` (the scripts `scripts/hooklib.py` and `scripts/ci_channel.py` read `GITHUB_CHANNEL_TOKEN`).
 4. The judged repo never needs `NETLIFY_AUTH_TOKEN` or `NETLIFY_SITE_ID`.
-5. In `ShroudedArrow/undead-311-data`, on the same page, open the **Variables** tab and add the variable `JUDGED_TAG`: the freeze tag in the judged repo. The nightly job checks out that tag. The workflow template and its setup steps are in `ops/undead-311-data/README.md` (REQ-OPS-NIGHTLY.1).
+5. To publish a run's exports you also need `DATA_RELEASE_TOKEN` where `exports_release.py publish` runs (a sandbox secret; the script hands it to `gh` as `GH_TOKEN` for its own calls only): a fine-grained token limited to `ShroudedArrow/undead-311-data` with **Contents: read and write**. The full list of secrets and variables is in `ops/undead-311-data/README.md`.
+6. In `ShroudedArrow/undead-311-data`, on the same page, open the **Variables** tab and add the variable `JUDGED_TAG`: the freeze tag in the judged repo. The nightly job checks out that tag. The workflow template and its setup steps are in `ops/undead-311-data/README.md` (REQ-OPS-NIGHTLY.1).
 
 ### 7. Production URL
 Copy the site URL from the top of the Netlify site page (`https://<name>.netlify.app`; rename it under **Site configuration**, **Change site name**). Put it in `README.md`.

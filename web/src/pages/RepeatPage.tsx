@@ -3,8 +3,8 @@ import { Link } from "react-router-dom";
 import { PanelError } from "../components/PanelError";
 import { useData } from "../lib/data";
 import { familyLabel } from "../lib/labels";
-import { parseRepeatOffenders, parseZombies } from "../lib/parse";
-import { chainRows, firstZombieOfChain, REPEAT_MIN_HEADLINE, sortChains } from "../lib/repeat";
+import { parseRepeatOffenders } from "../lib/parse";
+import { chainRows, REPEAT_MIN_HEADLINE, sortChains } from "../lib/repeat";
 import { t } from "../lib/t";
 
 const MapView = lazy(() => import("../map/MapView"));
@@ -12,11 +12,9 @@ const MapView = lazy(() => import("../map/MapView"));
 /** Repeat offenders: the chains the engine exports, with a map of where they are (REQ-WEB-REPEAT.1). */
 export default function RepeatPage() {
   const data = useData("repeat_offenders.json", parseRepeatOffenders);
-  const zombies = useData("zombies.json", parseZombies);
   const [picked, setPicked] = useState<string | null>(null);
   const chains = useMemo(() => (data.status === "ok" ? sortChains(data.data.repeat_offenders) : []), [data]);
   const rows = useMemo(() => chainRows(chains), [chains]);
-  const zs = zombies.status === "ok" ? zombies.data.zombies : [];
   return (
     <div className="page repeat-page">
       <h1>{t("repeat.title")}</h1>
@@ -48,7 +46,7 @@ export default function RepeatPage() {
               </thead>
               <tbody>
                 {chains.map((c) => {
-                  const first = firstZombieOfChain(c.chain_id, zs);
+                  const first = c.first_zombie_id ?? null;
                   return (
                     <tr key={c.chain_id} data-chain={c.chain_id} aria-current={c.chain_id === picked ? "true" : undefined} className={c.chain_id === picked ? "row-picked" : undefined}>
                       <th scope="row">{c.neighborhood ?? t("filters.unknown_neighborhood")}</th>
@@ -56,7 +54,7 @@ export default function RepeatPage() {
                       <td>{c.times_risen}</td>
                       <td>{c.headline_count}</td>
                       <td>{c.block_level ? t("repeat.block_level") : t("repeat.exact")}</td>
-                      <td>{first ? <Link to={`/zombie/${encodeURIComponent(first.zombie_id)}`}>{t("repeat.chain_open")}</Link> : null}</td>
+                      <td>{first ? <Link to={`/zombie/${encodeURIComponent(first)}`}>{t("repeat.chain_open")}</Link> : null}</td>
                     </tr>
                   );
                 })}

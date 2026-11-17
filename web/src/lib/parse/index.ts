@@ -6,6 +6,7 @@
 import type {
   BulkClosuresFile,
   CardShard,
+  DistrictsFile,
   ExcessFile,
   ExclusionsFile,
   FunnelFile,
@@ -15,6 +16,7 @@ import type {
   RepeatOffendersFile,
   ScorecardFile,
   SensitivityGridFile,
+  ShardIndexFile,
   StatusFile,
   SurvivalFile,
   TemporaryFixesFile,
@@ -23,6 +25,7 @@ import type {
 } from "./generated/types";
 import validateBulkClosures from "./generated/validators/bulk_closures";
 import validateCard from "./generated/validators/card";
+import validateDistricts from "./generated/validators/districts";
 import validateExcess from "./generated/validators/excess";
 import validateExclusions from "./generated/validators/exclusions";
 import validateFunnel from "./generated/validators/funnel";
@@ -32,6 +35,7 @@ import validatePoints from "./generated/validators/points";
 import validateRepeatOffenders from "./generated/validators/repeat_offenders";
 import validateScorecard from "./generated/validators/scorecard";
 import validateSensitivityGrid from "./generated/validators/sensitivity_grid";
+import validateShardIndex from "./generated/validators/shard_index";
 import validateStatus from "./generated/validators/status";
 import validateSurvival from "./generated/validators/survival";
 import validateTemporaryFixes from "./generated/validators/temporary_fixes";
@@ -70,6 +74,8 @@ export const parseTemporaryFixes = (d: unknown) => runValidator<TemporaryFixesFi
 export const parseExclusions = (d: unknown) => runValidator<ExclusionsFile>(validateExclusions, d);
 export const parseSensitivityGrid = (d: unknown) => runValidator<SensitivityGridFile>(validateSensitivityGrid, d);
 export const parseRepeatOffenders = (d: unknown) => runValidator<RepeatOffendersFile>(validateRepeatOffenders, d);
+export const parseShardIndex = (d: unknown) => runValidator<ShardIndexFile>(validateShardIndex, d);
+export const parseDistricts = (d: unknown) => runValidator<DistrictsFile>(validateDistricts, d);
 export const parseBulkClosures = (d: unknown) => runValidator<BulkClosuresFile>(validateBulkClosures, d);
 
 export type Curve = SurvivalFile["curves"][number];
@@ -83,4 +89,6 @@ export type Card = CardShard["cards"][number];
 export type CaseRecord = Card["original"];
 export type Scorecard = ScorecardFile["scorecards"][number];
 export type Rate = Scorecard["on_time"];
+export type { DistrictsFile, ShardIndexFile };
+export type ShardEntry = ShardIndexFile["shards"][number];
 export type { CardShard, JudgeTourFile, PointsFile, ScorecardFile, StatusFile, ValidationFile, ZombiesFile };

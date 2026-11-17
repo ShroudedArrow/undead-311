@@ -45,7 +45,7 @@ from __future__ import annotations
 
 import math
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -53,6 +53,7 @@ import numpy as np
 
 from undead311.detect.model import Case, DetectionResult, Incident, Zombie
 from undead311.detect.params import DEFAULT, Params
+from undead311.stats.areas import MatchAreas
 from undead311.stats.cohort import COS_BOSTON, M_PER_DEG, eligible_originals, season_idx, spot_key
 from undead311.stats.intervals import bootstrap_sum_cells
 
@@ -228,8 +229,25 @@ class BaselineModel:
         params: Params = DEFAULT,
         data_end: datetime | None = None,
         areas_m2: Mapping[str, float] | None = None,
+        *,
+        incidents: Sequence[Incident] | None = None,
+        population: Callable[[Case], bool] | None = None,
+        tier: str = "headline",
+        all_tiers: bool = False,
+        match_areas: MatchAreas | None = None,
     ) -> None:
+        """`population` (REQ-STAT-POP.1) keeps only the reports a tier's re-reports can come from: the spot's chance
+        reports, its live time and the neighborhood rate then count that population alone. Closures of every same-family
+        case still open a dead stretch, because a closure is where any report would show. `incidents` is the cohort the
+        model estimates (default: every incident); `tier` is the zombie tier that counts as an outcome. With none of them
+        given the model is the pooled one of the first dry runs.
+
+        Each original is estimated from its own match area (REQ-STAT-AREA.1, `stats/areas.py`): the same-family reports that
+        match any of its members, not the whole segment or cell. `match_areas` shares the areas of one detection result between
+        models; without it the model builds the areas of its own incidents."""
         self.cases, self.result, self.params = cases, result, params
+        self.incidents = list(result.incidents if incidents is None else incidents)
+        self.population, self.tier, self.all_tiers = population, tier, all_tiers
         ends = [c.open_utc for c in cases.values()]
         self.data_end = data_end or (max(ends) if ends else None)
         self.t_end = self.data_end.timestamp() if self.data_end else 0.0
@@ -237,12 +255,18 @@ class BaselineModel:
         self.window_s = params.WINDOW_DAYS * DAY
         self.areas_m2 = dict(areas_m2 or {})
         self.mirror = result.mirror_ids
-        self._incident_key: dict[str, tuple[str, str]] = {}
+        self.areas = match_areas or MatchAreas(cases, self.incidents, self.mirror, params)
+        self._incident_key: dict[str, tuple[str, str]] = {}  # (family, "area:<n>"): the key of everything read from the match area
+        self._spot_key: dict[str, tuple[str, str]] = {}  # (family, segment or cell): what originals share for bootstrap and shifts
+        self._area_no: dict[tuple[str, str], int] = {}
         self._incident_of_case: dict[str, Case] = {}
-        for inc in sorted(result.incidents, key=lambda i: i.incident_id):
+        for inc in sorted(self.incidents, key=lambda i: i.incident_id):
             first = cases[min(inc.member_ids)]
             self._incident_of_case[inc.incident_id] = first
-            self._incident_key[inc.incident_id] = (inc.type_family, spot_key(first.segment_id, first.lat, first.lon, params))
+            a = self.areas.of_incident[inc.incident_id]
+            self._incident_key[inc.incident_id] = (inc.type_family, f"area:{a}")
+            self._area_no[(inc.type_family, f"area:{a}")] = a
+            self._spot_key[inc.incident_id] = (inc.type_family, spot_key(first.segment_id, first.lat, first.lon, params))
         self.groups = self._groups()
         self._build_season_days()
         self._spot_info = self._spots()
@@ -256,28 +280,35 @@ class BaselineModel:
 
     # --- same spot -------------------------------------------------------------------------------------------------
     def _groups(self) -> dict[tuple[str, str], tuple[np.ndarray, np.ndarray]]:
-        """(family, spot) -> (sorted open times, sorted close times) of every non-mirror case, for the spots that have an incident.
+        """area key -> (sorted open times, sorted close times) of the area's non-mirror cases, for the areas that have an incident.
 
-        The WINDOW_DAYS after every same-family closure at the spot are dead time, whether or not the closed case was itself
-        a resurrection (REQ-STAT-BASE.1, ops#113): the next link of a chain is not a chance report either."""
-        needed = set(self._incident_key.values())
-        rows: dict[tuple[str, str], list[tuple[float, float]]] = defaultdict(list)
-        for cid in sorted(self.cases):
-            c = self.cases[cid]
-            if cid in self.mirror:
-                continue
-            key = (c.type_family, spot_key(c.segment_id, c.lat, c.lon, self.params))
-            if key not in needed:
-                continue
-            rows[key].append((c.open_utc.timestamp(), c.close_utc.timestamp() if c.is_closed else math.inf))  # type: ignore[union-attr]
+        Open times are the population's reports only; close times are every closure in the area, because a closure starts a dead
+        stretch whoever reported the case. The WINDOW_DAYS after every same-family closure in the area are dead time, whether or
+        not the closed case was itself a resurrection (REQ-STAT-BASE.1, ops#113): the next link of a chain is not a chance report
+        either. An area with no report of the population is not watched (REQ-STAT-POP.1)."""
+        ar = self.areas
+        pop = np.fromiter((self.population is None or self.population(self.cases[c]) for c in ar.case_ids), dtype=bool, count=len(ar.case_ids))
+        self._pop = pop
+        self._geo: dict[tuple[str, str], np.ndarray] = {}  # area key -> rows of its population reports, by open time
+        self._close_spots: dict[tuple[str, str], np.ndarray] = {}  # area key -> spot index of each closure, by close time
         out = {}
-        for key in sorted(rows):
-            pairs = sorted(rows[key])
-            out[key] = (
-                np.array([p[0] for p in pairs]),
-                np.sort(np.array([p[1] for p in pairs if p[1] != math.inf])),
-            )
+        for key in sorted(set(self._incident_key.values())):
+            rows = ar.rows[self._area_no[key]]
+            rows = rows[~ar.is_mirror[rows]]
+            prow = rows[pop[rows]]
+            if not prow.size:
+                continue
+            prow = prow[np.argsort(ar.open_ts[prow], kind="stable")]
+            crow = rows[~np.isnan(ar.close_ts[rows])]
+            order = np.argsort(ar.close_ts[crow], kind="stable")
+            crow = crow[order]
+            out[key] = (ar.open_ts[prow], ar.close_ts[crow])
+            self._geo[key] = prow
+            self._close_spots[key] = ar.spot_idx[crow]
         return out
+
+    def in_population(self, cid: str) -> bool:
+        return self.population is None or self.population(self.cases[cid])
 
     def _build_season_days(self) -> None:
         """Cumulative days of each season from the first report, by day, so any stretch of time is two lookups."""
@@ -349,10 +380,9 @@ class BaselineModel:
         live = self._spot_info[key]
         opens = []
         for mid in inc.member_ids:
-            c = self.cases[mid]
-            if mid in self.mirror or (c.type_family, spot_key(c.segment_id, c.lat, c.lon, self.params)) != key:
+            if mid in self.mirror or not self.in_population(mid):
                 continue
-            opens.append(c.open_utc.timestamp())
+            opens.append(self.cases[mid].open_utc.timestamp())
         arr = np.array(opens)
         arr = arr[(arr > live.t0) & live.is_live(arr)] if arr.size else arr
         got = np.bincount(season_array(arr), minlength=4) if arr.size else np.zeros(4, dtype=int)
@@ -368,9 +398,7 @@ class BaselineModel:
         opens = [
             self.cases[mid].open_utc.timestamp()
             for mid in inc.member_ids
-            if mid not in self.mirror and self.cases[mid].open_utc.timestamp() > t0
-            and (self.cases[mid].type_family, spot_key(self.cases[mid].segment_id, self.cases[mid].lat,
-                                                      self.cases[mid].lon, self.params)) == key
+            if mid not in self.mirror and self.in_population(mid) and self.cases[mid].open_utc.timestamp() > t0
         ]  # fmt: skip
         return np.bincount(season_array(np.array(opens)), minlength=4) if opens else np.zeros(4, dtype=int)
 
@@ -412,7 +440,7 @@ class BaselineModel:
 
     def excess_cohort(self, tier_set: TierSet = "headline") -> list[Incident]:
         """The originals the excess rows cover: eligible originals of the tier set that have an estimate (REQ-STAT-BASE.2, ops#152)."""
-        return [i for i in eligible_originals(self.result.incidents, self.data_end, self.params, all_tiers=tier_set == "all")
+        return [i for i in eligible_originals(self.incidents, self.data_end, self.params, all_tiers=self.all_tiers or tier_set == "all")
                 if self.estimate(i).p is not None]  # fmt: skip
 
     def dense_share(self, opens: np.ndarray, live: LiveSpot) -> np.ndarray:
@@ -514,7 +542,7 @@ class BaselineModel:
         count: dict[tuple[str, int], int] = defaultdict(int)
         windows: dict[tuple[str, int], int] = defaultdict(int)
         seen: set[tuple[tuple[str, str], int]] = set()
-        for inc in sorted(self.result.incidents, key=lambda i: i.incident_id):
+        for inc in sorted(self.incidents, key=lambda i: i.incident_id):
             s = season_idx(inc.close_utc)
             key = self._incident_key[inc.incident_id]
             live = self._spot_info.get(key)
@@ -542,7 +570,7 @@ class BaselineModel:
         rows: dict[tuple[str, str], list[tuple[float, float, float]]] = defaultdict(list)
         for cid in sorted(self.cases):
             c = self.cases[cid]
-            if cid in self.mirror or not c.neighborhood:
+            if cid in self.mirror or not c.neighborhood or not self.in_population(cid):
                 continue
             rows[(c.neighborhood, c.type_family)].append(
                 (c.open_utc.timestamp(), c.lon * M_PER_DEG * COS_BOSTON, c.lat * M_PER_DEG)
@@ -596,16 +624,15 @@ class BaselineModel:
         got = self._estimates.get(inc.incident_id)
         if got is not None:
             return got
-        key = self._incident_key[inc.incident_id]
         s = season_idx(inc.close_utc)
         got = self.spot_p(inc, s)
         windows = got[1] if got else 0
         nbr = self.nbr(inc)
         p_nbr, e_nbr = (nbr if nbr else (None, None))
         if got is not None and windows >= MIN_WINDOWS:
-            est = Estimate(got[0], "spot", windows, p_nbr, e_nbr, None, 0, ("spot", *key))
+            est = Estimate(got[0], "spot", windows, p_nbr, e_nbr, None, 0, ("spot", *self._spot_key[inc.incident_id]))
         elif (p_dense := self.dense_p(inc, s)) is not None:  # a dense spot is read by its own windows however short (ops#136)
-            est = Estimate(p_dense, "spot", windows, p_nbr, e_nbr, None, 0, ("spot", *key))
+            est = Estimate(p_dense, "spot", windows, p_nbr, e_nbr, None, 0, ("spot", *self._spot_key[inc.incident_id]))
         else:
             season_key = s
             n, pool_p = self._pooled.get((inc.type_family, s), (0, 0.0))

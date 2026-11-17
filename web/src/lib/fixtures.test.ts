@@ -1,7 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseBulkClosures, parseCardShard, parseExcess, parseExclusions, parseFunnel, parseGroups, parseJudgeTour, parseSurvival, parseTemporaryFixes, parsePoints, parseScorecard, parseStatus, parseValidation, parseZombies } from "./parse";
+import { readZombies } from "../test/zombieShards";
+import { parseBulkClosures, parseDistricts, parseShardIndex, parseCardShard, parseExcess, parseExclusions, parseFunnel, parseGroups, parseJudgeTour, parseSurvival, parseTemporaryFixes, parsePoints, parseScorecard, parseStatus, parseValidation, parseZombies } from "./parse";
 import { shardFile } from "./shard";
 import { statsPath } from "./statsFiles";
 // @ts-expect-error plain .mjs build script, no type declarations
@@ -12,7 +13,12 @@ const read = (f: string): unknown => JSON.parse(readFileSync(join(dir, statsPath
 
 describe("fixture files follow the schemas (REQ-WEB-DATA.3)", () => {
   it.each([
-    ["zombies.json", parseZombies],
+    ["zombies/index.json", parseShardIndex],
+    ["incidents/index.json", parseShardIndex],
+    ["districts.json", parseDistricts],
+    ["points/source_unknown.json", parsePoints],
+    ["points/city_rereport.json", parsePoints],
+    ["points/sensitivity.json", parsePoints],
     ["points.json", parsePoints],
     ["scorecard.json", parseScorecard],
     ["status.json", parseStatus],
@@ -37,11 +43,20 @@ describe("fixture files follow the schemas (REQ-WEB-DATA.3)", () => {
 
   it("points are parallel arrays and every point has a zombie and a card in the shard its fields name", () => {
     const pts = parsePoints(read("points.json"));
-    const zs = parseZombies(read("zombies.json"));
+    const zs = parseZombies(readZombies());
     if (!pts.ok || !zs.ok) throw new Error("fixture does not parse");
     const p = pts.data;
     for (const col of [p.id, p.lat, p.lon, p.tier, p.family, p.department, p.neighborhood, p.year]) expect(col.length).toBe(p.n);
-    expect(new Set(p.id)).toEqual(new Set(zs.data.zombies.map((z) => z.zombie_id)));
+    // points.json is the headline tier only (REQ-EXP-SIZE.4); the other tiers are their own files
+    expect(new Set(p.id)).toEqual(new Set(zs.data.zombies.filter((z) => z.tier === "headline").map((z) => z.zombie_id)));
+    expect(p.tier.every((t) => t === "headline")).toBe(true);
+    const others = ["source_unknown", "city_rereport", "sensitivity"].flatMap((tier) => {
+      const f = parsePoints(read(`points/${tier}.json`));
+      if (!f.ok) throw new Error(`points/${tier}.json does not parse`);
+      expect(f.data.tier.every((t) => t === tier)).toBe(true);
+      return f.data.id;
+    });
+    expect(new Set([...p.id, ...others])).toEqual(new Set(zs.data.zombies.map((z) => z.zombie_id)));
     for (let i = 0; i < Math.min(p.n, 40); i++) {
       const shard = parseCardShard(read(shardFile(p.neighborhood[i], p.year[i])));
       expect(shard.ok && shard.data.cards.some((c) => c.zombie_id === p.id[i])).toBe(true);
@@ -73,7 +88,7 @@ describe("fixture files follow the schemas (REQ-WEB-DATA.3)", () => {
   });
 
   it("every kept pair re-reports strictly after the closure (testing.md property 2, REQ-WEB-DATA.3)", () => {
-    const zs = parseZombies(read("zombies.json"));
+    const zs = parseZombies(readZombies());
     if (!zs.ok) throw new Error("fixture does not parse");
     for (const z of zs.data.zombies) expect(z.gap_days).toBeGreaterThan(0);
     const gaps = zs.data.zombies.map((z) => z.gap_days);
@@ -81,7 +96,7 @@ describe("fixture files follow the schemas (REQ-WEB-DATA.3)", () => {
   });
 
   it("the kept set includes partial-confidence cards, so that state renders (REQ-WEB-CARD.6)", () => {
-    const zs = parseZombies(read("zombies.json"));
+    const zs = parseZombies(readZombies());
     if (!zs.ok) throw new Error("fixture does not parse");
     const flagged = zs.data.zombies as unknown as { confidence_partial?: boolean }[];
     expect(flagged.some((z) => z.confidence_partial)).toBe(true);
@@ -89,7 +104,7 @@ describe("fixture files follow the schemas (REQ-WEB-DATA.3)", () => {
 
   it("the tour shows a spread of gaps and more than one case type (UX-1)", () => {
     const tour = parseJudgeTour(read("judge_tour.json"));
-    const zs = parseZombies(read("zombies.json"));
+    const zs = parseZombies(readZombies());
     if (!tour.ok || !zs.ok) throw new Error("fixture does not parse");
     const picked = zs.data.zombies.filter((z) => tour.data.zombie_ids.includes(z.zombie_id));
     expect(picked).toHaveLength(3);
@@ -103,7 +118,7 @@ describe("fixture files follow the schemas (REQ-WEB-DATA.3)", () => {
 describe("fixture judge tour follows REQ-STAT-TOUR.1 (UX-10)", () => {
   it("is the three headline zombies ranked survives, weakened, not_reviewed (ops#215), then most re-reports, ties by zombie ID, never by confidence, when no override file exists", () => {
     const tour = read("judge_tour.json") as { source: string; provisional: boolean; zombie_ids: string[] };
-    const zs = parseZombies(read("zombies.json"));
+    const zs = parseZombies(readZombies());
     if (!zs.ok) throw new Error("fixture does not parse");
     const RANK: Record<string, number> = { survives: 0, weakened: 1, not_reviewed: 2, explained_away: 3 };
     const expected = zs.data.zombies
@@ -134,7 +149,7 @@ describe("fixture judge tour follows REQ-STAT-TOUR.1 (UX-10)", () => {
   });
 
   it("no filter option appears twice for one neighborhood (UX-11)", () => {
-    const zs = parseZombies(read("zombies.json"));
+    const zs = parseZombies(readZombies());
     if (!zs.ok) throw new Error("fixture does not parse");
     const hoods = new Set(zs.data.zombies.map((z) => z.neighborhood));
     expect(hoods.has("Allston")).toBe(false);
@@ -166,7 +181,7 @@ describe("fixtures follow the zombie definition (UX-16, UX-18, UX-20, UX-25)", (
 
   it("bulk flags come from bulk_closures.json: a zombie is flagged exactly when its original's (department, day, text) is listed (UX-18)", () => {
     const bulk = parseBulkClosures(read("bulk_closures.json"));
-    const zs = parseZombies(read("zombies.json"));
+    const zs = parseZombies(readZombies());
     if (!bulk.ok || !zs.ok) throw new Error("fixture does not parse");
     const listed = new Set(bulk.data.bulk_closures.map((b) => `${b.close_date}|${b.template}`));
     const byId = new Map(allCards().map((c) => [c.zombie_id, c]));
@@ -192,7 +207,7 @@ describe("fixtures follow the zombie definition (UX-16, UX-18, UX-20, UX-25)", (
     if (!st.ok) throw new Error("fixture does not parse");
     // `shift.observed` is the shift test's own count (all tiers); `headline_zombies` is the headline set it came with.
     expect(ex.shift.headline_zombies ?? ex.shift.observed).toBe(st.data.headline_count);
-    const zs = parseZombies(read("zombies.json"));
+    const zs = parseZombies(readZombies());
     if (!zs.ok) throw new Error("fixture does not parse");
     expect(zs.data.zombies.filter((z) => z.tier === "headline")).toHaveLength(st.data.headline_count as number);
   });

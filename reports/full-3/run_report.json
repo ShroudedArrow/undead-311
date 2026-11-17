@@ -1,0 +1,337 @@
+{
+  "bytes_raw_total": 116471899,
+  "city_origin": {
+    "city_rereport": 33022,
+    "city_rereport_share": 0.6334062224268232,
+    "city_rereport_under_1h": 13304,
+    "headline": 19112
+  },
+  "data_version": "2026-11-16+5b76337+89e078da",
+  "excluded_pairs": {
+    "linked_successor": 0,
+    "mirror": 22,
+    "transferred_original": 732
+  },
+  "exclusions": {
+    "excluded_type": 861963,
+    "null_coords": 2119,
+    "null_open_time": 0,
+    "out_of_bounds": 0,
+    "placeholder": 792,
+    "test_data": 1,
+    "unlisted_type": 1877683
+  },
+  "files": 668,
+  "first_view_budget_bytes": 3000000,
+  "first_view_bytes": 327567,
+  "first_view_raw_bytes": 2271444,
+  "label_coverage": 0.9951616889412749,
+  "largest_files_gzip": {
+    "cards/dorchester-2018.json": 109759,
+    "cards/dorchester-2019.json": 83854,
+    "cards/downtown-financial-district-2017.json": 89301,
+    "cards/downtown-financial-district-2019.json": 94170,
+    "cards/east-boston-2019.json": 86196,
+    "cards/roxbury-2018.json": 94478,
+    "points.json": 323930,
+    "points/city_rereport.json": 478424,
+    "stats/survival.json": 211497,
+    "stats/trends.json": 162671
+  },
+  "planned_followups": 4912,
+  "row_counts": {
+    "bulk_closure_cases": 10442,
+    "bulk_closure_groups": 127,
+    "cases_clean": 388482,
+    "cases_norm": 3131040,
+    "edges": 334643,
+    "grid_runs": 19,
+    "in_scope_cases": 388482,
+    "intersections": 11802,
+    "neighborhood_renamed": 49417,
+    "raw_legacy": 3040547,
+    "raw_new": 90493,
+    "snapped_cases": 233614,
+    "unsnapped_cases": 154868,
+    "z_preferred_cases": 4367
+  },
+  "stages": [
+    {
+      "finished_utc": "2026-11-16T23:43:20Z",
+      "peak_rss_mb": 2383.5,
+      "process_peak_mb": 2468.9,
+      "rows": {
+        "raw_legacy": 3040547,
+        "raw_new": 90493
+      },
+      "seconds": 0.0,
+      "seq": 1,
+      "stage": "load",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T23:44:49Z",
+      "peak_rss_mb": 4390.3,
+      "process_peak_mb": 4450.4,
+      "rows": {
+        "cases_norm": 3131040
+      },
+      "seconds": 0.0,
+      "seq": 2,
+      "stage": "normalize",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T23:44:55Z",
+      "peak_rss_mb": 3424.1,
+      "process_peak_mb": 4450.4,
+      "rows": {
+        "cases_x": 3131040
+      },
+      "seconds": 0.0,
+      "seq": 3,
+      "stage": "crosswalk",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T23:45:06Z",
+      "peak_rss_mb": 3211.3,
+      "process_peak_mb": 4450.4,
+      "rows": {
+        "cases_clean": 388482,
+        "cases_excluded": 2742558
+      },
+      "seconds": 0.0,
+      "seq": 4,
+      "stage": "clean",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T23:47:45Z",
+      "peak_rss_mb": 2531.1,
+      "process_peak_mb": 4450.4,
+      "rows": {
+        "cases_clean": 388482,
+        "intersections": 11802,
+        "snapped_cases": 233614,
+        "unsnapped_cases": 154868,
+        "z_preferred_cases": 4367
+      },
+      "seconds": 0.0,
+      "seq": 5,
+      "stage": "snap",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T23:47:47Z",
+      "peak_rss_mb": 2148.7,
+      "process_peak_mb": 4450.4,
+      "rows": {
+        "neighborhood_areas": 18,
+        "neighborhood_renamed": 49417
+      },
+      "seconds": 0.0,
+      "seq": 6,
+      "stage": "neighborhoods",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-17T01:01:52Z",
+      "peak_rss_mb": 993.4,
+      "process_peak_mb": 993.4,
+      "rows": {},
+      "seconds": 4.63,
+      "seq": 0,
+      "stage": "templates",
+      "status": "done"
+    },
+    {
+      "finished_utc": "2026-11-16T23:50:03Z",
+      "peak_rss_mb": 2553.9,
+      "process_peak_mb": 4450.4,
+      "rows": {
+        "closed_in_scope": 315606,
+        "labeled_by_code": 3343,
+        "labeled_by_none": 1527,
+        "labeled_by_phrase": 112909,
+        "labeled_by_table": 197827,
+        "unlabeled": 1527
+      },
+      "seconds": 0.0,
+      "seq": 7,
+      "stage": "coroner",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-16T23:50:54Z",
+      "peak_rss_mb": 2614.9,
+      "process_peak_mb": 4450.4,
+      "rows": {
+        "bulk_closure_cases": 10442,
+        "bulk_closure_groups": 127
+      },
+      "seconds": 0.0,
+      "seq": 8,
+      "stage": "bulk",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-17T01:05:08Z",
+      "peak_rss_mb": 1644.7,
+      "process_peak_mb": 1646.8,
+      "rows": {
+        "edges": 334643,
+        "in_scope_cases": 388482
+      },
+      "seconds": 196.21,
+      "seq": 0,
+      "stage": "detect",
+      "status": "done"
+    },
+    {
+      "finished_utc": "2026-11-17T00:03:37Z",
+      "peak_rss_mb": 3808.4,
+      "process_peak_mb": 4450.4,
+      "rows": {
+        "grid_runs_in_group": 3
+      },
+      "seconds": 0.0,
+      "seq": 9,
+      "stage": "grid-segment-r15",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-17T00:16:42Z",
+      "peak_rss_mb": 2556.8,
+      "process_peak_mb": 2565.1,
+      "rows": {
+        "grid_runs_in_group": 3
+      },
+      "seconds": 0.0,
+      "seq": 10,
+      "stage": "grid-segment-r30",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-17T00:26:24Z",
+      "peak_rss_mb": 2666.4,
+      "process_peak_mb": 2674.9,
+      "rows": {
+        "grid_runs_in_group": 3
+      },
+      "seconds": 0.0,
+      "seq": 11,
+      "stage": "grid-segment-r50",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-17T00:37:02Z",
+      "peak_rss_mb": 2481.0,
+      "process_peak_mb": 2485.1,
+      "rows": {
+        "grid_runs_in_group": 3
+      },
+      "seconds": 0.0,
+      "seq": 12,
+      "stage": "grid-radius-r15",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-17T00:44:31Z",
+      "peak_rss_mb": 2551.4,
+      "process_peak_mb": 2559.7,
+      "rows": {
+        "grid_runs_in_group": 3
+      },
+      "seconds": 0.0,
+      "seq": 13,
+      "stage": "grid-radius-r30",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-17T00:52:44Z",
+      "peak_rss_mb": 2681.7,
+      "process_peak_mb": 2690.0,
+      "rows": {
+        "grid_runs_in_group": 3
+      },
+      "seconds": 0.0,
+      "seq": 14,
+      "stage": "grid-radius-r50",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-17T01:01:28Z",
+      "peak_rss_mb": 2501.6,
+      "process_peak_mb": 2510.3,
+      "rows": {
+        "grid_runs_in_group": 1
+      },
+      "seconds": 0.0,
+      "seq": 15,
+      "stage": "grid-no-street-light-other",
+      "status": "skipped"
+    },
+    {
+      "finished_utc": "2026-11-17T01:05:10Z",
+      "peak_rss_mb": 1655.5,
+      "process_peak_mb": 1655.5,
+      "rows": {
+        "grid_runs": 19
+      },
+      "seconds": 0.88,
+      "seq": 16,
+      "stage": "grid",
+      "status": "done"
+    },
+    {
+      "finished_utc": "2026-11-17T01:08:03Z",
+      "peak_rss_mb": 2827.7,
+      "process_peak_mb": 2828.3,
+      "rows": {},
+      "seconds": 173.41,
+      "seq": 0,
+      "stage": "baselines",
+      "status": "done"
+    },
+    {
+      "finished_utc": "2026-11-17T01:08:07Z",
+      "peak_rss_mb": 2827.7,
+      "process_peak_mb": 2828.3,
+      "rows": {},
+      "seconds": 3.37,
+      "seq": 0,
+      "stage": "skeptic",
+      "status": "done"
+    },
+    {
+      "finished_utc": "2026-11-17T01:22:40Z",
+      "peak_rss_mb": 3952.6,
+      "process_peak_mb": 3955.3,
+      "rows": {},
+      "seconds": 873.31,
+      "seq": 0,
+      "stage": "stats",
+      "status": "done"
+    },
+    {
+      "finished_utc": "2026-11-17T01:26:48Z",
+      "peak_rss_mb": 3478.1,
+      "process_peak_mb": 3955.3,
+      "rows": {
+        "zombies": 52434
+      },
+      "seconds": 248.33,
+      "seq": 0,
+      "stage": "export",
+      "status": "done"
+    }
+  ],
+  "tier_counts": {
+    "city_rereport": 33022,
+    "headline": 19112,
+    "sensitivity": 202,
+    "source_unknown": 98
+  },
+  "unlabeled": 1527
+}

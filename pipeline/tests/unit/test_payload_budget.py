@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -62,9 +63,10 @@ def test_req_exp_size_1_stats_files_written_before_the_export_are_listed_without
 
 def test_req_exp_size_2_first_view_over_budget_fails_before_anything_is_written(tmp_path):
     (tmp_path / "stats").mkdir()
-    (tmp_path / "stats" / "scorecard.json").write_text(" " * (FIRST_VIEW_BUDGET_BYTES + 1))
+    # random hex does not compress below the budget: the budget is gzip size (REQ-EXP-SIZE.2)
+    (tmp_path / "stats" / "scorecard.json").write_text(os.urandom(FIRST_VIEW_BUDGET_BYTES).hex())
     result, cases, ctx = town_inputs()
-    with pytest.raises(PayloadBudgetExceeded, match="over the 3,000,000 B budget"):
+    with pytest.raises(PayloadBudgetExceeded, match="B gzip, over the 3,000,000 B budget"):
         export_all(result, cases, tmp_path, ctx)
     assert sorted(p.name for p in tmp_path.rglob("*") if p.is_file()) == ["scorecard.json"]  # nothing new, no status
 

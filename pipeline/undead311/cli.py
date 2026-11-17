@@ -22,7 +22,7 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--validation", default=None, help="markdown file to update (default docs/VALIDATION.md)")
     v = sub.add_parser("validation-sample", help="draw the field-validation sample (REQ-STAT-VAL.1)")
     v.add_argument("--labels-dir", default=None, help="folder with validation_config.json (default data/labels in the checkout)")
-    v.add_argument("--data", default=None, help="folder with zombies.json and status.json (default web/public/data)")
+    v.add_argument("--data", default=None, help="folder with the zombies/ shards (or zombies.json) and status.json (default web/public/data)")
     f = sub.add_parser("validate", help="score the field labels into docs/VALIDATION.md and validation.json (REQ-STAT-VAL.2)")
     f.add_argument("--labels-dir", default=None, help="folder with validation_labels.csv (default data/labels in the checkout)")
     f.add_argument("--validation", default=None, help="markdown file to update (default docs/VALIDATION.md)")

@@ -1,7 +1,7 @@
 import { familyLabel } from "../lib/labels";
 import type { ExcessFile, ExcessRow, ScorecardFile } from "../lib/parse";
-import { familyExcessRows, num1 } from "../lib/methods";
-import { headlineScorecards, pct, stayedFixedShown } from "../lib/rates";
+import { excessShown, familyExcessRows, num1 } from "../lib/methods";
+import { headlineScorecards, stayedFixedShown } from "../lib/rates";
 import { t } from "../lib/t";
 import { RateCell } from "./RateCell";
 
@@ -28,7 +28,8 @@ export function ExcessLines({ row }: { row: ExcessRow }) {
 /** On-time next to stayed-fixed for each case type and citywide, with intervals and n (REQ-WEB-SCORE.1-2). */
 export function Scorecard({ file, excess }: { file: ScorecardFile; excess?: ExcessFile | null }) {
   const rows = headlineScorecards(file.scorecards);
-  const excessByFamily = new Map((excess ? familyExcessRows(excess) : []).map((r) => [r.name, r]));
+  // methods.md: no excess anywhere when the headline placebo does not cover 0
+  const excessByFamily = new Map((excess && excessShown(excess) ? familyExcessRows(excess) : []).map((r) => [r.name, r]));
   return (
     <div className="scorecard">
       <p>{t("score.intro")}</p>
@@ -41,21 +42,8 @@ export function Scorecard({ file, excess }: { file: ScorecardFile; excess?: Exce
               <h2>{familyLabel(s.family)}</h2>
               <div className="score-pair">
                 <RateCell label={t("score.on_time")} rate={s.on_time} />
-                <RateCell label={t(shown.kind === "adjusted" ? "score.label_adjusted" : "score.label_raw")} rate={shown.rate} />
+                <RateCell label={t("score.label_raw")} rate={shown.rate} />
               </div>
-              {shown.kind === "adjusted" ? (
-                <details className="score-detail">
-                  <summary>{t("score.show_raw")}</summary>
-                  <p>
-                    {t("score.raw_detail", {
-                      rate: pct(s.stayed_fixed_raw.rate) || "n/a",
-                      lo: pct(s.stayed_fixed_raw.lo) || "n/a",
-                      hi: pct(s.stayed_fixed_raw.hi) || "n/a",
-                      n: s.stayed_fixed_raw.n,
-                    })}
-                  </p>
-                </details>
-              ) : null}
               {excessByFamily.get(s.family) ? <ExcessLines row={excessByFamily.get(s.family) as ExcessRow} /> : null}
             </li>
           );

@@ -7,6 +7,7 @@ from pathlib import Path
 
 import duckdb
 import pytest
+from helpers import read_zombies
 
 from undead311.ingest.load import RawFileMissing
 from undead311.pipeline import run_pipeline
@@ -43,7 +44,7 @@ def test_req_ing_1_full_pipeline_on_a_tiny_raw_folder(tmp_path):
     assert rep.ok and rep.row_counts["raw_legacy"] == 4 and rep.row_counts["raw_new"] == 1
     assert rep.exclusions["excluded_type"] == 1 and rep.exclusions["placeholder"] == 1
     assert rep.tier_counts == {"headline": 1, "source_unknown": 0, "city_rereport": 0, "sensitivity": 0}
-    zs = json.loads((out / "zombies.json").read_text())["zombies"]
+    zs = read_zombies(out)
     assert [z["zombie_id"] for z in zs] == ["1001:1002"]
     status = json.loads((out / "status.json").read_text())
     assert status["headline_count"] == 1 and status["data_version"].startswith("2026-11-12+")
@@ -72,7 +73,7 @@ def test_req_ing_sample_1_sample_run_needs_no_raw_data_and_writes_valid_files(tm
     rep = run_pipeline(sample=True, out_dir=out, work_dir=tmp_path / "data", run_time="2026-11-13T00:00:00Z")
     assert rep.ok and rep.row_counts["sample_rows"] > 10_000 and rep.tier_counts["headline"] > 0
     assert (tmp_path / "data" / "processed-sample" / "undead311.duckdb").is_file()
-    assert (out / "status.json").is_file() and (out / "zombies.json").is_file()
+    assert (out / "status.json").is_file() and (out / "zombies" / "index.json").is_file()
     assert rep.excluded_pairs["transferred_original"] > 0 and rep.file_sizes["status.json"] > 0
     assert "sample" in rep.summary()
     # ops#29, REQ-DET-TIER.3: city re-reports are their own tier; the share and the under-1-h count are reported, with the
@@ -161,8 +162,8 @@ def test_req_ing_snap_2_status_says_segments_available_only_when_the_sam_file_is
     st2 = json.loads((out2 / "status.json").read_text())
     assert st2["segments"] == "available" and not any("segments unavailable" in a for a in st2["anomalies"])
     assert rep.row_counts["intersections"] == 1 and rep.row_counts["snapped_cases"] >= 2
-    assert [z["zombie_id"] for z in json.loads((out2 / "zombies.json").read_text())["zombies"]] == ["1001:1002"]
-    assert json.loads((out2 / "zombies.json").read_text())["zombies"][0]["match_mode"] == "segment"
+    assert [z["zombie_id"] for z in read_zombies(out2)] == ["1001:1002"]
+    assert read_zombies(out2)[0]["match_mode"] == "segment"
 
 
 def test_req_stat_exp_1_a_missing_stats_submodule_fails_and_absent_stats_removes_stale_files(tmp_path, monkeypatch):

@@ -26,7 +26,7 @@ from undead311.detect.edges import sql_edges
 from undead311.detect.model import Case, DetectionResult
 from undead311.detect.params import DEFAULT, Params
 from undead311.export.writers import canonical_json, validate, write_text_atomic
-from undead311.stats.baseline import BaselineModel, excess_rows
+from undead311.stats.baseline import BaselineModel
 from undead311.stats.city import city_counts, city_only_incidents
 from undead311.stats.gridstats import GridMetrics, grid_payload, store_grid_metrics
 from undead311.stats.groups import groups_payload, intensity_by_neighborhood
@@ -35,11 +35,23 @@ from undead311.stats.rates import counts_by_tier, scorecard_payload, scorecards
 from undead311.stats.shift import shift_and_placebo
 from undead311.stats.survival import horizon_params, survival_payload
 from undead311.stats.temporary import temporary_payload
+from undead311.stats.tiers import (
+    TierBaselines,
+    TierModel,
+    band_excess_rows,
+    mode_counts,
+    tier_excess_rows,
+    tier_models,
+)
 from undead311.stats.tour import build_tour, read_override
 from undead311.stats.trend import trend_payload
 from undead311.stats.validation import LABELS_FILE, SAMPLE_FILE, read_labels, read_sample_ids, score
 
 OVERRIDE_FILE = "judge_tour_override.json"
+# Owner decision 2026-11-17 (REQ-STAT-SF.4): the adjusted stayed-fixed rate subtracts expected coincidences from the same
+# baseline whose placebo does not cover 0 on the full data, so no export carries it: `stayed_fixed_adj` is null everywhere.
+# `rates.scorecards(..., baseline=...)` still computes it for tests and for a later decision; the export never passes a baseline.
+EXPORT_ADJUSTED_RATE = False
 SEED = 311
 __all__ = ["GridMetrics", "run_stats", "store_grid_metrics", "zombie_baselines"]
 STAT_FILES = (
@@ -48,6 +60,7 @@ STAT_FILES = (
 )  # fmt: skip
 
 _MODEL: dict[str, Any] = {}
+_TIERS: dict[str, Any] = {}
 
 
 def neighborhood_geometry(con: Any) -> tuple[dict[str, float], dict[str, float]]:
@@ -73,6 +86,20 @@ def get_model(
     return model
 
 
+def get_tier_models(
+    con: Any, result: DetectionResult, cases: Mapping[str, Case], params: Params, data_end: datetime | None = None
+) -> list[TierModel]:
+    """The per-tier baseline models (REQ-STAT-POP.1); built once per detection result and reused."""
+    end = data_end or max((c.open_utc for c in cases.values()), default=None)
+    if _TIERS.get("result") is result and _TIERS.get("cases") is cases and _TIERS.get("key") == (params, end):
+        return _TIERS["models"]
+    areas, _km = neighborhood_geometry(con) if con is not None else ({}, {})
+    models = tier_models(cases, result, params, end, areas)
+    _TIERS.clear()
+    _TIERS.update(result=result, cases=cases, key=(params, end), models=models)
+    return models
+
+
 def make_grid_metrics(con: Any) -> GridMetrics:
     """The observer the engine hands to `run_grid` (REQ-STAT-GRID.1)."""
     return GridMetrics(neighborhood_geometry(con)[0])
@@ -80,7 +107,8 @@ def make_grid_metrics(con: Any) -> GridMetrics:
 
 def zombie_baselines(con: Any, result: DetectionResult, cases: Mapping[str, Case], params: Params) -> dict[str, float]:
     """`baseline_p` per zombie (REQ-STAT-BASE.4); the engine rescores confidence with it (REQ-CONF.1-2)."""
-    return get_model(con, result, cases, params).zombie_baselines()
+    pooled = get_model(con, result, cases, params)
+    return TierBaselines(get_tier_models(con, result, cases, params), result, pooled).zombie_baselines()
 
 
 def build_stats(
@@ -100,16 +128,18 @@ def build_stats(
     """(payloads by file name, status) for the stats stage, unvalidated."""
     status: dict[str, Any] = {"calibration_warning": None, "warnings": [], "dataset": dataset}
     model = get_model(con, result, cases, params, data_end)
+    tms = get_tier_models(con, result, cases, params, data_end)
+    tier_p = TierBaselines(tms, result, model)
     _areas, street_km = neighborhood_geometry(con) if con is not None else ({}, {})
     payloads: dict[str, Any] = {}
 
     # scorecard: raw, adjusted, with and without city-originated re-reports (REQ-STAT-SF, REQ-STAT-CITY.1, REQ-STAT-TIER.1)
     payload = scorecard_payload(
-        scorecards(result, cases, data_end, params, baseline=model.p), result, data_version, params, dataset
+        scorecards(result, cases, data_end, params, baseline=tier_p.p if EXPORT_ADJUSTED_RATE else None), result, data_version, params, dataset
     )
     only = city_only_incidents(result, cases)
     payload["without_city_originated"] = {
-        "scorecards": [c.to_json() for c in scorecards(result, cases, data_end, params, baseline=model.p, skip_resurrections=only)],
+        "scorecards": [c.to_json() for c in scorecards(result, cases, data_end, params, baseline=tier_p.p if EXPORT_ADJUSTED_RATE else None, skip_resurrections=only)],
         "counts": city_counts(result, cases),
     }
     payloads["scorecard.json"] = payload
@@ -117,19 +147,36 @@ def build_stats(
     # excess, shift test, placebo, neighborhood check (REQ-STAT-BASE, -NBR, -SHIFT, -PLACEBO, -REP.2)
     intensity = intensity_by_neighborhood(cases, street_km, result.mirror_ids)
     rows = []
-    for r in excess_rows(model, seed):
+    for r in [*tier_excess_rows(tms, seed), *band_excess_rows(tms, seed)]:
         row = r.to_json()
         if r.kind == "neighborhood":
             if r.name not in intensity:  # never a neighborhood number without its reporting intensity (REQ-STAT-REP.2)
                 continue
             row["reports_per_km"] = intensity[r.name]
         rows.append(row)
-    shift, placebo = shift_and_placebo(model, seed, shift_runs)
-    heads = [i for i in result.incidents if i.tier == "core" and not i.has_transferred_member]
+    by_tier: dict[str, Any] = {}
+    shift = placebo = None
+    for tm in (t for t in tms if t.tag == t.tier):  # one shift test and placebo per tier population (REQ-STAT-POP.3); the
+        # headline one covers the originals whose label is not a planned-follow-up label (the other headline model has no own placebo)
+        sh, pl = shift_and_placebo(tm.model, seed, shift_runs)
+        by_tier[tm.tier] = {
+            "model": tm.tag, **({"shift": sh.to_json()} if sh is not None else {}),
+            **({"placebo": pl.to_json()} if pl is not None else {}),
+        }
+        if tm.tier == "headline":
+            shift, placebo = sh, pl
+    head_sources: dict[str, int] = {"spot": 0, "neighborhood": 0, "citywide": 0, "none": 0}
+    head_burst: dict[str, int] = {}
+    for tm in (t for t in tms if t.tier == "headline"):
+        cohort = tm.model.excess_cohort("headline")
+        for k, v in tm.model.fallback_counts(cohort).items():
+            head_sources[k] += v
+        for k, v in tm.model.burst_summary(cohort).items():
+            head_burst[k] = head_burst.get(k, 0) + v
     excess: dict[str, Any] = {
         "data_version": data_version, "dataset": dataset, "params": params_json(params), "seed": seed, "rows": rows,
-        "baseline_sources": model.fallback_counts(heads), "burstiness": model.burst_summary(model.excess_cohort("headline")), "neighborhood_check": "ran" if model.areas_m2 else "skipped",
-        "counts": counts_by_tier(result),
+        "baseline_sources": head_sources, "burstiness": head_burst, "neighborhood_check": "ran" if model.areas_m2 else "skipped",
+        "counts": counts_by_tier(result), "by_tier": by_tier, "match_modes": mode_counts(result),
     }  # fmt: skip
     if shift is not None:
         excess["shift"] = shift.to_json()

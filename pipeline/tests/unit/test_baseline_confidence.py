@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 import pytest
-from helpers import mk
+from helpers import mk, read_zombies
 from hypothesis import given
 from hypothesis import strategies as st
 from test_pipeline import raw_folder
@@ -103,7 +103,7 @@ def test_req_conf_2_the_pipeline_uses_the_stats_stage_baselines_and_the_skeptic_
     raw, snap = raw_folder(tmp_path)
     out = tmp_path / "out"
     rep = run_pipeline(out_dir=out, raw_dir=raw, work_dir=tmp_path / "d", snapshot_md=snap, run_time="2026-11-13T00:00:00Z")
-    [z] = json.loads((out / "zombies.json").read_text())["zombies"]
+    [z] = read_zombies(out)
     assert seen["ids"] == [z["zombie_id"]] and z["baseline_p"] == 0.25 and z["confidence_partial"] is False
     card = next(c for f in (out / "cards").glob("*.json") for c in json.loads(f.read_text())["cards"])
     assert card["confidence_partial"] is False and card["skeptic_verdict"] == "survives"
@@ -117,7 +117,7 @@ def test_req_conf_2_without_a_baseline_hook_the_pipeline_scores_stay_partial(tmp
     raw, snap = raw_folder(tmp_path)
     out = tmp_path / "out"
     rep = run_pipeline(out_dir=out, raw_dir=raw, work_dir=tmp_path / "d", snapshot_md=snap, run_time="2026-11-13T00:00:00Z")
-    [z] = json.loads((out / "zombies.json").read_text())["zombies"]
+    [z] = read_zombies(out)
     assert z["baseline_p"] is None and z["confidence_partial"] is True
     assert rep.baseline_zombies == 0 and rep.confidence_partial == 1
 
@@ -140,5 +140,5 @@ def test_req_conf_2_integration_the_real_stats_stage_gives_every_zombie_a_baseli
     """REQ-CONF.1-2, REQ-STAT-BASE.4: no monkeypatch. A run with the real stats stage scores a zombie with baseline_p."""
     raw, snap = raw_folder(tmp_path)
     rep = run_pipeline(out_dir=tmp_path / "out", raw_dir=raw, work_dir=tmp_path / "d", snapshot_md=snap, run_time="2026-11-13T00:00:00Z")
-    [z] = json.loads((tmp_path / "out" / "zombies.json").read_text())["zombies"]
+    [z] = read_zombies(tmp_path / "out")
     assert z["baseline_p"] is not None and rep.baseline_zombies == 1

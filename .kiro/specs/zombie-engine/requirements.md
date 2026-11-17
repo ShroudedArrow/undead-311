@@ -177,6 +177,12 @@ In this requirement, R is the incident's resurrection (its earliest attached re-
    - `incidents_with_several_members`: incident_id, member_ids.
    A key the owner leaves out of the file is not compared. An unknown key fails the test.
 
+### REQ-ING-DEPT: Department crosswalk
+**Layer:** credibility
+**User story:** As a reader comparing departments, I want each department to be one row across both systems.
+1. THE engine SHALL map every legacy department code and new-system department name to one key through `ingest/department_crosswalk.csv`, a data file whose every row names its source and a status (`official`, `mapped`, `flagged`).
+2. A value with no mapping SHALL be kept under its own value, listed as flagged in the run report's anomalies with its in-scope count; a missing department stays empty.
+
 ### REQ-COR-1: Coroner templates and labels
 **Layer:** demo-critical
 **User story:** As the Coroner agent, I want a deduplicated list of closure-text templates, so labeling covers the most closures with the fewest calls.
@@ -184,6 +190,13 @@ In this requirement, R is the incident's resurrection (its earliest attached re-
 2. THE engine SHALL join `data/labels/coroner_labels.csv` by template. For new-system closures with code Transitioned, the label SHALL be `referred`. For other new-system closures, the template label SHALL be used when one exists, and otherwise `NEW_SYSTEM_CLOSURE_LABELS`.
 3. WHEN a closed case has no label, THE engine SHALL use `other` and count it as `unlabeled`. The run report SHALL show the share of in-scope closed cases covered by labels.
 4. THE engine SHALL reject any label outside the allowed set (resolved, noted, invalid, duplicate, referred, made_safe_temporary, planned_followup, bulk_backlog, other).
+
+### REQ-COR-PHRASE: Leading-phrase labeler
+**Layer:** credibility
+**User story:** As a reader of the cause of death, I want closures with boilerplate openings and free text after them to be labeled, so the labels cover nearly every closed case.
+1. THE engine SHALL label a closed case that the label table does not list by its leading phrase (`coroner/phrases.py`): deterministic rules in a fixed order (backlog wording, made-safe wording, scheduled wording, a hand-off to an agency, then the disposition word after the "Case Closed" boilerplate). A text no rule places stays `other` and counts as unlabeled.
+2. THE precedence SHALL be: new-system Transitioned code, the label table, the new-system closure code, then the leading phrase. The run report SHALL count cases by label source (`labeled_by_table`, `_code`, `_phrase`).
+3. `make coroner-eval` SHALL score the pipeline rule on `data/labels/coroner_random200.csv`, the Coroner's evaluation set (owner decision 2026-11-16: the planned 200 hand labels were never made), with a 20-row owner spot check drawn with a fixed seed in `docs/CORONER_SPOTCHECK.md`. The set is a seeded random draw of full-data closures labeled by the Coroner agent; the command writes the agreement with its Wilson interval to docs/VALIDATION.md. The target is at least 95% of in-scope closed cases labeled.
 
 ### REQ-COR-EVAL: Coroner accuracy
 **Layer:** credibility
@@ -227,8 +240,10 @@ In this requirement, R is the incident's resurrection (its earliest attached re-
 ### REQ-EXP-SIZE: Payload budget
 **Layer:** credibility
 **User story:** As a phone user, I want the first view to load fast, so judge mode works on a phone.
-1. THE engine SHALL keep the files needed for the first view under 3 MB in total (before compression), shard cards by neighborhood and year, and write plain JSON (no precompressed copies; the host compresses responses, owner decision ops#184).
-2. THE engine SHALL report every exported file's size in the run report, and fail if the first-view budget is exceeded.
+1. THE engine SHALL keep the files needed for the first view (`status.json`, `points.json`, `stats/scorecard.json`, `stats/judge_tour.json`) under 3,000,000 bytes in total **measured as gzip transfer size** (what a phone downloads), AND no single first-view file SHALL exceed 8,000,000 bytes uncompressed (the browser parses it uncompressed). It SHALL shard cards by neighborhood and year and write plain JSON (no precompressed copies; the host compresses responses, owner decision ops#184).
+2. THE engine SHALL report every exported file's raw and gzip size in the run report, and fail before writing anything if the first-view gzip budget or the 8 MB raw ceiling is exceeded. Gzip sizes use zlib level 6 with a zero timestamp, so a rerun reports the same number. (Changed in fix/fulldata-2: the budget was raw bytes; the full-data dry run full-1 measured `points.json` at 6.3 MB raw, which is about 1 MB gzip.)
+3. THE engine SHALL shard `zombies` and `incidents` like the cards (`zombies/<neighborhood>-<resurrection year>.json`, `incidents/<neighborhood>-<close year>.json`, each with an `index.json` that lists shard, neighborhood, year, size and districts), so that no file the site loads is over about 2 MB compressed (2,000,000 bytes gzip, checked on every exported file including `stats/`). An export with a file over that fails before writing, as in 2.
+4. THE first view SHALL load the headline tier only: `points.json` holds headline points and each other tier (`source_unknown`, `city_rereport`, `sensitivity`) is its own file `points/<tier>.json`, which the site loads when the tier is switched on.
 
 ### REQ-EXP-PRIV: Block-level privacy for repeat offenders
 **Layer:** delight

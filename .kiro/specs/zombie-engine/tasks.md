@@ -107,7 +107,8 @@ Tasks are tagged with their build layer. The build workflow implements every `[d
   - _Requirements: REQ-SENS-RUN.1–2_
 - [x] 25. [credibility] Payload budget
   - Shard cards by neighborhood and year, write plain JSON (ops#184), report sizes, fail over the 3 MB first-view budget.
-  - _Requirements: REQ-EXP-SIZE.1–2_
+  - fix/fulldata-2: budget measured as gzip with an 8 MB raw ceiling, zombies and incidents sharded, other tiers on demand.
+  - _Requirements: REQ-EXP-SIZE.1–4_
 - [x] 26. [credibility] Safe re-runs
   - Build outputs into a temporary folder and swap only on success; a failed stage leaves the previous outputs untouched (test with an injected failure).
   - _Requirements: REQ-ING-NIGHTLY.1_

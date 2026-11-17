@@ -2,7 +2,7 @@
  * Open data download and district report cards (REQ-WEB-OPEN.1-2). Pure functions: the CSV is made in the browser from the
  * same zombies.json the site loads, so a nightly refresh needs no extra build step.
  */
-import type { Zombie } from "./parse";
+import type { DistrictsFile, Zombie } from "./parse";
 
 export const OPEN_COLUMNS = [
   "zombie_id", "tier", "type_family", "department", "neighborhood", "district", "resurrection_date", "gap_days", "reports_after", "times_risen",
@@ -69,4 +69,15 @@ export function districtSummaries(zs: readonly Zombie[]): DistrictSummary[] {
       byYear: tally(items, (z) => (z.resurrection_date ? Number(z.resurrection_date.slice(0, 4)) : null)).map(([year, count]) => ({ year, count })),
     }))
     .sort((a, b) => (Number(a.district) - Number(b.district)) || (a.district < b.district ? -1 : 1));
+}
+
+/** The district summaries of `districts.json` in the shape the report cards use (REQ-EXP-SIZE.3): the engine counts them, so the
+ * page loads no zombie shard. */
+export function districtsFromFile(f: DistrictsFile): DistrictSummary[] {
+  return f.districts.map((d) => ({
+    district: d.district,
+    count: d.count,
+    byFamily: d.by_family.map((x) => ({ family: x.family, count: x.count })),
+    byYear: d.by_year.map((x) => ({ year: x.year, count: x.count })),
+  }));
 }

@@ -37,6 +37,10 @@ def schema_name(rel: Path) -> str | None:
     Stats files sit flat or under stats/ (the export has used both), so the folder is ignored for them."""
     if rel.parts[0] == "cards":
         return CARD_FOLDER_SCHEMAS.get(rel.name, "card")
+    if rel.parts[0] in ("zombies", "incidents", "points"):  # sharded sets and the on-demand tiers (REQ-EXP-SIZE.3-4)
+        from undead311.export.writers import schema_name as engine_schema_name
+
+        return engine_schema_name(rel.as_posix())
     name = rel.name.removesuffix(".json")
     return name if (REPO / "schemas" / f"{name}.schema.json").exists() else None
 

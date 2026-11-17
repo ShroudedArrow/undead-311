@@ -3,7 +3,7 @@ import { PanelError } from "../components/PanelError";
 import { useData } from "../lib/data";
 import { formatDay } from "../lib/format";
 import { usePrefersReducedMotion } from "../lib/motion";
-import { parsePoints, parseZombies } from "../lib/parse";
+import { parsePoints } from "../lib/parse";
 import { pointsToRows } from "../lib/points";
 import { buildTimeline, DAY_MS, DURATION_S, timeAt, visibleAt, yearCounts } from "../lib/timelapse";
 import { t } from "../lib/t";
@@ -18,13 +18,13 @@ const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
  */
 export default function TimeLapsePage() {
   const points = useData("points.json", parsePoints);
-  const zombies = useData("zombies.json", parseZombies);
   const reduced = usePrefersReducedMotion();
   const timeline = useMemo(() => {
-    if (points.status !== "ok" || zombies.status !== "ok") return null;
-    const dates = new Map(zombies.data.zombies.map((z) => [z.zombie_id, (z as { resurrection_date?: string }).resurrection_date ?? ""]));
+    if (points.status !== "ok") return null;
+    const { id, date } = points.data;
+    const dates = new Map(id.map((x, i) => [x, date?.[i] ?? ""]));
     return buildTimeline(pointsToRows(points.data), dates);
-  }, [points, zombies]);
+  }, [points]);
 
   const start = timeline?.[0]?.t ?? 0;
   const end = timeline?.[timeline.length - 1]?.t ?? 0;
@@ -76,7 +76,6 @@ export default function TimeLapsePage() {
     <div className="page timelapse-page">
       <h1>{t("timelapse.title")}</h1>
       {(points.status === "error") && <PanelError file={points.file} error={points.error} />}
-      {(zombies.status === "error") && <PanelError file={zombies.file} error={zombies.error} />}
       {timeline && !ready && <p data-testid="timelapse-empty">{t("timelapse.empty")}</p>}
       {ready && (
         <>

@@ -1,0 +1,65 @@
+# Full-data run in legs (fix/fulldata-2, REQ-OPS-RUN). One leg = one tool call of `run_full.py --budget-min 18`: the script ends the
+# process cleanly after the first committed stage that finishes past the budget (exit 4), so the 30-minute tool-call cap never kills a
+# stage halfway. The loop starts the same command again until `<run_id>.done.json` says `"done": true`. The marker files under
+# $DATA_DIR/logs/<run_id>.stages make every leg resume after the last committed stage; changed inputs start fresh.
+# Launch input: run_id (e.g. full-3). The run uses the main checkout and writes nothing to git; exports go to $DATA_DIR/exports/<run_id>.
+name: fulldata
+description: Full-data pipeline run in resumable legs until run_full.py writes <run_id>.done.json with done true, then a short report.
+inputs:
+  run_id: string
+modelId: claude-sonnet-5.5
+steps:
+  - type: step
+    id: channel
+    agent: engine
+    prompt: |
+      FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
+      Run {{run_id}}, step "channel". Follow docs/RUN_PROTOCOL.md.
+      Create the run directory .kiro/workflow-runs/{{run_id}}/ in the main checkout and the marker file RUNNING in it.
+      Open the run-log issue in ShroudedArrow/undead-311-ops titled "Run {{run_id}}: fulldata" with label type:status,
+      using the github-channel MCP server, and save {"issue": <number>, "url": "<html_url>"} to
+      .kiro/workflow-runs/{{run_id}}/channel.json. If the MCP server is unavailable, run
+      `python3 /projects/sandbox/undead-311/scripts/channel_open.py --run-id {{run_id}} --recipe fulldata` instead.
+  - type: step
+    id: download
+    agent: engine
+    prompt: |
+      FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
+      Run {{run_id}}, step "download". Follow docs/RUN_PROTOCOL.md. Do not edit code.
+      Run `make data-download` (resumable, hash-checked; it rewrites data/SNAPSHOT.md). Copy the result to
+      .kiro/workflow-runs/{{run_id}}/SNAPSHOT.md and run `git checkout data/SNAPSHOT.md`, so the checkout stays clean.
+      Every later leg reads the copy through `--snapshot-md`, which is also where the `data_version` date comes from.
+      Report the download summary line (files kept, unchanged, changed, new) in your status comment.
+  - type: repeat
+    id: legs
+    maxIterations: 14
+    onMaxIterations: abort
+    stopCondition:
+      fileCheck:
+        path: /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/{{run_id}}.done.json
+        jsonPath: $.done
+        value: true
+    steps:
+      - type: step
+        id: leg
+        agent: engine
+        prompt: |
+          FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
+          Run {{run_id}}, step "leg". Follow docs/RUN_PROTOCOL.md. Do not edit code.
+          Run one leg, in the foreground with a tool timeout of 1,800,000 ms (never in the background: background jobs end with the call):
+          `PYTHONPATH=pipeline uv run python pipeline/scripts/run_full.py --run-id {{run_id}} --snapshot-md /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/SNAPSHOT.md --budget-min 18 --done-file /projects/sandbox/undead-311/.kiro/workflow-runs/{{run_id}}/{{run_id}}.done.json`
+          Exit code 0: finished, the done file says `"done": true` and the loop ends. Exit code 4 (budget) or 1 (a stage failed once):
+          the done file says `"done": false`; post the last stage lines and end the step, the loop starts the next leg.
+          Exit code 2 (a stage failed twice, STOPPED marker) or 3 (kill switch): do not start another leg. Call send_message with
+          severity `error` and the stage name from the log, then stop. Never delete the STOPPED marker, the markers or the database.
+          Never run `env`, `printenv` or `pgrep -af` (they print tokens).
+  - type: step
+    id: report
+    agent: engine
+    prompt: |
+      FIRST ACTION: run `cd /projects/sandbox/undead-311` (all repo-relative paths below resolve from there; worktrees are named by absolute path).
+      Run {{run_id}}, step "report". Follow docs/RUN_PROTOCOL.md. Do not edit code.
+      Read .kiro/workflow-runs/{{run_id}}/{{run_id}}.done.json and $DATA_DIR/exports/{{run_id}}/status.json, and $DATA_DIR/processed/run_report.json.
+      Write .kiro/workflow-runs/{{run_id}}/report.md: legs run, stage times, zombie counts per tier, first-view gzip size,
+      the Coroner coverage, and every anomaly in status.json. Post it as the final run-log comment and delete the RUNNING marker.
+      The exports stay in $DATA_DIR; publishing them is the nightly job's step (docs/DEPLOY.md).

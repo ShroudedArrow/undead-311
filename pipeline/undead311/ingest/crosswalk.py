@@ -19,6 +19,7 @@ from pathlib import Path
 import duckdb
 
 from undead311.ingest.closure_flags import TRANSFER_CLOSURE_RE, extract_linked_case_id, resolve_catch_all
+from undead311.ingest.departments import apply_departments
 
 FAMILIES_CSV = Path(__file__).with_name("type_families.csv")
 
@@ -126,4 +127,5 @@ def apply_crosswalk(
     report.linked_successors = con.execute(
         "select count(*) from cases_x where system = 'new' and predecessor_ids <> ''"
     ).fetchone()[0]
+    apply_departments(con, "cases_x")  # REQ-ING-DEPT.1: one key per department across both systems
     return report

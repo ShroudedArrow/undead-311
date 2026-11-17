@@ -3,15 +3,15 @@ import { Link, useParams } from "react-router-dom";
 import { PanelError } from "../components/PanelError";
 import { useData } from "../lib/data";
 import { familyLabel } from "../lib/labels";
-import { districtSummaries } from "../lib/openData";
-import { parseZombies } from "../lib/parse";
+import { districtsFromFile } from "../lib/openData";
+import { parseDistricts } from "../lib/parse";
 import { t } from "../lib/t";
 
 /** Council district report cards (REQ-WEB-OPEN.2): a list of districts, and one printable page per district (print stylesheet in app.css). */
 export default function DistrictPage() {
   const { id } = useParams();
-  const zombies = useData("zombies.json", parseZombies);
-  const all = useMemo(() => (zombies.status === "ok" ? districtSummaries(zombies.data.zombies) : []), [zombies]);
+  const zombies = useData("districts.json", parseDistricts);
+  const all = useMemo(() => (zombies.status === "ok" ? districtsFromFile(zombies.data) : []), [zombies]);
   const one = id ? all.find((d) => d.district === decodeURIComponent(id)) : null;
   return (
     <div className="page district-page">

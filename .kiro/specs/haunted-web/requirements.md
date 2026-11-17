@@ -77,7 +77,7 @@ IDs use the prefix `REQ-WEB-`. Layers follow docs/PROJECT.md: **demo-critical** 
 
 ### REQ-WEB-PERF: Performance and security
 **Layer:** demo-critical (budget, no third-party requests); credibility (CSP header, bundle budget in CI)
-1. THE first view (map plus judge mode entry) SHALL load under 3 MB of transferred data. The build measures it: a warning in the demo-critical layer, and a build failure once the engine's sharding (REQ-EXP-SIZE, credibility) exists.
+1. THE first view (map plus judge mode entry) SHALL load under 3 MB of transferred data (gzip transfer size, as REQ-EXP-SIZE.2 measures it) and read the headline tier only; other tiers, `zombies/` shards and `incidents/` shards load on demand. The build measures it: a warning in the demo-critical layer, and a build failure once the engine's sharding (REQ-EXP-SIZE, credibility) exists.
 2. THE app SHALL make no runtime requests to any origin other than its own (fonts, basemap tiles and data are self-hosted).
 3. THE app SHALL ship a Content Security Policy that allows only same-origin scripts, styles, images, fonts and connections.
 

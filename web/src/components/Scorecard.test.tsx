@@ -23,17 +23,16 @@ describe("Scorecard (REQ-WEB-SCORE.1-2)", () => {
     expect(within(row).getAllByText("95% interval 75.0% to 85.0%").length).toBe(1);
     expect(within(row).getAllByText("n = 100").length).toBe(2);
   });
-  it("shows the adjusted rate as the stayed-fixed number, labelled, with the raw rate in a detail view", () => {
+  it("shows only the raw stayed-fixed rate, even when the file carries an adjusted one (owner decision 2026-11-17)", () => {
     render(<Scorecard file={file([sc("sign", true)])} />);
-    expect(screen.getByText("Stayed fixed (adjusted)")).toBeTruthy();
-    expect(screen.getByText("55.0%")).toBeTruthy();
-    expect(screen.getByText("Show the raw rate")).toBeTruthy();
-    expect(screen.getByText(/Raw stayed-fixed rate: 50.0%/)).toBeTruthy();
+    expect(screen.getByText("Stayed fixed (raw)")).toBeTruthy();
+    expect(screen.getByText("50.0%")).toBeTruthy();
+    expect(screen.queryByText("55.0%")).toBeNull();
+    expect(screen.queryByText(/adjusted/i)).toBeNull();
   });
   it("shows the raw rate, labelled raw, when no adjusted rate exists", () => {
     render(<Scorecard file={file([sc("sign", false)])} />);
     expect(screen.getByText("Stayed fixed (raw)")).toBeTruthy();
-    expect(screen.queryByText("Show the raw rate")).toBeNull();
   });
   it("says there are not enough cases when the rate is null", () => {
     const s = sc("sign", false);
@@ -49,9 +48,10 @@ describe("Scorecard (REQ-WEB-SCORE.1-2)", () => {
     render(<Scorecard file={file([sc("citywide", true), sc("sign", true)])} />);
     expect(screen.getByRole("heading", { name: "Citywide" })).toBeTruthy();
   });
-  it("picks adjusted whenever it exists", () => {
+  it("always picks the raw rate, whatever the file carries", () => {
     fc.assert(fc.property(fc.boolean(), (adj) => {
-      expect(stayedFixedShown(sc("sign", adj)).kind).toBe(adj ? "adjusted" : "raw");
+      const s = sc("sign", adj);
+      expect(stayedFixedShown(s)).toEqual({ rate: s.stayed_fixed_raw, kind: "raw" });
     }));
   });
   it("formats percentages within 0 to 100 for any rate in [0, 1]", () => {
@@ -79,7 +79,8 @@ const exRow = (over: Partial<ExcessRow> = {}): ExcessRow => ({
   kind: "family", name: "sign", tier_set: "headline", observed: 90, expected: 26.6, excess: 63.4, lo: 41.3, hi: 86, n_originals: 1504, n_bursty: 1479,
   without_bursty: { observed: 10, expected: 12.9, excess: -2.9, lo: -12.1, hi: 6.1, n_originals: 25 }, ...over,
 });
-const exFile = (rows: ExcessRow[]): ExcessFile => ({ data_version: "v", rows } as ExcessFile);
+// a placebo that covers 0: the excess may be shown (methods.md); `withheld` is a placebo that does not
+const exFile = (rows: ExcessRow[], placebo = { excess: 1, lo: -3, hi: 4, runs: 10, calibration_warning: false }): ExcessFile => ({ data_version: "v", rows, placebo } as ExcessFile);
 
 describe("Scorecard excess with and without bursty spots (REQ-STAT-BASE.2, REQ-WEB-SCORE.1, ops#130)", () => {
   it("shows both excess figures with intervals and the bursty share under each case type, and says it is not the headline", () => {
@@ -90,6 +91,11 @@ describe("Scorecard excess with and without bursty spots (REQ-STAT-BASE.2, REQ-W
     expect(within(row).getByTestId("excess-without").textContent).toContain("from 25 closed cases");
     expect(within(row).getByTestId("excess-bursty").textContent).toContain("1479 of the 1504");
     expect(screen.getByText(/never the headline|A secondary check, never the headline/)).toBeTruthy();
+  });
+  it("shows no excess anywhere when the headline placebo interval does not cover 0 (methods.md, owner rule 2026-11-16)", () => {
+    render(<Scorecard file={file([sc("sign", true)])} excess={exFile([exRow()], { excess: -3152, lo: -3368, hi: -2932, runs: 10, calibration_warning: true })} />);
+    expect(screen.queryByTestId("excess-all")).toBeNull();
+    expect(screen.queryByTestId("score-excess")).toBeNull();
   });
   it("says too few cases are left when no spot is left after removing bursty ones", () => {
     render(<ExcessLines row={exRow({ without_bursty: null })} />);

@@ -55,7 +55,7 @@ def test_req_ing_clean_3_counts_by_reason_family_and_system():
     report = clean(con)
     assert report.counts == {
         "unlisted_type": 1, "excluded_type": 2, "null_coords": 1, "out_of_bounds": 1, "placeholder": 2,
-        "null_open_time": 1,
+        "null_open_time": 1, "test_data": 0,
     }  # fmt: skip
     rows = {(r["reason"], r["type_family"], r["system"]): r["n"] for r in report.by_family_system}
     assert rows[("placeholder", "pothole_roadway", "new")] == 1

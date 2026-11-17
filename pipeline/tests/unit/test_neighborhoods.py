@@ -6,6 +6,7 @@ import json
 
 import duckdb
 import pandas as pd
+from helpers import read_zombies
 from hypothesis import given
 from hypothesis import strategies as st
 from test_pipeline import raw_folder
@@ -52,7 +53,7 @@ def test_req_ing_nbr_1_the_export_carries_one_name_per_area(tmp_path):
     raw, snap = raw_folder(tmp_path)
     out = tmp_path / "out"
     run_pipeline(out_dir=out, raw_dir=raw, work_dir=tmp_path / "d", snapshot_md=snap, run_time="2026-11-13T00:00:00Z")
-    names = {z["neighborhood"] for z in json.loads((out / "zombies.json").read_text())["zombies"]}
+    names = {z["neighborhood"] for z in read_zombies(out)}
     assert not names & (set(ALIASES) | {"Boston"})
 
 
@@ -128,7 +129,7 @@ def test_req_ing_nbr_1_the_run_reads_boundaries_from_raw_and_warns_when_they_are
     (raw / "neighborhood_boundaries.geojson").write_text(json.dumps(geo))
     full = run_pipeline(out_dir=tmp_path / "o2", work_dir=tmp_path / "d2", **kw)
     assert not any("neighborhood boundaries unavailable" in w for w in full.warnings)
-    names = {z["neighborhood"] for z in json.loads((tmp_path / "o2" / "zombies.json").read_text())["zombies"]}
+    names = {z["neighborhood"] for z in read_zombies(tmp_path / "o2")}
     assert names == {"Roxbury"}  # the files said Dorchester; the point lies in the Roxbury polygon
 
 

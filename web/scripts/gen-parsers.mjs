@@ -33,6 +33,8 @@ export const KINDS = {
   temporary_fixes: "TemporaryFixesFile",
   sensitivity_grid: "SensitivityGridFile",
   trends: "TrendsFile",
+  shard_index: "ShardIndexFile",
+  districts: "DistrictsFile",
 };
 
 export function loadSchemas() {

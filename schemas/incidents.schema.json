@@ -1,12 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://undead-311/schemas/incidents.schema.json",
-  "title": "Incident summary",
-  "description": "REQ-EXP-1. Output table `incidents` of zombie-definition.md.",
+  "title": "Incident summary (one shard)",
+  "description": "REQ-EXP-1, REQ-EXP-SIZE.3. One shard `incidents/<neighborhood>-<close year>.json`; only incidents with a re-report.",
   "type": "object",
   "properties": {
     "data_version": {
       "type": "string"
+    },
+    "shard": {
+      "type": "string",
+      "description": "shard key, the file name without .json"
     },
     "incidents": {
       "type": "array",

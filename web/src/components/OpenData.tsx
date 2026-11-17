@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useData } from "../lib/data";
-import { parseZombies } from "../lib/parse";
+import { allShardKeys, useZombieIndex, useZombieShards } from "../lib/shards";
 import { zombiesToCsv } from "../lib/openData";
 import { t } from "../lib/t";
 
 /** Dataset download with its license, on the methods page (REQ-WEB-OPEN.1), and the before/after note (REQ-WEB-OPEN.3). */
 export function OpenData() {
   const [want, setWant] = useState(false);
-  const zombies = useData(want ? "zombies.json" : null, parseZombies);
+  const index = useZombieIndex(want);
+  const zombies = useZombieShards(want && index.status === "ok" ? allShardKeys(index.data.shards) : null);
   const base = import.meta.env.BASE_URL;
   const download = () => {
     if (zombies.status !== "ok") return;
@@ -24,15 +24,15 @@ export function OpenData() {
       <h2 id="open-h">{t("open.heading")}</h2>
       <p>{t("open.intro")}</p>
       <p className="open-links">
-        <a href={`${base}data/zombies.json`} download>{t("open.json")}</a>
+        <a href={`${base}data/zombies/index.json`} download>{t("open.json")}</a>
         {!want ? <button type="button" onClick={() => setWant(true)}>{t("open.csv")}</button> : zombies.status === "ok" ? (
           <button type="button" onClick={download}>{t("open.csv")}</button>
         ) : null}
       </p>
       <p role="status">
         {want && zombies.status === "loading" ? t("open.csv_preparing") : null}
-        {zombies.status === "error" ? t("open.csv_error") : null}
-        {zombies.status === "ok" ? t("open.csv_rows", { count: zombies.data.zombies.length }) : null}
+        {want && (zombies.status === "error" || index.status === "error") ? t("open.csv_error") : null}
+        {want && zombies.status === "ok" ? t("open.csv_rows", { count: zombies.data.zombies.length }) : null}
       </p>
       <p><Link to="/districts">{t("nav.districts")}</Link></p>
       <p data-testid="open-license-dataset">

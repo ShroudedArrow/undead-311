@@ -2,7 +2,7 @@
 // plus a small stub page per image with Open Graph tags that redirects to the app view. Run after `vite build`.
 // Chromium (Playwright) draws a 1200 by 630 template (src/lib/share.ts). When no browser can start the step is skipped with a notice,
 // unless SHARE_IMAGES=required. SHARE_IMAGES=skip skips it (the end-to-end build); SHARE_LIMIT=<n> renders only the first n zombies.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
@@ -33,8 +33,11 @@ const families: Record<string, string> = en.families;
 const label = (f: string) => families[f] ?? f;
 const siteUrl = (process.env.SITE_URL ?? "").replace(/\/$/, "");
 
-const zombiesFile = join(root, "public", "data", "zombies.json");
-const zombies: { zombie_id: string; tier: string; type_family: string; neighborhood: string | null; gap_days: number }[] = existsSync(zombiesFile) ? JSON.parse(readFileSync(zombiesFile, "utf8")).zombies : [];
+// zombies are sharded (zombies/<neighborhood>-<year>.json, REQ-EXP-SIZE.3): read every shard, not the index
+const zombieDir = join(root, "public", "data", "zombies");
+const zombies: { zombie_id: string; tier: string; type_family: string; neighborhood: string | null; gap_days: number }[] = existsSync(zombieDir)
+  ? readdirSync(zombieDir).filter((f) => f.endsWith(".json") && f !== "index.json").sort().flatMap((f) => JSON.parse(readFileSync(join(zombieDir, f), "utf8")).zombies)
+  : [];
 const headline = zombies.filter((z) => z.tier === "headline").sort((a, b) => (a.zombie_id < b.zombie_id ? -1 : 1));
 const limit = process.env.SHARE_LIMIT ? Number(process.env.SHARE_LIMIT) : Infinity;
 const zs = headline.slice(0, limit);

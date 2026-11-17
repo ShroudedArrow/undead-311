@@ -7,7 +7,7 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
-from helpers import at, day, mk
+from helpers import day, mk
 
 from undead311.detect.core import detect
 from undead311.detect.params import DEFAULT
@@ -20,7 +20,6 @@ from undead311.stats.baseline import (
     season_integrated_p,
     thinned_p,
 )
-from undead311.stats.cohort import spot_key
 from undead311.stats.pipeline import zombie_baselines
 
 W = 60 * DAY
@@ -95,7 +94,8 @@ def test_req_stat_base_1_a_mirror_copy_is_not_a_second_report():
     res = detect(cs)
     m = BaselineModel({c.id: c for c in cs}, res, data_end=day(400))
     assert "A0M" in res.mirror_ids
-    live = m._spot_info[("pothole_roadway", spot_key(None, *at(0.0)[:2], DEFAULT))]
+    inc = next(i for i in res.incidents if "A0" in i.member_ids)
+    live = m._spot_info[m._incident_key[inc.incident_id]]  # the match area of A0: R1 and A0 itself; Q (900 m away) is not in it
     assert live.counts.sum() == 1  # R1; the mirror copy is the same report as A0
 
 

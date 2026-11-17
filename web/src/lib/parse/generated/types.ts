@@ -2,10 +2,14 @@
 /* eslint-disable */
 
 /**
- * REQ-EXP-1. Sorted by zombie_id = incident_id:resurrection_id.
+ * REQ-EXP-1, REQ-EXP-SIZE.3. One shard `zombies/<neighborhood>-<resurrection year>.json` (same key as the card shards). Sorted by zombie_id = incident_id:resurrection_id.
  */
 export interface ZombiesFile {
   data_version: string;
+  /**
+   * shard key, the file name without .json
+   */
+  shard?: string;
   zombies: {
     zombie_id: string;
     incident_id: string;
@@ -125,6 +129,10 @@ export interface PointsFile {
   department: (string | null)[];
   neighborhood: (string | null)[];
   year: number[];
+  /**
+   * REQ-EXP-SIZE.3: the day of each re-report (YYYY-MM-DD), parallel to `id`; optional for files of earlier runs
+   */
+  date?: string[];
   [k: string]: unknown;
 }
 
@@ -435,14 +443,17 @@ export interface GroupsFile {
 export interface ExcessFile {
   data_version: string;
   rows: {
-    kind: "department" | "family" | "neighborhood";
+    kind: "department" | "family" | "neighborhood" | "tier" | "distance_band";
     name: string;
     observed: number;
     expected: number;
     excess: number;
     lo: number;
     hi: number;
-    tier_set: "headline" | "all";
+    /**
+     * the tier whose population the baseline counts (REQ-STAT-POP.1); `all` is the pooled set of earlier runs and is no longer written
+     */
+    tier_set: "headline" | "source_unknown" | "city_rereport" | "sensitivity" | "all";
     /**
      * eligible originals behind the row
      */
@@ -519,14 +530,36 @@ export interface ExcessFile {
     flagged_originals?: number;
     [k: string]: unknown;
   };
+  /**
+   * shift test and placebo per tier population (REQ-STAT-POP.3)
+   */
+  by_tier?: {
+    [k: string]: {
+      model: string;
+      shift?: {};
+      placebo?: {};
+    };
+  };
+  /**
+   * zombies by tier and match mode
+   */
+  match_modes?: {
+    [k: string]: {
+      [k: string]: number;
+    };
+  };
   [k: string]: unknown;
 }
 
 /**
- * REQ-EXP-1. Output table `incidents` of zombie-definition.md.
+ * REQ-EXP-1, REQ-EXP-SIZE.3. One shard `incidents/<neighborhood>-<close year>.json`; only incidents with a re-report.
  */
 export interface IncidentsFile {
   data_version: string;
+  /**
+   * shard key, the file name without .json
+   */
+  shard?: string;
   incidents: {
     incident_id: string;
     member_ids: string[];
@@ -600,6 +633,10 @@ export interface RepeatOffendersFile {
     block_level?: boolean;
     type_family?: string;
     neighborhood?: string | null;
+    /**
+     * the chain's earliest headline possible zombie, to open its first card (optional for earlier runs)
+     */
+    first_zombie_id?: string | null;
     [k: string]: unknown;
   }[];
   [k: string]: unknown;
@@ -752,5 +789,48 @@ export interface TrendsFile {
       [k: string]: unknown;
     };
   }[];
+}
+
+/**
+ * REQ-EXP-SIZE.3. Lists the shards of `zombies/` or `incidents/` so the site loads only the ones it needs.
+ */
+export interface ShardIndexFile {
+  data_version: string;
+  kind: "zombies" | "incidents";
+  shards: {
+    shard: string;
+    neighborhood: string | null;
+    year: number;
+    n: number;
+    districts: string[];
+    tiers?: {
+      [k: string]: number;
+    };
+    [k: string]: unknown;
+  }[];
+  [k: string]: unknown;
+}
+
+/**
+ * REQ-EXP-SIZE.3, REQ-WEB-OPEN.2. Headline possible zombies per council district, by family and by year, for the report cards.
+ */
+export interface DistrictsFile {
+  data_version: string;
+  districts: {
+    district: string;
+    count: number;
+    by_family: {
+      family: string;
+      count: number;
+      [k: string]: unknown;
+    }[];
+    by_year: {
+      year: number;
+      count: number;
+      [k: string]: unknown;
+    }[];
+    [k: string]: unknown;
+  }[];
+  [k: string]: unknown;
 }
 
