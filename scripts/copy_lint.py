@@ -4,6 +4,9 @@ Scans copy (web/src/copy/**, docs/**, README.md, drafts/**) for voice.md's banne
 web/src/** styles/components for banned CSS defaults (gradients, uppercase + letter-spacing labels, an arrow
 in button text). Counts TODO-COPY markers. Standard library only.
 
+The count ignores files that mention the marker without being copy: test files (*.test.ts, *.test.tsx), the checker's own code
+(web/src/lib/t.ts) and docs/PREFLIGHT.md (TODO_EXEMPT below).
+
 Exit 1 when any banned item is found. TODO-COPY markers are reported but allowed, unless --strict-todo
 (used for the Dec 2 freeze) is passed. A line containing `copy-lint: ignore` is skipped; files that quote
 the banned list on purpose are listed in QUOTING_FILES.
@@ -21,6 +24,18 @@ CODE_GLOBS = ["web/src/**/*.css", "web/src/**/*.scss", "web/src/**/*.tsx", "web/
 # files that discuss the rules themselves (quoting a banned word is not using it)
 QUOTING_FILES = {"docs/AUDIT.md", "docs/PROJECT.md", "docs/KIRO_SETUP.md", "docs/PREFLIGHT.md", "docs/KIRO_LOG.md",
                  "docs/DECISIONS.md", "docs/LEARNINGS.md"}
+
+# Files that name the marker (a check, a test, the freeze checklist) but hold no copy to write: not counted as markers.
+TODO_EXEMPT = {"web/src/lib/t.ts", "docs/PREFLIGHT.md"}
+TODO_EXEMPT_SUFFIXES = (".test.ts", ".test.tsx")
+
+
+def count_todos(rel: str, text: str) -> int:
+    """TODO-COPY markers in a file, 0 for an exempt file."""
+    if rel in TODO_EXEMPT or rel.endswith(TODO_EXEMPT_SUFFIXES):
+        return 0
+    return text.count("TODO-COPY")
+
 
 BANNED_WORDS = [
     "delve", "seamless", "seamlessly", "leverage", "unlock", "empower", "robust", "cutting-edge", "game-changer",
@@ -61,7 +76,7 @@ def title_case(heading: str) -> bool:
 def lint_copy(path: Path, findings: list[str]) -> int:
     rel = path.relative_to(ROOT).as_posix()
     text = path.read_text(errors="replace")
-    todos = text.count("TODO-COPY")
+    todos = count_todos(rel, text)
     quoting = rel in QUOTING_FILES
     in_code = False
     para_dashes = 0
@@ -109,7 +124,7 @@ def lint_code(path: Path, findings: list[str]) -> int:
     for block in re.findall(r"\{[^{}]*\}", text) if path.suffix in (".css", ".scss") else []:
         if UPPER_RE.search(block) and TRACKING_RE.search(block):
             findings.append(f"{rel}: uppercase + letter-spacing in one CSS rule")
-    return text.count("TODO-COPY")
+    return count_todos(rel, text)
 
 
 def main() -> int:

@@ -1,10 +1,10 @@
 {
-  "_note": "All user-facing text lives here (voice.md). TODO-COPY entries are written by the team before the Dec 2 freeze.",
+  "_note": "All user-facing text lives here (voice.md). The team writes any placeholder entries before the Dec 2 freeze.",
   "app": {
     "title": "The Undead 311",
     "skip_to_content": "Skip to the main content",
-    "hero_line": "TODO-COPY: hero line (what the map shows: Boston 311 cases closed, then reported again at the same place).",
-    "hero_subtitle": "TODO-COPY: hero subtitle (one sentence on possible zombies and why measured counts are a floor).",
+    "hero_line": "Boston 311 cases closed, then reported again at the same spot.",
+    "hero_subtitle": "These are possible zombies: a failed fix only shows up here if someone reports it again.",
     "footer_independent": "Independent project. Not affiliated with the City of Boston.",
     "footer_attribution": "Map data from OpenStreetMap contributors.",
     "footer_osm_license": "OpenStreetMap data is available under the Open Database License.",
@@ -142,8 +142,8 @@
     "map_link": "Show on the map"
   },
   "about": {
-    "heading": "TODO-COPY: About heading",
-    "body": "TODO-COPY: About and team section."
+    "heading": "Who made this",
+    "body": "Built by Kealoha Comcowich, an industrial engineering student at Northeastern, for Kiroween 2026. The data is Boston’s public 311 records from Analyze Boston. Not affiliated with the City of Boston."
   },
   "sliders": {
     "heading": "Try other settings",
@@ -174,7 +174,7 @@
     "result_label": "Result for the chosen settings"
   },
   "methods": {
-    "intro": "TODO-COPY: Methods page introduction (what a possible zombie is, in plain words).",
+    "intro": "A possible zombie is a 311 case that was closed, followed within 60 days by a new report of the same kind of problem a few dozen meters away. It might be the old problem coming back or a new one nearby. This page explains how we tell them apart and how sure we can be.",
     "title": "Methods",
     "definitions_heading": "What counts as a possible zombie",
     "def_scope": "Scope: persistent physical defects in the public right of way. That means potholes and roadway defects, sidewalks, streetlights, traffic signals, signs, pavement markings and street fixtures. Cases about people and complaints about private property are out.",
@@ -252,19 +252,18 @@
     "sample_notice": "Every number on this page comes from a sample of {count} cases, not from all Boston 311 cases. The full-data run will replace them."
   },
   "errors": {
-    "panel_failed": "TODO-COPY: error voice sample: what failed to load and how to fix it.",
-    "data_stale": "TODO-COPY: error voice sample: latest refresh failed, showing the last good data.",
+    "panel_failed": "This panel’s data didn’t load. Reload the page; if it still fails, the file named below is missing or out of date.",
     "panel_detail": "File {file}: {reason}",
     "not_found": "This page does not exist.",
     "not_found_heading": "Page not found",
     "not_found_link": "Go back to the map"
   },
   "empty": {
-    "no_zombies_block": "TODO-COPY: empty-state voice sample: no possible zombies on this block, try widening the window to 90 days.",
+    "no_zombies_block": "No possible zombies on this block in the last 60 days. Try widening the window to 90 days.",
     "no_matches": "No possible zombies match these filters. Clear a filter to see more."
   },
   "judge": {
-    "provisional_notice": "TODO-COPY: notice shown on preview builds when the tour zombies are not yet field-confirmed.",
+    "provisional_notice": "These examples haven’t been checked in person yet. Field-checked ones replace them after validation",
     "title": "60-second tour",
     "intro": "Three possible zombies, about 20 seconds each.",
     "start": "Start the tour",

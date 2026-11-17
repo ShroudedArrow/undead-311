@@ -36,11 +36,10 @@ describe("Spanish copy (REQ-WEB-ES.1)", () => {
     expect(unreviewedSections()).toEqual(expect.arrayContaining(sections));
     expect(JSON.stringify(es)).not.toContain("TODO-COPY");
   });
-  it("is hidden in production while any section is unreviewed, and shown in dev, in a preview build, or once reviewed", () => {
-    expect(spanishAvailable({ prod: true, preview: false, unreviewed: ["card"] })).toBe(false);
-    expect(spanishAvailable({ prod: false, preview: false, unreviewed: ["card"] })).toBe(true);
-    expect(spanishAvailable({ prod: true, preview: true, unreviewed: ["card"] })).toBe(true);
-    expect(spanishAvailable({ prod: true, preview: false, unreviewed: [] })).toBe(true);
+  it("is hidden in every build (the dev server included) while any section is unreviewed, and shown in a reviewer preview or once reviewed", () => {
+    expect(spanishAvailable({ preview: false, unreviewed: ["card"] })).toBe(false);
+    expect(spanishAvailable({ preview: true, unreviewed: ["card"] })).toBe(true);
+    expect(spanishAvailable({ preview: false, unreviewed: [] })).toBe(true);
   });
   it("t() answers in Spanish, and falls back to English for a key with no Spanish", () => {
     setLang("es");
@@ -63,8 +62,17 @@ describe("Spanish copy (REQ-WEB-ES.1)", () => {
 });
 
 describe("Spanish in the app (REQ-WEB-ES.1)", () => {
+  afterEach(() => vi.unstubAllEnvs());
+  it("shows no language buttons, and ignores ?lang=es, unless the reviewer preview flag is set", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, headers: new Headers(), json: async () => SC }) as Response));
+    render(<MemoryRouter initialEntries={["/scorecard?lang=es"]}><App /></MemoryRouter>);
+    expect(await screen.findByText("Closed on time")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Español" })).toBeNull();
+    expect(document.documentElement.lang).toBe("en");
+  });
   const SC = { data_version: "v", scorecards: [{ family: "sign", tier_set: "headline", n_closed: 10, n_on_time_known: 10, on_time: { rate: 0.8, lo: 0.7, hi: 0.9, k: 8, n: 10 }, stayed_fixed_raw: { rate: 0.5, lo: 0.4, hi: 0.6, k: 5, n: 10 }, stayed_fixed_adj: null }], counts: { headline: 1, source_unknown: 0, city_rereport: 0, sensitivity: 0 }, params: { WINDOW_DAYS: 60, RADIUS_M: 30, matching: "segment" }, seed: null };
   it("switches the scorecard to Spanish from the language buttons, and back", async () => {
+    vi.stubEnv("VITE_SHOW_UNREVIEWED_ES", "1");
     vi.stubGlobal("fetch", vi.fn(async (u: string) => ({ ok: true, status: 200, headers: new Headers(), json: async () => (String(u).endsWith("scorecard.json") ? SC : { data_version: "v", last_run: "2026-11-11T00:00:00Z", ok: true, row_counts: {}, anomalies: [], segments: "missing" }) }) as Response));
     render(<MemoryRouter initialEntries={["/scorecard"]}><App /></MemoryRouter>);
     expect(await screen.findByText("Closed on time")).toBeTruthy();
@@ -77,6 +85,7 @@ describe("Spanish in the app (REQ-WEB-ES.1)", () => {
     expect(document.documentElement.lang).toBe("en");
   });
   it("opens in Spanish from ?lang=es", async () => {
+    vi.stubEnv("VITE_SHOW_UNREVIEWED_ES", "1");
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, headers: new Headers(), json: async () => SC }) as Response));
     render(<MemoryRouter initialEntries={["/scorecard?lang=es"]}><App /></MemoryRouter>);
     expect(await screen.findByText("Cerrado a tiempo")).toBeTruthy();

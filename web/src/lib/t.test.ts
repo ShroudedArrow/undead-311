@@ -13,7 +13,7 @@ describe("t() copy helper (REQ-WEB-COPY.1)", () => {
     expect(t("a.b", { who: "Boston" }, tree)).toBe("Hello Boston, {missing}");
   });
   it("flags TODO-COPY placeholders (REQ-WEB-COPY.2)", () => {
-    expect(isTodoCopy(t("app.hero_line"))).toBe(true);
+    expect(isTodoCopy(t("a.b", {}, { a: { b: "TODO-COPY: hero line." } }))).toBe(true);
     expect(isTodoCopy(t("app.footer_independent"))).toBe(false);
   });
 });

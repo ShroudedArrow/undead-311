@@ -46,10 +46,10 @@ export function unreviewedSections(tree: Tree = es as Tree): string[] {
 }
 
 /**
- * Spanish is offered only when it is safe to show (REQ-WEB-ES.1): every section is reviewed, or this is not a production build,
- * or the build sets VITE_SHOW_UNREVIEWED_ES=1 (a preview for the native-speaker reviewer).
+ * Spanish is offered only when it is safe to show (REQ-WEB-ES.1): every section is reviewed, or the build sets
+ * VITE_SHOW_UNREVIEWED_ES=1 (a preview for the native-speaker reviewer). No other build shows it, the dev server included.
  */
-export function spanishAvailable(opts: { prod: boolean; preview: boolean; unreviewed?: readonly string[] }): boolean {
+export function spanishAvailable(opts: { preview: boolean; unreviewed?: readonly string[] }): boolean {
   const pending = opts.unreviewed ?? unreviewedSections();
-  return pending.length === 0 || !opts.prod || opts.preview;
+  return pending.length === 0 || opts.preview;
 }
