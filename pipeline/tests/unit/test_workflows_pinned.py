@@ -189,7 +189,7 @@ def test_ci_runs_the_credibility_checks():
     assert "playwright test e2e/a11y.spec.ts" in axe and "playwright install" in axe
     assert "make build" in job_text(jobs["budget"])
     audit = job_text(jobs["audit"])
-    assert "pip-audit" in audit and "npm audit --audit-level=high" in audit
+    assert "pip-audit" in audit and "npm audit --omit=dev --audit-level=high" in audit  # picomatch GHSA-fc5q-39xc-vjpf: dev tooling only, DECISIONS 2026-11-17
 
 
 def test_the_budget_job_runs_the_strict_first_view_check():
