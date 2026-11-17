@@ -14,6 +14,8 @@ from pathlib import Path
 
 import duckdb
 
+from undead311.ingest.pii import scrub_text
+
 _TS = re.compile(
     r"\d{4}-\d{2}-\d{2}[ t]\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?"  # 2026-05-01 08:57:13.83
     r"|(?:mon|tue|wed|thu|fri|sat|sun)\s+[a-z]{3}\s+\d{1,2}\s+\d{1,2}:\d{2}:\d{2}\s+[a-z]{2,4}\s+\d{4}"  # Fri Jan 02 ... EST 2015
@@ -36,6 +38,13 @@ def mask_template(text: str | None) -> str:
     s = _CASE_ID.sub("<case>", s)
     s = _NUMBER.sub("<n>", s)
     return _SPACE.sub(" ", s).strip(" .:")
+
+
+def label_key(template: str) -> str:
+    """The key the label table is read by: the masked template with signatures, sign-offs and staff names scrubbed
+    (REQ-ING-PII.4). The committed table holds only scrubbed keys, so no staff name is in the repository; a raw template
+    is scrubbed the same way before it is looked up, so both sides meet at the same key. Idempotent."""
+    return scrub_text(template) or ""
 
 
 def build_templates(con: duckdb.DuckDBPyConnection, out_dir: Path, table: str = "cases_clean") -> Path:

@@ -75,6 +75,10 @@
               },
               "lon": {
                 "type": "number"
+              },
+              "closure_text_hidden": {
+                "type": "boolean",
+                "description": "True when the closure note exists but fewer than 5 closed cases share its scrubbed text, so it is not exported (REQ-ING-PII.5)."
               }
             },
             "required": [
@@ -143,6 +147,10 @@
               },
               "lon": {
                 "type": "number"
+              },
+              "closure_text_hidden": {
+                "type": "boolean",
+                "description": "True when the closure note exists but fewer than 5 closed cases share its scrubbed text, so it is not exported (REQ-ING-PII.5)."
               }
             },
             "required": [

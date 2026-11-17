@@ -69,6 +69,23 @@ A (department, close date, template) group is a bulk closure when it has at leas
 
 **One limit of the rule as written (ZD step 10).** A template that appears only on bulk days is its own median, so its ratio is 1 and it can never be flagged. A purge that uses a closure text no one used before is therefore invisible to this detector. The owner kept the rule as written (ops#90).
 
+## Coroner labels for "Case Noted" closures (REQ-COR-NOTED)
+
+A closure that starts with "Case Noted" stays `noted` unless its text affirms completed work (a word such as repaired, replaced, filled or patched) with no negation, hand-off or temporary cue. Signatures and sign-off text are cut before any cue is matched, so a name or a closing line cannot supply one. The cues, in the order they are checked:
+
+1. Temporary: made safe, for the time being, temporary, barrel, cone, plate, a sign or pole picked up. Gives `made_safe_temporary`. A cue that the text negates ("no cone found", "the plate is neither banging nor loose") is not a cue.
+2. Scheduled wording (patch list, will be scheduled): `planned_followup`.
+3. Hand-off: referred, a contractor notified, privately owned, the owner must repair, a new service request created, a utility named (Eversource, National Grid, BWSC and others). Gives `referred`.
+4. The location cannot be found (could not locate the address, please send a better location): `invalid`.
+5. Negation (could not be found, not necessary, no ... found, will, to be, not completed): `noted`.
+6. Completed work with none of the above: `resolved`. A text that matches nothing stays `noted`.
+
+The label table is rechecked for these texts: a table label of `resolved` or `noted` changes only when a cue is present, and every other table label stays. The table is read through `label_key`, the masked template with staff names scrubbed, so the committed table holds no names.
+
+## Closure notes and staff names (REQ-ING-PII)
+
+Closure text is typed by city staff and can carry a name. Three patterns remove the common forms (`ingest/pii.py`): everything after a sign-off phrase, runs of slash-separated surnames or initials, and the name beside a job title. No pattern list catches every signature, so a closure note appears on a card only when its scrubbed text, with dates and numbers masked, is shared by at least 5 closed cases. Otherwise the card reads "Free-text note not shown" and the record carries `closure_text_hidden`. The count runs over the closed in-scope cases of the data set being exported, so a small data set hides more notes than the full one. Residual risk: a signature written as bare surnames or initials with no slash, repeated by a crew in at least 5 notes, is shown. Measured on the full data against a 37-surname check list, 272 closed cases show such a text after the scrub (2,763 before the 5-case rule, 18,966 in the raw text). Some surnames on the list are also street names, so these counts are upper bounds.
+
 ## Sensitivity runs (credibility; REQ-SENS-RUN)
 
 The detector runs at every point of the grid: matching in {segment, radius}, `RADIUS_M` in {15, 30, 50} and `WINDOW_DAYS` in {30, 60, 90}, 18 points, with every other parameter at its default. One more run drops every case of type Street Light Other (the migration catch-all) at the default parameters. The DuckDB file holds two tables: `grid_run_index` (one row per run, with the tier totals, so a run with no zombie still appears) and `grid_runs` (zombie counts by run, tier, type family and department). In `radius` matching, segments and intersections are ignored; in `segment` matching, `RADIUS_M` only affects pairs where a case has no segment. Skeptic and confidence steps are not part of a grid run. `make pipeline --skip-grid` (the CLI flag) leaves the tables out for quick local runs.

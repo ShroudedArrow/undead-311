@@ -185,7 +185,8 @@ def test_req_exp_1_1_card_original_is_the_closing_member_that_the_label_and_gap_
     assert z.member_ids == ("A", "B") and z.coroner_label == "made_safe_temporary"
     ctx = ExportContext(data_version="v", run_time="t")
     card = next(v for k, v in build_payloads(result, {c.id: c for c in cs}, ctx).items() if k.startswith("cards/"))["cards"][0]
-    assert card["original"]["id"] == "B" and card["original"]["closure_text"] == "Closed last"
+    assert card["original"]["id"] == "B"
+    assert card["original"]["closure_text"] is None and card["original"]["closure_text_hidden"] is True  # REQ-ING-PII.5
     assert card["original"]["close_time"].startswith("2024-03-07")  # day 3 after 2024-03-04
     assert abs(card["gap_days"] - 7.0) < 1e-6  # R opens on day 10, the incident closes on day 3
 
@@ -213,3 +214,39 @@ def test_req_ing_pii_3_points_and_pii_counts_use_the_card_original(tmp_path):
     card = next(v for k, v in p.items() if k.startswith("cards/"))["cards"][0]
     assert card["original"]["id"] == "B"
     assert p["points.json"]["lat"][0] == card["original"]["lat"] and p["points.json"]["lon"][0] == card["original"]["lon"]
+
+
+def _cards(tmp_path, cases):
+    result = detect(cases)
+    ctx = ExportContext(data_version="v", run_time="t")
+    payloads = build_payloads(result, {c.id: c for c in cases}, ctx)
+    return [c for k, v in payloads.items() if k.startswith("cards/") for c in v["cards"]]
+
+
+def test_req_ing_pii_5_a_note_is_exported_only_when_five_closed_cases_share_it(tmp_path):
+    """REQ-ING-PII.5: a closure note appears on a card only if its scrubbed text is shared by at least 5 closed cases; a
+    note that fewer cases share is withheld and the record says `closure_text_hidden`."""
+    shared = "Case Closed. Closed date : 2024-01-01 08:00:00 Case Resolved Pothole filled"
+    cs = [mk("A", 0, 1, text=shared), mk("R", 10)]
+    cs += [mk(f"F{i}", 0, 1, x=1.0 + i, text=shared.replace("2024-01-01", f"2024-02-0{i + 1}")) for i in range(4)]  # 5 in all
+    (card,) = _cards(tmp_path, cs)
+    assert card["original"]["closure_text"] == shared and "closure_text_hidden" not in card["original"]
+    (card,) = _cards(tmp_path, cs[:-1])  # four share it: withheld
+    assert card["original"]["closure_text"] is None and card["original"]["closure_text_hidden"] is True
+
+
+def test_req_ing_pii_5_cases_without_a_note_are_not_marked_hidden(tmp_path):
+    """REQ-ING-PII.5: an empty note is not a withheld note."""
+    (card,) = _cards(tmp_path, [mk("A", 0, 1, text=None), mk("R", 10, text=None)])
+    assert card["original"]["closure_text"] is None and "closure_text_hidden" not in card["original"]
+
+
+def test_req_ing_pii_5_notes_that_differ_only_in_a_removed_name_count_as_one(tmp_path):
+    """REQ-ING-PII.5: the count uses the scrubbed text, so five notes that differ only in a signature are shown, scrubbed."""
+    base = "Case Closed. Closed date : 2024-01-01 08:00:00 Case Resolved Sidewalk repaired. Sincerely {}"
+    names = ["Pat Rowan", "Lee Marsh", "Kim Ortega", "Sam Quill", "Dana Voss"]
+    cs = [mk(f"N{i}", 0, 1, x=1.0 + i, text=base.format(n)) for i, n in enumerate(names)] + [mk("R", 10)]
+    cs[0] = mk("A", 0, 1, text=base.format(names[0]))
+    (card,) = _cards(tmp_path, cs)
+    assert card["original"]["closure_text"].endswith("Sidewalk repaired. [removed]")
+    assert "Rowan" not in json.dumps(card)

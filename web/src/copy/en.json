@@ -421,6 +421,7 @@
     "place": "Place",
     "closure_text": "Closure text",
     "no_closure_text": "No closure text recorded.",
+    "closure_text_hidden": "Free-text note not shown",
     "system_legacy": "Earlier 311 system",
     "system_new": "Current 311 system, from August 2025",
     "new_case_no_link": "The city's page for current-system cases is not linked yet. Search this case number on the city's 311 site.",
