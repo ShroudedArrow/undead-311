@@ -233,6 +233,11 @@ export default function MethodsPage() {
       <Definitions />
       <Baselines />
       <NullTowns />
+      <section className="chart-section" aria-labelledby="adjusted-h" data-testid="baseline-uses">
+        <h2 id="adjusted-h">{t("methods.adjusted_heading")}</h2>
+        <p data-testid="adjusted-text">{t("methods.adjusted_text")}</p>
+        <p data-testid="confidence-text">{t("methods.confidence_text")}</p>
+      </section>
       <Sliders />
       <Validation />
       <section className="chart-section" aria-labelledby="limits-h">

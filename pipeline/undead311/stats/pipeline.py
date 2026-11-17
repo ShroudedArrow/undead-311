@@ -48,6 +48,10 @@ from undead311.stats.trend import trend_payload
 from undead311.stats.validation import LABELS_FILE, SAMPLE_FILE, read_labels, read_sample_ids, score
 
 OVERRIDE_FILE = "judge_tour_override.json"
+# Owner decision 2026-11-17 (REQ-STAT-SF.4): the adjusted stayed-fixed rate subtracts expected coincidences from the same
+# baseline whose placebo does not cover 0 on the full data, so no export carries it: `stayed_fixed_adj` is null everywhere.
+# `rates.scorecards(..., baseline=...)` still computes it for tests and for a later decision; the export never passes a baseline.
+EXPORT_ADJUSTED_RATE = False
 SEED = 311
 __all__ = ["GridMetrics", "run_stats", "store_grid_metrics", "zombie_baselines"]
 STAT_FILES = (
@@ -131,11 +135,11 @@ def build_stats(
 
     # scorecard: raw, adjusted, with and without city-originated re-reports (REQ-STAT-SF, REQ-STAT-CITY.1, REQ-STAT-TIER.1)
     payload = scorecard_payload(
-        scorecards(result, cases, data_end, params, baseline=tier_p.p), result, data_version, params, dataset
+        scorecards(result, cases, data_end, params, baseline=tier_p.p if EXPORT_ADJUSTED_RATE else None), result, data_version, params, dataset
     )
     only = city_only_incidents(result, cases)
     payload["without_city_originated"] = {
-        "scorecards": [c.to_json() for c in scorecards(result, cases, data_end, params, baseline=tier_p.p, skip_resurrections=only)],
+        "scorecards": [c.to_json() for c in scorecards(result, cases, data_end, params, baseline=tier_p.p if EXPORT_ADJUSTED_RATE else None, skip_resurrections=only)],
         "counts": city_counts(result, cases),
     }
     payloads["scorecard.json"] = payload

@@ -23,17 +23,16 @@ describe("Scorecard (REQ-WEB-SCORE.1-2)", () => {
     expect(within(row).getAllByText("95% interval 75.0% to 85.0%").length).toBe(1);
     expect(within(row).getAllByText("n = 100").length).toBe(2);
   });
-  it("shows the adjusted rate as the stayed-fixed number, labelled, with the raw rate in a detail view", () => {
+  it("shows only the raw stayed-fixed rate, even when the file carries an adjusted one (owner decision 2026-11-17)", () => {
     render(<Scorecard file={file([sc("sign", true)])} />);
-    expect(screen.getByText("Stayed fixed (adjusted)")).toBeTruthy();
-    expect(screen.getByText("55.0%")).toBeTruthy();
-    expect(screen.getByText("Show the raw rate")).toBeTruthy();
-    expect(screen.getByText(/Raw stayed-fixed rate: 50.0%/)).toBeTruthy();
+    expect(screen.getByText("Stayed fixed (raw)")).toBeTruthy();
+    expect(screen.getByText("50.0%")).toBeTruthy();
+    expect(screen.queryByText("55.0%")).toBeNull();
+    expect(screen.queryByText(/adjusted/i)).toBeNull();
   });
   it("shows the raw rate, labelled raw, when no adjusted rate exists", () => {
     render(<Scorecard file={file([sc("sign", false)])} />);
     expect(screen.getByText("Stayed fixed (raw)")).toBeTruthy();
-    expect(screen.queryByText("Show the raw rate")).toBeNull();
   });
   it("says there are not enough cases when the rate is null", () => {
     const s = sc("sign", false);
@@ -49,9 +48,10 @@ describe("Scorecard (REQ-WEB-SCORE.1-2)", () => {
     render(<Scorecard file={file([sc("citywide", true), sc("sign", true)])} />);
     expect(screen.getByRole("heading", { name: "Citywide" })).toBeTruthy();
   });
-  it("picks adjusted whenever it exists", () => {
+  it("always picks the raw rate, whatever the file carries", () => {
     fc.assert(fc.property(fc.boolean(), (adj) => {
-      expect(stayedFixedShown(sc("sign", adj)).kind).toBe(adj ? "adjusted" : "raw");
+      const s = sc("sign", adj);
+      expect(stayedFixedShown(s)).toEqual({ rate: s.stayed_fixed_raw, kind: "raw" });
     }));
   });
   it("formats percentages within 0 to 100 for any rate in [0, 1]", () => {

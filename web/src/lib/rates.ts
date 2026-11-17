@@ -7,13 +7,16 @@ export function pct(rate: number | null | undefined): string {
 
 export interface ShownRate {
   rate: Rate;
-  /** Which stayed-fixed number is shown as the headline number (REQ-WEB-SCORE.2). */
-  kind: "adjusted" | "raw";
+  /** Which stayed-fixed number is shown (REQ-WEB-SCORE.2): always the raw rate. */
+  kind: "raw";
 }
 
-/** The stayed-fixed number to show: the adjusted rate when it exists, else the raw rate (REQ-WEB-SCORE.2). */
+/**
+ * The stayed-fixed number to show beside the on-time rate: the raw rate only (owner decision 2026-11-17). The adjusted rate
+ * depends on the same uncalibrated baseline as the excess, so the site never shows it, even when a file carries one.
+ */
 export function stayedFixedShown(s: Scorecard): ShownRate {
-  return s.stayed_fixed_adj ? { rate: s.stayed_fixed_adj, kind: "adjusted" } : { rate: s.stayed_fixed_raw, kind: "raw" };
+  return { rate: s.stayed_fixed_raw, kind: "raw" };
 }
 
 /** Headline-tier scorecards, citywide ("all") first, then families by name (REQ-WEB-SCORE.1). */

@@ -98,6 +98,10 @@ IDs use the prefix `REQ-STAT-`. Layers follow docs/PROJECT.md: **demo-critical**
 4. The source_unknown cohort SHALL hold only originals whose window ends after the first new-system case (owner decision 2026-11-16): before that no new-system report can exist.
 5. WHEN the headline placebo interval does not cover 0, the excess SHALL be shown nowhere on the site and the methods page SHALL show the placebo result instead (methods.md).
 
+### REQ-STAT-SF.4: Adjusted rate withheld
+**Layer:** credibility
+1. No export SHALL carry the adjusted stayed-fixed rate (`stayed_fixed_adj` is null) and the site SHALL show only the raw stayed-fixed rate beside the on-time rate (owner decision 2026-11-17); the methods page SHALL say that the adjustment depends on the same uncalibrated baseline as the excess, and that the confidence score's chance term comes from that baseline and the score is used only for ranking.
+
 ### REQ-STAT-AREA: Match-area baseline
 **Layer:** credibility
 1. Each original's `p` SHALL be estimated from the history of its own match area (`stats/areas.py`): the same-family cases that match any of its members under `detect.match.match` (same segment within MAX_SEGMENT_DIST, the intersection rule, or RADIUS_M when unsnapped). Reports outside the area SHALL never change the original's `p`.

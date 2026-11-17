@@ -408,3 +408,16 @@ def test_req_stat_pop_4_source_unknown_counts_only_originals_whose_window_reache
     assert "late" in members and "old" not in members
     head = next(t for t in tier_models(by, res, data_end=day(900)) if t.tag == "headline-after-planned-label")
     assert {m for i in head.model.incidents for m in i.member_ids} >= {"old", "late"}  # the headline cohort is unchanged
+
+
+def test_req_stat_sf_4_no_export_carries_the_adjusted_stayed_fixed_rate(tmp_path):
+    """Owner decision 2026-11-17: `stayed_fixed_adj` is null in every scorecard the stats stage writes, with and without city re-reports."""
+    from undead311.stats.pipeline import EXPORT_ADJUSTED_RATE
+
+    assert EXPORT_ADJUSTED_RATE is False
+    out = tmp_path / "out"
+    run_pipeline(sample=True, out_dir=out, work_dir=tmp_path / "data", grid=False, run_time="2026-11-17T00:00:00Z")
+    sc = json.loads((out / "stats" / "scorecard.json").read_text())
+    cards = sc["scorecards"] + sc["without_city_originated"]["scorecards"]
+    assert cards and all(c["stayed_fixed_adj"] is None for c in cards)
+    assert all(c["stayed_fixed_raw"]["rate"] is None or c["stayed_fixed_raw"]["rate"] <= c["on_time"]["rate"] for c in cards)

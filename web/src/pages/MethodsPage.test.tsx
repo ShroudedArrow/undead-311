@@ -70,6 +70,12 @@ describe("Methods page (REQ-WEB-METHODS.1)", () => {
     expect(screen.getByText("The placebo result is not part of this data yet.")).toBeTruthy();
     expect(screen.queryByTestId("placebo")).toBeNull();
   });
+  it("says the adjusted rate is not shown and the confidence score is for ranking only (owner decision 2026-11-17)", async () => {
+    stub();
+    open();
+    expect((await screen.findByTestId("adjusted-text")).textContent).toMatch(/same baseline as the excess.*not calibrated.*not shown anywhere/);
+    expect(screen.getByTestId("confidence-text").textContent).toMatch(/cautious, uncalibrated baseline.*only to rank/);
+  });
   it("withholds the excess and shows the placebo instead when the headline placebo does not cover 0 (methods.md, owner rule 2026-11-16)", async () => {
     stub({ "excess.json": { ...(FILES["excess.json"] as object), placebo: { excess: -3152, lo: -3368, hi: -2932 } } });
     open();
