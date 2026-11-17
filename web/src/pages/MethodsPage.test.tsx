@@ -43,10 +43,14 @@ afterEach(() => { vi.unstubAllGlobals(); clearDataCache(); });
 const open = () => render(<MemoryRouter initialEntries={["/methods"]}><App /></MemoryRouter>);
 
 describe("Methods page (REQ-WEB-METHODS.1)", () => {
-  it("leaves the introduction as a TODO-COPY placeholder and shows the definitions with this data's parameters", async () => {
+  it("opens with the written introduction, shows the definitions with this data's parameters, and ends with the \"Who made this\" section", async () => {
     stub();
     open();
-    expect(screen.getByTestId("methods-intro").textContent).toMatch(/^TODO-COPY:/);
+    expect(screen.getByTestId("methods-intro").textContent).toMatch(/^A possible zombie is a 311 case that was closed/);
+    const about = screen.getByTestId("about");
+    expect(within(about).getByRole("heading", { name: "Who made this" })).toBeTruthy();
+    expect(about.textContent).toMatch(/Not affiliated with the City of Boston\.$/);
+    expect(screen.getByTestId("about").closest(".page")?.lastElementChild).toBe(about);
     expect(await screen.findByText(/within 60 days of the closure/)).toBeTruthy();
     expect(screen.getByText(/within 30 meters/)).toBeTruthy();
     expect(screen.getByText(/matching segment, radius 30 meters, window 60 days/)).toBeTruthy();

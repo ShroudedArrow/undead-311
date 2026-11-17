@@ -258,6 +258,10 @@ export default function MethodsPage() {
           <ReportError page={t("methods.title")} /> <Link to="/corrections">{t("links.corrections")}</Link>
         </p>
       </section>
+      <section className="chart-section" aria-labelledby="about-h" data-testid="about">
+        <h2 id="about-h">{t("about.heading")}</h2>
+        <p>{t("about.body")}</p>
+      </section>
     </div>
   );
 }

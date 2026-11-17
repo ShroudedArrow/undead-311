@@ -41,7 +41,7 @@ describe("Check my street (REQ-WEB-STREET.1)", () => {
   it("shows the empty state with a wider search and the 90-day count when nothing is near", async () => {
     open("/street?s=EMPTY%20ST");
     const empty = await screen.findByTestId("street-empty");
-    expect(empty.textContent).toContain("TODO-COPY");
+    expect(empty.textContent).toContain("No possible zombies on this block in the last 60 days. Try widening the window to 90 days.");
     expect(empty.textContent).toContain("14 headline possible zombies across Boston, against 10 with the 60-day window");
     fireEvent.click(screen.getByRole("button", { name: "Search within 300 meters instead" }));
     expect(await screen.findByRole("button", { name: "Search within 600 meters instead" })).toBeTruthy();

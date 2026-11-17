@@ -29,7 +29,7 @@ function NotFound() {
 
 /** Routed app. Pages are added by later tasks of the haunted-web spec. */
 export default function App() {
-  const spanish = spanishAvailable({ prod: import.meta.env.PROD, preview: import.meta.env.VITE_SHOW_UNREVIEWED_ES === "1" });
+  const spanish = spanishAvailable({ preview: import.meta.env.VITE_SHOW_UNREVIEWED_ES === "1" });
   const { search } = useLocation();
   const [lang, setLangState] = useState<Lang>(() => (spanish && new URLSearchParams(search).get("lang") === "es" ? "es" : "en"));
   // set before the pages render, so every t() call in this pass answers in the chosen language
