@@ -14,6 +14,10 @@
 # instead of shipping without them. Netlify compresses text files itself, so no precompressed .gz files are produced.
 
 [build]
+  # Production builds from main are skipped (exit 0 cancels a build; Netlify sets CONTEXT to production, deploy-preview or
+  # branch-deploy), so a push to main never replaces the nightly full-data deploy. Deploy previews still build (exit 1).
+  # Do not use "Stop auto publishing" instead: it locks production and blocks the nightly `netlify deploy --prod`.
+  ignore = '[ "$CONTEXT" = "production" ]'
   command = "npm --prefix web ci && npm --prefix web exec playwright install chromium && SHARE_IMAGES=required make build"
   publish = "web/dist"
 
