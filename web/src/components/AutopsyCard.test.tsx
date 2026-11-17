@@ -42,6 +42,13 @@ describe("AutopsyCard content (REQ-WEB-CARD.1, .3, .6)", () => {
     expect(within(card).getByText("No closure text recorded.")).toBeTruthy();
     expect(within(card).getByText("Not closed")).toBeTruthy();
   });
+  it("says a free-text note is not shown when the pipeline withheld it, and keeps the empty-note text for no note (REQ-ING-PII.5)", () => {
+    const hidden = { ...CARD, original: { ...CARD.original, closure_text: null, closure_text_hidden: true } };
+    render(<AutopsyCard card={hidden} />);
+    const card = screen.getByTestId("autopsy-card");
+    expect(within(card).getByText("Free-text note not shown")).toBeTruthy();
+    expect(within(card).getAllByText("No closure text recorded.")).toHaveLength(1); // only the re-report, which has no note
+  });
   it("shows hours, not 0 days, for a re-report within a day (UX-9)", () => {
     render(<AutopsyCard card={{ ...CARD, gap_days: 4 / 24 }} />);
     const card = screen.getByTestId("autopsy-card");

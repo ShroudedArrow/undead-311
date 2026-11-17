@@ -32,6 +32,7 @@ from undead311.ingest.closure_flags import (
     pair_survives,
     resolve_catch_all,
 )
+from undead311.ingest.pii import scrub_text
 from undead311.ingest.times import parse_legacy_stamp, parse_new_system_stamp, to_utc_and_local
 
 SAME_SYSTEM_PAIRS = 3500
@@ -131,6 +132,7 @@ def main() -> None:
     out, by_id = [], {}
     for (rid, system, ot, ct, status, ctext, ccode, traw, fam, tier, city, pred, dept, nb, street, lat, lon, src, on_time) in rows:
         o_utc, o_loc, o_flags = to_utc_and_local(stamp(system, ot))
+        ctext = scrub_text(ctext)  # REQ-ING-PII.4: staff names in closure notes never reach the committed sample
         c_utc = c_loc = c_flags = None
         if ct:
             c_utc, c_loc, c_flags = to_utc_and_local(stamp(system, ct))

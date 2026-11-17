@@ -29,6 +29,7 @@ from jsonschema import Draft202012Validator
 from undead311.detect.model import Case, DetectionResult, Zombie
 from undead311.detect.params import DEFAULT, Params
 from undead311.duck import connect
+from undead311.export.notes import note_counts, shown_note
 from undead311.export.privacy import (
     SegmentInfo,
     block_level_locations,
@@ -199,16 +200,24 @@ def zombie_record(z: Zombie) -> dict:
     }  # fmt: skip
 
 
-def case_record(c: Case, block: tuple[float, float] | None = None) -> dict:
+def case_record(
+    c: Case, block: tuple[float, float] | None = None, notes: Mapping[str, int] | None = None
+) -> dict:
     """One case's card fields. `block` is the (lat, lon) of a block-level repeat-offender chain: the case then carries that
-    location and no street text, so the exact address is not exported (REQ-EXP-PRIV.1, ops#167)."""
+    location and no street text, so the exact address is not exported (REQ-EXP-PRIV.1, ops#167). `notes` counts the closed
+    cases per scrubbed closure note: a note shared by fewer than 5 cases is not exported, and the record says so with
+    `closure_text_hidden` (REQ-ING-PII.5). Without counts, no note is exported."""
     lat, lon = block if block is not None else (c.lat, c.lon)
-    return {
+    text, hidden = shown_note(c.closure_text, notes or {})
+    rec = {
         "id": c.id, "system": c.system, "open_time": c.open_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "close_time": c.close_utc.strftime("%Y-%m-%dT%H:%M:%SZ") if c.close_utc else None,
-        "type_raw": c.type_raw, "status": c.status or "", "closure_text": scrub_text(c.closure_text),
+        "type_raw": c.type_raw, "status": c.status or "", "closure_text": text,
         "street": None if block is not None else scrub_text(c.street), "lat": round(lat, 6), "lon": round(lon, 6),
     }  # fmt: skip
+    if hidden:
+        rec["closure_text_hidden"] = True
+    return rec
 
 
 def closing_member(z: Zombie, cases: Mapping[str, Case]) -> Case:
@@ -267,6 +276,7 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
     dv = ctx.data_version
     zombies = sorted(result.zombies, key=lambda z: z.zombie_id)
     out: dict[str, Any] = {}
+    notes = note_counts(c.closure_text for c in cases.values() if c.close_utc is not None)  # REQ-ING-PII.5
     with_reports = {z.incident_id for z in zombies} | {f.incident_id for f in result.planned_followups}
     with_reports |= {s.incident_id for s in result.separate_deaths}
     inc_shards: dict[str, list[dict]] = defaultdict(list)
@@ -329,8 +339,8 @@ def build_payloads(result: DetectionResult, cases: Mapping[str, Case], ctx: Expo
         ztiers[zkey][z.tier] += 1
         shards[zkey].append(
             {
-                "zombie_id": z.zombie_id, "original": case_record(closing_member(z, cases), blk(z)),
-                "rereport": case_record(res, blk(z)),
+                "zombie_id": z.zombie_id, "original": case_record(closing_member(z, cases), blk(z), notes),
+                "rereport": case_record(res, blk(z), notes),
                 "cause_of_death": z.coroner_label, "gap_days": round(z.gap_days, 6),
                 "resurrection_date": z.resurrection_date, "confidence": round(z.confidence, 6),
                 "confidence_partial": z.confidence_partial,

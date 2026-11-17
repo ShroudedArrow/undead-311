@@ -123,3 +123,101 @@ def test_req_ing_pii_1_seven_digit_runs_after_a_bcs_word_without_dash_are_remove
     """REQ-ING-PII.1: only the BCS- prefix (with the dash) protects digits; a 7-digit run could be a local phone number."""
     assert scrub_text("new case bcs 0031234 failed") == "new case bcs [removed] failed"
     assert scrub_text("call 5550123 today") == "call [removed] today"
+
+
+# REQ-ING-PII.4: staff names in closure notes. The names below are invented; the shapes are the ones the data has.
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        (  # a sign-off phrase and everything after it, the staff signature block included
+            (
+                "Case Resolved Sidewalk repaired 10/2015 If you feel that this case was closed in error please do not hesitate "
+                "to contact me. Pat Rowan Senior Civil Engineer Construction Management Division Boston Public Works [removed]"
+            ),
+            "Case Resolved Sidewalk repaired 10/2015 If you feel that this case was closed in error [removed]",
+        ),
+        ("Contractor will patch it. Sincerely  Lee Marsh Supervisor of Utility Coordination", "Contractor will patch it. [removed]"),
+        ("Dear Constituent  We sent it to the utility.  Regards   Kim Ortega  [removed]", "Dear Constituent  We sent it to the utility.  [removed]"),
+        ("Light replaced.  Thank you  Sam Quill", "Light replaced.  [removed]"),
+        ("Thank you for reporting this to the Boston Transportation Department. Thank you Boston 311", None),  # kept
+        ("We sincerely apologize for the delay; with regards to the pole, it was replaced.", None),  # sentences, kept
+    ],
+)
+def test_req_ing_pii_4_sign_off_phrase_removes_everything_after_it(text, expected):
+    """REQ-ING-PII.4a: "please do not hesitate to contact me", "Sincerely", "Regards" and "Thank you <name>" end the note."""
+    out, counts = scrub(text)
+    assert out == (expected or text)
+    assert bool(counts["signoff"]) == (expected is not None)
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("Case Resolved twin acorn was turned. w/o completed. rowan/marsh", "Case Resolved twin acorn was turned. w/o completed. [removed]"),
+        ("Replaced PHOTO EYE.  Kim/Pat  ", "Replaced PHOTO EYE.  [removed]  "),
+        ("MADE SAFE  S.ORTEGA / H.QUILL / J.VOSS / N.RAMIREZ", "MADE SAFE  [removed]"),
+        ("INSTALLED POLE  A.Mc DONALD /B.LOWELL / C.NASH", "INSTALLED POLE  [removed]"),
+        ("Tightened screws.  Lowell/Nash. 1-20-16 EP", "Tightened screws.  [removed]. 1-20-16 EP"),
+        ("CHECKED LIGHT  M.LOWELL  D.NASH", "CHECKED LIGHT  [removed]"),
+        ("done  [removed]  / N.Ramirez", "done  [removed]"),
+    ],
+)
+def test_req_ing_pii_4_runs_of_slash_separated_names_or_initials_are_removed(text, expected):
+    """REQ-ING-PII.4b: "A.LOWELL / B.NASH"-style initials and "rowan/marsh"-style bare names that end a note go."""
+    out, counts = scrub(text)
+    assert out == expected
+    assert counts["slash_names"] == 1
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "patch w/o needed, o/h feed, pole w/l.e.d. rectilinear, F/U w/steam, 3/20",
+        "roadway/sidewalk repaired; utility/contractor notified; repair/replacement; and/or",
+        "see boston.gov/departments/public-works/public-vs-private-ways",
+        "no eform/description of issue",
+        "owners/managers will be told, tree/branch down",
+    ],
+)
+def test_req_ing_pii_4_ordinary_slashes_are_kept(text):
+    """REQ-ING-PII.4b: abbreviations, URLs and word pairs are not names."""
+    assert scrub_text(text) == text
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("Pat Rowan Senior Civil Engineer reviewed it", "[removed] Senior Civil Engineer reviewed it"),
+        ("Please call Chief Engineer Kim Ortega at [removed]", "Please call Chief Engineer [removed] at [removed]"),
+        ("Lee Marsh Foreman said so; Inspector Quill will visit", "[removed] Foreman said so; Inspector [removed] will visit"),
+        ("Contact Director Sam Voss", "Contact Director [removed]"),
+        ("The Commissioner Dana Nash agreed", "The Commissioner [removed] agreed"),
+    ],
+)
+def test_req_ing_pii_4_a_name_beside_a_job_title_is_removed_and_the_title_kept(text, expected):
+    """REQ-ING-PII.4c: engineer, foreman, supervisor, manager, director, commissioner, inspector and chief."""
+    out, counts = scrub(text)
+    assert out == expected
+    assert counts["name_title"] >= 1
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Engineer has been notified. Public Works Construction Inspection Unit (CIU) Inspector states it was patched.",
+        "The Boston Public Works Engineer agrees; the Highway Division Manager approved; Street Lighting Inspector responded.",
+        "Supervisor of Utility Coordination and Compliance reviewed it",
+    ],
+)
+def test_req_ing_pii_4_titles_without_a_person_are_kept(text):
+    """REQ-ING-PII.4c: a job title alone, or beside a department name, is not a name."""
+    assert scrub_text(text) == text
+
+
+def test_req_ing_pii_4_the_new_patterns_are_counted_and_idempotent():
+    """REQ-ING-PII.3-4: each new pattern has its own count; a second scrub changes nothing."""
+    text = "Fixed.  A.LOWELL / B.NASH  Regards Pat Rowan Chief Engineer"
+    once, counts = scrub(text)
+    assert once == "Fixed.  [removed]  [removed]"
+    assert dict(counts) == {"slash_names": 1, "signoff": 1}
+    assert scrub(once)[0] == once

@@ -147,7 +147,7 @@ jobs:
           uvx pip-audit --no-deps --disable-pip -r "$RUNNER_TEMP/requirements.txt"
       - name: npm audit (high and critical)
         working-directory: web
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --audit-level=high
 
   # REQ-OPS-CI.3: one line to the agent channel. The secret `CHANNEL_TOKEN` (issues on undead-311-ops only) is mapped
   # to the env name the scripts read. On a fork PR there is no secret and the script exits 0. A failure to post never

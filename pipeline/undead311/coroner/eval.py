@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from undead311.coroner.join import assign_label_source, check_label, load_template_labels
-from undead311.coroner.templates import mask_template
+from undead311.coroner.templates import label_key, mask_template
 from undead311.stats.intervals import wilson
 
 START = "<!-- coroner-eval:start -->"
@@ -63,9 +63,10 @@ def evaluate(labels: dict[str, str], hand: list[tuple[str, str]]) -> EvalReport:
     wrong: Counter[tuple[str, str]] = Counter()
     correct = unlisted = 0
     for template, truth in hand:
-        if template not in labels:
+        key = label_key(template)
+        if key not in labels:
             unlisted += 1
-        got = labels.get(template, "other")
+        got = labels.get(key, "other")
         if got == truth:
             correct += 1
         else:

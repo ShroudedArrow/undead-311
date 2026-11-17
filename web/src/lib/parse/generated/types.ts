@@ -75,6 +75,10 @@ export interface CardShard {
       street?: string | null;
       lat: number;
       lon: number;
+      /**
+       * True when the closure note exists but fewer than 5 closed cases share its scrubbed text, so it is not exported (REQ-ING-PII.5).
+       */
+      closure_text_hidden?: boolean;
       [k: string]: unknown;
     };
     rereport: {
@@ -88,6 +92,10 @@ export interface CardShard {
       street?: string | null;
       lat: number;
       lon: number;
+      /**
+       * True when the closure note exists but fewer than 5 closed cases share its scrubbed text, so it is not exported (REQ-ING-PII.5).
+       */
+      closure_text_hidden?: boolean;
       [k: string]: unknown;
     };
     cause_of_death:

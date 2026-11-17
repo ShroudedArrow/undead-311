@@ -42,7 +42,7 @@ function CaseBlock({ heading, rec }: { heading: string; rec: CaseRecord }) {
         <dt>{t("card.closed")}</dt>
         <dd>{rec.close_time ? formatDateTime(rec.close_time) : t("card.not_closed")}</dd>
         <dt>{t("card.closure_text")}</dt>
-        <dd>{rec.closure_text ? rec.closure_text : t("card.no_closure_text")}</dd>
+        <dd>{rec.closure_text ? rec.closure_text : rec.closure_text_hidden ? t("card.closure_text_hidden") : t("card.no_closure_text")}</dd>
       </dl>
     </section>
   );

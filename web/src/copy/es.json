@@ -72,6 +72,7 @@
     "place": "Lugar",
     "closure_text": "Texto de cierre",
     "no_closure_text": "No hay texto de cierre registrado.",
+    "closure_text_hidden": "Nota de texto libre no mostrada",
     "system_legacy": "Sistema 311 anterior",
     "system_new": "Sistema 311 actual, desde agosto de 2025",
     "new_case_no_link": "Todavía no hay enlace a la página de la ciudad para los casos del sistema actual. Busque este número de caso en el sitio 311 de la ciudad.",

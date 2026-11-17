@@ -15,16 +15,16 @@ id,system,closure_code,closure_text,coroner_label
 101001434061,legacy,,Case Closed. Closed date : 2015-07-24 09:59:12.58 Case Resolved,resolved
 101001437295,legacy,,Case Closed. Closed date : 2015-07-27 10:31:24.707 Case Invalid,invalid
 101001439682,legacy,,Case Closed. Closed date : 2015-07-31 13:20:25.263 Case Resolved cut out and patched,resolved
-101001500602,legacy,,Case Closed. Closed date : 2016-01-11 15:19:27.303 Case Noted The picture and the address do not match.    If you have any further questions  or feel that this case was closed in error  please do not hesitate to contact me.    Michael Somers  Senior Civil Engineer  Construction Management Division  Boston Public Works  [removed]  [removed],invalid
+101001500602,legacy,,Case Closed. Closed date : 2016-01-11 15:19:27.303 Case Noted The picture and the address do not match.    [removed],invalid
 101001522974,legacy,,Case Closed. Closed date : 2015-08-17 11:46:54.77 Internal Case Performed by Highway Maintenance crew.,resolved
-101001523217,legacy,,Case Closed. Closed date : 2015-10-21 13:45:36.05 Case Resolved Sidewalk repaired 10/2015    If you have any further questions  or feel that this case was closed  or reallocated in error  please do not hesitate to contact me.    Michael Somers  Senior Civil Engineer  Construction Management Division  Boston Public Works  [removed]	  [removed],resolved
-101001530960,legacy,,Case Closed. Closed date : 2015-09-29 08:21:33.313 Duplicate of Existing Case Duplicate of case 101001393697    If you have any further questions  or feel that this case was closed in error  please do not hesitate to contact me.    Michael Somers  Senior Civil Engineer  Construction Management Division  Boston Public Works  [removed]  [removed],duplicate
+101001523217,legacy,,Case Closed. Closed date : 2015-10-21 13:45:36.05 Case Resolved Sidewalk repaired 10/2015    [removed],resolved
+101001530960,legacy,,Case Closed. Closed date : 2015-09-29 08:21:33.313 Duplicate of Existing Case Duplicate of case 101001393697    [removed],duplicate
 101001546238,legacy,,Case Closed. Closed date : 2015-09-10 12:59:37.377 Case Resolved Work completed 9/10/15.,resolved
-101001549256,legacy,,Case Closed. Closed date : 2015-09-03 12:09:51.153 Case Resolved REPLACED MANTLES  D.WEBB /P.LEDBETTER,resolved
+101001549256,legacy,,Case Closed. Closed date : 2015-09-03 12:09:51.153 Case Resolved REPLACED MANTLES  [removed],resolved
 101001578266,legacy,,Case Closed. Closed date : Wed Nov 02 14:30:41 EDT 2022 Noted,noted
 101001597070,legacy,,Case Closed. Closed date : 2015-09-25 10:39:40.717 Case Noted Duplicate case  BWSC is aware of issue and scheduling to resolve.,duplicate
-101001603144,legacy,,Case Closed. Closed date : 2015-10-02 10:11:33.94 Case Noted picked up sign,resolved
-101001620624,legacy,,Case Closed. Closed date : 2015-10-28 09:43:09.137 Case Resolved System on constant returned to normal on the eye 10/27/15.  Crew: B. Gretchell & K. Hoge,resolved
+101001603144,legacy,,Case Closed. Closed date : 2015-10-02 10:11:33.94 Case Noted picked up sign,made_safe_temporary
+101001620624,legacy,,Case Closed. Closed date : 2015-10-28 09:43:09.137 Case Resolved System on constant returned to normal on the eye 10/27/15.  Crew: B. Gretchell & K. [removed],resolved
 101001632734,legacy,,Case Closed. Closed date : 2016-01-20 12:18:39.487 Case Resolved,resolved
 101001666165,legacy,,Case Closed. Closed date : 2015-12-22 16:49:28.6 Case Resolved untangled cable in pb and pulled into pole door and replaced burnt fuse. kevin/john    wooden pole outage sent to contractor,resolved
 101001677479,legacy,,Case Closed. Closed date : 2015-12-19 06:20:46.087 Case Resolved Replaced Ballast  & Lamp,resolved
@@ -38,7 +38,7 @@ id,system,closure_code,closure_text,coroner_label
 101001784256,legacy,,Case Closed. Closed date : 2016-05-16 05:18:54.56 Case Resolved Repaired Fort Point Unit,resolved
 101001790797,legacy,,Case Closed. Closed date : 2016-05-19 07:38:21.22 Case Resolved washed glass globe changed mantles,resolved
 101001798124,legacy,,Case Closed. Closed date : 2016-05-24 13:26:11.377 Case Resolved,resolved
-101001799964,legacy,,Case Closed. Closed date : 2016-06-10 15:35:49.71 Case Resolved twin acorn was turned to proper position. w/o completed. joubert/kenny,resolved
+101001799964,legacy,,Case Closed. Closed date : 2016-06-10 15:35:49.71 Case Resolved twin acorn was turned to proper position. w/o completed. [removed],resolved
 101001812818,legacy,,Case Closed. Closed date : 2016-08-03 09:16:47.863 Case Resolved two different regulations - one allows parking the other does not,noted
 101001840765,legacy,,Case Closed. Closed date : 2016-06-21 09:00:09.99 Case Resolved,resolved
 101001862180,legacy,,Case Closed. Closed date : 2016-07-29 10:02:08.177 Case Resolved,resolved
@@ -51,17 +51,17 @@ id,system,closure_code,closure_text,coroner_label
 101001980112,legacy,,Case Closed. Closed date : 2017-01-05 09:00:05.5 Case Resolved Dear Constituent     The Boston Public Works Construction Inspection Unit (CIU) Inspector states that this is a newly paved intersection.      If this is still an issue  please contact the inspector David Noonan at [removed] with more information.    For any other questions or concerns  please contact the number listed below    Sincere,noted
 101001980192,legacy,,Case Closed. Closed date : 2017-01-03 09:45:04.71 Case Resolved Complete,resolved
 101001981283,legacy,,Case Closed. Closed date : 2017-01-04 09:58:21.37 Case Resolved Marked completed at case creation,resolved
-101001989807,legacy,,Case Closed Case Noted  Dear Constituents    If you receive a message from the City of Boston regarding an old service request  311 is currently working on closing out backlogged service requests. We apologize for any confusion or inconvenience. Please contact 311 for further information.   Sincerely    Boston 311 Team,bulk_backlog
+101001989807,legacy,,Case Closed Case Noted  Dear Constituents    If you receive a message from the City of Boston regarding an old service request  311 is currently working on closing out backlogged service requests. We apologize for any confusion or inconvenience. Please contact 311 for further information.   [removed],bulk_backlog
 101002002274,legacy,,Case Closed. Closed date : 2017-02-09 10:06:19.767 Duplicate of Existing Case inspection requested 101002004070,duplicate
 101002013195,legacy,,Case Closed. Closed date : 2017-02-21 16:37:15.237 Case Noted PATCHED AROUND MANHOLE 2/17,resolved
 101002025926,legacy,,Case Closed. Closed date : 2017-02-27 12:25:39.993 Case Resolved,resolved
-101002039749,legacy,,Case Closed. Closed date : 2017-03-29 14:40:02.25 Case Resolved REPLACED 24'POLE W/ L.E.D. RECTILINEAR AND TIED IN AS NEEDED ALSO BACK FILLED SUB BASE TO GRADE AND ISSUED PERMINATE W/O                                                                 G. Mc CARTHY /J.PETERSON /J.FELDER / C.THOMPSON,resolved
+101002039749,legacy,,Case Closed. Closed date : 2017-03-29 14:40:02.25 Case Resolved REPLACED 24'POLE W/ L.E.D. RECTILINEAR AND TIED IN AS NEEDED ALSO BACK FILLED SUB BASE TO GRADE AND ISSUED PERMINATE W/O                                                                 [removed],resolved
 101002072862,legacy,,Case Closed. Closed date : 2017-05-01 12:42:42.097 Case Resolved,resolved
 101002079163,legacy,,Case Closed. Closed date : 2017-07-20 14:16:53.99 Case Resolved,resolved
 101002107519,legacy,,Case Closed. Closed date : 2017-06-23 12:26:08.077 Case Resolved,resolved
 101002114170,legacy,,Case Closed. Closed date : 2017-06-14 12:00:05.213 Case Resolved Filled all set,resolved
 101002195240,legacy,,Case Closed. Closed date : 2017-08-24 13:05:04.2 Case Resolved All potholes repaired,resolved
-101002225090,legacy,,Case Closed. Closed date : 2017-10-05 15:44:07.847 Case Resolved replaced photo cell. billy/victor,resolved
+101002225090,legacy,,Case Closed. Closed date : 2017-10-05 15:44:07.847 Case Resolved replaced photo cell. [removed],resolved
 101002236290,legacy,,Case Closed. Closed date : 2017-10-10 12:50:56.387 Case Resolved Duplicate request. See case id: 101002236289. Ko picked up by on call crew.,duplicate
 101002262947,legacy,,Case Closed. Closed date : 2017-11-20 10:15:27.66 Case Resolved,resolved
 101002279881,legacy,,Case Closed. Closed date : 2017-12-07 12:43:46.547 Case Resolved,resolved
@@ -88,7 +88,7 @@ id,system,closure_code,closure_text,coroner_label
 101002641235,legacy,,Case Closed. Closed date : 2018-11-08 12:31:23.29 Case Resolved work complete,resolved
 101002720681,legacy,,Case Closed. Closed date : 2019-01-17 17:06:10.383 Case Resolved Field verified new T-23 installed post construction on this two-way street.  SD-4 spoke with CComeaux,resolved
 101002721125,legacy,,Case Closed. Closed date : 2018-11-06 08:47:38.94 Case Resolved Marked completed at case creation,resolved
-101002737211,legacy,,Case Closed. Closed date : 2020-12-11 10:37:49.083 Duplicate of Existing Case This is a duplicate of an existing case 101002483191     We have sent an engineer to evaluate and will take care of any immediate public safety hazards. Permanent restoration will be included in a future program when we address upgrades to the area sidewalks.     Michael Somers   Senior Civil Engineer   Construction Mana,duplicate
+101002737211,legacy,,Case Closed. Closed date : 2020-12-11 10:37:49.083 Duplicate of Existing Case This is a duplicate of an existing case 101002483191     We have sent an engineer to evaluate and will take care of any immediate public safety hazards. Permanent restoration will be included in a future program when we address upgrades to the area sidewalks.     [removed] Senior Civil Engineer   Construction Mana,duplicate
 101002785463,legacy,,Case Closed. Closed date : 2019-01-24 10:29:32.02 Case Invalid,invalid
 101002789870,legacy,,Case Closed Case Resolved  Dear Constituent   If you receive a message from the City of Boston regarding an old service request  311 is currently working on closing out backlogged service requests. We apologize for any confusion or inconvenience. Please contact 311 for further information.  Thank you  Boston 311 Team,bulk_backlog
 101002793846,legacy,,Case Closed. Closed date : 2019-02-05 09:57:34.467 Case Resolved Marked completed at case creation,resolved
@@ -110,7 +110,7 @@ id,system,closure_code,closure_text,coroner_label
 101002950198,legacy,,Case Closed. Closed date : 2019-07-12 09:01:22.853 Case Resolved,resolved
 101003008071,legacy,,Case Closed. Closed date : 2019-08-29 20:15:27.29 Case Noted eversource underground issue,referred
 101003043052,legacy,,Case Closed. Closed date : 2019-09-20 07:56:51.57 Case Resolved Dear Constituent     The Boston Public Works Construction Inspection Unit (CIU) has identified the casting needing repair as belonging to Eversource Electric     Eversource has been contacted to repair the casting within 3 business days.    The CIU has added the location to its data base that tracks utilities patching around their cas,referred
-101003048010,legacy,,Case Closed. Closed date : 2019-09-25 08:26:32.397 Case Noted Contractor has been notified to properly place signs in the area.      For further information please call Chief Engineer Katie Choe at [removed],referred
+101003048010,legacy,,Case Closed. Closed date : 2019-09-25 08:26:32.397 Case Noted Contractor has been notified to properly place signs in the area.      For further information please call Chief Engineer [removed] at [removed],referred
 101003058608,legacy,,Case Closed. Closed date : 2019-10-22 11:46:20.93 Case Resolved Replaced defective LED acorn fixture  HT WL EP,resolved
 101003065253,legacy,,Case Closed. Closed date : 2019-10-17 08:50:21.8 Case Resolved,resolved
 101003120078,legacy,,Case Closed Case Noted,noted
@@ -124,7 +124,7 @@ id,system,closure_code,closure_text,coroner_label
 101003208724,legacy,,Case Closed. Closed date : 2020-03-04 09:22:52.057 Case Resolved Marked completed at case creation,resolved
 101003208986,legacy,,Case Closed. Closed date : 2020-03-04 11:24:20.773 Case Resolved Marked completed at case creation,resolved
 101003265224,legacy,,Case Closed. Closed date : 2020-04-30 08:26:33.247 Case Resolved Patched,resolved
-101003303562,legacy,,Case Closed. Closed date : 2020-06-03 09:03:35.01 Case Resolved THIS TEMPORARY PATCH HAS BEEN PAINTED AND LOGGED FOR REPAIR BY THE PWD PAVING RECON. DIVISION...THANK YOU FOR USING BOS : 311 SINCERELY MARK CARDARELLI / UTILITY COORDINATION AND COMPLIANCE,made_safe_temporary
+101003303562,legacy,,Case Closed. Closed date : 2020-06-03 09:03:35.01 Case Resolved THIS TEMPORARY PATCH HAS BEEN PAINTED AND LOGGED FOR REPAIR BY THE PWD PAVING RECON. DIVISION...THANK YOU FOR USING BOS : 311 [removed],made_safe_temporary
 101003414047,legacy,,Case Closed. Closed date : Thu Aug 20 08:46:28 EDT 2020 Resolved Made safe,made_safe_temporary
 101003429082,legacy,,Case Closed. Closed date : 2020-09-23 07:56:13.677 Case Resolved,resolved
 101003446946,legacy,,Case Closed. Closed date : 2020-09-18 10:28:24.657 Case Resolved Marked completed at case creation,resolved
@@ -140,7 +140,7 @@ id,system,closure_code,closure_text,coroner_label
 101003983164,legacy,,Case Closed. Closed date : Fri Oct 01 06:49:34 EDT 2021 Noted,noted
 101003985771,legacy,,Case Closed. Closed date : Thu Oct 14 11:53:05 EDT 2021 Resolved,resolved
 101004077314,legacy,,Case Closed. Closed date : 2021-12-07 10:08:39.49 Case Resolved PATCHED 14X16.  12/3,resolved
-101004148919,legacy,,Case Closed. Closed date : 2022-01-28 14:44:46.127 Case Resolved PICKED UP AND MADE SAFE DAMAGED POLECAPPED CONDUIT CUT IN PULL BOX AND BOLTED DOWNCONE FOR SAFETY LSO BACK FILLED SUB BASE TO GRADE  S.RIED / H.TYRA / J.HENNESSY / N.MUSTACCHIO,made_safe_temporary
+101004148919,legacy,,Case Closed. Closed date : 2022-01-28 14:44:46.127 Case Resolved PICKED UP AND MADE SAFE DAMAGED POLECAPPED CONDUIT CUT IN PULL BOX AND BOLTED DOWNCONE FOR SAFETY LSO BACK FILLED SUB BASE TO GRADE  [removed],made_safe_temporary
 101004214013,legacy,,Case Closed. Closed date : Mon Mar 14 11:13:29 EDT 2022 Resolved Pothole filled,resolved
 101004223253,legacy,,Case Closed. Closed date : Thu Mar 17 09:14:35 EDT 2022 Resolved Pothole filled with asphalt,resolved
 101004232231,legacy,,Case Closed. Closed date : Thu Mar 31 08:39:31 EDT 2022 Resolved Pothole filled,resolved

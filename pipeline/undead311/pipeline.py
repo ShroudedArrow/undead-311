@@ -62,9 +62,11 @@ from undead311.ingest.load import load
 from undead311.ingest.neighborhoods import BOUNDARIES_FILE
 from undead311.ingest.neighborhoods import canonicalize as canonicalize_neighborhoods
 from undead311.ingest.normalize import normalize
-from undead311.ingest.pii import PiiCounter
+from undead311.ingest.pii import PiiCounter, set_staff_names, staff_name_count
 from undead311.ingest.quality import on_time_anomalies, on_time_coverage
 from undead311.ingest.snap import SEGMENTS_FILE, snap_cases
+from undead311.ingest.staff_names import build as build_staff_names
+from undead311.ingest.staff_names import names_path, read_names, street_words, write_names
 from undead311.ingest.text import register_text_udfs
 from undead311.paths import data_dir, worktree_root
 from undead311.stages import StageRunner, fingerprint, prepare
@@ -111,6 +113,7 @@ class RunReport:
     label_coverage: float = 1.0
     unlabeled: int = 0
     pii_counts: dict[str, int] = field(default_factory=dict)
+    staff_names: int = 0  # size of the run-time staff-name list (REQ-ING-PII.6); the names are never reported
     tier_counts: dict[str, int] = field(default_factory=dict)
     city_origin: dict[str, float | int] = field(default_factory=dict)
     planned_followups: int = 0
@@ -149,6 +152,7 @@ class RunReport:
             ),
             f"  confidence: {self.baseline_zombies} zombies with a baseline_p, {self.confidence_partial} partial scores",
             f"  PII replacements: {self.pii_counts}",
+            f"  staff names in the run-time list: {self.staff_names}",
             f"  stats: {self.stats}",
             f"  files: {len(self.file_sizes)}, {sum(self.file_sizes.values()):,} bytes; "
             + f"first view {self.first_view_bytes:,} of {self.first_view_budget_bytes:,} bytes gzip ({self.first_view_raw_bytes:,} raw)"
@@ -359,6 +363,21 @@ def run_pipeline(
             }  # fmt: skip
 
         merge(runner.run("neighborhoods", s_neighborhoods, ("neighborhood_areas",)))
+        def s_staff_names() -> None:
+            # REQ-ING-PII.6: built from this run's closure texts before the label join, which reads keys scrubbed with it
+            if sample:
+                names = read_names(names_path(base))
+            else:
+                texts = con.execute(
+                    "select closure_text, count(*) from cases_clean where closure_text is not null group by 1"
+                ).fetchall()
+                streets = street_words((r[0] for r in con.execute("select distinct street from cases_clean").fetchall()),
+                                       raw / SEGMENTS_FILE)  # fmt: skip
+                names = build_staff_names(texts, streets)
+                write_names(names_path(base), names)
+            report.staff_names = set_staff_names(names)
+
+        runner.always("staff_names", s_staff_names)
         runner.always("templates", lambda: build_templates(con, stage_proc) and None)
         merge(runner.run("coroner", s_coroner))
         merge(runner.run("bulk", s_bulk))
@@ -449,6 +468,7 @@ def run_pipeline(
 
         def s_export() -> None:
             result, by_id, cases = ns.result, ns.by_id, ns.cases
+            report.staff_names = staff_name_count()
             ctx = ExportContext(
                 data_version=version,
                 run_time=run_time or datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),

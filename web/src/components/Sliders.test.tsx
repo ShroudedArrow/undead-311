@@ -21,7 +21,7 @@ describe("Sensitivity sliders (REQ-WEB-SLIDERS.1)", () => {
     expect(screen.getByText("This is the setting used for the headline.")).toBeTruthy();
     fireEvent.change(screen.getByRole("slider", { name: /Days to re-report/ }), { target: { value: "0" } });
     expect(screen.getByTestId("window-value").textContent).toBe("30");
-    expect(screen.getByTestId("slider-headline").textContent).toBe("698");
+    expect(screen.getByTestId("slider-headline").textContent).toBe("697");
     expect(screen.getByText(/The headline uses same street segment matching, 30 m and 60 days/)).toBeTruthy();
   });
   it("matching radio and distance slider pick the matching grid point; every value is written out", async () => {
@@ -39,7 +39,7 @@ describe("Sensitivity sliders (REQ-WEB-SLIDERS.1)", () => {
     render(<Sliders />);
     await screen.findByTestId("slider-headline");
     expect(screen.getByText(/only applies to cases that could not be placed on a segment/)).toBeTruthy();
-    expect(screen.getByTestId("slider-slo").textContent).toContain("1000 headline possible zombies and 3037 in all tiers");
+    expect(screen.getByTestId("slider-slo").textContent).toContain("1000 headline possible zombies and 3036 in all tiers");
     fireEvent.click(screen.getByLabelText("Distance only"));
     expect(screen.queryByText(/only applies to cases that could not be placed/)).toBeNull();
   });

@@ -13,14 +13,19 @@ from pathlib import Path
 
 import duckdb
 
-from undead311.coroner.phrases import phrase_label
-from undead311.coroner.templates import mask_template
+from undead311.coroner.phrases import is_noted_lead, phrase_label, recheck_table_label
+from undead311.coroner.templates import label_key, mask_template
 from undead311.ingest.closure_flags import new_system_closure_label
 
 ALLOWED_LABELS = (
     "resolved", "noted", "invalid", "duplicate", "referred", "made_safe_temporary", "planned_followup",
     "bulk_backlog", "other",
 )  # fmt: skip
+
+
+# REQ-COR-NOTED.6: a table label of a "Case Noted" text is rechecked by the Case Noted rule when it says resolved or noted.
+# Every other table label (duplicate, invalid, referred, made safe, planned, backlog) is a separate judgment and stays.
+NOTED_RECHECK = ("resolved", "noted")
 
 
 class UnknownLabel(ValueError):
@@ -40,20 +45,27 @@ def load_template_labels(path: Path | None) -> dict[str, str]:
     labels: dict[str, str] = {}
     with Path(path).open(newline="") as f:
         for row in csv.DictReader(f):
-            labels[row["template"]] = check_label(row["label"].strip())
+            # keys are scrubbed (REQ-ING-PII.4); when two templates meet at one key, the first row in the file keeps it
+            labels.setdefault(label_key(row["template"]), check_label(row["label"].strip()))
     return labels
 
 
 def assign_label_source(
     system: str, closure_code: str | None, template: str, template_labels: dict[str, str]
 ) -> tuple[str, bool, str]:
-    """(label, unlabeled, source) by the precedence above; `source` is table, code, phrase or none (REQ-COR-1.2-1.3,
-    REQ-COR-PHRASE.2). The leading-phrase labeler comes last: the table and the new-system closure code are more specific."""
+    """(label, unlabeled, source) by the precedence above; `source` is table, noted_rule (a table label moved by the Case Noted
+    rule), code, phrase or none (REQ-COR-1.2-1.3, REQ-COR-PHRASE.2, REQ-COR-NOTED.6).
+    The leading-phrase labeler comes last: the table and the new-system closure code are more specific."""
     code_label = new_system_closure_label(closure_code) if system == "new" else None
     if code_label == "referred":
         return "referred", False, "code"
-    if template in template_labels:
-        return check_label(template_labels[template]), False, "table"
+    key = label_key(template)
+    if key in template_labels:
+        label = check_label(template_labels[key])
+        if label in NOTED_RECHECK and is_noted_lead(template):
+            rechecked = check_label(recheck_table_label(template, label))  # REQ-COR-NOTED.6
+            return rechecked, False, "table" if rechecked == label else "noted_rule"
+        return label, False, "table"
     if code_label:
         return check_label(code_label), False, "code"
     phrase = phrase_label(template)
