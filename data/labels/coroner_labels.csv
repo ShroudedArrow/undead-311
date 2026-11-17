@@ -30,7 +30,7 @@ case closed. case invalid,invalid,"no problem found, too little information, tes
 case closed. case resolved completed,resolved,text says the case was resolved or work completed
 case closed. resubmitted as <case>,referred,"transfer or hand-off to the new system (resubmitted, new case created, transitioned)"
 case closed case resolved dear constituent if you receive a message from the city of boston regarding an old service request <n> is currently working on closing out backlogged service requests. we apologize for any confusion or inconvenience. please contact <n> for further information. thank you boston <n> team,bulk_backlog,"backlog clean-up, expiry or age-based closure"
-case closed. duplicate of existing case this is a duplicate of an existing case <n> we have sent an engineer to evaluate and will take care of any immediate public safety hazards. permanent restoration will be included in a future program when we address upgrades to the area sidewalks. michael somers senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
+case closed. duplicate of existing case this is a duplicate of an existing case <n> we have sent an engineer to evaluate and will take care of any immediate public safety hazards. permanent restoration will be included in a future program when we address upgrades to the area sidewalks. michael [removed] senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
 case closed. resolved patched,resolved,text says the case was resolved or work completed
 reallocated to non-city of boston stakeholder,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved repaired problem back to normal operation,resolved,text says the case was resolved or work completed
@@ -45,7 +45,7 @@ case closed. noted duplicate,duplicate,text says the report duplicates another c
 noted,noted,closed as noted without a repair or other action described
 case closed case resolved thank you for your patience. we are developing new processes to respond to our pavement marking requests. our pavement marking maintenance program runs april-november weather permitting. in the time since this request was created we have addressed many markings citywide. if this marking is still faded please open a new report via bos:<n>,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. resolved all set,resolved,text says the case was resolved or work completed
-case closed. duplicate of existing case duplicate of existing case <n> we have sent an engineer to evaluate and will take care of any immediate public safety hazards. permanent restoration will be included in a future program when we address upgrades to the area sidewalks. michael somers senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
+case closed. duplicate of existing case duplicate of existing case <n> we have sent an engineer to evaluate and will take care of any immediate public safety hazards. permanent restoration will be included in a future program when we address upgrades to the area sidewalks. michael [removed] senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
 duplicate case - this report is a duplicate of another open case. case has been closed,duplicate,text says the report duplicates another case or request
 no issue found at location,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. noted duplicate case,duplicate,text says the report duplicates another case or request
@@ -99,7 +99,7 @@ case closed. resolved already done,resolved,text says the case was resolved or w
 case closed. resolved pothole repaired,resolved,text says the case was resolved or work completed
 case closed case noted the utility company has been notified,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted duplicate of crm #<n>,duplicate,text says the report duplicates another case or request
-case closed. case noted we have sent an engineer to evaluate and will take care of any immediate public safety hazards. permanent restoration will be included in a future program when we address upgrades to the area sidewalks. michael somers senior civil engineer construction management division boston public works <phone> <email>,planned_followup,"work is scheduled, queued, or on a list for a later program"
+case closed. case noted we have sent an engineer to evaluate and will take care of any immediate public safety hazards. permanent restoration will be included in a future program when we address upgrades to the area sidewalks. michael [removed] senior civil engineer construction management division boston public works <phone> <email>,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case referred to external agency this location is under the jurisdiction of the massachusetts department of transportation and not the city of boston. massdot has received this complaint and will forward it to the appropriate district to review. thank you,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved potholes filled,resolved,text says the case was resolved or work completed
 case closed. case resolved reinstalled knockdown,resolved,text says the case was resolved or work completed
@@ -178,7 +178,7 @@ case closed. case noted eversource has been notified,referred,"responsibility or
 case closed. case noted made safe,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case noted several previous cases created for this location. permanent repair case has been scheduled and or inspected by isd,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case noted there was a communication issue which has since been resolved traffic should be much improved,noted,closed as noted without a repair or other action described
-case closed. case noted we have sent an engineer to evaluate and will repair with asphalt any unsafe concern. due to the scope of the work clinton street will be recommended for total reconstruction. michael somers senior civil engineer construction management division boston public works <phone> <email>,planned_followup,"work is scheduled, queued, or on a list for a later program"
+case closed. case noted we have sent an engineer to evaluate and will repair with asphalt any unsafe concern. due to the scope of the work clinton street will be recommended for total reconstruction. michael [removed] senior civil engineer construction management division boston public works <phone> <email>,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case resolved contractor repaired cb. <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved repaired <n> unit,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n>sv lamp,resolved,text says the case was resolved or work completed
@@ -355,7 +355,7 @@ case closed. case noted closed as noted,noted,closed as noted without a repair o
 case closed. case noted dear constituent ngrid has this location and will schedule the repair. [removed],planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case noted dear constituent the public works construction inspection unit (ciu) has identified the defective cast iron structure as belonging to bwsc. bwsc has been notified that they must inspect and repair the castings asap the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. the ciu will monitor the progress of the repair,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted dear constituent the public works construction inspection unit (ciu) has identified the defective cast iron structure as belonging to national grid national grid has been notified that they must temporarily patch their casting now and schedule a more permanent repair. the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. the ciu will monitor the progress of the repair,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case noted due to the excessive amount of work that is needed on both sides of saint germain street it has been referred to engineering design for reconstruction. michael somers senior civil engineer construction management division boston public works <phone> <email>,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
+case closed. case noted due to the excessive amount of work that is needed on both sides of saint germain street it has been referred to engineering design for reconstruction. michael [removed] senior civil engineer construction management division boston public works <phone> <email>,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted duplicate case will be addressed as soon as possible,duplicate,text says the report duplicates another case or request
 case closed. case noted duplicate of a previously received crm #<n>,duplicate,text says the report duplicates another case or request
 case closed. case noted duplicate of a previously submitted crm...a work order for repair has already been issued,duplicate,text says the report duplicates another case or request
@@ -443,7 +443,7 @@ case closed. case resolved replaced base,resolved,text says the case was resolve
 case closed. case resolved replaced led acorn,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced photo cell,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced photo control,resolved,text says the case was resolved or work completed
-case closed. case resolved replaced photo eye v mejias b santry,resolved,text says the case was resolved or work completed
+case closed. case resolved replaced photo eye v [removed] b [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved sidewalk has been repaired,resolved,text says the case was resolved or work completed
 case closed. case resolved sidewalk made safe with asphalt requesting permanent repair,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved sidewalk made safe with cement,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
@@ -466,9 +466,9 @@ case closed. duplicate of existing case permanent repair cases have been made fo
 case closed. duplicate of existing case replaced by <n>,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case sent to pwd/lighting <case>,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case the case has been referred to eversource to respond,duplicate,text says the report duplicates another case or request
-case closed. duplicate of existing case this is a duplicate of an existing case we have sent an engineer to evaluate and will take care of any immediate public safety hazards. permanent restoration will be included in a future program when we address upgrades to the area sidewalks. michael somers senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
+case closed. duplicate of existing case this is a duplicate of an existing case we have sent an engineer to evaluate and will take care of any immediate public safety hazards. permanent restoration will be included in a future program when we address upgrades to the area sidewalks. michael [removed] senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case this is a duplicate of case#<n> currently being processed,duplicate,text says the report duplicates another case or request
-case closed. duplicate of existing case we have sent an engineer to evaluate and will take care of any immediate public safety hazards. permanent restoration will be included in a future program when we address upgrades to the area sidewalks. michael somers senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
+case closed. duplicate of existing case we have sent an engineer to evaluate and will take care of any immediate public safety hazards. permanent restoration will be included in a future program when we address upgrades to the area sidewalks. michael [removed] senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
 case closed. error,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. failed e-form,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. invalid factory st. this is a private way and is the responsibility of the abbutters/business owners for repairs,invalid,"no problem found, too little information, test, or not a valid request"
@@ -515,7 +515,7 @@ case closed. resolved pothole filled with hot asphalt,resolved,text says the cas
 case closed. resolved potholes made safe,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. resolved removed,resolved,text says the case was resolved or work completed
 case closed. resolved repaired light,resolved,text says the case was resolved or work completed
-case closed. resolved replaced <n>sv ballast and lamp c smith h<n>l c gonzalez h<n>l and dp <n>l,resolved,text says the case was resolved or work completed
+case closed. resolved replaced <n>sv ballast and lamp c smith h<n>l c [removed] h<n>l and dp <n>l,resolved,text says the case was resolved or work completed
 case closed. resolved replaced faulty driver as needed. re gmc ep,resolved,text says the case was resolved or work completed
 case closed. resolved replaced led driver,resolved,text says the case was resolved or work completed
 case closed. resolved replaced mantles,resolved,text says the case was resolved or work completed
@@ -701,7 +701,7 @@ case closed case resolved crew replaced cover <n>/<n>,resolved,text says the cas
 case closed case resolved crew replaced mantels [removed],resolved,text says the case was resolved or work completed
 case closed case resolved crew replaced the battery pack on solar burner and mantels,resolved,text says the case was resolved or work completed
 case closed case resolved crew replaced the mantels at #<n> washington st,resolved,text says the case was resolved or work completed
-case closed case resolved dear constituent the boston public works department construction inspection unit (ciu) has identified the sidewalk left in asphalt as belonging to bwsc. since there was a moratorium on concrete and brick repair work until april <n>th the patch had to remain in asphalt. bwsc has been notified that they must restore the sidewalk to brick by may <n>th. the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. the ciu will monitor the progress of the repair. any questions or concerns you can contact the number listed below. mark cardarelli supervisor of utility coordination and compliance boston public works department <phone> office,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
+case closed case resolved dear constituent the boston public works department construction inspection unit (ciu) has identified the sidewalk left in asphalt as belonging to bwsc. since there was a moratorium on concrete and brick repair work until april <n>th the patch had to remain in asphalt. bwsc has been notified that they must restore the sidewalk to brick by may <n>th. the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. the ciu will monitor the progress of the repair. any questions or concerns you can contact the number listed below. mark [removed] supervisor of utility coordination and compliance boston public works department <phone> office,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed case resolved dear constituent the construction inspection unit (ciu) inspector has identified the cut that needs repair as belonging to bwsc. bwsc has been notified that the repairs must be made within <n> business days of being notified. the ciu has added the location to its data base that tracks unacceptable utility work. the ciu will monitor the progress of the work. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed case resolved dear constituent the public works construction inspection unit (ciu) has identified the defective cast iron structure as belonging to bwsc. bwsc has been notified that they must inspect and repair the castings asap the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. the ciu will monitor the progress of the repair,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed case resolved dear constituent the public works construction inspection unit (ciu) has identified the defective cast iron structure as belonging to eversource electric. eversource electric eversource was notified to repair the casting which has been completed. we apologizer for not closing the case,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
@@ -751,19 +751,19 @@ case closed case resolved potholes closed,resolved,text says the case was resolv
 case closed case resolved potholes filled,resolved,text says the case was resolved or work completed
 case closed case resolved refaced housing,resolved,text says the case was resolved or work completed
 case closed case resolved regulated cover <n>/<n>,resolved,text says the case was resolved or work completed
-case closed case resolved removed damaged fixture. mxol/kb,resolved,text says the case was resolved or work completed
+case closed case resolved removed damaged fixture. [removed]/kb,resolved,text says the case was resolved or work completed
 case closed case resolved removed snow from visors,resolved,text says the case was resolved or work completed
-case closed case resolved repaired <n> lights on this work order. vic/kb,planned_followup,"work is scheduled, queued, or on a list for a later program"
+case closed case resolved repaired <n> lights on this work order. [removed]/kb,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed case resolved repaired button cable all working normal operation,resolved,text says the case was resolved or work completed
 case closed case resolved repaired cable <date> futher problems or questions call.<phone> ty dominic,resolved,text says the case was resolved or work completed
 case closed case resolved repaired cable for ped crossing @ rutherford.normal operations futher questions call <phone>.ty dominic,resolved,text says the case was resolved or work completed
 case closed case resolved repaired cable normal operations.futher questions or problems call <phone> ty dominic,resolved,text says the case was resolved or work completed
 case closed case resolved repaired frame & cover on meter box <n>/<n>,resolved,text says the case was resolved or work completed
 case closed case resolved replaced <n> ped buttons,resolved,text says the case was resolved or work completed
-case closed case resolved replaced all bottom glass d.webb // h.tyra,resolved,text says the case was resolved or work completed
-case closed case resolved replaced ballast and lamp in <n> fixtures slcb#<n> lp#<n> and #lp<n> k buckley v mejias,resolved,text says the case was resolved or work completed
+case closed case resolved replaced all bottom glass d.webb // h.[removed],resolved,text says the case was resolved or work completed
+case closed case resolved replaced ballast and lamp in <n> fixtures slcb#<n> lp#<n> and #lp<n> k buckley v [removed],resolved,text says the case was resolved or work completed
 case closed case resolved replaced broken <n>x<n> cover <n>/<n>,resolved,text says the case was resolved or work completed
-case closed case resolved replaced button eye. tristan and kenny,resolved,text says the case was resolved or work completed
+case closed case resolved replaced button eye. tristan and [removed],resolved,text says the case was resolved or work completed
 case closed case resolved replaced cover and sealed <n>/<n>,resolved,text says the case was resolved or work completed
 case closed case resolved replaced fixture and mantles [removed],resolved,text says the case was resolved or work completed
 case closed case resolved replaced housing,resolved,text says the case was resolved or work completed
@@ -871,13 +871,13 @@ case closed. case noted all lights working,invalid,"no problem found, too little
 case closed. case noted all lights working in area,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case noted all outages have been repaired. soon as we get a shipment of mantles we will clean and re-mantle the entire street. thank you. happy holidays,resolved,closed as noted but the text says the work was completed
 case closed. case noted all signs are in the correct place pictures included,noted,closed as noted without a repair or other action described
-case closed. case noted all street lights working.billy/victor,noted,closed as noted without a repair or other action described
+case closed. case noted all street lights working.[removed]/victor,noted,closed as noted without a repair or other action described
 case closed. case noted already done,noted,closed as noted without a repair or other action described
 case closed. case noted already on resurfacing program,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case noted already on the resurfacing list,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case noted area is the private way end of clement ave,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted as previously stated this is massdot jurisdiction,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case noted associate engineer bob astrella has been notified. for more information please contact him directly @ <phone>,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
+case closed. case noted associate engineer bob [removed] has been notified. for more information please contact him directly @ <phone>,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted at location in records there hasn't been a one way sign there,noted,closed as noted without a repair or other action described
 case closed. case noted back st is a private way not city of boston location. residents of back st responsibility,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted boston fire is already aware of this issue and has a crew on the way to make repairs,noted,closed as noted without a repair or other action described
@@ -905,7 +905,7 @@ case closed. case noted bwsc patched around manhole <n>/<n>,resolved,closed as n
 case closed. case noted bwsc sealed cover <n>/<n>,referred,"agency or utility named as responsible, no completed work described"
 case closed. case noted bwsc sealed cover on <n>/<n>,referred,"agency or utility named as responsible, no completed work described"
 case closed. case noted bwsc sealed loose cover <n>/<n>,referred,"agency or utility named as responsible, no completed work described"
-case closed. case noted call bob astrella at <phone> if you want to discuss further,noted,closed as noted without a repair or other action described
+case closed. case noted call bob [removed] at <phone> if you want to discuss further,noted,closed as noted without a repair or other action described
 case closed. case noted called marie clarke <phone> concern is with a wire coming out of a rectangular cover on the s/w. someone put a cone here. left message on voicemail that bwsc doesn't own any structures with wires inside. <n>/<n>,referred,"agency or utility named as responsible, no completed work described"
 case closed. case noted cannot determine concern without picture,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case noted cannot determine what the issue is without a picture,invalid,"no problem found, too little information, test, or not a valid request"
@@ -913,8 +913,8 @@ case closed. case noted cannot locate the concern. please resubmit with picture.
 case closed. case noted cannot location concern that is in picture,noted,closed as noted without a repair or other action described
 case closed. case noted cannot understand what the concern is,noted,closed as noted without a repair or other action described
 case closed. case noted cannot work on lighting due to proximity to mbta . will need mbta flagman as per mbta inspector,referred,"agency or utility named as responsible, no completed work described"
-case closed. case noted carmen sent to ngrid. thanks rich dimarzo,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case noted carmen we sent this over to eversource to repair. rich dimarzo,referred,"agency or utility named as responsible, no completed work described"
+case closed. case noted carmen sent to ngrid. thanks rich [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
+case closed. case noted carmen we sent this over to eversource to repair. rich [removed],referred,"agency or utility named as responsible, no completed work described"
 case closed. case noted case closed john owens of verizon called to report that he cannot see any open manhole covers at this location. he also wanted us to note that these manholes are the responsibility of edic to repair not the utilities. he was checking on this as a courtesy. if anyone needs to reach him here is his number <phone>,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted case has been noted. units have no underground power and will be issued to maverick to investigate and make repairs as needed,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case noted case has been sent for perminent repair new case number#<n>,referred,"transfer or hand-off to the new system (resubmitted, new case created, transitioned)"
@@ -928,7 +928,7 @@ case closed. case noted case noted. lights in alley are not owned by the city of
 case closed. case noted case noted. request is being issued to construction crew to try and straighten sub-base a as needed,noted,closed as noted without a repair or other action described
 case closed. case noted case noted. see service request # <n> for fire alarm light outage. case was printed. no power coming from eversource manhole. fire alarm itself is operable,referred,"agency or utility named as responsible, no completed work described"
 case closed. case noted case noted. see sr# <n>. case has been issued to eversource. reconnection is needed in manhole. post was replaced over a year ago. still not energized. please submit a reconnection order. the <n>/<n> post is on the corner of milk st @ arch st. closest number is <n> milk st. on corner. thanks,noted,closed as noted without a repair or other action described
-case closed. case noted case noted. unit has no gas service. issuing to national grid again for repairs. webb lynch eddie p,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
+case closed. case noted case noted. unit has no gas service. issuing to national grid again for repairs. webb [removed] eddie p,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted case noted. will give to engineering,noted,closed as noted without a repair or other action described
 case closed. case noted case noted. will issue for replacement. need to investigate further. no cables in pull box,noted,closed as noted without a repair or other action described
 case closed. case noted case processed already today for sign repair at given location,noted,closed as noted without a repair or other action described
@@ -987,7 +987,7 @@ case closed. case noted dear constituent the public works construction inspectio
 case closed. case noted dear constituent the public works construction inspection unit (ciu) has identified the defective cast iron structure as belonging to the mbta. the mbta has been notified that they must temporarily patch their casting now and schedule a more permanent repair. the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. we apologize for the inconvenience,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted dear constituent the public works construction inspection unit (ciu) has identified the defective cast iron structure as belonging to the mbta. the mbta has been notified that they must temporarily patch their casting now and schedule a more permanent repair. the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. we apologize for the inconvenience dear constituent the public works construction inspection unit (ciu) has identified the defective cast iron structure as belonging to the mbta. the mbta has been notified that they must temporarily patch their casting now and schedule a more permanent repair. the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. we apologize for the inconvenience,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted dear constituent this has been made safe. crown castle will schedule the permeant repair. [removed],made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
-case closed. case noted dear constituent this has been temporary repaired. thanks rich dimarzo <phone>,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
+case closed. case noted dear constituent this has been temporary repaired. thanks rich [removed] <phone>,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case noted dear constituent this job has been completed. crown castle has pout a new cover on there gate. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted dear constituent this location has been left down<n>' per city of boston specifications. we like the trench to settle before the contractor puts the top layer on. sorry for any inconvenience this may have caused you. we will speak with ngrid /./feeney too see there time line for paving this topping this location. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted dear constituent this location has been repaired by bwsc. [removed],resolved,closed as noted but the text says the work was completed
@@ -996,7 +996,7 @@ case closed. case noted dear constituent we can't identify who's gate it is so w
 case closed. case noted dear constituent we have notified ngrid about the sinkhole in there patch. ngrid will be sending a crew out. thanks for letting the city know. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted dear constituent we have sent these <n> locations over to ngrd for repair. we are waiting there response. thanks for letting the city know. sorry for any inconvenience this may have caused you. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted dear constituent we have sent this bad ngrid gas gate to be repaired . we will have our inspector monitor the location ngrid has <n>-<n> days to make the repair [removed],resolved,closed as noted but the text says the work was completed
-case closed. case noted dear constituent we have sent this case over to eversource they will have <n>-<n> days to make the necessary repairs. i will have my inspector follow up with eversource and make daily inspections on this location. thanks rich dimarzo,referred,"agency or utility named as responsible, no completed work described"
+case closed. case noted dear constituent we have sent this case over to eversource they will have <n>-<n> days to make the necessary repairs. i will have my inspector follow up with eversource and make daily inspections on this location. thanks rich [removed],referred,"agency or utility named as responsible, no completed work described"
 case closed. case noted dear constituent we have sent this crm to ngrid/feeney brothers to remove the curbing. i will have my inspector follow up with feeney brothers. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted dear constituent we have sent this location over to ngrid. i will have my inspector reach out to the supervisor to try to get a time line for repair. thanks for letting the city know. [removed],referred,"agency or utility named as responsible, no completed work described"
 case closed. case noted dear constituent we have sent this location to eversource to repair the manhole. they will send an inspector by and make the repairs. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
@@ -1046,7 +1046,7 @@ case closed. case noted duplicate of existing case # <n> which has been processe
 case closed. case noted duplicate of existing case # <n> which will replace the knocked down pedestrian delineator at given location,duplicate,text says the report duplicates another case or request
 case closed. case noted duplicate of existing case # <n> which will replace the knocked down pole across the street @ <n> collins st,duplicate,text says the report duplicates another case or request
 case closed. case noted duplicate of existing case #<n>,duplicate,text says the report duplicates another case or request
-case closed. case noted duplicate of existing case <n> we have sent an engineer to evaluate and will take care of any immediate public safety hazards. permanent restoration will be included in a future program when we address upgrades to the area sidewalks. michael somers senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
+case closed. case noted duplicate of existing case <n> we have sent an engineer to evaluate and will take care of any immediate public safety hazards. permanent restoration will be included in a future program when we address upgrades to the area sidewalks. michael [removed] senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
 case closed. case noted duplicate of existing case aware of location,duplicate,text says the report duplicates another case or request
 case closed. case noted duplicate of existing case that is currently being processed will replace knocked down pedestrian delineator,duplicate,text says the report duplicates another case or request
 case closed. case noted duplicate of existing case which has been processed and will replace the damaged do not enter at given location,duplicate,text says the report duplicates another case or request
@@ -1067,7 +1067,7 @@ case closed. case noted fixed problem thank you,resolved,closed as noted but the
 case closed. case noted fixture was removed due to const.so it will not be damaged also no gas in pole,noted,closed as noted without a repair or other action described
 case closed. case noted flagstone sidewalks are the responsibility of the property owners due to areaway issues,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted for fabrication purposes field sheet has been written for pole and sign replacement at given location,noted,closed as noted without a repair or other action described
-case closed. case noted for more information please contact bob astrella @ <phone> or katie choe @ <phone>. either one can further explain the process and address your concerns,noted,closed as noted without a repair or other action described
+case closed. case noted for more information please contact bob [removed] @ <phone> or katie [removed] @ <phone>. either one can further explain the process and address your concerns,noted,closed as noted without a repair or other action described
 case closed. case noted for the time being a orange safety cone has been placed over the troubled area. when the winter comes to a conclusion and the ground thaws pwd will properly replace the missing bricks and set them correctly,noted,closed as noted without a repair or other action described
 case closed. case noted found a coal chute that belongs to the building @ <n> mount vernon st contacted the mayors office spoke to delores on jul <n> <n> @ <n>:<n> pm gave her the information left a dummy cone,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted found loose telephone cover gave to mayors office <n>/<n>,noted,closed as noted without a repair or other action described
@@ -1082,7 +1082,7 @@ case closed. case noted fred sent to ngrid rich,referred,"responsibility or the 
 "case closed. case noted geneva street is a ""private ways fall are the responsibility of the abutting owners""",referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted has been submitted as a sidewalk repair,noted,closed as noted without a repair or other action described
 case closed. case noted i don't see the broken sidewalk on saint rose that they're referring to the arborway street belongs to the dcr,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case noted if this issue still exists please contact kevin linskey at <phone>,noted,closed as noted without a repair or other action described
+case closed. case noted if this issue still exists please contact kevin [removed] at <phone>,noted,closed as noted without a repair or other action described
 case closed. case noted in graffiti file,noted,closed as noted without a repair or other action described
 case closed. case noted information emailed to constituent,noted,closed as noted without a repair or other action described
 case closed. case noted inspected area for missing cover . found nothing <n>/<n>,invalid,"no problem found, too little information, test, or not a valid request"
@@ -1090,7 +1090,7 @@ case closed. case noted installation of pedestrian delineators are on hold until
 case closed. case noted installed new #<n> cable in <n> led fixtures. repaired cables in <n> led fixtures,resolved,closed as noted but the text says the work was completed
 case closed. case noted intersection under construction. spoke with bpd detail - no issue found,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case noted its a private way home owners are responsible,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case noted john sent to ngrid for repair. thanks rich dimarzo,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
+case closed. case noted john sent to ngrid for repair. thanks rich [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted knockdown has been put in for replacement. case number <n>,noted,closed as noted without a repair or other action described
 case closed. case noted lane line and arrow & only was repainted,resolved,closed as noted but the text says the work was completed
 case closed. case noted light is working as of <date>,invalid,"no problem found, too little information, test, or not a valid request"
@@ -1107,7 +1107,7 @@ case closed. case noted marshall place is a private way and the property owners 
 case closed. case noted marston street h.p. private way from <n> austin street to the m.b.t.a. railroad. abutters responsibility,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted matt sent to crown castle you. are on email. rich,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted matt sent to ngrid they will patch around the casting. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case noted matt we sent this to comcast and they will make the repairs. thanks rich dimarzo,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
+case closed. case noted matt we sent this to comcast and they will make the repairs. thanks rich [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted mbta,referred,"agency or utility named as responsible, no completed work described"
 case closed. case noted mcbride is up for reconstruction,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case noted mead st is a private way. homeowners/abutters are responsible for repairs to private ways,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
@@ -1239,7 +1239,7 @@ case closed. case noted signs are temporary will be coming down september <n> <n
 case closed. case noted signs are up at this location,noted,closed as noted without a repair or other action described
 case closed. case noted signs posted,noted,closed as noted without a repair or other action described
 case closed. case noted sound is not coming from the speed display sign,noted,closed as noted without a repair or other action described
-case closed. case noted south street is scheduled to be paved this year. for more information contact katie choe @ <phone>,planned_followup,"work is scheduled, queued, or on a list for a later program"
+case closed. case noted south street is scheduled to be paved this year. for more information contact katie [removed] @ <phone>,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case noted specialty sidewalks are the responsibility of the property owners,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted spider cracks cosmetic repair,noted,closed as noted without a repair or other action described
 case closed. case noted spoke to customer he said this is a nstar cover <n>/<n>,noted,closed as noted without a repair or other action described
@@ -1325,7 +1325,7 @@ case closed. case noted these lights are privately owned and not fixed by the ci
 case closed. case noted these ramps were done last year...please resubmit with picture,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case noted they are up there working..they were at overlook and stimpson makeing there way around yesterday,noted,closed as noted without a repair or other action described
 case closed. case noted this area is under construction will have to recheck at a further date,noted,closed as noted without a repair or other action described
-case closed. case noted this area was checked by inspector jim hennessy found all city sreeet lights working at this time tried to call resident could not get them i can be reached at #<phone> thank you,noted,closed as noted without a repair or other action described
+case closed. case noted this area was checked by inspector jim [removed] found all city sreeet lights working at this time tried to call resident could not get them i can be reached at #<phone> thank you,noted,closed as noted without a repair or other action described
 case closed. case noted this complaint has been forwarded to massdot whom stil have care custody & maintenance of this location under the casey overpass project,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case noted this crosswalk was completed. still in good condition,resolved,closed as noted but the text says the work was completed
 case closed. case noted this has been issue for long time. had contractor check out and determined will be changed in future. secure for now,referred,"agency or utility named as responsible, no completed work described"
@@ -1379,7 +1379,7 @@ case closed. case noted this sidewalk belongs to the dcr. please contact them di
 case closed. case noted this speed limit sign is going to be removed and relocated to a different location due to it constantly being hit and not working correctly at this location,noted,closed as noted without a repair or other action described
 case closed. case noted this under construction with national grid,referred,"agency or utility named as responsible, no completed work described"
 case closed. case noted this was a temporary crosswalk while the sidewalk was closed for construction of an abutting building. it will not be restriped,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
-case closed. case noted tim ngrid has this location. rich dimarzo,referred,"agency or utility named as responsible, no completed work described"
+case closed. case noted tim ngrid has this location. rich [removed],referred,"agency or utility named as responsible, no completed work described"
 case closed. case noted timing adjustments has been made to help resolve traffic on columbia rd. we are monitoring the intersection,noted,closed as noted without a repair or other action described
 case closed. case noted timing at this intersection as well as intersections on melnea cass boulevard have been adjusted traffic should be better at this intersection,noted,closed as noted without a repair or other action described
 case closed. case noted took a picture of it and sent it down to sidewalk repair,noted,closed as noted without a repair or other action described
@@ -1408,12 +1408,12 @@ case closed. case noted we cannot identify the contractor that did the work so i
 case closed. case noted we checked the intersection for a loose manhole cover. we didn't find any problem. all covers were on and secure. <n>/<n>,noted,closed as noted without a repair or other action described
 case closed. case noted we have answered your previous concerns. the city is aware of this and is taking action,noted,closed as noted without a repair or other action described
 case closed. case noted we have forwarded this a number of times. this is the responsibility of massdot. if the problem still persists please contact massdot directly,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case noted we have sent an engineer to evaluate and have taken care of any immediate public safety hazards. michael somers senior civil engineer construction management division boston public works <phone> <email>,noted,closed as noted without a repair or other action described
+case closed. case noted we have sent an engineer to evaluate and have taken care of any immediate public safety hazards. michael [removed] senior civil engineer construction management division boston public works <phone> <email>,noted,closed as noted without a repair or other action described
 case closed. case noted we noticed that this request has been open for an unusual amount of time please be specific regarding your request. if this is still an issue please resubmit the request. thank you for contacting <n> and btd,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case noted went to the scene did not see the three potholes that have been complained about need better location,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case noted when ramp is done over this sidewalk will be repaired,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case noted will be constructed by crown castle,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case noted will be paved in the <n> paving program. for more information please contact chief engineer katie choe @ <phone>,planned_followup,"work is scheduled, queued, or on a list for a later program"
+case closed. case noted will be paved in the <n> paving program. for more information please contact chief engineer katie [removed] @ <phone>,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case noted will complete crosswalk in the spring,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case noted will look into it ..will ask bosses,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case noted will monitor location for visibility issues,noted,closed as noted without a repair or other action described
@@ -1488,7 +1488,7 @@ case closed. case referred to external agency notified <n> to notify vicinity st
 case closed. case referred to external agency notified mbta,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case referred to external agency oct<n> manhole cover belongs to bell not bwsc. <n>/<n>,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case referred to external agency our engineering and construction (e&c) staff investigated beacon street near address provided by the constituent. the mwra access pit at that area of the closest access pit that have been final paved (page <n> of the attached pdf) our e&c staff also attached photos of other utilities trenches that seem to almost match the description below. (pages <n> and <n> of the attached pdf) staff recommend that the person who reached out should contact boston city hall and newton town hall for more information about the schedule for boston/newton repaving. i hope that this is helpful. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case referred to external agency please see the attached complaint. please refer to the city regarding sidewalks. service request type: mbta; case #: <n> referred to: mbta (<email>) description: | offensive: no case created by: crm service account for crm for web services connection for mobile applications should you have additional questions or concerns regarding this issue please contact the mbta’s customer communications department at <phone> or <phone> monday through friday <n>:<n> am to <n>:<n> pm saturdays/ sundays <n>:<n>am to <n>pm or visit our website at www.mbta.com. thank you. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
+case closed. case referred to external agency please see the attached complaint. please refer to the city regarding sidewalks. service request type: mbta; case #: <n> referred to: mbta (<email>) description: | offensive: no case created by: crm service account for crm for web services connection for mobile applications should you have additional questions or concerns regarding this issue please contact the mbta’s customer [removed] department at <phone> or <phone> monday through friday <n>:<n> am to <n>:<n> pm saturdays/ sundays <n>:<n>am to <n>pm or visit our website at www.mbta.com. thank you. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case referred to external agency re allocated to public works,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case referred to external agency referred to pwd,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case referred to external agency reported <n>/<n>,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
@@ -1570,13 +1570,13 @@ case closed. case resolved all city lights working at location dp kh <n>l,resolv
 case closed. case resolved all city lights working new dcr lights under construction,referred,"agency or utility named as responsible, no completed work described"
 case closed. case resolved all city of boston and eversource units are in place and operating---slcb#<n> is photoeye controlled and operating normally,referred,"agency or utility named as responsible, no completed work described"
 case closed. case resolved all glass/<n> mantles,resolved,text says the case was resolved or work completed
-case closed. case resolved all lights are working in the area of <n> hp ave. could not attach picture to response. mxol,invalid,"no problem found, too little information, test, or not a valid request"
+case closed. case resolved all lights are working in the area of <n> hp ave. could not attach picture to response. [removed],invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case resolved all lights on in area. kb/kk,resolved,text says the case was resolved or work completed
 case closed. case resolved all lights that were not working have been repaired,resolved,text says the case was resolved or work completed
 case closed. case resolved all lights working in area. [removed],invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case resolved all lights working no problem found [removed],invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case resolved all markings have been installed [removed],resolved,text says the case was resolved or work completed
-case closed. case resolved all poles have been cemented. clif,resolved,text says the case was resolved or work completed
+case closed. case resolved all poles have been cemented. [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved all potholes are filled,resolved,text says the case was resolved or work completed
 case closed. case resolved all potholes repaired,resolved,text says the case was resolved or work completed
 case closed. case resolved all set light changed out to led working,resolved,text says the case was resolved or work completed
@@ -1617,7 +1617,7 @@ case closed. case resolved bricks reset,resolved,text says the case was resolved
 case closed. case resolved bricks were repaired on <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved bricks were replaced and repaired by the construction crew,resolved,text says the case was resolved or work completed
 case closed. case resolved broke out and back filled and patched sinkhole. <n>/<n>,resolved,text says the case was resolved or work completed
-case closed. case resolved broke out base installed pole and fixtue and tied in [removed] / h tyra,resolved,text says the case was resolved or work completed
+case closed. case resolved broke out base installed pole and fixtue and tied in [removed] / h [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved broken cable underground. installed overhead feed. [removed] k,resolved,text says the case was resolved or work completed
 case closed. case resolved broken cement removed and brought up to level made safe,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved built & replaced <n>mh ballast & lamp,resolved,text says the case was resolved or work completed
@@ -1683,7 +1683,7 @@ case closed. case resolved changed glass and mantles on <n> gas lights <n> side 
 case closed. case resolved changed glass globe and <n> mantles,resolved,text says the case was resolved or work completed
 case closed. case resolved changed glass globe and mantles,resolved,text says the case was resolved or work completed
 case closed. case resolved changed lamp,resolved,text says the case was resolved or work completed
-case closed. case resolved changed mantles and battery on <date> crew: webb & doyle,resolved,text says the case was resolved or work completed
+case closed. case resolved changed mantles and battery on <date> crew: webb & [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved changed out glass and mantles,resolved,text says the case was resolved or work completed
 case closed. case resolved checked all gate covers in the area none are loose or missing. <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved checked all ped buttons working normal operation. further questions please call me @ <phone>. thank you dominic,resolved,text says the case was resolved or work completed
@@ -1700,7 +1700,7 @@ case closed. case resolved checked int run normal,resolved,text says the case wa
 case closed. case resolved checked int. run normal,resolved,text says the case was resolved or work completed
 case closed. case resolved checked operation and found it to be unprotected ped. but working way they set it up. further questions please call me <n> <phone> thank you dominic,resolved,text says the case was resolved or work completed
 case closed. case resolved checked operations and found no trouble. the button you are talking about is actuated by pushing button. it was working this way further questions please call me @ <phone> thank you dominic,resolved,text says the case was resolved or work completed
-case closed. case resolved checked out colonia gas unit. unit working. webb lynch. <n>-<n>-<n>,resolved,text says the case was resolved or work completed
+case closed. case resolved checked out colonia gas unit. unit working. webb [removed]. <n>-<n>-<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved checked out photo cell in slcb. replaced with a new button eye photo cell with shade/cover. vehicle headlights were shining on the controller. all set. gg sp ep,resolved,text says the case was resolved or work completed
 case closed. case resolved checked out post. no problems. no need to remove. ep. <date>,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case resolved checked out slcb# <n>. found centre off switch in the middle. returned cabenit to normal operations. all lights working. ac ds ep,invalid,"no problem found, too little information, test, or not a valid request"
@@ -1710,7 +1710,7 @@ case closed. case resolved checked out the area of <n> n margin and found no str
 case closed. case resolved checked out the control box opp <n> medford st. controller is secure for now. issuing to engineers. sub-base needs to be re-set so it's at grade with the sidewalk,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved checked out two controllers on american legion highway. found one trip breaker in slcb #<n>. we reset the breaker waited a while to make sure everything held. returned the system back to normal operations. slcb <n> is out of service. eddie p danny p mikey d,resolved,text says the case was resolved or work completed
 case closed. case resolved checked ped operation found no trouble,resolved,text says the case was resolved or work completed
-case closed. case resolved checked photo cell and found unit working properly. checking the unit next to it. webb/doyle. <date>,resolved,text says the case was resolved or work completed
+case closed. case resolved checked photo cell and found unit working properly. checking the unit next to it. webb/[removed]. <date>,resolved,text says the case was resolved or work completed
 case closed. case resolved checked the area found no mh undermined <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved checked with tech base running normal operation,resolved,text says the case was resolved or work completed
 case closed. case resolved checked yellow and found <n> sec. further questions please call me @ <phone>. thank you dominic,resolved,text says the case was resolved or work completed
@@ -1722,7 +1722,7 @@ case closed. case resolved cleaned all glass and replaced mantles on both gas li
 case closed. case resolved cleaned all glass replaced <n> mantles,resolved,text says the case was resolved or work completed
 case closed. case resolved cleaned burner and installed new mantles. pg //ep,resolved,text says the case was resolved or work completed
 case closed. case resolved cleaned burner and remantled. gg,resolved,text says the case was resolved or work completed
-case closed. case resolved cleaned down globe and swapped out <n> mantles and checked out. hennessey lynch. <n>-<n>-<n>,resolved,text says the case was resolved or work completed
+case closed. case resolved cleaned down globe and swapped out <n> mantles and checked out. [removed] [removed]. <n>-<n>-<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved cleaned gas lamp and replaced all glass and mantles,resolved,text says the case was resolved or work completed
 case closed. case resolved cleaned glass and remantled. gg,resolved,text says the case was resolved or work completed
 case closed. case resolved cleaned glass and replaced mantles,resolved,text says the case was resolved or work completed
@@ -1767,7 +1767,7 @@ case closed. case resolved contractor repaired manhole <n>/<n>,resolved,text say
 case closed. case resolved contractor repaired manhole and cb. <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved contractor states light is working and is aimed in the alley,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case resolved contractor working here put cover back on <n>/<n>,referred,"agency or utility named as responsible, no completed work described"
-case closed. case resolved contractor working in area breakers tripped hoge,referred,"agency or utility named as responsible, no completed work described"
+case closed. case resolved contractor working in area breakers tripped [removed],referred,"agency or utility named as responsible, no completed work described"
 case closed. case resolved contractors working on site,referred,"agency or utility named as responsible, no completed work described"
 case closed. case resolved control to grade no loose cover <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved converted old <n>/w mv ballst and lamp to new l.e.d. retro fit unit and tied in as needed lp#<n> [removed],resolved,text says the case was resolved or work completed
@@ -1787,7 +1787,7 @@ case closed. case resolved crew checked control circuit reprogramed digital time
 "case closed. case resolved crew checked light @ location installed new ""led"" fixture [removed]",resolved,text says the case was resolved or work completed
 case closed. case resolved crew checked location all lights were working at this time [removed],invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case resolved crew checked location replaced mantle relit will issue w/o to lead shaft,resolved,text says the case was resolved or work completed
-case closed. case resolved crew checked location replaced solar gas burner & mantels d.webb j. peterson,resolved,text says the case was resolved or work completed
+case closed. case resolved crew checked location replaced solar gas burner & mantels d.webb j. [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved crew did not find any loose bwsc manhole covers. <n>/<n>,referred,"agency or utility named as responsible, no completed work described"
 case closed. case resolved crew did not find any missing cover on street or sidewalk. <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved crew found manhole cover half way off crew pushed it back on and secured it all set. <n>/<n>,resolved,text says the case was resolved or work completed
@@ -1813,7 +1813,7 @@ case closed. case resolved crew replaced cover and sealed <n>/<n>,resolved,text 
 case closed. case resolved crew replaced gas solar burner & mantels [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved crew replaced loose cover <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved crew replaced missing globe and new 'led' lamp,resolved,text says the case was resolved or work completed
-case closed. case resolved crew resecured pendant fixture and respliced feed j.peterson b. correia,resolved,text says the case was resolved or work completed
+case closed. case resolved crew resecured pendant fixture and respliced feed j.[removed] b. correia,resolved,text says the case was resolved or work completed
 case closed. case resolved crew responded and found pole is leaning but not in danger of falling. pole is also the feed pole for the whole alley whcih means if it is removed we will lose all lights in alley. we will coordinate with contractor to have a sub base installed whcih will then accept a new sl pole //re,resolved,text says the case was resolved or work completed
 case closed. case resolved crew searched area found no loose bwsc cover <n>/<n>,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case resolved crew tested system control circuit working normal no problem found at this time [removed],invalid,"no problem found, too little information, test, or not a valid request"
@@ -1838,7 +1838,7 @@ case closed. case resolved damaged signs replaced,resolved,text says the case wa
 case closed. case resolved dcr serviced location . notified,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved dcr traffic signal,referred,"agency or utility named as responsible, no completed work described"
 case closed. case resolved dear constituent contractor has been notified and they will take care of this issue asap thank you,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case resolved dear constituent first of all there are no major potholes on boardman st that are not filled. the boston public works department agrees this section of boardman st should be resurfaced. before any street is resurfaced in the city of boston it has to be cleared by the utility companies and our development agencies. as of now all the utility companies have cleared the street but there is a question of a possible development project within these limits. if the project will not happen or is a few years away we will most likely pave the street in august. if the project is for this year or next year then we will hold off. you can contact mike kinson at <phone> for an update. [removed],planned_followup,"work is scheduled, queued, or on a list for a later program"
+case closed. case resolved dear constituent first of all there are no major potholes on boardman st that are not filled. the boston public works department agrees this section of boardman st should be resurfaced. before any street is resurfaced in the city of boston it has to be cleared by the utility companies and our development agencies. as of now all the utility companies have cleared the street but there is a question of a possible development project within these limits. if the project will not happen or is a few years away we will most likely pave the street in august. if the project is for this year or next year then we will hold off. you can contact [removed] kinson at <phone> for an update. [removed],planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case resolved dear constituent national grid has been notified and they will take care of the issue. sorry for any inconvenience this may have caused. thank you for your patience and understanding. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved dear constituent national grid has been notified to replace the casting cover by friday august <n>th [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved dear constituent the boston public works construction inspection unit (ciu) agrees that the utility work at the intersection of causeway north washington and endicott needed repair. the intersection of north washington at endicott has been repaired. we requested that the contractor repair the low spots on north washington at causeway asap. since they only can work on weekends we are hoping it will be repaired this weekend or next. [removed],planned_followup,"work is scheduled, queued, or on a list for a later program"
@@ -1854,7 +1854,7 @@ case closed. case resolved dear constituent the boston public works construction
 case closed. case resolved dear constituent the boston public works construction inspection unit (ciu) has contacted n.grid and ordered that the sinkhole be investigated and repaired under our sinkhole repair guidelines. because of dig safe requirements the repair may have to wait a few days. the permiteee is responsible to place a temporary repair until then note: because national grid is on strike repairs are taking loner than usual. they are only doing emergencies... we have told n.grid the city considers this an emergency and want the repair prioritized the location has been added to our database that tracks sinkholes. the ciu inspector will monitor the progress of the repair. [removed],made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved dear constituent the boston public works construction inspection unit (ciu) has contacted n.grid and requested that they patch around their casting within <n> business days unfortunately our very cold winter so far has produced <n> feet of frost resulting in a much higher level of emergency repairs than during a typical winter. ngrid has most of its resources repairing those emergencies. it may take a few extra days for the casting to be patched. the ciu has added the location to its data base that tracks utility castings needing repair the ciu will monitor the progress of the work. the city apologizes for the inconvenience for this necessary work. [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved dear constituent the boston public works construction inspection unit (ciu) has contacted national grid and bwsc and request that they repair the casting shut offs on the sidewalk asap. the ciu will monitor the progress of the repair. [removed],referred,"agency or utility named as responsible, no completed work described"
-case closed. case resolved dear constituent the boston public works construction inspection unit (ciu) has identified national grid as being responsible for repairing the cobblestones at the intersection of washington st and msrg reynolds way. we are requesting bwsc first address the clogged catch basin adjacent to the cobblestones. the weather is going to be good next week which will allow the cobblestones to be repaired after bwsc takes care of the catch basin. the ciu has added the location to its data base that tracks unacceptable utility work. the ciu will monitor the progress of the work. the inspector name is dave noonan. you can reach david at <phone> for any updates. mark cardarelli supervisor of utility coordination and compliance boston public works department <phone> office <phone> cell,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
+case closed. case resolved dear constituent the boston public works construction inspection unit (ciu) has identified national grid as being responsible for repairing the cobblestones at the intersection of washington st and msrg reynolds way. we are requesting bwsc first address the clogged catch basin adjacent to the cobblestones. the weather is going to be good next week which will allow the cobblestones to be repaired after bwsc takes care of the catch basin. the ciu has added the location to its data base that tracks unacceptable utility work. the ciu will monitor the progress of the work. the inspector name is dave noonan. you can reach david at <phone> for any updates. mark [removed] supervisor of utility coordination and compliance boston public works department <phone> office <phone> cell,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved dear constituent the boston public works construction inspection unit (ciu) has identified the casting cover missing as belonging to national.grid nationalgrid will have <n> business days to repair the casting the ciu has added the location to its data base that tracks unacceptable utility work. the ciu will monitor the progress of the work. [removed],referred,"agency or utility named as responsible, no completed work described"
 case closed. case resolved dear constituent the boston public works construction inspection unit (ciu) has identified the casting needing patching around it as belong to comcast comcast will have <n> business days to top around the casting the ciu has added the location to its data base that tracks unacceptable utility work. the ciu will monitor the progress of the work. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved dear constituent the boston public works construction inspection unit (ciu) has identified the casting needing patching around it as belong to verizon verizon will have <n> business days to top around the casting the ciu has added the location to its data base that tracks unacceptable utility work. the ciu will monitor the progress of the work. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
@@ -1901,18 +1901,18 @@ case closed. case resolved dear constituent the boston public works construction
 case closed. case resolved dear constituent the boston public works department construction inspection unit (ciu) has identified the casting needing repair as belonging to eversource.. eversource has been notified to repair the casting within <n> days. the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. the ciu will monitor the progress of the repair. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved dear constituent the boston public works department construction inspection unit (ciu) has identified the unacceptable patch as belonging to national grid. national grid has been notified to make the necessary repairs asap. the ciu has added the location to its data base that tracks unacceptable utility work. the ciu will monitor the progress of the work. the city apologizes for the inconvenience for this necessary work. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved dear constituent the boston public works department construction inspection unit (ciu) has identified the unacceptable trench as belonging to eversource. because the bad patch is not a public safety issue eversource has been notified that they will have <n>-<n> days to make the repair. the ciu has added the location to its data base that tracks unacceptable utility work. the ciu will monitor the progress of the work. the city apologizes for the inconvenience for this necessary work. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case resolved dear constituent the ciu has identified the sidewalk left in asphalt as belonging to verizon verizon has been notified that they must restore the sidewalk to concrete by november <n>th. the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. the ciu will monitor the progress of the repair. mark cardarelli supervisor of utility coordination and compliance boston public works department <phone> office <phone> cell,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
+case closed. case resolved dear constituent the ciu has identified the sidewalk left in asphalt as belonging to verizon verizon has been notified that they must restore the sidewalk to concrete by november <n>th. the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. the ciu will monitor the progress of the repair. mark [removed] supervisor of utility coordination and compliance boston public works department <phone> office <phone> cell,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved dear constituent the ciu inspector for the district has idneified the manholes needing repair as belonging to vicinity energy co. we have reached out to vicinity and ordered they patch around their infrastructure asap the ciu inspector will monitor the location for completion,resolved,text says the case was resolved or work completed
 case closed. case resolved dear constituent the construction inspection unit (ciu) inspector has identified the sidewalk left in asphalt as belonging to eversource. eversource has been notified they must restore the bricks within <n> weeks. the ciu has added the location to its data base that tracks unacceptable utility work. the ciu will monitor the progress of the work. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved dear constituent the construction inspection unit inspector contacted eversource electric to have the manhole repaired asap. as of december <n>th the manhole has been repaired. [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved dear constituent the construction inspection unit inspector states that national grid has removed the plates we apologize for the inconvenience [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved dear constituent the contractor has been notified and they will take care of the issue. thank you for your patience and understanding. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case resolved dear constituent the contractor made the necessary repairs and we will monitor this location to make sure there isn't anymore issues with this location. thanks rich dimarzo,invalid,"no problem found, too little information, test, or not a valid request"
+case closed. case resolved dear constituent the contractor made the necessary repairs and we will monitor this location to make sure there isn't anymore issues with this location. thanks rich [removed],invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case resolved dear constituent the picture and the location in the crm were checked out by the inspector. there is no defective casting at <n>-<n> washington st. please check your records again and call the hotline up with the new address. [removed],invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case resolved dear constituent the public works construction inspection unit (ciu) has identified the defective cast iron structure as belonging to bwsc. bwsc has been notified that they must repair the casting within <n> days the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. the ciu will monitor the progress of the repair. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved dear constituent the public works construction inspection unit (ciu) has identified the defective cast iron structure as belonging to comcast. comcast has been notified that they must repair the casting within one week the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. the ciu will monitor the progress of the repair. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved dear constituent the public works construction inspection unit (ciu) has identified the defective cast iron structure as belonging to national grid. national grid has been notified that they must repair the casting within <n> week. the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. the ciu will monitor the progress of the repair. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case resolved dear constituent the public works construction inspection unit (ciu) has identified the defective cast iron structure as belonging to national grid. national grid has been notified that they must repair the casting within one week. . the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. the ciu will monitor the progress of the repair. mark cardarelli supervisor of utility coordination and compliance boston public works department <phone> office,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
+case closed. case resolved dear constituent the public works construction inspection unit (ciu) has identified the defective cast iron structure as belonging to national grid. national grid has been notified that they must repair the casting within one week. . the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. the ciu will monitor the progress of the repair. mark [removed] supervisor of utility coordination and compliance boston public works department <phone> office,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved dear constituent the public works construction inspection unit (ciu) has identified the defective cast iron structure as belonging to verizon. verizon has been notified that they must repair the casting within <n> week the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. the ciu will monitor the progress of the repair. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved dear constituent the the boston public works department construction inspection unit (ciu) has identified the unacceptable patch as belonging to national grid. national grid has been notified to repair the patch within <n> days.. the ciu has added the location to its data base that tracks unacceptable utility work. the ciu will monitor the progress of the work. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved dear constituent the utility has been notified and a crew will be sent to make the necessary repairs. we apologize for any inconvenience this may have caused. thank you for your patience and understanding. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
@@ -1942,7 +1942,7 @@ case closed. case resolved dug out pull box pumped water out in pb #<n> and #<n>
 case closed. case resolved dug out pull box. located burnt cables. repaired cables. [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved dug out pull boxes. located short circuit in #<n> cable. replaced #<n> cable. [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved dug out roadway boxes and repaired burnt splices. [removed],resolved,text says the case was resolved or work completed
-case closed. case resolved dug out roadway pull box that was full of debris. found several underground issues on corinth st. located underground connection issues. cleaned off all cables. re-marked cables and re-spliced and insulated all connections as needed and checked out all units. mccarthy rushin thompson guptill. harvey,resolved,text says the case was resolved or work completed
+case closed. case resolved dug out roadway pull box that was full of debris. found several underground issues on corinth st. located underground connection issues. cleaned off all cables. re-marked cables and re-spliced and insulated all connections as needed and checked out all units. mccarthy [removed] thompson [removed]. harvey,resolved,text says the case was resolved or work completed
 case closed. case resolved dug out roadway pullbox found short & cut it away lights are now working kh wl dp <n>l <n>l,resolved,text says the case was resolved or work completed
 case closed. case resolved duplicate light is now working //ad,duplicate,text says the report duplicates another case or request
 case closed. case resolved duplicate of <case>,duplicate,text says the report duplicates another case or request
@@ -1962,7 +1962,7 @@ case closed. case resolved eversource equipment failure,referred,"agency or util
 case closed. case resolved eversource issue on site,referred,"agency or utility named as responsible, no completed work described"
 case closed. case resolved eversource on site didn't know of any problem. drove around seen no issue with bwsc manholes. <n>/<n>,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case resolved eversource pole they were notified and will repair it,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case resolved eversource repaired feed hoge hennessy,resolved,text says the case was resolved or work completed
+case closed. case resolved eversource repaired feed [removed] [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved everything is working fine //ht,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case resolved failed case,resolved,text says the case was resolved or work completed
 case closed. case resolved fill hole temporarily fix need contractor to fix roadway,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
@@ -2056,17 +2056,17 @@ case closed. case resolved installed new post and housing,resolved,text says the
 case closed. case resolved installed new post working normal operation,resolved,text says the case was resolved or work completed
 case closed. case resolved installed new solar burner and mantles. gg,resolved,text says the case was resolved or work completed
 case closed. case resolved installed new standard bracket arm with <n>-w) led fixture rewired pole and tested,resolved,text says the case was resolved or work completed
-case closed. case resolved installed one <n>' concrete post -w- #<n> led standard fixture. pulled all new #<n> triplex cables. tied in and insulated cables and checked out unit. mccarthy getchell tyra ep <n>-<n>-<n>,resolved,text says the case was resolved or work completed
+case closed. case resolved installed one <n>' concrete post -w- #<n> led standard fixture. pulled all new #<n> triplex cables. tied in and insulated cables and checked out unit. mccarthy [removed] [removed] ep <n>-<n>-<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved installed overhead feed //dp,resolved,text says the case was resolved or work completed
 case closed. case resolved installed overhead feeds,resolved,text says the case was resolved or work completed
-case closed. case resolved installed photo control in lp# <n> -w- <n>' of #<n>. lynch rushin. <n>-<n>-<n>,resolved,text says the case was resolved or work completed
+case closed. case resolved installed photo control in lp# <n> -w- <n>' of #<n>. [removed] [removed]. <n>-<n>-<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved installed pole and fixture also tied in [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved installed pole and fixture and tied in also filled sub base to grade and issued a perminate patch w'o [removed],resolved,text says the case was resolved or work completed
-case closed. case resolved installed pole and fixture and tied in as needed also back filled sub base to grade and issued a perminate patch w/o g. mc carthy g. guptill h. tyra [removed],resolved,text says the case was resolved or work completed
+case closed. case resolved installed pole and fixture and tied in as needed also back filled sub base to grade and issued a perminate patch w/o g. mc [removed] g. [removed] h. [removed] [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved installed pole and fixture and tied in as needed also back filled sub base to grade and issued patch w/o [removed],resolved,text says the case was resolved or work completed
-case closed. case resolved installed pole and fixture and tied in as needed also back filled sub base to grade and issued patch w/o w.lynch . h.tyra . [removed],resolved,text says the case was resolved or work completed
+case closed. case resolved installed pole and fixture and tied in as needed also back filled sub base to grade and issued patch w/o w.[removed] . h.[removed] . [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved installed pole and fixture and tied in as needed also backfilled sub base to grade and issued patch w/o [removed],resolved,text says the case was resolved or work completed
-case closed. case resolved installed pole and fixture and tied in as needed back filled sub base to grade and issued a perminate patch w/o g mc carthy [removed],resolved,text says the case was resolved or work completed
+case closed. case resolved installed pole and fixture and tied in as needed back filled sub base to grade and issued a perminate patch w/o g mc [removed] [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved installed pole and fixture and tied in as needed. also back filled sub base to grade and issued a perminate patch w/o [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved installed pole and fixture and tied in as needed.also back filled sub base to grade and issued a patch w/o [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved installed pole and fixture and tied in as needed.also back filled sub base to grade and issued a perminate patch w/o [removed],resolved,text says the case was resolved or work completed
@@ -2127,9 +2127,9 @@ case closed. case resolved lights running stop and go,resolved,text says the cas
 case closed. case resolved lights upgraded on washington st //re,resolved,text says the case was resolved or work completed
 case closed. case resolved located damaged cables underground and made repairs. dan p,resolved,text says the case was resolved or work completed
 case closed. case resolved location has been parged,resolved,text says the case was resolved or work completed
-case closed. case resolved location has been repaired. if you feel this has been closed in error please contact me. michael somers senior civil engineer <email>,resolved,text says the case was resolved or work completed
+case closed. case resolved location has been repaired. if you feel this has been closed in error please contact me. michael [removed] senior civil engineer <email>,resolved,text says the case was resolved or work completed
 case closed. case resolved location has been restriped,resolved,text says the case was resolved or work completed
-case closed. case resolved location has recently been reconstructed and no missing or loose bricks could be noted. please resubmit with better picture or better address if issue still exists. michael somers senior civil engineer construction management division boston public works <phone> <email>,invalid,"no problem found, too little information, test, or not a valid request"
+case closed. case resolved location has recently been reconstructed and no missing or loose bricks could be noted. please resubmit with better picture or better address if issue still exists. michael [removed] senior civil engineer construction management division boston public works <phone> <email>,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case resolved location was inspected and crosswalks have been installed [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved loose and missing bricks were replaced and additional bricks had to be reset,resolved,text says the case was resolved or work completed
 case closed. case resolved loose cement removed and repaired with cement. requesting permanent repair over <n> flags cracked,planned_followup,"work is scheduled, queued, or on a list for a later program"
@@ -2174,7 +2174,7 @@ case closed. case resolved multiple potholes filled with cold patch,resolved,tex
 case closed. case resolved n-star problem and on site,resolved,text says the case was resolved or work completed
 case closed. case resolved national grid has been notified to make the necessary repairs the ciu will monitor the location for compliance,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved national grid has been notified to patch around their casting thank you for the heads up,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case resolved national grid made all necessary repairs for the gas issues. we replaced two colonial fixtures glass burners and mantles complete. re-lit and returned back to normal operations. d webb w lynch. <n>-<n>-<n>,resolved,text says the case was resolved or work completed
+case closed. case resolved national grid made all necessary repairs for the gas issues. we replaced two colonial fixtures glass burners and mantles complete. re-lit and returned back to normal operations. d webb w [removed]. <n>-<n>-<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved national grid on scene removing damaged gas post. removed cross arm false scocket and welch back frame. delivered new gas post for installation,resolved,text says the case was resolved or work completed
 case closed. case resolved national grid was made aware of the report on <n>/<n> and will review. thank you,referred,"agency or utility named as responsible, no completed work described"
 case closed. case resolved need better location no such address. j faretra bwsc,invalid,"no problem found, too little information, test, or not a valid request"
@@ -2229,9 +2229,9 @@ case closed. case resolved old service request was never closed out. all gas ser
 case closed. case resolved old service request was still open. post straightened and repairs were made. eddie p,bulk_backlog,"backlog clean-up, expiry or age-based closure"
 case closed. case resolved old sr. post was picked up,resolved,text says the case was resolved or work completed
 case closed. case resolved older request never closed. issue was resolved by installing an overhead feed. all lights working,invalid,"no problem found, too little information, test, or not a valid request"
-"case closed. case resolved on arrival no bwsc mh covers are loose. communications mh ""telephone company"" cover is loose. <n>/<n>",referred,"agency or utility named as responsible, no completed work described"
+"case closed. case resolved on arrival no bwsc mh covers are loose. [removed] mh ""telephone company"" cover is loose. <n>/<n>",referred,"agency or utility named as responsible, no completed work described"
 case closed. case resolved on arrival no bwsc mh's or bwsc gate valves covers were open. <n>/<n>,referred,"agency or utility named as responsible, no completed work described"
-"case closed. case resolved on call crew checked light pole @ this location pole is a ""wifi"" pole not owened by street lighting notified mike donaghy he will contact company that owns this unit",referred,"responsibility or the work passed to another agency, utility, owner or contractor"
+"case closed. case resolved on call crew checked light pole @ this location pole is a ""wifi"" pole not owened by street lighting notified [removed] [removed] he will contact company that owns this unit",referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved on call crew [removed] picked up and made safe koed <n>' pole with l.e.d. rectilinear fixture,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved one flag crack on sidewalk to repair sidewalk you have to cut it out,resolved,text says the case was resolved or work completed
 case closed. case resolved one mh looks recently patched all other manholes we checked are ok. no open holes found all set <n>/<n>,invalid,"no problem found, too little information, test, or not a valid request"
@@ -2300,19 +2300,19 @@ case closed. case resolved picked up & made safe ko'd <n>' concrete post w/ led 
 case closed. case resolved picked up & made safe ko'd steel acorn pole w/ led acorn unit lp# <n>-<n>,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved picked up and cut away all the wire and tape [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved picked up and made safe //sr,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
-case closed. case resolved picked up and made safe <n>' concrete pole w/<n>w sv rect fixture lp#<n> slcb#<n> with overhead feed to lp#<n> on slcb#<n> gave police camera to officer at scene k buckley j dunn j michel b keane,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
+case closed. case resolved picked up and made safe <n>' concrete pole w/<n>w sv rect fixture lp#<n> slcb#<n> with overhead feed to lp#<n> on slcb#<n> gave police camera to officer at scene k buckley j dunn j [removed] b keane,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved picked up and made safe <n>' concrete pole with <n>w led fixture slcb#<n> lp#<n> pole was hit by city vehicle driver died due to crash scene under investigation,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
-case closed. case resolved picked up and made safe <n>' concrete pole with <n>w led rect fixture lp#<n> slcb#<n> k mclaughlin j michel b keane,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
+case closed. case resolved picked up and made safe <n>' concrete pole with <n>w led rect fixture lp#<n> slcb#<n> k mclaughlin j [removed] b keane,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved picked up and made safe <n>' concrete pole with twin <n> standard led,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved picked up and made safe also cut away and capped conduit bacckfilled sub base to grade and issued patch w/o [removed],made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved picked up and made safe cut away in pull box and capped conduit also bolted down safety cone and back filled sub base to grade [removed],made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved picked up and made safe [removed],made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
-case closed. case resolved picked up and made safe will need a sub base for reinstallation eversorce notified for cut away by mike donovan [removed],made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
+case closed. case resolved picked up and made safe will need a sub base for reinstallation eversorce notified for cut away by [removed] donovan [removed],made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved picked up and made safe. jeff and jeff,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved picked up and madw safe also cut in pull box capped conduit and back filled sub base to grade [removed],resolved,text says the case was resolved or work completed
-case closed. case resolved picked up and removed ko'ed concrete pole. mxol/billy k/kenny/kevin,resolved,text says the case was resolved or work completed
+case closed. case resolved picked up and removed ko'ed concrete pole. [removed]/[removed] k/[removed]/kevin,resolved,text says the case was resolved or work completed
 case closed. case resolved picked up barrier <n>/<n>,resolved,text says the case was resolved or work completed
-case closed. case resolved picked up kod post and cut away cables in pull box and made area safe. mccarthy/tyra. eddie p will issue work order to replace,planned_followup,"work is scheduled, queued, or on a list for a later program"
+case closed. case resolved picked up kod post and cut away cables in pull box and made area safe. mccarthy/[removed]. eddie p will issue work order to replace,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case resolved picked up pole <n>' concrete w/<n>w led rect slcb#<n> lp#<n> kb jd,resolved,text says the case was resolved or work completed
 case closed. case resolved placed temp ring and cover <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved please contact property management. these lights are not maitained by the city of boston they are managed by the apartment building. thanks!,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
@@ -2383,19 +2383,19 @@ case closed. case resolved radcliffe is a private way. repairs to private ways a
 case closed. case resolved ran new #<n> cable up the pole light is working,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case resolved ran new wire dug out pull boxes k buckley k kelley,resolved,text says the case was resolved or work completed
 case closed. case resolved ran overhead feed //dp,resolved,text says the case was resolved or work completed
-case closed. case resolved ran overhead feed k mclaughlin j michel,resolved,text says the case was resolved or work completed
+case closed. case resolved ran overhead feed k mclaughlin j [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved ran overhead feed to get two sets of twins working //jp,resolved,text says the case was resolved or work completed
 case closed. case resolved ran span to power up light light is on,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case resolved rdway void has been identified as a verification core boring hole. the temp patch left by contractor has failed. contractor has confirmed that issue will be remedied today...at some point after hours. ciu to follow up on <n>/<n>,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved re paved in hma flush,resolved,text says the case was resolved or work completed
 case closed. case resolved re spliced hot and natural wires in fixture splices eaten by roadents light is working,invalid,"no problem found, too little information, test, or not a valid request"
-case closed. case resolved re-mantled #<n> & <n> and opp #<n> and re-lit. all units working. webb/doyle. <n>-<n>-<n>,resolved,text says the case was resolved or work completed
+case closed. case resolved re-mantled #<n> & <n> and opp #<n> and re-lit. all units working. webb/[removed]. <n>-<n>-<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved re-sealed loose covers. <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved re-secured base door,resolved,text says the case was resolved or work completed
-case closed. case resolved re-secured loose slcb -w- new hardware ect and returned to normal operations. k hoge/t harvey/ d prioleau,resolved,text says the case was resolved or work completed
+case closed. case resolved re-secured loose slcb -w- new hardware ect and returned to normal operations. k [removed]/t harvey/ d [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved re-secured wires,resolved,text says the case was resolved or work completed
-case closed. case resolved reached wires hoge hennessy,resolved,text says the case was resolved or work completed
-case closed. case resolved reattached,resolved,text says the case was resolved or work completed
+case closed. case resolved reached wires [removed] [removed],resolved,text says the case was resolved or work completed
+case closed. case resolved [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved reconnect hot wire in l e d fixture checked all conections light is working,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case resolved refaced and secured,resolved,text says the case was resolved or work completed
 case closed. case resolved reinstalled,resolved,text says the case was resolved or work completed
@@ -2432,18 +2432,18 @@ case closed. case resolved removed and replaced damaged pole and fixture and tie
 case closed. case resolved removed and replaced damaged pole w/ reusable fixture and tied in as needed [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved removed and replaced damaged victorian fixture complete [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved removed and replaced hand hole cover,resolved,text says the case was resolved or work completed
-case closed. case resolved removed and replaced one damaged street lighting control box with re-useable panel board. re-spliced and insulated all cables as needed and checked out system when completed. returned system back to normal operations. getchell hoge,resolved,text says the case was resolved or work completed
+case closed. case resolved removed and replaced one damaged street lighting control box with re-useable panel board. re-spliced and insulated all cables as needed and checked out system when completed. returned system back to normal operations. [removed] [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved removed badly damaged pole and cut away in pull box and made safe [removed],made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved removed bent metal around grate and made safe,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved removed broken fixture on <date> work complete. a new wo to replace fixture was created today,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case resolved removed broken pole stump and cut away in pull box. [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved removed damaged <n>' post with two way o/h span and single standard fixture on short section between american legion highway and morton street. yr ds re ep,resolved,text says the case was resolved or work completed
 case closed. case resolved removed damaged fixture and debris and made safe. //gg,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
-case closed. case resolved removed damaged hanging fixture and made safe c smith h<n>l and d prioleau h<n>l,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
+case closed. case resolved removed damaged hanging fixture and made safe c smith h<n>l and d [removed] h<n>l,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved removed damaged n-star pole w/ sweep arm and fixture and made safe [removed],made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved removed damaged pendant fixture. [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved removed damaged standard bracket arm and fixture. notified parks dept to pick up tree branches. issuing a new service request to have a new arm and fixture installed. pm jermany ep,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case resolved removed damaged victorian unit pole is ok made safe at top car on pullbox b keane b santry,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
+case closed. case resolved removed damaged victorian unit pole is ok made safe at top car on pullbox b keane b [removed],made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved removed discontinued n-star direct burial pole and fixture [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved removed fixture and made cables safe.will issue work order to install new fixture,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case resolved removed fixture and made safe t m,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
@@ -2461,7 +2461,7 @@ case closed. case resolved repair made <n>x<n>x<n> sent to district for patch,re
 case closed. case resolved repair streetlight //ht,resolved,text says the case was resolved or work completed
 case closed. case resolved repaire<n>d problem back to normal operation,resolved,text says the case was resolved or work completed
 case closed. case resolved repaired,resolved,text says the case was resolved or work completed
-case closed. case resolved repaired <n> fixtures at this location replaced <n> pendant gloges and drivers and tied in as needed lps <n> <n> and lp #<n> s.ried / r. di.battista,resolved,text says the case was resolved or work completed
+case closed. case resolved repaired <n> fixtures at this location replaced <n> pendant gloges and drivers and tied in as needed lps <n> <n> and lp #<n> s.[removed] / r. di.[removed],resolved,text says the case was resolved or work completed
 case closed. case resolved repaired <n> gaslight outages on concord st. ht wl,resolved,text says the case was resolved or work completed
 case closed. case resolved repaired <n> mini ball globes,resolved,text says the case was resolved or work completed
 case closed. case resolved repaired <n> pendant units,resolved,text says the case was resolved or work completed
@@ -2530,7 +2530,7 @@ case closed. case resolved repairs made in control box. ac ep,resolved,text says
 case closed. case resolved replace ballast and lamp sr/yr,resolved,text says the case was resolved or work completed
 case closed. case resolved replace glass and mantles,resolved,text says the case was resolved or work completed
 case closed. case resolved replace led acorn //ht,resolved,text says the case was resolved or work completed
-case closed. case resolved replaced (<n>) side glass (<n>) door glass and (<n>) mantles d.webb // w.lynch,resolved,text says the case was resolved or work completed
+case closed. case resolved replaced (<n>) side glass (<n>) door glass and (<n>) mantles d.webb // w.[removed],resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n> amp fuse kh dp <n>l,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n> buttons,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n> drivers in led fixtures at <n> and <n>. [removed],resolved,text says the case was resolved or work completed
@@ -2542,7 +2542,7 @@ case closed. case resolved replaced <n> mantels completed <date> [removed],resol
 case closed. case resolved replaced <n> mantels work completed <date>,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n> mantles,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n> mantles and globe,resolved,text says the case was resolved or work completed
-case closed. case resolved replaced <n> mantles and re-lit unit. webb lynch,resolved,text says the case was resolved or work completed
+case closed. case resolved replaced <n> mantles and re-lit unit. webb [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n> mantles at this location,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n> mantles checked burner,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n> mv ballast and lamp k buckley k kelley,resolved,text says the case was resolved or work completed
@@ -2550,10 +2550,10 @@ case closed. case resolved replaced <n> solar burners <n> mantles,resolved,text 
 case closed. case resolved replaced <n> top glass <n> side <n>door <n> mantles,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n> top glass cleaned <n> sides <n> door replaced <n> mantles,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n> w mv ballast and lamp k buckley k kelley,resolved,text says the case was resolved or work completed
-case closed. case resolved replaced <n>' twin ball globe unit complete. conary/joubert/jd,resolved,text says the case was resolved or work completed
+case closed. case resolved replaced <n>' twin ball globe unit complete. [removed]/[removed]/jd,resolved,text says the case was resolved or work completed
 "case closed. case resolved replaced <n>'<n>""steel pole w/slip over base and all hardware and slip fitter and and l.e.d. acorn fixture fixture and tied as needed also back filled sub base to grade and issued a perminate patch w/o [removed] /j.h",resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n>'pole w/l.e.d. rectilinear and tied in as needed also back filled sub baser to grade and issued perminate patch w/o [removed],resolved,text says the case was resolved or work completed
-case closed. case resolved replaced <n>- <n>mv lamps on flood lights. need to replace <n> flood light. will issue new work order for this. ledbetter/lynch <n>-<n>-<n>,planned_followup,"work is scheduled, queued, or on a list for a later program"
+case closed. case resolved replaced <n>- <n>mv lamps on flood lights. need to replace <n> flood light. will issue new work order for this. [removed]/[removed] <n>-<n>-<n>,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case resolved replaced <n>/w mv ballast and lamp w/ new retro fit l.e.d. unit and tied in as needed [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n>/w mv lamp and straightened and resecured fixture [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n>hps lamp,resolved,text says the case was resolved or work completed
@@ -2564,7 +2564,7 @@ case closed. case resolved replaced <n>w lamp,resolved,text says the case was re
 case closed. case resolved replaced <n>w led fixture. [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n>w mh ballast and lampk buckley j dunn,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n>w mv ballast and lamp k buckley k kelley,resolved,text says the case was resolved or work completed
-case closed. case resolved replaced <n>w mv lamp j michel c thompson,resolved,text says the case was resolved or work completed
+case closed. case resolved replaced <n>w mv lamp j [removed] c thompson,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n>w mv lamp k buckley k kelley,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n>w sv ballast and lamp,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced <n>x<n> cover <n>/<n>,resolved,text says the case was resolved or work completed
@@ -2600,7 +2600,7 @@ case closed. case resolved replaced cover. <n>/<n> work order in system to repai
 case closed. case resolved replaced cpl lamp,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced curb box cover <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced faulty led acorn and respliced cables. all set wl md,resolved,text says the case was resolved or work completed
-case closed. case resolved replaced faulty solar burner with old style burner. no solar burners in stock. webb/doyle. <date>,resolved,text says the case was resolved or work completed
+case closed. case resolved replaced faulty solar burner with old style burner. no solar burners in stock. webb/[removed]. <date>,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced fixture //re,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced fixture and respliced neutral on drop [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved replaced fixture complete w/burner and glaass and mantles [removed],resolved,text says the case was resolved or work completed
@@ -2631,20 +2631,20 @@ case closed. case resolved replaced loose broken cover on sidewalk. <n>/<n>,reso
 case closed. case resolved replaced manhole cover. <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced mantles and cleaned globe //pg,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced mantles and light on,resolved,text says the case was resolved or work completed
-case closed. case resolved replaced mantles k mclaughlin j michel,resolved,text says the case was resolved or work completed
+case closed. case resolved replaced mantles k mclaughlin j [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved replaced meter pit cover <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced meter pit cover on sidewalk. <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced missing hydrant gate cover <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced new style slcb reworked repaired old panel board,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced old style burner <date> no pipe in pole @ <n>. crew: [removed],resolved,text says the case was resolved or work completed
-case closed. case resolved replaced one globe and <n> mantles and checked out unit. also replaced mantles on a second unit in alley. webb lynch. <n>-<n>-<n>,resolved,text says the case was resolved or work completed
+case closed. case resolved replaced one globe and <n> mantles and checked out unit. also replaced mantles on a second unit in alley. webb [removed]. <n>-<n>-<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced one solar burner <n> mantles,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced ped housing,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced pendant driver,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced pendant fixture @ <n> dot ave. in front of syrena travel. yr ep,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced photo control and re-spliced fixture [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved replaced photo eye a dip,resolved,text says the case was resolved or work completed
-case closed. case resolved replaced photo eye k mclaughlin j michel,resolved,text says the case was resolved or work completed
+case closed. case resolved replaced photo eye k mclaughlin j [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved replaced photo eye. [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved replaced photo eyes at <n> and <n> miami ave. [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved replaced photocell light is on <date>,resolved,text says the case was resolved or work completed
@@ -2672,9 +2672,9 @@ case closed. case resolved replaced solar burner with old burner,resolved,text s
 case closed. case resolved replaced solar burnert <n> mantles also#<n> replaced solar burner <n> mantles,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced the contactor. ht/td,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced the mantles and cleaned the glass //sr,resolved,text says the case was resolved or work completed
-case closed. case resolved replaced top and re-mantled unit. webb lynch <n>-<n>-<n>,resolved,text says the case was resolved or work completed
+case closed. case resolved replaced top and re-mantled unit. webb [removed] <n>-<n>-<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced top glass and <n> mv lamp [removed],resolved,text says the case was resolved or work completed
-case closed. case resolved replaced top glass and mantles hoge,resolved,text says the case was resolved or work completed
+case closed. case resolved replaced top glass and mantles [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved replaced two led acorns as needed. ac ds,resolved,text says the case was resolved or work completed
 case closed. case resolved replaced welchbach plate battery and mantles,resolved,text says the case was resolved or work completed
 case closed. case resolved replanted by tree crew,resolved,text says the case was resolved or work completed
@@ -2697,7 +2697,7 @@ case closed. case resolved respliced #<n> cables in pull box [removed],resolved,
 case closed. case resolved respliced #<n> cables vm bs,resolved,text says the case was resolved or work completed
 case closed. case resolved respliced cables in fixture. [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved respliced damaged harness connection,resolved,text says the case was resolved or work completed
-case closed. case resolved respliced drop to fixture v mejias b santry,resolved,text says the case was resolved or work completed
+case closed. case resolved respliced drop to fixture v [removed] b [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved returned override switch back to normal. ht wl,resolved,text says the case was resolved or work completed
 case closed. case resolved rew did not find any missing cover. <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved richard the boston public works construction inspection unit (ciu) inspector states the <n> roadway patches meet our paving standards recommend you call the mayors hotline and recommend engineers look at the roadway and sidewalk conditions of your street to determine future repairs. [removed],referred,"agency or utility named as responsible, no completed work described"
@@ -2819,10 +2819,10 @@ case closed. case resolved the following request has already been submitted to t
 case closed. case resolved the homeowner responsibility to cut the weed grown from property,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved the lane line and the double yellow line was repainted,resolved,text says the case was resolved or work completed
 case closed. case resolved the light pole base at this location has been cemented by pwd construction. see note and picture attached,resolved,text says the case was resolved or work completed
-case closed. case resolved the location has been repaired. if you feel that this has been closed in error please email me. michael somers senior civil engineer <email>,resolved,text says the case was resolved or work completed
+case closed. case resolved the location has been repaired. if you feel that this has been closed in error please email me. michael [removed] senior civil engineer <email>,resolved,text says the case was resolved or work completed
 case closed. case resolved the pole was replaced and the light is working //th,resolved,text says the case was resolved or work completed
 case closed. case resolved the project is ongoing,resolved,text says the case was resolved or work completed
-case closed. case resolved the public works construction inspection unit (ciu) supervisor called the constuint and reviwed the folowing: has identified the defective cast iron structure as belonging to national grid national grid has been notified that they must repair the casting within <n> days. the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. the ciu will monitor the progress of the repair. mark cardarelli supervisor of utility coordination and compliance boston public works department <phone> office,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
+case closed. case resolved the public works construction inspection unit (ciu) supervisor called the constuint and reviwed the folowing: has identified the defective cast iron structure as belonging to national grid national grid has been notified that they must repair the casting within <n> days. the location has been entered into the ciu data base that tracks repairs to be made by utility companies or private contractors. the ciu will monitor the progress of the repair. mark [removed] supervisor of utility coordination and compliance boston public works department <phone> office,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved the speed display radar sign on lark hill rd has been restored,resolved,text says the case was resolved or work completed
 case closed. case resolved the street light opposite <n> bayswater st. has been repaired //wl,resolved,text says the case was resolved or work completed
 case closed. case resolved the traffic signal phasing has been modified at this intersection. there is no phase for the parking lot as it is not in use,invalid,"no problem found, too little information, test, or not a valid request"
@@ -2850,7 +2850,7 @@ case closed. case resolved this light pole belongs to the dcr and they have the 
 case closed. case resolved this location has been inspected all repairs appear to have been made. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved this location has previously been referred to the engineering design division for reconstruction. [removed],referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved this manhole belongs to suffolk university we notified them,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case resolved this pole was already picked up and made safe at an earlier date and was also already replaced and the sub base was back filled temporarly to grade and a perminate patch w/o was issued ( w/o # <n> ) supervisor mike donovan had spoken to the resident at this address and informed him that the pole arm and fixture was installed and a w/o ( # <n> ) was issued to have an o/h feed installed. and a perminate patch w/o was issued as well,resolved,closure says the item was replaced or permanently restored (made-safe wording also present)
+case closed. case resolved this pole was already picked up and made safe at an earlier date and was also already replaced and the sub base was back filled temporarly to grade and a perminate patch w/o was issued ( w/o # <n> ) supervisor [removed] donovan had spoken to the resident at this address and informed him that the pole arm and fixture was installed and a w/o ( # <n> ) was issued to have an o/h feed installed. and a perminate patch w/o was issued as well,resolved,closure says the item was replaced or permanently restored (made-safe wording also present)
 case closed. case resolved this pole was picked up an area made safe by on call crew k.mclaughlin,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved this private property bpw do not personal driveways(notice),referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved this roadway pullbox was brought up to grade and paved. ep. <date>,resolved,text says the case was resolved or work completed
@@ -2859,16 +2859,16 @@ case closed. case resolved this signal has been activated and is operational,res
 case closed. case resolved this street has been put in for repaving,resolved,text says the case was resolved or work completed
 case closed. case resolved this was checked <date> all bwsc covers ok found loose cable tv cover,referred,"agency or utility named as responsible, no completed work described"
 case closed. case resolved this was not a knock down it was a fixture that was knocked off and was replaced [removed],resolved,text says the case was resolved or work completed
-case closed. case resolved this was repaired on <n>-<n>-<n> on service request # <n>. replaced mantles and battery. webb doyle,resolved,text says the case was resolved or work completed
+case closed. case resolved this was repaired on <n>-<n>-<n> on service request # <n>. replaced mantles and battery. webb [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved this was reported to dcr's electrical engineering section that oversees streetlights this morning. they will take a look at the issue to see what needs to be done to resolve it. dcr community relations,referred,"agency or utility named as responsible, no completed work described"
 case closed. case resolved this was reported to our operations staff for the charles district to locate and fill. dcr community relations,referred,"agency or utility named as responsible, no completed work described"
 case closed. case resolved this was sent to dcr operations staff to patch the pothole,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
 case closed. case resolved three huge potholes,resolved,text says the case was resolved or work completed
 case closed. case resolved three overlays one pothole filled,resolved,text says the case was resolved or work completed
 case closed. case resolved ticket issued for occupying city property without a permit,resolved,text says the case was resolved or work completed
-case closed. case resolved tightened loose connections to the contactor. t harvey/k hoge d prioleau <n>-<n>-<n>,resolved,text says the case was resolved or work completed
+case closed. case resolved tightened loose connections to the contactor. t harvey/k [removed] d [removed] <n>-<n>-<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved tightened the nuts inside of access door //wl,resolved,text says the case was resolved or work completed
-case closed. case resolved top was replaced and unit ok. lynch getchell <n>-<n>-<n>,resolved,text says the case was resolved or work completed
+case closed. case resolved top was replaced and unit ok. [removed] [removed] <n>-<n>-<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved treepit closed. requesting permanent repair,planned_followup,"work is scheduled, queued, or on a list for a later program"
 case closed. case resolved treepit filled,resolved,text says the case was resolved or work completed
 case closed. case resolved trench filled in with asphalt at said location,resolved,text says the case was resolved or work completed
@@ -2877,14 +2877,14 @@ case closed. case resolved two potholes filled,resolved,text says the case was r
 case closed. case resolved umbro and sons crew cut r/w replaced & adjusted b<n> dmh casting frame and cover reset brickwork & temp paved r/w. <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved underground problem repaired.kevin/john/john,resolved,text says the case was resolved or work completed
 case closed. case resolved underpass structure-private not a bwsc cb,referred,"agency or utility named as responsible, no completed work described"
-case closed. case resolved unit found to be working <date> v mejias b santry,resolved,text says the case was resolved or work completed
+case closed. case resolved unit found to be working <date> v [removed] b [removed],resolved,text says the case was resolved or work completed
 case closed. case resolved unit repaired. checked area and no outage found. ep <n>-<n>-<n>,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. case resolved upon arrival bwsc lines d/r steam coming out from boston edison company manhole. upon the departure bwsc lines d/r. <n>/<n>,referred,"agency or utility named as responsible, no completed work described"
 case closed. case resolved upon arrival did not find any damaged bwsc cover. <n>/<n>,referred,"agency or utility named as responsible, no completed work described"
 case closed. case resolved upon arrival located and inspected mh outside of address listed and did not hear any loud noise from bwsc mh’s as well i inspected all bwsc sewer and drain lines which were d/r upon departure. <n>/<n>,referred,"agency or utility named as responsible, no completed work described"
 case closed. case resolved upon arrival no missing cover. <n>/<n>,resolved,text says the case was resolved or work completed
 case closed. case resolved upon arrival not bwsc mh cover. feeney bothers street plates need to be welded together. feeney brothers on site welding them together now. all bwsc mh & cb covers in place. <n>/<n>,referred,"responsibility or the work passed to another agency, utility, owner or contractor"
-case closed. case resolved upon arrival we found no power in the fixtures at <n> and #<n>. eversource feeds may of burnt in the manhole. returned to the yard and picked up a reel of aluminum cable. to get all <n> lights going we installed another temporary overhead feed from house # <n> to #<n> with the feed coming from #<n>. pulled approximately <n>' of aluminum cable. spliced and insulated all connections and checked out units. replaced one <n> mercury lamp in the pendant fixture with a <n> metal halide lamp. areas well lit. resident came up to us and wants the boulevard posts and pendant fixtures they were promised in the area. webb lynch eddie p. <n>-<n>-<n>,resolved,closure says the item was replaced or permanently restored (made-safe wording also present)
+case closed. case resolved upon arrival we found no power in the fixtures at <n> and #<n>. eversource feeds may of burnt in the manhole. returned to the yard and picked up a reel of aluminum cable. to get all <n> lights going we installed another temporary overhead feed from house # <n> to #<n> with the feed coming from #<n>. pulled approximately <n>' of aluminum cable. spliced and insulated all connections and checked out units. replaced one <n> mercury lamp in the pendant fixture with a <n> metal halide lamp. areas well lit. resident came up to us and wants the boulevard posts and pendant fixtures they were promised in the area. webb [removed] eddie p. <n>-<n>-<n>,resolved,closure says the item was replaced or permanently restored (made-safe wording also present)
 case closed. case resolved vandilizide control cabenit. pushed into the street. found damaged live and corroding cable coming from eversource manhole. cut away damaged section of cable and respliced and insulated. insulated all the other connections as well. propped up and temporarily secured the controller. left the system on constant. need to return so we can remove the old cabenit and panel board and replace with new. will issue a new service request. kh ep,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
 case closed. case resolved var potholes filled,resolved,text says the case was resolved or work completed
 case closed. case resolved various potholes filled,resolved,text says the case was resolved or work completed
@@ -2968,15 +2968,15 @@ case closed. duplicate of existing case duplicate of crm #<n> - work order submi
 case closed. duplicate of existing case duplicate of crm #<n>...work order issued,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case duplicate of crm #<n>; a work order for repair has already been issued,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case duplicate of existing case <n> <n>,duplicate,text says the report duplicates another case or request
-case closed. duplicate of existing case duplicate of existing case <n> michael somers senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
+case closed. duplicate of existing case duplicate of existing case <n> michael [removed] senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case duplicate of existing case <n> property owner is responsible,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case duplicate of existing case <n> the front panels of the sidewalk are the responsibility of cob. the rear panels are an areaway and the responsibility of the property owner. [removed],duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case duplicate of existing case location has been inspected and will be included in an upcoming resurfacing program,duplicate,text says the report duplicates another case or request
-case closed. duplicate of existing case duplicate of existing case we have sent an engineer to evaluate and will take care of any immediate public safety hazards. permanent restoration will be included in a future program when we address upgrades to the area sidewalks. michael somers senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
+case closed. duplicate of existing case duplicate of existing case we have sent an engineer to evaluate and will take care of any immediate public safety hazards. permanent restoration will be included in a future program when we address upgrades to the area sidewalks. michael [removed] senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case duplicate of existing case which is currently being processed which will replace knocked down pole with pedestrian crossing sign,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case duplicate of existing case. already on program to pave,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case duplicate of existing case. location has been referred to engineering design for reconstruction. please contact jeff alexis at <phone>,duplicate,text says the report duplicates another case or request
-case closed. duplicate of existing case duplicate of existing case. location is on the list to be paved as soon as all the utilities work has been completed on the street. michael somers senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
+case closed. duplicate of existing case duplicate of existing case. location is on the list to be paved as soon as all the utilities work has been completed on the street. michael [removed] senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case duplicate of existing case. previously sent to engineering recommending reconstruction,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case duplicate of existing case. sent to bwsc,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case duplicate of existing case. the city will address when they upgrade the area sidewalks,duplicate,text says the report duplicates another case or request
@@ -3034,7 +3034,7 @@ case closed. duplicate of existing case thank you karen we already have this in 
 case closed. duplicate of existing case thank you. your request has already been submitted to the city of boston. please follow case # [<n>] for further information,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case the following request has already been submitted to city of boston. the city of boston thanks you for your cooperation,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case the graffiti tag at this location is a duplicate of the original existing case number <n>. this case number has been closed,duplicate,text says the report duplicates another case or request
-case closed. duplicate of existing case the specialty pavers are the responsibility of the property owner. the city will remove the pavers and make the sidewalk safe with asphalt. if the property owner would like the pavers repaired they would have to hire their own contractor to repair the pavers. michael somers senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
+case closed. duplicate of existing case the specialty pavers are the responsibility of the property owner. the city will remove the pavers and make the sidewalk safe with asphalt. if the property owner would like the pavers repaired they would have to hire their own contractor to repair the pavers. michael [removed] senior civil engineer construction management division boston public works <phone> <email>,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case this case associated w/crm # <n>,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case this case has akready been processed please refer to case # <n>,duplicate,text says the report duplicates another case or request
 case closed. duplicate of existing case this is a duplicate case #<n> currently being processed,duplicate,text says the report duplicates another case or request
@@ -3446,8 +3446,8 @@ case closed. resolved clean and replace mantles,resolved,text says the case was 
 case closed. resolved clean burner replace and clean up broken globe,resolved,text says the case was resolved or work completed
 case closed. resolved clean up glass debris and broken fixture turn off gas,resolved,text says the case was resolved or work completed
 case closed. resolved cleaned burner and globe replaced mantels sr,resolved,text says the case was resolved or work completed
-case closed. resolved cleaned glass and replaced mantles s reid d prioleau h<n>l,resolved,text says the case was resolved or work completed
-case closed. resolved cleaned glass and replaced mantles s reid j barbosa,resolved,text says the case was resolved or work completed
+case closed. resolved cleaned glass and replaced mantles s [removed] d [removed] h<n>l,resolved,text says the case was resolved or work completed
+case closed. resolved cleaned glass and replaced mantles s [removed] j [removed],resolved,text says the case was resolved or work completed
 case closed. resolved cleaned glass secured fixture and replaced mantles,resolved,text says the case was resolved or work completed
 case closed. resolved cleaned out grooves in frame cover now secure,resolved,text says the case was resolved or work completed
 case closed. resolved closed fixture and secured latch to make safe,made_safe_temporary,"location made safe or temporarily repaired, permanent fix still pending"
@@ -3472,7 +3472,7 @@ case closed. resolved deadended faulty orange leg on island on summer street. sp
 case closed. resolved done by other,resolved,text says the case was resolved or work completed
 case closed. resolved done months ago,resolved,text says the case was resolved or work completed
 case closed. resolved drivers repaired,resolved,text says the case was resolved or work completed
-case closed. resolved eversource crews responded and reattached the secondary feed that pulled away from wooden post. all lights now working,referred,"agency or utility named as responsible, no completed work described"
+case closed. resolved eversource crews responded and [removed] the secondary feed that pulled away from wooden post. all lights now working,referred,"agency or utility named as responsible, no completed work described"
 case closed. resolved everything is working fine,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. resolved everything is working good,invalid,"no problem found, too little information, test, or not a valid request"
 case closed. resolved fill,resolved,text says the case was resolved or work completed
@@ -3737,7 +3737,7 @@ case closed. resolved replaced missing led acorn fixture,resolved,text says the 
 case closed. resolved replaced nozzle and mantles,resolved,text says the case was resolved or work completed
 case closed. resolved replaced photo control in pole checked control panel and connections,resolved,text says the case was resolved or work completed
 case closed. resolved replaced photo control [removed],resolved,text says the case was resolved or work completed
-case closed. resolved replaced photo eye g guptill,resolved,text says the case was resolved or work completed
+case closed. resolved replaced photo eye g [removed],resolved,text says the case was resolved or work completed
 case closed. resolved replaced photocell light working,resolved,text says the case was resolved or work completed
 case closed. resolved replaced pole and arm and fixture and tied in as needed also back filled sub base to grade and issued patch w / o [removed],resolved,text says the case was resolved or work completed
 case closed. resolved replaced solar powered gas burner and <n> mantles ht wl,resolved,text says the case was resolved or work completed
@@ -3750,8 +3750,8 @@ case closed. resolved replaced two led acorn fixtures,resolved,text says the cas
 case closed. resolved replaced two old sv rectilinear fixtures with two new led rectilinear fixtures drilled out for overhead and changed triplex wire to aluminum wire on overhead feed. y.r c.g r.d,resolved,text says the case was resolved or work completed
 case closed. resolved replaces <n>sv lamp. re ep,resolved,text says the case was resolved or work completed
 case closed. resolved reset breaker in the cabinet all lights are working at this time,resolved,text says the case was resolved or work completed
-case closed. resolved reset breakers g guptill,resolved,text says the case was resolved or work completed
-case closed. resolved reset breakers h tyra h<n>l and r hanlon h<n>l,resolved,text says the case was resolved or work completed
+case closed. resolved reset breakers g [removed],resolved,text says the case was resolved or work completed
+case closed. resolved reset breakers h [removed] h<n>l and r [removed] h<n>l,resolved,text says the case was resolved or work completed
 case closed. resolved resolved by second shift,resolved,text says the case was resolved or work completed
 case closed. resolved respliced #<n> wires in pull box,resolved,text says the case was resolved or work completed
 case closed. resolved respliced cables and installed a new led acorn fixture as needed. all set. re ep,resolved,text says the case was resolved or work completed

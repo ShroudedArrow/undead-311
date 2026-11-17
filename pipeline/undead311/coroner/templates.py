@@ -42,7 +42,7 @@ def mask_template(text: str | None) -> str:
 
 def label_key(template: str) -> str:
     """The key the label table is read by: the masked template with signatures, sign-offs and staff names scrubbed
-    (REQ-ING-PII.4). The committed table holds only scrubbed keys, so no staff name is in the repository; a raw template
+    (REQ-ING-PII.4, .6). The committed table holds only scrubbed keys, so no staff name is in the repository; a raw template
     is scrubbed the same way before it is looked up, so both sides meet at the same key. Idempotent."""
     return scrub_text(template) or ""
 

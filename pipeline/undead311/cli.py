@@ -27,6 +27,8 @@ def build_parser() -> argparse.ArgumentParser:
     f.add_argument("--labels-dir", default=None, help="folder with validation_labels.csv (default data/labels in the checkout)")
     f.add_argument("--validation", default=None, help="markdown file to update (default docs/VALIDATION.md)")
     f.add_argument("--out", default=None, help="validation.json to write (default web/public/data/stats/validation.json)")
+    sn = sub.add_parser("staff-names", help="build the run-time staff-name list in DATA_DIR from the raw files (never committed)")
+    sn.add_argument("--min-cases", type=int, default=None, help="drop names removed from fewer cases (default 3)")
     return parser
 
 
@@ -38,6 +40,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         report = run_pipeline(sample=args.sample, out_dir=args.out, grid=not args.skip_grid)
         print(report.summary())
         return 0 if report.ok else 1
+    if args.command == "staff-names":
+        from undead311.ingest.staff_names import build_from_raw
+
+        print(build_from_raw(args.min_cases))
+        return 0
     if args.command == "coroner-eval":
         from pathlib import Path
 

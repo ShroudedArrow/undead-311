@@ -156,14 +156,14 @@ def test_req_ing_pii_4_sign_off_phrase_removes_everything_after_it(text, expecte
         ("Case Resolved twin acorn was turned. w/o completed. rowan/marsh", "Case Resolved twin acorn was turned. w/o completed. [removed]"),
         ("Replaced PHOTO EYE.  Kim/Pat  ", "Replaced PHOTO EYE.  [removed]  "),
         ("MADE SAFE  S.ORTEGA / H.QUILL / J.VOSS / N.RAMIREZ", "MADE SAFE  [removed]"),
-        ("INSTALLED POLE  A.Mc CARTHY /B.LOWELL / C.NASH", "INSTALLED POLE  [removed]"),
+        ("INSTALLED POLE  A.Mc DONALD /B.LOWELL / C.NASH", "INSTALLED POLE  [removed]"),
         ("Tightened screws.  Lowell/Nash. 1-20-16 EP", "Tightened screws.  [removed]. 1-20-16 EP"),
         ("CHECKED LIGHT  M.LOWELL  D.NASH", "CHECKED LIGHT  [removed]"),
         ("done  [removed]  / N.Ramirez", "done  [removed]"),
     ],
 )
 def test_req_ing_pii_4_runs_of_slash_separated_names_or_initials_are_removed(text, expected):
-    """REQ-ING-PII.4b: "S.RIED / H.TYRA"-style initials and "joubert/kenny"-style bare names that end a note go."""
+    """REQ-ING-PII.4b: "A.LOWELL / B.NASH"-style initials and "rowan/marsh"-style bare names that end a note go."""
     out, counts = scrub(text)
     assert out == expected
     assert counts["slash_names"] == 1

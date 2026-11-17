@@ -3,8 +3,8 @@
 Replaced with `[removed]`: email addresses, phone numbers, names after an honorific (Mr, Mrs, Ms, Miss, Mx, Dr) or
 after "called by", "spoke with" and "per", and digit runs of 7 or more. Staff names in closure notes (REQ-ING-PII.4):
 everything after a sign-off phrase (`signoff`: "please do not hesitate to contact me", "Sincerely", "Regards",
-"Thank you" followed by a name), runs of slash-separated surnames or initials (`slash_names`: "S.RIED / H.TYRA",
-and bare names such as "joubert/kenny" when they close the note), and the name beside a job title (`name_title`:
+"Thank you" followed by a name), runs of slash-separated surnames or initials (`slash_names`: "A.LOWELL / B.NASH",
+and bare names such as "rowan/marsh" when they close the note), and the name beside a job title (`name_title`:
 engineer, foreman, supervisor, manager, director, commissioner, inspector, chief). Addresses and street names are public case
 locations and are kept (REQ-ING-PII.2). Case IDs are public identifiers and are kept: new-system IDs written
 `BCS-<digits>` in any letter case (`bcs-` too), and legacy IDs, which are exactly 12 digits starting with 101 (for example 101002227052; every legacy
@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from collections.abc import Iterable
 
 REMOVED = "[removed]"
 LEGACY_CASE_ID = r"101\d{9}"  # legacy case_enquiry_id: 12 digits starting with 101 (ops#221)
@@ -58,7 +59,7 @@ def strip_signoff(text: str) -> str:
     return text[: m.start()].rstrip() if m else text
 
 
-# Slash-separated crew names: "S.RIED / H.TYRA", "G.Mc CARTHY /W.LYNCH", "joubert/kenny".
+# Slash-separated crew names: "A.LOWELL / B.NASH", "A.Mc DONALD /B.LOWELL", "rowan/marsh".
 _INIT = rf"(?:[A-Za-z]\.\s?){{1,2}}(?:Mc|Mac)?\s?[A-Za-z][A-Za-z{_APOS}]+"
 _BARE_STOP = (
     "and|the|utility|utilities|contractor|contractors|owner|owners|manager|managers|developer|developers|property|"
@@ -130,8 +131,34 @@ PATTERNS: tuple[tuple[str, re.Pattern[str], str], ...] = (
 )
 
 
-def scrub(text: str | None) -> tuple[str | None, Counter[str]]:
-    """Return (scrubbed text, replacement counts per pattern). None stays None (REQ-ING-PII.1, .3)."""
+# --- Run-time staff-name list (REQ-ING-PII.6) -------------------------------------------------------------------------
+# The list is built from the data by `undead311.ingest.staff_names` and lives only under DATA_DIR; no name is in the code.
+_STAFF: re.Pattern[str] | None = None
+_STAFF_COUNT = 0
+
+
+def set_staff_names(names: Iterable[str]) -> int:
+    """Use `names` (lower-case tokens) as standalone tokens to remove everywhere `scrub` runs with `staff=True`. An empty
+    iterable switches the list off. Returns the number of names."""
+    global _STAFF, _STAFF_COUNT
+    ordered = sorted({n.lower() for n in names if n}, key=lambda n: (-len(n), n))
+    _STAFF_COUNT = len(ordered)
+    _STAFF = (
+        re.compile(rf"(?<![\w{_APOS}])(?:{'|'.join(re.escape(n) for n in ordered)})(?![\w{_APOS}])", re.IGNORECASE)
+        if ordered
+        else None
+    )
+    return _STAFF_COUNT
+
+
+def staff_name_count() -> int:
+    """How many names the active list holds (the names themselves are never exposed)."""
+    return _STAFF_COUNT
+
+
+def scrub(text: str | None, staff: bool = True) -> tuple[str | None, Counter[str]]:
+    """Return (scrubbed text, replacement counts per pattern). None stays None (REQ-ING-PII.1, .3). `staff=False` leaves
+    out the run-time staff-name list."""
     counts: Counter[str] = Counter()
     if text is None:
         return None, counts
@@ -139,12 +166,16 @@ def scrub(text: str | None) -> tuple[str | None, Counter[str]]:
         text, n = regex.subn(repl, text)
         if n:
             counts[name] += n
+    if staff and _STAFF is not None:
+        text, n = _STAFF.subn(REMOVED, text)
+        if n:
+            counts["staff_name"] += n
     return text, counts
 
 
-def scrub_text(text: str | None) -> str | None:
+def scrub_text(text: str | None, staff: bool = True) -> str | None:
     """Scrubbed text only."""
-    return scrub(text)[0]
+    return scrub(text, staff)[0]
 
 
 class PiiCounter:
