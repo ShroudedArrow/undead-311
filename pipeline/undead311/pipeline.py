@@ -57,6 +57,7 @@ from undead311.export.writers import (
 from undead311.ingest.clean import REASONS, clean, ids_by_reason
 from undead311.ingest.crosswalk import apply_crosswalk
 from undead311.ingest.departments import apply_departments, department_report
+from undead311.ingest.first_names import set_place_words
 from undead311.ingest.geometry import store_neighborhood_geometry
 from undead311.ingest.load import load
 from undead311.ingest.neighborhoods import BOUNDARIES_FILE
@@ -369,14 +370,15 @@ def run_pipeline(
         merge(runner.run("neighborhoods", s_neighborhoods, ("neighborhood_areas",)))
         def s_staff_names() -> None:
             # REQ-ING-PII.6: built from this run's closure texts before the label join, which reads keys scrubbed with it
+            streets = street_words((r[0] for r in con.execute("select distinct street from cases_clean").fetchall()),
+                                   raw / SEGMENTS_FILE)  # fmt: skip
+            set_place_words(streets)  # REQ-ING-PII.7: a name pair that is a street is kept
             if sample:
                 names = read_names(names_path(base))
             else:
                 texts = con.execute(
                     "select closure_text, count(*) from cases_clean where closure_text is not null group by 1"
                 ).fetchall()
-                streets = street_words((r[0] for r in con.execute("select distinct street from cases_clean").fetchall()),
-                                       raw / SEGMENTS_FILE)  # fmt: skip
                 names = build_staff_names(texts, streets)
                 write_names(names_path(base), names)
             report.staff_names = set_staff_names(names)
