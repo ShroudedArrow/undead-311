@@ -10,6 +10,11 @@
 # `nightly-state`, merged into the next good deploy's status.json `history`) and opens a needs-human alert.
 #
 # Every action is pinned to a tag and the job sets its own permissions (pipeline/tests/unit/test_workflows_pinned.py).
+# The actions are on Node 24 majors (checkout, setup-node and setup-uv v7), which clears the Node 20 deprecation warning.
+# Every repo script runs from the judged checkout as `uv run --locked python <script>`, never as bare `python3`: the runner's
+# python has none of the checkout's dependencies (duckdb, jsonschema), and `--locked` fails the step instead of quietly
+# re-resolving when uv.lock and pyproject.toml disagree. This works for any tag, old or new, because it needs nothing from the
+# tag except the scripts it already has (test_nightly_template.py).
 # Event and variable data reaches scripts through env vars, never inside run text. Secrets used here: NETLIFY_AUTH_TOKEN,
 # NETLIFY_SITE_ID (deploy step only) and CHANNEL_TOKEN (alert only), mapped to GITHUB_CHANNEL_TOKEN. The release download uses
 # the job's own github.token (same repo), so it needs no extra secret.
@@ -48,27 +53,30 @@ jobs:
 
       - name: Check out the judged repo at the frozen tag
         id: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ShroudedArrow/undead-311
           ref: ${{ vars.JUDGED_TAG }}
           path: judged
 
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: judged/.nvmrc
           cache: npm
           cache-dependency-path: judged/web/package-lock.json
 
+      # `uv sync --locked` and `npm ci` install exactly what uv.lock and package-lock.json say (`make setup` runs the unlocked
+      # `uv sync` and `npm install`, which can re-resolve on the runner).
       - name: Install dependencies
         id: setup
         working-directory: judged
         run: |
           mkdir -p "$UV_CACHE_DIR"
-          make setup
+          uv sync --locked
+          npm --prefix web ci
 
       # Judge mode stays on the judging snapshot (REQ-OPS-SNAP.2). The unpacked exports rewrite stats/judge_tour.json,
       # points.json and the card shards, so judge mode's copy is taken from the tag first, into web/public/data/frozen/
@@ -76,7 +84,7 @@ jobs:
       - name: Freeze the judge-mode files from the tag
         id: freeze
         working-directory: judged
-        run: python3 pipeline/scripts/snapshot.py --freeze-judge
+        run: uv run --locked python pipeline/scripts/snapshot.py --freeze-judge
 
       # The newest `exports-*` release of this repo, by creation date (a run that did not pass its own checks is never published:
       # `exports_release.py pack` refuses a status that is not ok or carries a DRY RUN ONLY anomaly).
@@ -86,7 +94,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="$(uv run python pipeline/scripts/exports_release.py latest --repo "$DATA_REPO")"
+          tag="$(uv run --locked python pipeline/scripts/exports_release.py latest --repo "$DATA_REPO")"
           echo "exports release: $tag"
           mkdir -p "$RUNNER_TEMP/exports"
           gh release download "$tag" --repo "$DATA_REPO" --dir "$RUNNER_TEMP/exports" --pattern "exports-*.tar.gz" --pattern "exports-*.sha256" --clobber
@@ -95,12 +103,13 @@ jobs:
         id: exports
         working-directory: judged
         run: |
-          uv run python pipeline/scripts/exports_release.py unpack --archive "$(ls "$RUNNER_TEMP"/exports/exports-*.tar.gz)" --sha256 "$(ls "$RUNNER_TEMP"/exports/exports-*.sha256)" --dest web/public/data
+          uv run --locked python pipeline/scripts/exports_release.py unpack --archive "$(ls "$RUNNER_TEMP"/exports/exports-*.tar.gz)" --sha256 "$(ls "$RUNNER_TEMP"/exports/exports-*.sha256)" --dest web/public/data
 
       # Exports whose status says `ok: false` (or no status) must never be deployed.
       - name: Check the pipeline status
         id: check
-        run: python3 judged/ops/undead-311-data/status_history.py check --status judged/web/public/data/status.json
+        working-directory: judged
+        run: uv run --locked python ops/undead-311-data/status_history.py check --status web/public/data/status.json
 
       # The merged status.json is validated against schemas/status.schema.json, which defines `history`.
       - name: Merge earlier failures into status.json history
@@ -110,7 +119,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release download nightly-state --repo "$DATA_REPO" --pattern failure-history.json --dir "$RUNNER_TEMP" --clobber || echo "no failure history yet"
-          uv run python ops/undead-311-data/status_history.py merge --status web/public/data/status.json --history "$RUNNER_TEMP/failure-history.json" --schema schemas/status.schema.json
+          uv run --locked python ops/undead-311-data/status_history.py merge --status web/public/data/status.json --history "$RUNNER_TEMP/failure-history.json" --schema schemas/status.schema.json
 
       # REQ-WEB-LINKS.2 (UX-39): share images need a browser. It is installed inside this step, so a failure is recorded as `build`,
       # and SHARE_IMAGES=required fails the build if no browser starts.
@@ -127,7 +136,7 @@ jobs:
       - name: Verify the frozen judge-mode files in the built site
         id: verify
         working-directory: judged
-        run: python3 pipeline/scripts/snapshot.py --check-frozen --public web/dist/data
+        run: uv run --locked python pipeline/scripts/snapshot.py --check-frozen --public web/dist/data
 
       - name: Deploy the whole site (production)
         id: deploy
@@ -139,10 +148,11 @@ jobs:
 
       - name: Clear the failure history (the deploy that carries it succeeded)
         id: clear
+        working-directory: judged
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python3 judged/ops/undead-311-data/status_history.py clear --history "$RUNNER_TEMP/failure-history.json"
+          uv run --locked python ops/undead-311-data/status_history.py clear --history "$RUNNER_TEMP/failure-history.json"
           gh release view nightly-state --repo "$DATA_REPO" > /dev/null 2>&1 || gh release create nightly-state --repo "$DATA_REPO" --title "nightly state" --notes "Failure history for the nightly refresh. Not a data release."
           gh release upload nightly-state "$RUNNER_TEMP/failure-history.json" --repo "$DATA_REPO" --clobber
 
@@ -150,6 +160,7 @@ jobs:
       - name: Record the failure for the next good deploy
         if: ${{ failure() }}
         continue-on-error: true
+        working-directory: judged
         env:
           GH_TOKEN: ${{ github.token }}
           S_TAG: ${{ steps.tag.outcome }}
@@ -166,7 +177,7 @@ jobs:
           S_CLEAR: ${{ steps.clear.outcome }}
         run: |
           gh release download nightly-state --repo "$DATA_REPO" --pattern failure-history.json --dir "$RUNNER_TEMP" --clobber || echo "no failure history yet"
-          python3 judged/ops/undead-311-data/status_history.py record --history "$RUNNER_TEMP/failure-history.json" --run-url "$RUN_URL" --outcomes "tag=$S_TAG" "checkout=$S_CHECKOUT" "setup=$S_SETUP" "freeze=$S_FREEZE" "download=$S_DOWNLOAD" "exports=$S_EXPORTS" "check=$S_CHECK" "history=$S_HISTORY" "build=$S_BUILD" "verify=$S_VERIFY" "deploy=$S_DEPLOY" "clear=$S_CLEAR"
+          uv run --locked python ops/undead-311-data/status_history.py record --history "$RUNNER_TEMP/failure-history.json" --run-url "$RUN_URL" --outcomes "tag=$S_TAG" "checkout=$S_CHECKOUT" "setup=$S_SETUP" "freeze=$S_FREEZE" "download=$S_DOWNLOAD" "exports=$S_EXPORTS" "check=$S_CHECK" "history=$S_HISTORY" "build=$S_BUILD" "verify=$S_VERIFY" "deploy=$S_DEPLOY" "clear=$S_CLEAR"
           gh release view nightly-state --repo "$DATA_REPO" > /dev/null 2>&1 || gh release create nightly-state --repo "$DATA_REPO" --title "nightly state" --notes "Failure history for the nightly refresh. Not a data release."
           gh release upload nightly-state "$RUNNER_TEMP/failure-history.json" --repo "$DATA_REPO" --clobber
 
@@ -175,4 +186,5 @@ jobs:
         continue-on-error: true
         env:
           GITHUB_CHANNEL_TOKEN: ${{ secrets.CHANNEL_TOKEN }}
-        run: python3 judged/scripts/ci_channel.py alert --title "Nightly data refresh failed" --detail "The nightly refresh failed; the last good deploy is still live." --run-url "$RUN_URL"
+        working-directory: judged
+        run: uv run --locked python scripts/ci_channel.py alert --title "Nightly data refresh failed" --detail "The nightly refresh failed; the last good deploy is still live." --run-url "$RUN_URL"

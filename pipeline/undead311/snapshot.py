@@ -34,10 +34,6 @@ import re
 import shutil
 from pathlib import Path
 
-import duckdb
-
-from undead311.duck import connect
-
 BEGIN = "<!-- BEGIN judging snapshot (written by make snapshot; do not edit) -->"
 END = "<!-- END judging snapshot -->"
 PROCESSED_NAMES = {"run_report.json"}
@@ -66,6 +62,12 @@ def table_row_counts(db_path: Path) -> dict[str, int]:
     The file is opened read-only, so it can be checked while no run is writing it."""
     if not Path(db_path).is_file():
         return {}
+    # Imported here, not at module level: --verify, --freeze-judge and --check-frozen run from a plain checkout and never
+    # open a database, so they must not need duckdb installed.
+    import duckdb
+
+    from undead311.duck import connect
+
     try:
         con = connect(db_path, read_only=True)
     except duckdb.Error:
