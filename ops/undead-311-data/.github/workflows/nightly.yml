@@ -150,6 +150,15 @@ jobs:
         working-directory: judged
         run: uv run --locked python pipeline/scripts/snapshot.py --check-frozen --public web/dist/data
 
+      # Nothing in the app fetches these (every route was loaded in a browser to check), so they are not deployed: the incident shards
+      # (216 files, 17 MB) and three small files. The lists are LEFT_OUT_* in smoke_test.py, which checks they are absent on the draft.
+      - name: Leave out files the site never fetches
+        id: trim
+        working-directory: judged
+        run: |
+          [ ! -d web/dist/data/incidents ] || find web/dist/data/incidents -delete
+          rm -f -- web/dist/data/separate_deaths.json web/dist/data/stats/trends.json web/dist/data/stats/stats_status.json
+
       # A draft deploy (no --prod): the site is uploaded under its own URL and production is not touched.
       - name: Deploy a draft (no production)
         id: draft
@@ -212,13 +221,14 @@ jobs:
           S_HISTORY: ${{ steps.history.outcome }}
           S_BUILD: ${{ steps.build.outcome }}
           S_VERIFY: ${{ steps.verify.outcome }}
+          S_TRIM: ${{ steps.trim.outcome }}
           S_DRAFT: ${{ steps.draft.outcome }}
           S_SMOKE: ${{ steps.smoke.outcome }}
           S_DEPLOY: ${{ steps.deploy.outcome }}
           S_CLEAR: ${{ steps.clear.outcome }}
         run: |
           gh release download nightly-state --repo "$DATA_REPO" --pattern failure-history.json --dir "$RUNNER_TEMP" --clobber || echo "no failure history yet"
-          uv run --locked python ops/undead-311-data/status_history.py record --history "$RUNNER_TEMP/failure-history.json" --run-url "$RUN_URL" --outcomes "tag=$S_TAG" "checkout=$S_CHECKOUT" "setup=$S_SETUP" "freeze=$S_FREEZE" "download=$S_DOWNLOAD" "exports=$S_EXPORTS" "check=$S_CHECK" "history=$S_HISTORY" "build=$S_BUILD" "verify=$S_VERIFY" "draft=$S_DRAFT" "smoke=$S_SMOKE" "deploy=$S_DEPLOY" "clear=$S_CLEAR"
+          uv run --locked python ops/undead-311-data/status_history.py record --history "$RUNNER_TEMP/failure-history.json" --run-url "$RUN_URL" --outcomes "tag=$S_TAG" "checkout=$S_CHECKOUT" "setup=$S_SETUP" "freeze=$S_FREEZE" "download=$S_DOWNLOAD" "exports=$S_EXPORTS" "check=$S_CHECK" "history=$S_HISTORY" "build=$S_BUILD" "verify=$S_VERIFY" "trim=$S_TRIM" "draft=$S_DRAFT" "smoke=$S_SMOKE" "deploy=$S_DEPLOY" "clear=$S_CLEAR"
           gh release view nightly-state --repo "$DATA_REPO" > /dev/null 2>&1 || gh release create nightly-state --repo "$DATA_REPO" --title "nightly state" --notes "Failure history for the nightly refresh. Not a data release."
           gh release upload nightly-state "$RUNNER_TEMP/failure-history.json" --repo "$DATA_REPO" --clobber
 

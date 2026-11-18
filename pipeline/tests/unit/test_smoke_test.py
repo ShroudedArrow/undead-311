@@ -60,6 +60,9 @@ class Site:
         self.put_json("/data/status.json", {"data_version": VERSION, "dataset": "full", "ok": True})
         self.put_json("/data/stats/scorecard.json", {"dataset": "full", "scorecards": [{"family": "citywide", "stayed_fixed_adj": None}]})
         self.put_json("/data/stats/excess.json", {"placebo": placebo(-3591.5, -3236.3)})
+        (self.public / "incidents").mkdir(parents=True, exist_ok=True)
+        for name in ("back-bay-2015.json", "dorchester-2021.json", "roxbury-2019.json", "hyde-park-2022.json"):
+            (self.public / "incidents" / name).write_text("{}")
 
     def put_json(self, path: str, doc: dict) -> None:
         self.files[path] = (200, {}, json.dumps(doc).encode())
@@ -339,3 +342,28 @@ def test_no_check_hashes_a_different_file_than_the_one_it_compares(site):
     assert len(different) == len(original) and hashlib.sha256(different).digest() != hashlib.sha256(original).digest()
     site.files["/data/frozen/points.json"] = (200, {}, different)
     assert "frozen/points.json matches data/judging/" in failed(site.run())
+
+
+def test_the_files_left_out_of_the_deploy_must_answer_404(site):
+    """REQ-OPS-NIGHTLY.5: a good draft serves none of them; a draft that still serves any one of them fails."""
+    checked = [n for n, _, _ in site.run() if "left out" in n]
+    assert len(checked) == len(smoke.LEFT_OUT_FILES) + 3
+    for path in smoke.LEFT_OUT_FILES:
+        site.files[f"/{path}"] = (200, {}, b"{}")
+        assert failed(site.run()) == [f"{path} is left out of the deploy"]
+        site.files.pop(f"/{path}")
+    shard = next(n for n in checked if n.startswith("data/incidents/")).removesuffix(" is left out of the deploy")
+    site.files[f"/{shard}"] = (200, {}, b"{}")
+    assert failed(site.run()) == [f"{shard} is left out of the deploy"]
+
+
+def test_an_app_shell_answer_for_a_left_out_file_also_fails(site):
+    """A host that answers a missing data path with index.html (status 200) must not pass as left out."""
+    site.files["/data/separate_deaths.json"] = (200, {}, b"<html></html>")
+    assert failed(site.run()) == ["data/separate_deaths.json is left out of the deploy"]
+
+
+def test_no_incident_shards_to_check_is_a_failure_not_a_pass(site):
+    for f in (site.public / "incidents").glob("*.json"):
+        f.unlink()
+    assert failed(site.run()) == ["data/incidents has files to check"]

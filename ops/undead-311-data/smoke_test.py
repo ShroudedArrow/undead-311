@@ -20,6 +20,8 @@ every problem):
      in closure text ("pole down @ Farrington Ave") is not an address: 13 of the 215 shards of the rehearsal-2 run hold one. It is
      counted in the report and only fails the check with --strict-at, which fails on any "@".
 
+  9. The files the nightly job leaves out of the deploy (LEFT_OUT_*; nothing in the app fetches them) answer 404 on the draft.
+
 It does not render the pages in a browser: rule 4 is checked on the files the pages render from.
 """
 
@@ -43,6 +45,11 @@ Response = tuple[int, dict[str, str], bytes]
 Fetch = Callable[[str], Response]
 
 DEEP_LINKS = ("/methods", "/repeat", "/street", "/judge")
+# Files the nightly job deletes from web/dist before the draft deploy, because no page of the app fetches them (checked by
+# test_nightly_template.py and by loading every route in a browser). Paths are under web/dist. The workflow's trim step and the
+# smoke test read the same lists.
+LEFT_OUT_DIRS = ("data/incidents",)
+LEFT_OUT_FILES = ("data/separate_deaths.json", "data/stats/trends.json", "data/stats/stats_status.json")
 SHARDS_TO_CHECK = 3
 # A phone number needs separators between its groups, so a 12-digit case id or a coordinate never matches.
 PHONE = re.compile(r"(?<![\d.])(?:\+?1[\s.-]?)?(?:\(\d{3}\)\s?|\d{3}[\s.-])\d{3}[\s.-]\d{4}(?![\d.])")
@@ -215,6 +222,19 @@ def run_checks(fetch: Fetch, *, manifest: dict, public: Path, judging: Path, see
         at = body.count("@")
         record(f"cards/{name} loads and holds no e-mail address or phone number", not bad,
                f"found {', '.join(bad)}" if bad else f"{at} bare @ used as 'at'" if at else "")
+
+    # 9: the files left out of the deploy are not served (a 404, not an app shell and not a file)
+    for path in LEFT_OUT_FILES:
+        r = get(f"/{path}")
+        record(f"{path} is left out of the deploy", r is not None and r[0] == 404, "" if r is None else f"status {r[0]}")
+    for d in LEFT_OUT_DIRS:
+        local = public / Path(d).relative_to("data")
+        names = sorted(f.name for f in local.glob("*.json"))
+        if not names:
+            record(f"{d} has files to check", False, f"nothing under {local}")
+        for name in random.Random(seed).sample(names, min(SHARDS_TO_CHECK, len(names))):
+            r = get(f"/{d}/{name}")
+            record(f"{d}/{name} is left out of the deploy", r is not None and r[0] == 404, "" if r is None else f"status {r[0]}")
     return results
 
 
