@@ -12,6 +12,11 @@ import type { PointRow } from "../lib/points";
 export const DENSITY_ZOOM = 13;
 /** Cluster cell size in screen pixels. A cell holding one possible zombie draws that marker, not a cluster. */
 export const CELL_PX = 40;
+/**
+ * Clusters whose centres end up closer than this on screen are merged, so no count badge covers another (reviewer-ux round 2): a
+ * three-digit badge is about 30 px wide, and the spray behind it about 60 px at most.
+ */
+export const MIN_CLUSTER_GAP_PX = 44;
 
 export interface Cluster {
   /** Stable id: the grid cell, for example "3:5@11". */
@@ -51,6 +56,15 @@ const worldY = (lat: number, z: number) => {
   return ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * 512 * 2 ** z;
 };
 
+/** Screen-pixel centre of some rows at zoom z (the mean of their world positions, summed in id order so it is order-free). */
+function centre(rows: readonly PointRow[], z: number): { x: number; y: number } {
+  const sorted = [...rows].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return {
+    x: sorted.reduce((s, r) => s + worldX(r.lon, z), 0) / sorted.length,
+    y: sorted.reduce((s, r) => s + worldY(r.lat, z), 0) / sorted.length,
+  };
+}
+
 /**
  * Split rows into clusters and single markers for a zoom. At or above DENSITY_ZOOM there are no clusters. A row whose id is in `keep`
  * (the selected marker) is always a single, so an open card never hides inside a cluster.
@@ -67,22 +81,38 @@ export function groupRows(rows: readonly PointRow[], zoom: number, keep: Readonl
     if (cell) cell.push(r);
     else cells.set(key, [r]);
   }
-  const clusters: Cluster[] = [];
-  const single = new Set<string>();
+  // cells in key order; each cell with two or more members starts as a cluster
+  type Draft = { members: PointRow[]; x: number; y: number; key: string };
+  let drafts: Draft[] = [];
   for (const [key, members] of [...cells.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))) {
-    if (members.length === 1) {
-      single.add(members[0].id);
-      continue;
+    if (members.length < 2) continue;
+    drafts.push({ members, key, ...centre(members, z) });
+  }
+  // merge clusters whose centres are too close for their badges, closest pair first, until none are; ties by key keep it order-free
+  for (;;) {
+    let best: [number, number, number] | null = null;
+    for (let a = 0; a < drafts.length; a++) {
+      for (let b = a + 1; b < drafts.length; b++) {
+        const d = Math.hypot(drafts[a].x - drafts[b].x, drafts[a].y - drafts[b].y);
+        if (d < MIN_CLUSTER_GAP_PX && (!best || d < best[2])) best = [a, b, d];
+      }
     }
-    const sorted = [...members].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)); // so the centre does not depend on input order
-    clusters.push({
-      key: `${key}@${z}`,
+    if (!best) break;
+    const [a, b] = best;
+    const members = [...drafts[a].members, ...drafts[b].members];
+    const merged: Draft = { members, key: drafts[a].key < drafts[b].key ? drafts[a].key : drafts[b].key, ...centre(members, z) };
+    drafts = [...drafts.filter((_, i) => i !== a && i !== b), merged].sort((p, q) => (p.key < q.key ? -1 : p.key > q.key ? 1 : 0));
+  }
+  const clusters: Cluster[] = drafts.map((d) => {
+    const sorted = [...d.members].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)); // so the centre does not depend on input order
+    return {
+      key: `${d.key}@${z}`,
       lon: sorted.reduce((s, r) => s + r.lon, 0) / sorted.length,
       lat: sorted.reduce((s, r) => s + r.lat, 0) / sorted.length,
       count: sorted.length,
       ids: sorted.map((r) => r.id),
-    });
-  }
+    };
+  });
   const inCluster = new Set(clusters.flatMap((c) => c.ids));
   return { clusters, singles: rows.filter((r) => !inCluster.has(r.id)) };
 }

@@ -194,10 +194,16 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .count-note { font-size: var(--step--1); }
 
 /* Marker key over the map's lower left corner (REQ-WEB-MAP.1). Under the card (20) and the phone filter sheet (30). */
-.map-legend { position: absolute; left: var(--space-2); bottom: var(--space-2); z-index: 5; background: var(--crew-white); border: 2px solid var(--asphalt); max-width: calc(100% - 4 * var(--space-2)); }
+/* It sits above the bottom credit line (which must stay visible, tech.md) and left of the zoom buttons, and scrolls inside itself when tall. */
+.map-legend { position: absolute; left: var(--space-2); bottom: 2.25rem; z-index: 5; background: var(--crew-white); border: 2px solid var(--asphalt); max-width: min(24rem, calc(100% - 4.5rem)); }
 .map-legend summary { cursor: pointer; font-weight: 600; min-height: 2.75rem; padding: 0 var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
 .map-legend summary::-webkit-details-marker { display: none; }
 .map-legend ul { list-style: none; margin: 0; padding: 0 var(--space-3) var(--space-2); max-height: min(50dvh, 20rem); overflow-y: auto; }
+/* On a phone the open key is capped below the zoom buttons: the stage less the top 7.5rem (controls) and the bottom 2.25rem (credit). */
+@media (max-width: 640px) {
+  .map-legend ul { max-height: max(4rem, calc(100cqh - 11rem)); }
+  .map-frame { container-type: size; }
+}
 .map-legend li { display: flex; align-items: center; gap: var(--space-2); font-size: var(--step--1); min-height: 1.5rem; }
 .legend-mark { flex: none; display: inline-flex; width: 1.5rem; height: 1.5rem; }
 .legend-mark svg { width: 100%; height: 100%; }
@@ -554,6 +560,8 @@ select {
 .timelapse-bar { display: grid; gap: var(--space-3); margin: var(--space-3) 0; }
 .timelapse-bar .timelapse-controls { margin: 0; }
 .timelapse-bar p { margin: 0; }
+.timelapse-bar #trail-note { font-size: var(--step-0); }
+.timelapse-page { margin-inline: auto; width: min(60rem, 100%); max-width: none; }
 .timelapse-scrub { display: grid; gap: var(--space-1); font-weight: 600; flex: 1 1 16rem; min-width: 0; }
 .timelapse-focus {
   display: grid;
@@ -580,7 +588,8 @@ select {
 .methods-main .plain-list, .methods-main .panel-error, .methods-main .calibration-warning { max-width: none; }
 .methods-main .shift-bar { max-width: 100%; }
 .toc ol { margin: 0; padding-left: var(--space-4); }
-.toc li { margin-bottom: var(--space-1); }
+.toc li { margin-bottom: 0; }
+.toc a { display: flex; align-items: center; min-height: 2.75rem; }
 .toc details { background: var(--crew-white); border: 2px solid var(--asphalt); }
 .toc summary { cursor: pointer; font-weight: 600; min-height: 2.75rem; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); }
 .toc summary::-webkit-details-marker { display: none; }
@@ -591,8 +600,8 @@ select {
 @media (min-width: 70rem) {
   .methods-layout { grid-template-columns: minmax(0, 1fr) minmax(0, var(--measure)) minmax(0, 1fr); column-gap: var(--space-5); align-items: start; }
   .methods-main { grid-column: 2; grid-row: 1; }
-  .toc { grid-column: 3; grid-row: 1; position: sticky; top: var(--space-3); max-height: calc(100dvh - 2 * var(--space-3)); overflow-y: auto; max-width: 18rem; font-size: var(--step--1); }
-  .toc a { display: block; padding: var(--space-1) 0; }
+  .toc { grid-column: 3; grid-row: 1; position: sticky; top: var(--space-3); max-height: calc(100dvh - 2 * var(--space-3)); overflow-y: auto; max-width: 18rem; line-height: 1.3; }
+  .toc a { padding: 0; font-size: var(--step-0); }
 }
 
 /* Layout shifts: the header's data line keeps two lines on phones, where the sample note wraps once the data arrives. */

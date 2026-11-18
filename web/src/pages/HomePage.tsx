@@ -43,6 +43,23 @@ export default function HomePage() {
   const filtersId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
   const narrow = useNarrow();
+  const panelRef = useRef<HTMLElement>(null);
+  // On a phone the sheet starts right under the count strip, so it covers the Map and Table buttons with no band between (reviewer-ux r2).
+  const [sheetTop, setSheetTop] = useState<number | null>(null);
+  useEffect(() => {
+    if (!filtersOpen || !narrow) return;
+    const el = panelRef.current;
+    if (!el) return;
+    const measure = () => setSheetTop(Math.round(el.getBoundingClientRect().bottom));
+    measure();
+    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [filtersOpen, narrow]);
   // On a phone the filters are a sheet over the map; Escape shuts it and puts focus back on the button that opened it (UX-48).
   useEffect(() => {
     if (!filtersOpen || !narrow) return;
@@ -61,7 +78,7 @@ export default function HomePage() {
 
   return (
     <div className="home">
-      <aside className="filters-panel">
+      <aside className="filters-panel" ref={panelRef}>
         <h1>{t("app.title")}</h1>
         {points.status === "error" && <PanelError file={points.file} error={points.error} />}
         {pointsState.extraError && <PanelError file={pointsState.extraError.file} error={pointsState.extraError.error} />}
@@ -76,7 +93,7 @@ export default function HomePage() {
           </>
         )}
         {/* On wide screens this is part of the sidebar; under 640 px it is a sheet over the map, so opening it never resizes the map. */}
-        <div id={filtersId} className={filtersOpen ? "filters-body filters-open" : "filters-body"}>
+        <div id={filtersId} className={filtersOpen ? "filters-body filters-open" : "filters-body"} style={filtersOpen && narrow && sheetTop !== null ? { top: sheetTop, maxHeight: "none" } : undefined}>
           <div className="hero-text">
             <p className="tagline">{t("app.hero_line")}</p>
             <p className="tagline">{t("app.hero_subtitle")}</p>

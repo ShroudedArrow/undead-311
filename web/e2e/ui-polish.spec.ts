@@ -287,3 +287,47 @@ test("every header and footer link is at least 44 px tall", async ({ page }, inf
   expect(await links.count()).toBeGreaterThan(5);
   for (const box of await links.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height))) expect(box).toBeGreaterThanOrEqual(44);
 });
+
+test("the open marker key leaves the map credit and the zoom buttons uncovered", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByTestId("map")).toHaveAttribute("data-ready", "true");
+  await page.getByText("Marker key").click();
+  const box = async (sel: string) => (await page.locator(sel).first().boundingBox())!;
+  const key = await box(".map-legend");
+  const overlaps = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+  expect(overlaps(key, await box(".maplibregl-ctrl-attrib"))).toBe(false);
+  expect(overlaps(key, await box(".maplibregl-ctrl-group"))).toBe(false);
+  await expect(page.locator(".maplibregl-ctrl-attrib")).toContainText("OpenStreetMap");
+});
+
+test("the phone filter sheet starts right under the count strip, with no band between", async ({ page }, info) => {
+  test.skip(info.project.name !== "phone", "the sheet exists under 640 px only");
+  await page.goto("/");
+  await openFilters(page);
+  const strip = (await page.locator(".filters-panel").boundingBox())!;
+  const sheet = (await page.locator(".filters-body").boundingBox())!;
+  expect(Math.abs(sheet.y - (strip.y + strip.height))).toBeLessThanOrEqual(1);
+});
+
+test("methods contents links are 44 px tall", async ({ page }, info) => {
+  await page.goto("/methods");
+  await expect(page.getByTestId("methods-intro")).toBeVisible();
+  const toc = page.getByRole("navigation", { name: "On this page" });
+  if (info.project.name === "phone") await toc.locator("summary").click();
+  const heights = await toc.locator("a").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
+  expect(heights.length).toBeGreaterThan(5);
+  for (const h of heights) expect(h).toBeGreaterThanOrEqual(44);
+});
+
+test("at city zoom no two cluster counts overlap", async ({ page }) => {
+  await page.goto("/");
+  const map = page.getByTestId("map");
+  await expect(map).toHaveAttribute("data-ready", "true");
+  await page.waitForTimeout(500);
+  const pts = await map.evaluate((el) => (el as unknown as { __clusterPixels: () => { x: number; y: number }[] }).__clusterPixels());
+  expect(pts.length).toBeGreaterThan(10);
+  for (let a = 0; a < pts.length; a++) for (let b = a + 1; b < pts.length; b++) {
+    expect(Math.hypot(pts[a].x - pts[b].x, pts[a].y - pts[b].y)).toBeGreaterThanOrEqual(43);
+  }
+});
