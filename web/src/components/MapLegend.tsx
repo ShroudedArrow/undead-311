@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { familyLabel } from "../lib/labels";
 import { t } from "../lib/t";
-import { useNarrow } from "../lib/useNarrow";
 import { PALETTE } from "../map/palette";
 import { FAMILY_ORDER, spraySvg } from "../map/sprites";
 
@@ -14,12 +13,11 @@ const DASHED = {
 
 /**
  * Key to the map markers (REQ-WEB-MAP.1): the stencil letter for each case type, and the dashed ring for cases outside the
- * headline. It sits over the map's lower left corner, open on wide screens and shut on phones so the map keeps the room.
+ * headline. It sits over the map's lower left corner, shut until asked, so the map keeps the room (reviewer-ux finding 6).
  */
 export function MapLegend({ showOutline }: { showOutline: boolean }) {
-  const narrow = useNarrow();
-  const [openChoice, setOpenChoice] = useState<boolean | null>(null);
-  const open = openChoice ?? !narrow;
+    const [openChoice, setOpenChoice] = useState<boolean | null>(null);
+  const open = openChoice ?? false;
   return (
     <details className="map-legend" open={open} onToggle={(e) => setOpenChoice((e.currentTarget as HTMLDetailsElement).open)} data-testid="map-legend">
       <summary>{t("map.legend_title")}</summary>

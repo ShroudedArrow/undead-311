@@ -184,3 +184,24 @@ test("on a phone a tap just outside the painted circle still hits, because the t
   await expect(page.getByTestId("autopsy-card")).toBeVisible();
   expect(idFromUrl(page)).toBe(target.id);
 });
+
+for (const width of [320, 360, 390]) {
+  test(`no page scrolls sideways at ${width} px wide`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 740 });
+    for (const path of ["/", "/methods", "/timelapse", "/scorecard", "/durability", "/street", "/repeat"]) {
+      await page.goto(path);
+      await page.waitForTimeout(600);
+      const over = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+      expect(over, `${path} at ${width}px`).toBeLessThanOrEqual(0);
+    }
+  });
+}
+
+test("the phone filter sheet leaves no half-cut Map and Table buttons showing", async ({ page }, info) => {
+  test.skip(info.project.name !== "phone", "the sheet exists under 640 px only");
+  await page.goto("/");
+  await openFilters(page);
+  await expect(page.locator(".view-switch")).toHaveCSS("visibility", "hidden");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".view-switch")).toHaveCSS("visibility", "visible");
+});
