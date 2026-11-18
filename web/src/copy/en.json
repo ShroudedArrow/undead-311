@@ -14,7 +14,8 @@
     "fixture_notice": "Preview data: these numbers come from a rough stand-in built from the sample file, not from the detector. Do not quote them.",
     "data_as_of_unknown": "Data date unavailable",
     "data_as_of_stale": "Data as of {date}. The latest refresh failed, so this is the last good data.",
-    "sample_notice": "Sample of {count} cases, not all of Boston."
+    "sample_notice": "Sample of {count} cases, not all of Boston.",
+    "loading_section": "Loading this section"
   },
   "nav": {
     "label": "Main",
@@ -310,7 +311,8 @@
     "zoom_out": "Zoom out",
     "attribution_toggle": "Show map credits",
     "legend_title": "Marker key",
-    "legend_outline": "Dashed ring: counted outside the headline"
+    "legend_outline": "Dashed ring: counted outside the headline",
+    "legend_cluster": "Pink dots with a number: that many possible zombies close together. Zoom in to see each one."
   },
   "filters": {
     "heading": "Filters",

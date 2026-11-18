@@ -19,11 +19,15 @@ try {
     const ctx = await browser.newContext({ viewport: vp, deviceScaleFactor: 1, hasTouch: sn === "phone", isMobile: sn === "phone" });
     const page = await ctx.newPage();
     for (const [pn, path] of Object.entries(pages)) {
+      await page.addInitScript(() => {
+        window.__cls = 0;
+        new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls += e.value; }).observe({ type: "layout-shift", buffered: true });
+      });
       await page.goto(base + path);
       if (pn === "map" || pn === "timelapse") await ready(page);
-      await page.waitForTimeout(800);
+      await page.waitForTimeout(2500);
       await page.screenshot({ path: `${out}${tag}-${sn}-${pn}.png` });
-      report[`${sn}-${pn}`] = await page.evaluate(() => ({ scrollH: document.documentElement.scrollHeight, innerH: innerHeight, scrollW: document.documentElement.scrollWidth, innerW: innerWidth }));
+      report[`${sn}-${pn}`] = await page.evaluate(() => ({ scrollH: document.documentElement.scrollHeight, innerH: innerHeight, scrollW: document.documentElement.scrollWidth, innerW: innerWidth, cls: +(window.__cls ?? 0).toFixed(3) }));
     }
     // layout stability: sample the map's box every 100 ms while the page loads; every change after the first is a shift
     await page.goto(base + "/", { waitUntil: "commit" });
@@ -35,6 +39,13 @@ try {
       await page.waitForTimeout(100);
     }
     report[`${sn}-map-box-changes`] = seen;
+    await ready(page);
+    // the density view at city zoom (the map shot above) and the stencil markers two zoom steps in
+    await page.waitForTimeout(600);
+    for (let i = 0; i < 2; i++) { await page.getByRole("button", { name: "Zoom in" }).click(); await page.waitForTimeout(800); }
+    await page.screenshot({ path: `${out}${tag}-${sn}-map-zoomed.png` });
+    report[`${sn}-map-zoomed`] = await page.getByTestId("map").evaluate((e) => ({ zoom: e.dataset.zoom, clusters: e.dataset.clusterCount }));
+    await page.goto(base + "/");
     await ready(page);
     const toggle = page.getByRole("button", { name: /show filters/i });
     if (await toggle.isVisible()) await toggle.click();

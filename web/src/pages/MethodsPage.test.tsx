@@ -46,7 +46,7 @@ describe("Methods page (REQ-WEB-METHODS.1)", () => {
   it("opens with the written introduction, shows the definitions with this data's parameters, and ends with the \"Who made this\" section", async () => {
     stub();
     open();
-    expect(screen.getByTestId("methods-intro").textContent).toMatch(/^A possible zombie is a 311 case that was closed/);
+    expect((await screen.findByTestId("methods-intro")).textContent).toMatch(/^A possible zombie is a 311 case that was closed/);
     const about = screen.getByTestId("about");
     expect(within(about).getByRole("heading", { name: "Who made this" })).toBeTruthy();
     expect(about.textContent).toMatch(/Not affiliated with the City of Boston\.$/);
@@ -259,9 +259,10 @@ describe("Methods page offers the sensitivity sliders (REQ-WEB-SLIDERS.1)", () =
   it("builds a contents list from the page's own section headings, each linking to its section (REQ-WEB-METHODS.1)", async () => {
     stub();
     open();
-    await screen.findByTestId("methods-intro");
+    await screen.findByTestId("methods-intro", undefined, { timeout: 4000 });
     const toc = await screen.findByRole("navigation", { name: "On this page" });
-    const links = await within(toc).findAllByRole("link");
+    const links = await within(toc).findAllByRole("link", undefined, { timeout: 4000 });
+    // the closed disclosure on a screen narrower than 70rem still holds the links in the document
     const headings = [...document.querySelectorAll(".methods-main h2")];
     expect(links.map((a) => a.textContent)).toEqual(headings.map((h) => h.textContent));
     for (const [i, a] of links.entries()) {

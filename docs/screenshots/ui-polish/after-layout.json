@@ -3,41 +3,49 @@
   "scrollH": 800,
   "innerH": 800,
   "scrollW": 1280,
-  "innerW": 1280
+  "innerW": 1280,
+  "cls": 0.001
  },
  "desktop-methods": {
-  "scrollH": 8687,
+  "scrollH": 8726,
   "innerH": 800,
   "scrollW": 1280,
-  "innerW": 1280
+  "innerW": 1280,
+  "cls": 0
  },
  "desktop-timelapse": {
-  "scrollH": 1961,
+  "scrollH": 2001,
   "innerH": 800,
   "scrollW": 1280,
-  "innerW": 1280
+  "innerW": 1280,
+  "cls": 0
  },
  "desktop-scorecard": {
-  "scrollH": 3389,
+  "scrollH": 3428,
   "innerH": 800,
   "scrollW": 1280,
-  "innerW": 1280
+  "innerW": 1280,
+  "cls": 0
  },
  "desktop-map-box-changes": [
-  "[320,133,960,595]"
+  "[320,148,960,575]"
  ],
+ "desktop-map-zoomed": {
+  "zoom": "13",
+  "clusters": "0"
+ },
  "desktop-filter": {
   "before": {
    "x": 320,
-   "y": 132.78125,
+   "y": 147.984375,
    "width": 960,
-   "height": 595.265625
+   "height": 574.828125
   },
   "after": {
    "x": 320,
-   "y": 132.78125,
+   "y": 147.984375,
    "width": 960,
-   "height": 595.265625
+   "height": 574.828125
   },
   "moved": false
  },
@@ -45,41 +53,49 @@
   "scrollH": 844,
   "innerH": 844,
   "scrollW": 390,
-  "innerW": 390
+  "innerW": 390,
+  "cls": 0
  },
  "phone-methods": {
-  "scrollH": 12513,
+  "scrollH": 12537,
   "innerH": 844,
   "scrollW": 390,
-  "innerW": 390
+  "innerW": 390,
+  "cls": 0
  },
  "phone-timelapse": {
-  "scrollH": 2719,
+  "scrollH": 2743,
   "innerH": 844,
   "scrollW": 390,
-  "innerW": 390
+  "innerW": 390,
+  "cls": 0
  },
  "phone-scorecard": {
-  "scrollH": 5281,
+  "scrollH": 5305,
   "innerH": 844,
   "scrollW": 390,
-  "innerW": 390
+  "innerW": 390,
+  "cls": 0
  },
  "phone-map-box-changes": [
-  "[0,298,390,384]"
+  "[0,298,390,379]"
  ],
+ "phone-map-zoomed": {
+  "zoom": "13",
+  "clusters": "0"
+ },
  "phone-filter": {
   "before": {
    "x": 0,
    "y": 297.921875,
    "width": 390,
-   "height": 384.203125
+   "height": 378.96875
   },
   "after": {
    "x": 0,
    "y": 297.921875,
    "width": 390,
-   "height": 384.203125
+   "height": 378.96875
   },
   "moved": false
  }

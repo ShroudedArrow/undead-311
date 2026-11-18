@@ -42,17 +42,18 @@ test("Escape shuts the phone filter sheet and returns focus to its button", asyn
   await expect(page.getByRole("button", { name: /show filters/i })).toBeFocused();
 });
 
-test("the marker key lists the seven case types", async ({ page }) => {
+test("the marker key lists the seven case types and the cluster mark", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByTestId("map")).toHaveAttribute("data-ready", "true");
   const legend = page.getByTestId("map-legend");
   if (!(await legend.evaluate((d) => (d as HTMLDetailsElement).open))) await legend.locator("summary").click(); // open on wide screens, shut on phones
-  await expect(legend.locator("li")).toHaveCount(7);
+  await expect(legend.locator("li")).toHaveCount(8); // seven case types and the spray-dot cluster
   await expect(legend.getByText("Street fixtures")).toBeVisible();
 });
 
 test("methods: a readable column, and the contents list beside it on wide screens only", async ({ page }, info) => {
   await page.goto("/methods");
+  await expect(page.getByTestId("methods-intro")).toBeVisible(); // the page draws once its data is in; before that the column holds a placeholder
   const main = page.locator(".methods-main");
   await expect(main).toBeVisible();
   const col = (await main.boundingBox())!;
@@ -99,8 +100,10 @@ async function markerPixels(page: Page, only?: (i: number, p: PointsFile) => boo
     (el, p) => (p as { lon: number[]; lat: number[] }).lon.map((lon, i) => (el as unknown as { __project: (a: number, b: number) => { x: number; y: number } }).__project(lon, (p as { lat: number[] }).lat[i])),
     { lon: pts.lon, lat: pts.lat },
   );
+  // inside the map, clear of the zoom buttons (top right), the closed marker key (bottom left) and the credits (bottom right)
   const inView = (x: number, y: number) =>
-    x > box.x + 70 && x < box.x + box.width - 90 && y > box.y + 70 && y < box.y + box.height - 70 && !(x < box.x + 300 && y > box.y + box.height - 300);
+    x > box.x + 24 && x < box.x + box.width - 24 && y > box.y + 24 && y < box.y + box.height - 40 &&
+    !(x > box.x + box.width - 90 && y < box.y + 120) && !(x < box.x + 200 && y > box.y + box.height - 80);
   return pts.id.map((id, i) => ({ id, i, lon: pts.lon[i], lat: pts.lat[i], x: xy[i].x, y: xy[i].y, ok: pts.tier[i] === "headline" && inView(xy[i].x, xy[i].y), shown: !only || only(i, pts) })).filter((m) => m.shown);
 }
 /**
@@ -122,9 +125,25 @@ async function openSparseView(page: Page, onlyFamily = "streetlight") {
     const ok = all.filter((m) => m.ok);
     const near = (m: (typeof all)[number]) => Math.min(...all.filter((o) => o !== m).map((o) => Math.hypot(o.x - m.x, o.y - m.y)), 1e9);
     const best = ok.map((m) => ({ m, d: near(m) })).sort((a, b) => b.d - a.d)[0];
-    if (best && best.d >= 32) return best.m;
+    if (best && best.d >= 32) return zoomOnto(page, best.m);
   }
   throw new Error("no small group has an isolated marker in view");
+}
+/** Zoom in on a marker with the mouse wheel until the map shows every marker on its own (zoom 13.5), and return where the marker is now. */
+async function zoomOnto(page: Page, m: { id: string; lon: number; lat: number; x: number; y: number }) {
+  const map = page.getByTestId("map");
+  const project = (lon: number, lat: number) => map.evaluate((el, p) => (el as unknown as { __project: (a: number, b: number) => { x: number; y: number } }).__project(p.lon, p.lat), { lon, lat });
+  let at = { x: m.x, y: m.y };
+  for (let i = 0; i < 12 && Number(await map.getAttribute("data-zoom")) < 13.5; i++) {
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.wheel(0, -500);
+    await page.waitForTimeout(350);
+    at = await project(m.lon, m.lat);
+  }
+  expect(Number(await map.getAttribute("data-zoom"))).toBeGreaterThanOrEqual(13);
+  await page.waitForTimeout(400);
+  at = await project(m.lon, m.lat);
+  return { ...m, x: at.x, y: at.y };
 }
 const idFromUrl = (page: Page) => decodeURIComponent(new URL(page.url()).pathname.replace(/^\/zombie\//, ""));
 
@@ -153,7 +172,8 @@ test("clicking a marker's center and a few pixels from it opens the same card, s
 test("where two markers overlap, clicking the center of the one drawn on top opens that one", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByTestId("map")).toHaveAttribute("data-ready", "true");
-  await page.waitForTimeout(500);
+  for (let i = 0; i < 2; i++) { await page.getByRole("button", { name: "Zoom in" }).click(); await page.waitForTimeout(700); } // 13.2: every marker on its own
+  expect(Number(await page.getByTestId("map").getAttribute("data-zoom"))).toBeGreaterThanOrEqual(13);
   const all = await markerPixels(page);
   const shown = all.filter((m) => m.ok);
   // j was drawn after i and sits within 9 px of it; nothing drawn after j is near j, so j is visibly on top at its own center
@@ -204,4 +224,66 @@ test("the phone filter sheet leaves no half-cut Map and Table buttons showing", 
   await expect(page.locator(".view-switch")).toHaveCSS("visibility", "hidden");
   await page.keyboard.press("Escape");
   await expect(page.locator(".view-switch")).toHaveCSS("visibility", "visible");
+});
+
+test("at city zoom the map shows spray-dot clusters, and zoomed in it shows every marker on its own", async ({ page }) => {
+  await page.goto("/");
+  const map = page.getByTestId("map");
+  await expect(map).toHaveAttribute("data-ready", "true");
+  expect(Number(await map.getAttribute("data-zoom"))).toBeLessThan(13);
+  expect(Number(await map.getAttribute("data-cluster-count"))).toBeGreaterThan(0);
+  for (let i = 0; i < 2; i++) { await page.getByRole("button", { name: "Zoom in" }).click(); await page.waitForTimeout(700); }
+  expect(Number(await map.getAttribute("data-zoom"))).toBeGreaterThanOrEqual(13);
+  await expect(map).toHaveAttribute("data-cluster-count", "0");
+});
+
+test("clicking a cluster zooms in on it, and its markers show on their own", async ({ page }) => {
+  await page.goto("/");
+  const map = page.getByTestId("map");
+  await expect(map).toHaveAttribute("data-ready", "true");
+  await page.waitForTimeout(500);
+  const box = (await map.boundingBox())!;
+  const clusters = (await map.evaluate((el) => (el as unknown as { __clusterPixels: () => { x: number; y: number; count: number }[] }).__clusterPixels()))
+    .filter((c) => c.x > box.x + 30 && c.x < box.x + box.width - 30 && c.y > box.y + 30 && c.y < box.y + box.height - 50 && !(c.x > box.x + box.width - 90 && c.y < box.y + 120) && !(c.x < box.x + 200 && c.y > box.y + box.height - 80));
+  expect(clusters.length).toBeGreaterThan(0);
+  const target = clusters.sort((a, b) => b.count - a.count)[0];
+  const before = Number(await map.getAttribute("data-zoom"));
+  await page.mouse.click(target.x, target.y);
+  await expect.poll(async () => Number(await map.getAttribute("data-zoom")), { timeout: 8000 }).toBeGreaterThanOrEqual(13);
+  expect(Number(await map.getAttribute("data-zoom"))).toBeGreaterThan(before);
+  await expect(page.getByTestId("autopsy-card")).toHaveCount(0); // a cluster is not a marker: no card opens
+});
+
+test("markers are drawn smaller as the map zooms out, so they merge later", async ({ page }) => {
+  await page.goto("/");
+  const map = page.getByTestId("map");
+  await expect(map).toHaveAttribute("data-ready", "true");
+  // the size rule itself is pinned by unit tests (layers.test.ts); here, that zooming in past the threshold removes the clusters at once
+  await page.getByRole("button", { name: "Zoom in" }).click();
+  await page.waitForTimeout(700);
+  const mid = Number(await map.getAttribute("data-zoom"));
+  expect(mid).toBeGreaterThan(11.2);
+});
+
+test("pages that load data later do not shift: layout shift stays under 0.02 while they load", async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as unknown as { __cls: number }).__cls = 0;
+    new PerformanceObserver((l) => {
+      for (const e of l.getEntries() as unknown as { value: number; hadRecentInput: boolean }[]) if (!e.hadRecentInput) (window as unknown as { __cls: number }).__cls += e.value;
+    }).observe({ type: "layout-shift", buffered: true });
+  });
+  for (const path of ["/scorecard", "/methods", "/durability", "/timelapse", "/"]) {
+    await page.goto(path);
+    await page.waitForTimeout(2500);
+    const cls = await page.evaluate(() => (window as unknown as { __cls: number }).__cls);
+    expect(cls, path).toBeLessThan(0.02);
+  }
+});
+
+test("every header and footer link is at least 44 px tall", async ({ page }, info) => {
+  await page.goto("/scorecard");
+  if (info.project.name === "phone") await page.getByRole("button", { name: "Menu" }).click();
+  const links = page.locator(".site-header a, .site-footer a");
+  expect(await links.count()).toBeGreaterThan(5);
+  for (const box of await links.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height))) expect(box).toBeGreaterThanOrEqual(44);
 });

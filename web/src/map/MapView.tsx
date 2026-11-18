@@ -12,6 +12,7 @@ import type { PointRow } from "../lib/points";
 import { watchOverlay } from "./overlayA11y";
 import { t } from "../lib/t";
 import { buildLayers } from "./layers";
+import { DENSITY_ZOOM, groupRows, type Cluster } from "./density";
 import { makeAtlasCanvas } from "./sprites";
 import { BOSTON_BOUNDS, BOSTON_CENTER, BOSTON_ZOOM, buildStyle, tilesUrl } from "./style";
 
@@ -26,7 +27,10 @@ function ensureProtocol(): void {
 
 const prefersReducedMotion = (): boolean => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 
-type MapHostElement = HTMLDivElement & { __project?: (lon: number, lat: number) => { x: number; y: number } };
+type MapHostElement = HTMLDivElement & {
+  __project?: (lon: number, lat: number) => { x: number; y: number };
+  __clusterPixels?: () => { x: number; y: number; count: number }[];
+};
 
 interface Props {
   rows: PointRow[];
@@ -46,7 +50,19 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
   const onSelectRef = useRef(onSelect);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
+  // map zoom in half steps: the density view and the marker size follow it (REQ-WEB-MAP.1)
+  const [zoom, setZoom] = useState(BOSTON_ZOOM);
   onSelectRef.current = onSelect;
+  const onClusterRef = useRef<(c: Cluster) => void>(() => undefined);
+  const groupRowsRef = useRef<() => ReturnType<typeof groupRows>>(() => ({ clusters: [], singles: [] }));
+  groupRowsRef.current = () => groupRows(rows, zoom, selectedId);
+  onClusterRef.current = (c) => {
+    const map = mapRef.current;
+    if (!map) return;
+    // two steps in, and always past the density threshold, so one click turns a cluster into its markers
+    const to = Math.min(18, Math.max(map.getZoom() + 2, DENSITY_ZOOM + 0.2));
+    map.easeTo({ center: [c.lon, c.lat], zoom: to, duration: prefersReducedMotion() ? 0 : 500 });
+  };
 
   useEffect(() => {
     if (!host.current) return;
@@ -84,7 +100,18 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
         const r = host.current?.getBoundingClientRect();
         return { x: p.x + (r?.left ?? 0), y: p.y + (r?.top ?? 0) };
       };
+      // The same for the clusters now on the map, for the end-to-end tests that click one.
+      (host.current as MapHostElement).__clusterPixels = () => {
+        const r = host.current?.getBoundingClientRect();
+        return groupRowsRef.current().clusters.map((c) => {
+          const p = map.project([c.lon, c.lat]);
+          return { x: p.x + (r?.left ?? 0), y: p.y + (r?.top ?? 0), count: c.count };
+        });
+      };
       map.on("load", () => setReady(true));
+      const onZoom = () => setZoom(Math.floor(map.getZoom() * 2) / 2);
+      map.on("zoom", onZoom);
+      map.on("zoomend", onZoom);
     } catch {
       setFailed(true);
       return;
@@ -102,9 +129,9 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
     const overlay = overlayRef.current;
     if (!overlay || !atlasRef.current) return;
     overlay.setProps({
-      layers: buildLayers({ rows, selectedId, atlas: atlasRef.current, bulkIds, onSelect: (id) => onSelectRef.current(id), compact: typeof window.matchMedia === "function" && window.matchMedia("(max-width: 640px)").matches }),
+      layers: buildLayers({ rows, selectedId, atlas: atlasRef.current, bulkIds, onSelect: (id) => onSelectRef.current(id), compact: typeof window.matchMedia === "function" && window.matchMedia("(max-width: 640px)").matches, zoom, onCluster: (c) => onClusterRef.current(c) }),
     });
-  }, [rows, selectedId, ready, bulkIds]);
+  }, [rows, selectedId, ready, bulkIds, zoom]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -135,6 +162,8 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
       data-testid="map"
       data-ready={ready ? "true" : "false"}
       data-marker-count={rows.length}
+      data-zoom={zoom}
+      data-cluster-count={groupRows(rows, zoom, selectedId).clusters.length}
       data-bulk-count={bulkIds ? bulkIds.size : 0}
     />
   );

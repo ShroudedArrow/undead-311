@@ -102,6 +102,7 @@ export default function TimeLapsePage() {
     <div className="page timelapse-page">
       <h1>{t("timelapse.title")}</h1>
       {(points.status === "error") && <PanelError file={points.file} error={points.error} />}
+      {points.status === "loading" && <div data-slot="page-loading" aria-busy="true"><p className="count-note">{t("app.loading_section")}</p></div>}
       {timeline && !ready && <p data-testid="timelapse-empty">{t("timelapse.empty")}</p>}
       {ready && (
         <>

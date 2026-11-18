@@ -32,11 +32,13 @@ export type GlyphFamily = keyof typeof FAMILY_GLYPHS;
 export const FAMILY_ORDER = Object.keys(FAMILY_GLYPHS) as GlyphFamily[];
 /** Column name for a family the atlas has no letter for: the ring is drawn with no letter. */
 export const OTHER_FAMILY = "other";
+/** Spray-dot cluster sprites for the density view (below zoom 13): one row under the marker rows, one per variant. */
+export const CLUSTER_VARIANTS = 4;
 const COLUMNS = FAMILY_ORDER.length + 1;
 const ROWS = SPRITE_VARIANTS + OUTLINE_VARIANTS;
-export const SPRITE_COUNT = COLUMNS * ROWS;
+export const SPRITE_COUNT = COLUMNS * ROWS + CLUSTER_VARIANTS;
 export const ATLAS_WIDTH = SPRITE_SIZE * COLUMNS;
-export const ATLAS_HEIGHT = SPRITE_SIZE * ROWS;
+export const ATLAS_HEIGHT = SPRITE_SIZE * (ROWS + 1);
 
 const GLYPH_W = 13;
 const GLYPH_H = 17;
@@ -71,7 +73,13 @@ export function iconMapping(): Record<string, IconDef> {
       out[name] = { x: c * SPRITE_SIZE, y: r * SPRITE_SIZE, width: SPRITE_SIZE, height: SPRITE_SIZE, mask: false };
     }
   }
+  for (let v = 0; v < CLUSTER_VARIANTS; v++) out[`cluster-${v}`] = { x: v * SPRITE_SIZE, y: ROWS * SPRITE_SIZE, width: SPRITE_SIZE, height: SPRITE_SIZE, mask: false };
   return out;
+}
+
+/** The sprite name of a cluster, stable for its key so a cluster does not change look when the map redraws. */
+export function clusterIcon(key: string): string {
+  return `cluster-${hash(key) % CLUSTER_VARIANTS}`;
 }
 
 function hash(id: string): number {
@@ -160,6 +168,39 @@ export function sprayPlan(v: number, ox = 0, oy = 0): SprayPlan {
     dots.push({ x: cx + Math.cos(ang) * rad, y: cy + Math.sin(ang) * rad, r: 0.5 + rand() * 1.2 });
   }
   return { cx, cy, r, points, dots };
+}
+
+export interface ClusterDot {
+  x: number;
+  y: number;
+  r: number;
+}
+
+const DOT_EDGE = 1.2;
+
+/** A cloud of spray dots, thickest in the middle, for cluster variant `v` inside the SPRITE_SIZE square whose top-left corner is (ox, oy). */
+export function clusterPlan(v: number, ox = 0, oy = 0): ClusterDot[] {
+  const rand = rng(9000 + v * 31);
+  const cx = ox + SPRITE_SIZE / 2;
+  const cy = oy + SPRITE_SIZE / 2;
+  const dots: ClusterDot[] = [];
+  for (let i = 0; i < 70; i++) {
+    const a = rand() * Math.PI * 2;
+    const rad = 23 * Math.pow(rand(), 0.75);
+    dots.push({ x: cx + Math.cos(a) * rad, y: cy + Math.sin(a) * rad, r: 1.7 + rand() * 1.9 });
+  }
+  return dots;
+}
+
+/** One cluster as a standalone SVG string (the legend): Asphalt-edged pink dots, as on the map. */
+export function clusterSvg(v = 0, px = SPRITE_SIZE): string {
+  const dots = clusterPlan(v);
+  const edge = dots.map((d) => `<circle cx="${f2(d.x)}" cy="${f2(d.y)}" r="${f2(d.r + DOT_EDGE)}"/>`).join("");
+  const pink = dots.map((d) => `<circle cx="${f2(d.x)}" cy="${f2(d.y)}" r="${f2(d.r)}"/>`).join("");
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" viewBox="0 0 ${SPRITE_SIZE} ${SPRITE_SIZE}" aria-hidden="true" focusable="false">` +
+    `<g fill="${PALETTE.asphalt}">${edge}</g><g fill="${PALETTE.surveyPink}">${pink}</g></svg>`
+  );
 }
 
 /** The family's stencil strokes placed with the box centred on (cx, cy), in sprite pixels. */
@@ -260,6 +301,22 @@ export function drawAtlas(ctx: Ctx): number {
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.stroke();
       strokeGlyph(ctx, family, cx, cy);
+    }
+  }
+  // Cluster sprites: Asphalt-edged pink dots, all the edges first so a dot never sits under a neighbour's edge.
+  for (let v = 0; v < CLUSTER_VARIANTS; v++) {
+    const dots = clusterPlan(v, v * SPRITE_SIZE, ROWS * SPRITE_SIZE);
+    ctx.fillStyle = PALETTE.asphalt;
+    for (const d of dots) {
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.r + DOT_EDGE, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = PALETTE.surveyPink;
+    for (const d of dots) {
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
   return SPRITE_COUNT;

@@ -107,6 +107,8 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .site-header a { color: var(--crew-white); }
 .site-title { font-size: var(--step-1); font-weight: 700; margin: 0; }
 .site-title a { text-decoration: none; }
+/* Touch targets: every header and footer link is at least 44 px tall (design-system.md quality floor). */
+.site-title a, .site-nav a, .site-footer a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 .site-nav { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .nav-toggle { display: none; }
 .site-nav a[aria-current="page"] { font-weight: 700; text-decoration-thickness: 3px; }
@@ -115,10 +117,10 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
   .nav-toggle[aria-expanded="true"] { background: var(--crew-white); color: var(--asphalt); }
   .site-nav[data-open="false"] { display: none; }
   .site-nav { flex-direction: column; flex-basis: 100%; gap: var(--space-1); }
-  .site-nav a { display: block; padding: var(--space-2) 0; }
-  .site-header .data-status { flex-basis: 100%; margin-left: 0; }
+  .site-nav a { display: flex; padding: 0; }
+  .site-header .data-status { flex-basis: 100%; margin-left: 0; text-align: left; }
 }
-.site-header .data-status { margin-left: auto; font-size: var(--step--1); max-width: 34rem; }
+.site-header .data-status { margin-left: auto; font-size: var(--step--1); max-width: 34rem; flex: 1 1 24rem; text-align: right; }
 .site-header .data-status p { margin: 0; max-width: none; }
 /* Ops issue 216: the sample note shares the "Data as of" line; on small phones the two lines sit tighter so the map stays high. */
 @media (max-width: 380px) {
@@ -238,9 +240,21 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
   /* The sheet would cut through the Map and Table buttons, so they step out of the way while it is open. */
   .home:has(.filters-open) .view-switch { visibility: hidden; }
 }
+/* The count block arrives with the data; the strip holds the height it will have, measured at 320/360, 390/430 and 640 px, so the map does not shrink when it fills in. */
+@media (max-width: 640px) {
+  .filters-panel { min-height: 5.4rem; }
+}
+@media (min-width: 381px) and (max-width: 480px) {
+  .filters-panel { min-height: 8.1rem; }
+}
+@media (max-width: 380px) {
+  .filters-panel { min-height: 6.9rem; }
+}
 /* On the map page the footer keeps every line but runs them together, so the map keeps the room. */
 .shell[data-fit] .site-footer { display: block; padding-block: var(--space-2) max(var(--space-2), env(safe-area-inset-bottom)); line-height: 1.35; }
 .shell[data-fit] .site-footer p { display: inline; margin-right: var(--space-2); }
+/* In the run-in footer the link stays inline; padding gives it the 44 px target without breaking the line. */
+.shell[data-fit] .site-footer a { display: inline-block; min-height: 2.75rem; padding-block: 0.65rem; margin-block: -0.65rem; line-height: 1.45; vertical-align: baseline; }
 /* Below about 380 px the count heading and Show filters share a row, and the floor note takes its own full-width line (UX-52). */
 @media (max-width: 380px) {
   .filters-panel > .count-block { display: contents; }
@@ -583,8 +597,16 @@ select {
 
 /* Layout shifts: the header's data line keeps two lines on phones, where the sample note wraps once the data arrives. */
 @media (max-width: 640px) {
-  .site-header .data-status { min-height: calc(2 * 1.5 * var(--step--1)); }
+  .site-header .data-status { min-height: calc(2 * 1.5 * var(--step--1)); text-align: left; flex-basis: 100%; }
 }
+
+
+/*
+ * Reserved space (layout shift, design-system.md quality floor). A page that fills in after its data arrives shows a placeholder one
+ * screen high until every file it reads has come back, then draws all of it at once. The footer stays below the fold either way, so
+ * nothing visible moves.
+ */
+[data-slot="page-loading"] { min-height: 100dvh; }
 
 /* Print: one clean page per district report card (REQ-WEB-OPEN.2). Black on white, no navigation, no controls. */
 .print-only { display: none; }

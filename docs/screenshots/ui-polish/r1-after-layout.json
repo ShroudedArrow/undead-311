@@ -1,0 +1,86 @@
+{
+ "desktop-map": {
+  "scrollH": 800,
+  "innerH": 800,
+  "scrollW": 1280,
+  "innerW": 1280
+ },
+ "desktop-methods": {
+  "scrollH": 8687,
+  "innerH": 800,
+  "scrollW": 1280,
+  "innerW": 1280
+ },
+ "desktop-timelapse": {
+  "scrollH": 1961,
+  "innerH": 800,
+  "scrollW": 1280,
+  "innerW": 1280
+ },
+ "desktop-scorecard": {
+  "scrollH": 3389,
+  "innerH": 800,
+  "scrollW": 1280,
+  "innerW": 1280
+ },
+ "desktop-map-box-changes": [
+  "[320,133,960,595]"
+ ],
+ "desktop-filter": {
+  "before": {
+   "x": 320,
+   "y": 132.78125,
+   "width": 960,
+   "height": 595.265625
+  },
+  "after": {
+   "x": 320,
+   "y": 132.78125,
+   "width": 960,
+   "height": 595.265625
+  },
+  "moved": false
+ },
+ "phone-map": {
+  "scrollH": 844,
+  "innerH": 844,
+  "scrollW": 390,
+  "innerW": 390
+ },
+ "phone-methods": {
+  "scrollH": 12513,
+  "innerH": 844,
+  "scrollW": 390,
+  "innerW": 390
+ },
+ "phone-timelapse": {
+  "scrollH": 2719,
+  "innerH": 844,
+  "scrollW": 390,
+  "innerW": 390
+ },
+ "phone-scorecard": {
+  "scrollH": 5281,
+  "innerH": 844,
+  "scrollW": 390,
+  "innerW": 390
+ },
+ "phone-map-box-changes": [
+  "[0,298,390,384]"
+ ],
+ "phone-filter": {
+  "before": {
+   "x": 0,
+   "y": 297.921875,
+   "width": 390,
+   "height": 384.203125
+  },
+  "after": {
+   "x": 0,
+   "y": 297.921875,
+   "width": 390,
+   "height": 384.203125
+  },
+  "moved": false
+ }
+}

@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useState } from "react";
 import { PageToc } from "../components/PageToc";
 import { OpenData } from "../components/OpenData";
 import { Sliders } from "../components/Sliders";
@@ -12,7 +12,7 @@ import { formatDateTime } from "../lib/format";
 import { familyLabel } from "../lib/labels";
 import { excessShown, familyExcessRows, num1, readPlacebo, readShift } from "../lib/methods";
 import { NULL_TOWNS, STRESS_ABOVE, STRESS_TOWNS, signed, sumOf } from "../lib/nullTowns";
-import { parseExcess, parseScorecard, parseStatus, parseValidation } from "../lib/parse";
+import { parseBulkClosures, parseExcess, parseExclusions, parseScorecard, parseSensitivityGrid, parseStatus, parseTemporaryFixes, parseValidation } from "../lib/parse";
 import { pct } from "../lib/rates";
 import { t } from "../lib/t";
 
@@ -32,7 +32,7 @@ function Definitions() {
         <li>{t("methods.def_city")}</li>
         <li>{t("methods.def_mirror")}</li>
       </ul>
-      {p ? <p className="count-note">{t("methods.def_params", { matching: p.matching, radius: p.RADIUS_M, window: p.WINDOW_DAYS })}</p> : null}
+      <p className="count-note">{p ? t("methods.def_params", { matching: p.matching, radius: p.RADIUS_M, window: p.WINDOW_DAYS }) : "\u00a0"}</p>
     </section>
   );
 }
@@ -227,12 +227,28 @@ function MethodsSampleNotice() {
 
 /** Methods page: definitions, baselines, shift test, placebo, validation, limits, nightly status and what the headline leaves out (REQ-WEB-METHODS.1, REQ-WEB-FRESH.2, REQ-WEB-DEATHS.1). */
 export default function MethodsPage() {
-  const content = useRef<HTMLDivElement>(null);
+  // the element, in state, so the contents list is built in a synchronous re-render before the first paint (it comes before the content in the DOM)
+  const [content, setContent] = useState<HTMLDivElement | null>(null);
+  // Every file the sections read settles first (a few milliseconds from the same origin), and the placeholder is a screen high, so nothing
+  // visible moves when the sections arrive (layout shift, design-system.md quality floor). Sections then mount with their data in hand.
+  const files = [useData("status.json", parseStatus), useData("scorecard.json", parseScorecard), useData("excess.json", parseExcess), useData("validation.json", parseValidation), useData("sensitivity_grid.json", parseSensitivityGrid), useData("temporary_fixes.json", parseTemporaryFixes), useData("exclusions.json", parseExclusions), useData("bulk_closures.json", parseBulkClosures)];
+  if (files.some((f) => f.status === "loading")) {
+    return (
+      <div className="page methods-page" aria-busy="true">
+        <div className="methods-layout">
+          <div className="methods-main" data-slot="page-loading">
+            <h1>{t("methods.title")}</h1>
+            <p className="count-note">{t("app.loading_section")}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="page methods-page">
       <div className="methods-layout">
-        <PageToc contentRef={content} />
-        <div className="methods-main" ref={content}>
+        <PageToc content={content} />
+        <div className="methods-main" ref={setContent}>
           <h1>{t("methods.title")}</h1>
           <MethodsSampleNotice />
           <p data-testid="methods-intro">{t("methods.intro")}</p>

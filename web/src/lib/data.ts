@@ -47,12 +47,22 @@ export async function loadFrozen<T>(file: string, parse: (d: unknown) => ParseRe
 }
 
 const cache = new Map<string, Promise<Load<unknown>>>();
+/** Results that have already come back, so a component that mounts later starts with its data and does not flash "loading" (layout shift). */
+const settled = new Map<string, Load<unknown>>();
+/** Record a result only while its promise is still the cached one, so a load that finishes after the cache was cleared cannot leave a stale result behind. */
+const remember = <T,>(key: string, load: Promise<Load<T>>): Promise<Load<T>> => {
+  const p: Promise<Load<T>> = load.then((r) => {
+    if (cache.get(key) === (p as Promise<Load<unknown>>)) settled.set(key, r);
+    return r;
+  });
+  return p;
+};
 
 /** Load once per file per page view; later callers share the promise. */
 export function loadOnce<T>(file: string, parse: (d: unknown) => ParseResult<T>): Promise<Load<T>> {
   let p = cache.get(file);
   if (!p) {
-    p = loadData(file, parse);
+    p = remember(file, loadData(file, parse));
     cache.set(file, p);
   }
   return p as Promise<Load<T>>;
@@ -63,7 +73,7 @@ export function loadFrozenOnce<T>(file: string, parse: (d: unknown) => ParseResu
   const key = `frozen:${file}`;
   let p = cache.get(key);
   if (!p) {
-    p = loadFrozen(file, parse);
+    p = remember(key, loadFrozen(file, parse));
     cache.set(key, p);
   }
   return p as Promise<Load<T>>;
@@ -71,14 +81,17 @@ export function loadFrozenOnce<T>(file: string, parse: (d: unknown) => ParseResu
 
 export function clearDataCache(): void {
   cache.clear();
+  settled.clear();
 }
 
 export function useData<T>(file: string | null, parse: (d: unknown) => ParseResult<T>, frozen = false): Load<T> {
-  const [state, setState] = useState<Load<T>>({ status: "loading" });
+  const key = file === null ? null : frozen ? `frozen:${file}` : file;
+  const [state, setState] = useState<Load<T>>(() => (key !== null ? (settled.get(key) as Load<T> | undefined) : undefined) ?? { status: "loading" });
   useEffect(() => {
     if (file === null) return;
     let live = true;
-    setState({ status: "loading" });
+    const known = settled.get(frozen ? `frozen:${file}` : file) as Load<T> | undefined;
+    setState(known ?? { status: "loading" });
     void (frozen ? loadFrozenOnce(file, parse) : loadOnce(file, parse)).then((r) => live && setState(r));
     return () => {
       live = false;

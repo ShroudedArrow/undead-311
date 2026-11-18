@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PointRow } from "../lib/points";
 import { buildLayers, hitRadius, markerSize, MIN_HIT_RADIUS_PX } from "./layers";
+import { DENSITY_ZOOM } from "./density";
 
 const row = (id: string): PointRow => ({ id, lat: 42.35, lon: -71.06, tier: "headline" }) as unknown as PointRow;
 const atlas = {} as HTMLCanvasElement;
@@ -9,11 +10,11 @@ const ids = (x: ReturnType<typeof buildLayers>) => x.map((l) => l.id);
 
 describe("map layer order (REQ-WEB-MAP.1, decision 11, issue 190)", () => {
   it("draws the bulk rings under the markers", () => {
-    expect(ids(buildLayers(base))).toEqual(["bulk-ring-edge", "bulk-ring", "zombie-halo", "zombies", "zombie-hit"]);
+    expect(ids(buildLayers(base))).toEqual(["bulk-ring-edge", "bulk-ring", "zombie-halo", "zombies", "zombie-hit", "clusters", "cluster-count", "cluster-hit"]);
   });
 
   it("draws only the markers when the bulk layer is off", () => {
-    expect(ids(buildLayers({ ...base, bulkIds: null }))).toEqual(["zombie-halo", "zombies", "zombie-hit"]);
+    expect(ids(buildLayers({ ...base, bulkIds: null }))).toEqual(["zombie-halo", "zombies", "zombie-hit", "clusters", "cluster-count", "cluster-hit"]);
   });
 
   it("has no neighborhood label layer, since the names collided on the hero map (issue 190)", () => {
@@ -67,5 +68,50 @@ describe("hit areas cover the whole circle (REQ-WEB-MAP.1, REQ-WEB-A11Y.1)", () 
     const l = Object.fromEntries(buildLayers({ ...base, onSelect: (id) => picked.push(id) }).map((x) => [x.id, x]));
     for (const id of ["zombie-halo", "zombie-hit"]) (l[id].props as unknown as { onClick: (i: unknown) => void }).onClick({ object: { id: "b" } });
     expect(picked).toEqual(["b", "b"]);
+  });
+});
+
+describe("density view and zoom-scaled markers (REQ-WEB-MAP.1)", () => {
+  const near = (id: string, dx: number): PointRow => ({ id, lat: 42.35, lon: -71.06 + dx, tier: "headline", family: "sign" }) as unknown as PointRow;
+  const dense = { ...base, bulkIds: null, rows: [near("a", 0), near("b", 0.00005), near("c", 0.0001), near("far", 0.5)] };
+  const by = (zoom: number | undefined, extra = {}) => Object.fromEntries(buildLayers({ ...dense, zoom, ...extra }).map((l) => [l.id, l]));
+  const data = (l: { props: unknown }) => (l.props as { data: unknown[] }).data;
+
+  it("draws every marker on its own with no clusters at the threshold and above, and with no zoom given", () => {
+    for (const z of [undefined, DENSITY_ZOOM, 16]) {
+      expect(data(by(z)["zombies"])).toHaveLength(4);
+      expect(data(by(z)["clusters"])).toHaveLength(0);
+    }
+  });
+  it("groups close markers into one cluster below the threshold and keeps a far one as a marker", () => {
+    const l = by(11.2);
+    expect(data(l["clusters"])).toHaveLength(1);
+    expect((data(l["clusters"])[0] as { count: number }).count).toBe(3);
+    expect(data(l["zombies"]).map((r) => (r as PointRow).id)).toEqual(["far"]);
+    expect(data(l["cluster-hit"])).toBe(data(l["clusters"]));
+    expect(data(l["cluster-count"])).toBe(data(l["clusters"]));
+  });
+  it("keeps the selected marker out of any cluster", () => {
+    const l = by(11.2, { selectedId: "b" });
+    expect(data(l["zombies"]).map((r) => (r as PointRow).id).sort()).toEqual(["b", "far"]);
+  });
+  it("makes a cluster click call back with the cluster, and the hit circles stay invisible", () => {
+    const got: string[] = [];
+    const l = by(11.2, { onCluster: (c: { ids: string[] }) => got.push(c.ids.join(",")) });
+    (l["cluster-hit"].props as unknown as { onClick: (i: unknown) => void }).onClick({ object: data(l["clusters"])[0] });
+    expect(got).toEqual(["a,b,c"]);
+    expect((l["cluster-hit"].props as unknown as { getFillColor: number[] }).getFillColor[3]).toBe(0);
+  });
+  it("scales unselected markers with the zoom but never the selected one, and keeps a 44 px phone target", () => {
+    expect(markerSize(false, false, DENSITY_ZOOM)).toBeLessThan(markerSize(false, false, DENSITY_ZOOM + 2));
+    expect(markerSize(false, false, DENSITY_ZOOM + 2)).toBe(30);
+    expect(markerSize(true, false, 9)).toBe(44);
+    expect(markerSize(false, true, DENSITY_ZOOM)).toBeCloseTo(18.2);
+    expect(hitRadius(false, true, DENSITY_ZOOM) * 2).toBeGreaterThanOrEqual(44);
+    for (const z of [9, 11.2, DENSITY_ZOOM, 15]) expect(hitRadius(false, false, z)).toBeGreaterThanOrEqual(markerSize(false, false, z) / 2);
+  });
+  it("markers are never drawn smaller than their minimum so the letter stays a letter", () => {
+    const p = by(DENSITY_ZOOM)["zombies"].props as unknown as { sizeMinPixels: number };
+    expect(p.sizeMinPixels).toBeGreaterThanOrEqual(16);
   });
 });

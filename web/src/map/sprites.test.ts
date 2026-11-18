@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  ATLAS_HEIGHT, ATLAS_WIDTH, drawAtlas, FAMILY_GLYPHS, FAMILY_ORDER, glyphStrokes, iconFor, iconMapping, OTHER_FAMILY, OUTLINE_VARIANTS, rng, SPRITE_COUNT, SPRITE_SIZE,
+  ATLAS_HEIGHT, ATLAS_WIDTH, CLUSTER_VARIANTS, clusterIcon, clusterPlan, clusterSvg, drawAtlas, FAMILY_GLYPHS, FAMILY_ORDER, glyphStrokes, iconFor, iconMapping, OTHER_FAMILY, OUTLINE_VARIANTS, rng, SPRITE_COUNT, SPRITE_SIZE,
   SPRITE_VARIANTS, sprayPlan, spraySvg, spriteName, variantFor,
 } from "./sprites";
 import { buildStyle, tilesUrl } from "./style";
@@ -78,6 +78,40 @@ describe("sprite atlas (REQ-WEB-MAP.1)", () => {
     drawAtlas(m.ctx as never);
     const colors = new Set(m.calls.filter((c) => c.startsWith("s#")).map((c) => c.slice(1, 8)));
     expect([...colors].sort()).toEqual(["#2e3134", "#ff3ea5"]);
+  });
+});
+
+describe("spray-dot clusters for the density view (REQ-WEB-MAP.1)", () => {
+  it("has cluster sprites in the atlas, in their own row, inside the atlas", () => {
+    const m = iconMapping();
+    for (let v = 0; v < CLUSTER_VARIANTS; v++) {
+      const d = m[`cluster-${v}`];
+      expect(d).toBeTruthy();
+      expect(d.y + d.height).toBeLessThanOrEqual(ATLAS_HEIGHT);
+    }
+    expect(m[clusterIcon("3:5@11")]).toBeTruthy();
+    expect(clusterIcon("3:5@11")).toBe(clusterIcon("3:5@11"));
+  });
+  it("is a cloud of dots inside its cell, thicker in the middle, and different for each variant", () => {
+    for (let v = 0; v < CLUSTER_VARIANTS; v++) {
+      const dots = clusterPlan(v, 64, 128);
+      expect(dots.length).toBeGreaterThan(40);
+      for (const d of dots) {
+        expect(d.x - d.r).toBeGreaterThan(64);
+        expect(d.x + d.r).toBeLessThan(128);
+        expect(d.y - d.r).toBeGreaterThan(128);
+        expect(d.y + d.r).toBeLessThan(192);
+      }
+      const inner = dots.filter((d) => Math.hypot(d.x - 96, d.y - 160) < 12).length;
+      expect(inner / dots.length).toBeGreaterThan(0.25); // a uniform cloud would put about 27% there; the centre is denser
+    }
+    expect(JSON.stringify(clusterPlan(0))).not.toBe(JSON.stringify(clusterPlan(1)));
+  });
+  it("draws as pink dots with an Asphalt edge, for the legend too", () => {
+    const svg = clusterSvg(0, 28);
+    expect(svg).toContain("#ff3ea5");
+    expect(svg).toContain("#2e3134");
+    expect(svg.match(/<circle /g)).toHaveLength(clusterPlan(0).length * 2);
   });
 });
 

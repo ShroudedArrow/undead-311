@@ -134,3 +134,19 @@ describe("methods page layout (REQ-WEB-METHODS.1)", () => {
     expect(ruleBody(".methods-layout")).not.toMatch(/sticky/);
   });
 });
+
+describe("touch targets in the header and footer (design-system.md quality floor)", () => {
+  it("makes the site title, every nav link and every footer link at least 44 px tall", () => {
+    const rule = rules.find((r) => r.sel.includes(".site-nav a") && r.sel.includes(".site-footer a") && r.sel.includes(".site-title a"));
+    expect(rule?.body).toMatch(/min-height:\s*2\.75rem/);
+  });
+});
+
+describe("reserved space while data loads (layout shift)", () => {
+  it("holds a full screen while a page waits for its data, so nothing visible moves when it arrives", () => {
+    expect(ruleBody('[data-slot="page-loading"]')).toMatch(/min-height:\s*100dvh/);
+  });
+  it("holds the phone count strip at its loaded height, so the map does not shrink when the count fills in", () => {
+    expect(css).toMatch(/@media \(max-width: 640px\)\s*\{\s*\.filters-panel\s*\{\s*min-height:\s*[\d.]+rem/);
+  });
+});
