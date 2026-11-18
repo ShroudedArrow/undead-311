@@ -556,6 +556,10 @@ class Swap:
                     stale.append(rel)
         return order, stale
 
+    def staged(self) -> list[str]:
+        """Relative paths `apply()` would move in (the `paths` it will report), before anything is moved."""
+        return self._plan()[0]
+
     def _save(self, rel: str) -> None:
         dest = self.target / rel
         if dest.is_file():

@@ -332,6 +332,94 @@ def test_req_ops_run_2_run_full_resumes_after_a_failure_and_finishes(tmp_path, m
     assert json.loads((tmp_path / "data" / "reports" / "t1" / "coverage.json").read_text())["closed_in_scope"] == 1
 
 
+def tree_state(root: Path) -> dict[str, tuple[int, int]]:
+    """(size, mtime in ns) of every file under `root`, to prove that nothing was written, rewritten or deleted."""
+    return {f.relative_to(root).as_posix(): (f.stat().st_size, f.stat().st_mtime_ns) for f in sorted(root.rglob("*")) if f.is_file()}
+
+
+def test_req_ops_run_7_a_run_whose_done_file_says_done_exits_at_once_and_discards_nothing(tmp_path, monkeypatch):
+    """REQ-OPS-RUN.7: rehearsal-1 ran a second pass; a leg started after the run finished must not touch it. Same command,
+    done file with `done: true`: exit 0, no stage, no write, no delete (done file, markers, logs, database, exports, reports)."""
+    assert run_main(tmp_path, monkeypatch) == 0
+    done = tmp_path / "t1.done.json"
+    assert json.loads(done.read_text())["done"] is True
+    before = tree_state(tmp_path / "data") | {"done": (done.stat().st_size, done.stat().st_mtime_ns)}
+
+    def boom(*a, **k):
+        raise AssertionError("a finished run must not run the pipeline again")
+
+    monkeypatch.setattr(run_full, "run_pipeline", boom)
+    assert run_main(tmp_path, monkeypatch) == 0
+    assert tree_state(tmp_path / "data") | {"done": (done.stat().st_size, done.stat().st_mtime_ns)} == before
+
+
+def test_req_ops_run_7_only_a_done_true_file_of_this_run_ends_a_run_early(tmp_path):
+    """REQ-OPS-RUN.7: a missing, damaged, `done: false`, or other run's file does not count as done."""
+    f = tmp_path / "x.done.json"
+    assert not run_full.already_done(f, "r1")
+    f.write_text("{not json")
+    assert not run_full.already_done(f, "r1")
+    f.write_text(json.dumps({"run_id": "r1", "done": False, "exit_code": 4}))
+    assert not run_full.already_done(f, "r1")
+    f.write_text(json.dumps({"run_id": "r2", "done": True}))
+    assert not run_full.already_done(f, "r1")
+    f.write_text(json.dumps({"run_id": "r1", "done": "true"}))  # a string is not the boolean the loop's stopCondition tests
+    assert not run_full.already_done(f, "r1")
+    f.write_text(json.dumps({"run_id": "r1", "done": True}))
+    assert run_full.already_done(f, "r1")
+
+
+def test_req_ops_run_8_a_leg_killed_after_the_pipeline_finished_does_not_rebuild_everything(tmp_path, monkeypatch):
+    """REQ-OPS-RUN.8 (rehearsal-1, leg 3 to 4): the 30-minute cap ended a leg after the database was renamed but before the
+    done file was written. The next leg saw markers and no partial database, called that a fresh start and rebuilt all
+    stages (a second pass of about 3 hours). Now it reads the stored report, writes the coverage and the done file, and
+    every stage ran exactly once."""
+    real = run_full.unlabeled_templates
+    monkeypatch.setattr(run_full, "unlabeled_templates", lambda *a, **k: (_ for _ in ()).throw(KeyboardInterrupt()))
+    with pytest.raises(KeyboardInterrupt):
+        run_main(tmp_path, monkeypatch)  # the pipeline finished; the process dies before the coverage report
+    data, stages = tmp_path / "data", tmp_path / "data" / "logs" / "t1.stages"
+    assert (data / "processed" / "undead311.duckdb").is_file() and not (data / "processed" / "undead311.duckdb.tmp").exists()
+    assert (stages / "complete.json").is_file() and json.loads((tmp_path / "t1.done.json").read_text())["done"] is False
+    markers = tree_state(stages)
+
+    monkeypatch.setattr(run_full, "unlabeled_templates", real)
+    assert run_main(tmp_path, monkeypatch) == 0
+    log = (data / "logs" / "t1.log").read_text()
+    assert "already finished with the same inputs" in log and "fresh start" not in log
+    assert log.count("[stage] load") == 1 and log.count("[stage] export") == 1  # nothing ran twice
+    assert {k: v for k, v in tree_state(stages).items() if k != "complete.json"} == {k: v for k, v in markers.items() if k != "complete.json"}
+    assert json.loads((tmp_path / "t1.done.json").read_text())["done"] is True
+    assert not (stages / "complete.json").exists()  # consumed: a later explicit rerun is a fresh run, as before
+    assert json.loads((data / "reports" / "t1" / "coverage.json").read_text())["closed_in_scope"] == 1
+
+
+def test_req_ops_run_8_without_reuse_a_finished_database_is_still_a_fresh_start(tmp_path):
+    """REQ-OPS-RUN.8: `reuse_complete` is opt-in; run_pipeline called as before rebuilds (nothing else changes)."""
+    raw, snap = raw_folder(tmp_path)
+    kw = {"raw_dir": raw, "snapshot_md": snap, "work_dir": tmp_path / "d", "stages_dir": tmp_path / "stages", **RUN}
+    first = run_pipeline(out_dir=tmp_path / "o", **kw)
+    assert (tmp_path / "stages" / "complete.json").is_file()
+    lines: list[str] = []
+    again = run_pipeline(out_dir=tmp_path / "o", log=lines.append, **kw)
+    assert any("fresh start" in x for x in lines) and again.tier_counts == first.tier_counts
+    reused: list[str] = []
+    third = run_pipeline(out_dir=tmp_path / "o", log=reused.append, reuse_complete=True, **kw)
+    assert any("not rebuilding" in x for x in reused) and third.tier_counts == first.tier_counts
+
+
+def test_req_ops_run_8_changed_inputs_never_reuse_a_complete_run(tmp_path):
+    """REQ-OPS-RUN.8: the marker names the inputs' fingerprint; a different raw file size is a fresh start."""
+    raw, snap = raw_folder(tmp_path)
+    kw = {"raw_dir": raw, "snapshot_md": snap, "work_dir": tmp_path / "d", "stages_dir": tmp_path / "stages", **RUN}
+    run_pipeline(out_dir=tmp_path / "o", **kw)
+    victim = min(raw.glob("311_*.csv"))
+    victim.write_text(victim.read_text() + "\n")
+    lines: list[str] = []
+    run_pipeline(out_dir=tmp_path / "o", log=lines.append, reuse_complete=True, **kw)
+    assert any("fresh start" in x for x in lines) and not any("not rebuilding" in x for x in lines)
+
+
 def test_req_ops_run_4_the_kill_switch_file_stops_the_run_before_it_starts(tmp_path, monkeypatch):
     """REQ-OPS-RUN.4 (structure.md kill switch)."""
     stop = Path(run_full.worktree_root()) / ".kiro" / "STOP"
@@ -401,6 +489,7 @@ def test_req_ops_run_4_the_budget_never_stops_after_an_unmarked_step(tmp_path, m
     for p in (tmp_path / "data" / "processed").glob("undead311.duckdb*"):
         p.unlink()
     (tmp_path / "data" / "logs" / "t1.stages" / "fingerprint.txt").unlink()  # fresh start
+    (tmp_path / "t1.done.json").unlink()  # REQ-OPS-RUN.7: a finished run is not started again unless its done file is removed
     assert run_main(tmp_path, monkeypatch, "--budget-min", "0") == 4  # stops after load, a committed stage
     monkeypatch.setattr(run_full, "StageRunner", run_full.StageRunner)
     # second leg: only unmarked steps and later stages remain; the budget fires after the next committed stage, never

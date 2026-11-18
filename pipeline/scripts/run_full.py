@@ -18,6 +18,11 @@
   `.kiro/workflow-runs/<run-id>/<run-id>.done.json` under the repo root): `{"done": true}` only when the pipeline finished and
   the coverage report was written; otherwise `{"done": false, "status": "budget" | "kill_switch" | "stopped" | "failed"}`.
   `.kiro/workflows/fulldata.workflow.yaml` loops one leg per iteration and stops when this file says `done: true`.
+* When that file already says `"done": true` for this run, the script exits 0 at once (REQ-OPS-RUN.7): it runs no stage, does
+  not rewrite the file and deletes nothing, so an extra leg after the last one cannot repeat or overwrite a finished run.
+* A leg killed after the pipeline finished but before the done file was written (the 30-minute tool cap did this in the
+  rehearsal) leaves `<run-id>.stages/complete.json` and no partial database. The next leg reads the stored run report,
+  writes the Coroner coverage and the done file, and does not rebuild anything (REQ-OPS-RUN.8).
 * Exit codes: 0 finished, 1 a stage failed once (start again), 2 a stage failed twice (STOPPED), 3 kill switch, 4 budget leg
   ended (start again).
 """
@@ -42,7 +47,7 @@ from undead311 import duck
 from undead311.coroner.join import unlabeled_templates
 from undead311.paths import data_dir, worktree_root
 from undead311.pipeline import run_pipeline
-from undead311.stages import StageRunner
+from undead311.stages import COMPLETE_FILE, StageRunner
 
 CHANNEL_REPO = "ShroudedArrow/undead-311-ops"
 
@@ -90,6 +95,16 @@ def write_done(path: Path, run_id: str, code: int, logs: Path) -> dict:
     tmp.write_text(json.dumps(doc, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     tmp.replace(path)
     return doc
+
+
+def already_done(path: Path, run_id: str) -> bool:
+    """True when `path` is a done file of this run that says `"done": true` (REQ-OPS-RUN.7). A missing, damaged or other
+    run's file is not "done", so the run starts as usual."""
+    try:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return isinstance(doc, dict) and doc.get("done") is True and doc.get("run_id", run_id) == run_id
 
 
 def git(root: Path, *args: str) -> str:
@@ -159,6 +174,12 @@ def main(argv: list[str] | None = None) -> int:
     a = ap.parse_args(argv)
 
     root, base = worktree_root(), data_dir()
+    done_path = a.done_file or root / ".kiro" / "workflow-runs" / a.run_id / f"{a.run_id}.done.json"
+    if already_done(done_path, a.run_id):
+        # REQ-OPS-RUN.7: a finished run is never started again. Nothing is written or deleted (not the done file, markers,
+        # logs, database or exports), so a loop that runs one more leg after the last one cannot undo or repeat the run.
+        print(f"{stamp()} {a.run_id}: {done_path.name} already says done: true; nothing to do", flush=True)
+        return 0
     logs = base / "logs"
     logs.mkdir(parents=True, exist_ok=True)
     log_file = (logs / f"{a.run_id}.log").open("a", encoding="utf-8")
@@ -173,7 +194,9 @@ def main(argv: list[str] | None = None) -> int:
         return code
     finally:
         try:
-            write_done(a.done_file or root / ".kiro" / "workflow-runs" / a.run_id / f"{a.run_id}.done.json", a.run_id, code, logs)
+            write_done(done_path, a.run_id, code, logs)
+            if code == 0:  # the run is noted as done; from now on `already_done` guards it (REQ-OPS-RUN.8)
+                (logs / f"{a.run_id}.stages" / COMPLETE_FILE).unlink(missing_ok=True)
         except OSError as exc:
             say(f"done file not written: {exc}")
         sys.stdout, sys.stderr = saved
@@ -226,6 +249,7 @@ def _run(a: argparse.Namespace, root: Path, base: Path, logs: Path) -> int:
         report = run_pipeline(
             out_dir=out, stages_dir=stages_dir, stage_runner=runner, grid=not a.skip_grid, log=say,
             raw_dir=a.raw, snapshot_md=a.snapshot_md, work_dir=None, allow_over_budget=a.dry_run_over_budget,
+            reuse_complete=True,
         )  # fmt: skip
     except Exception as exc:  # noqa: BLE001 - recorded, posted, then the exit code says what happened
         stage = runner.current or "unknown"

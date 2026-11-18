@@ -69,7 +69,7 @@ from undead311.ingest.staff_names import build as build_staff_names
 from undead311.ingest.staff_names import names_path, read_names, street_words, write_names
 from undead311.ingest.text import register_text_udfs
 from undead311.paths import data_dir, worktree_root
-from undead311.stages import StageRunner, fingerprint, prepare
+from undead311.stages import StageRunner, fingerprint, is_complete, mark_complete, prepare
 
 STATS_ABSENT_NAMES = ("undead311.stats", "undead311.stats.pipeline")  # the only ModuleNotFoundError names that mean "absent"
 STATS_STALE_FILES = (
@@ -237,13 +237,17 @@ def run_pipeline(
     stage_runner: StageRunner | None = None,
     log: Callable[[str], None] = print,
     allow_over_budget: bool = False,
+    reuse_complete: bool = False,
 ) -> RunReport:
     """Run every stage and export (REQ-ING-NIGHTLY.1). Outputs are built in staging folders beside their targets and
     swapped in only after every stage succeeded, so a stage that raises leaves the previous outputs untouched.
 
     `stages_dir` makes the run resumable (REQ-OPS-RUN.1-4): the database is built in place under `undead311.duckdb.tmp`, each
     stage commits with a done-marker, and a restart with the same inputs skips the finished stages (see `undead311.stages`).
-    `stage_runner` replaces the default runner, for example to post each finished stage to the run-log issue."""
+    `stage_runner` replaces the default runner, for example to post each finished stage to the run-log issue.
+    `reuse_complete` (REQ-OPS-RUN.8): when a run with the same inputs already finished (its outputs are swapped in and the
+    database renamed) but the process died before its caller noted it, return the stored run report instead of treating the
+    missing partial database as a fresh start and rebuilding everything."""
     t0 = time.time()
     root = worktree_root()
     base = work_dir or data_dir()
@@ -504,10 +508,26 @@ def run_pipeline(
 
     swaps: list[Swap] = []
 
+    out_swap = Swap(stage_out, out, owns_output)
+
     def commit() -> None:
-        """Swap the staged files in (REQ-ING-NIGHTLY.1); runs after every stage succeeded, just before the DuckDB rename."""
+        """Swap the staged files in (REQ-ING-NIGHTLY.1); runs after every stage succeeded, just before the DuckDB rename.
+
+        The run report is staged with the processed files, so a failed swap or rename rolls it back with them. It is written
+        here and not after the rename, so a process that dies right after the rename (the 30-minute tool-call cap did) still
+        leaves a report that matches the finished run (REQ-OPS-RUN.8)."""
+        report.file_sizes = {rel: (stage_out / rel).stat().st_size for rel in sorted(set(out_swap.staged()))}
+        sizes = getattr(ns, "sizes", {}) or {}
+        report.file_gzip_sizes = dict(sorted(sizes.get("gzip", {}).items()))
+        report.first_view_bytes = first_view_bytes(report.file_gzip_sizes)  # REQ-EXP-SIZE.2: export_all already enforced the budget
+        report.first_view_raw_bytes = first_view_bytes(report.file_sizes)
+        report.stages = [{k: v for k, v in r.items() if k != "delta"} for r in runner.records]
+        report.seconds = time.time() - t0
+        write_text_atomic(stage_proc / "run_report.json", canonical_json(report.to_json()))
         swaps.append(Swap(stage_proc, processed, owns_processed).apply())
-        swaps.append(Swap(stage_out, out, owns_output).apply())
+        swaps.append(out_swap.apply())
+        if runner.persistent:
+            mark_complete(runner.stages_dir, fp)
 
     def rollback() -> None:
         for swap in reversed(swaps):
@@ -516,21 +536,24 @@ def run_pipeline(
     if runner.persistent:
         raw_files = {f.name: f.stat().st_size for f in sorted((raw_dir or base / "raw").glob("*")) if f.is_file() and f.suffix != ".part"}
         snap_text = snapshot_file.read_text()
-        prepare(runner.stages_dir, processed / "undead311.duckdb.tmp", fingerprint(snap_text, json.dumps(asdict(p), sort_keys=True), raw_files), log)
+        fp = fingerprint(snap_text, json.dumps(asdict(p), sort_keys=True), raw_files)
+        db_tmp = processed / "undead311.duckdb.tmp"
+        if reuse_complete and is_complete(runner.stages_dir, fp, db_tmp, processed / "undead311.duckdb"):
+            try:
+                stored = RunReport(**json.loads((processed / "run_report.json").read_text()))
+            except (OSError, ValueError, TypeError):
+                stored = None
+            if stored is not None and stored.data_version == version:
+                log("this run already finished with the same inputs (complete.json); not rebuilding it")
+                shutil.rmtree(stage_out, ignore_errors=True)
+                shutil.rmtree(stage_proc, ignore_errors=True)
+                return stored
+        prepare(runner.stages_dir, db_tmp, fp, log)
     try:
         write_duckdb_atomic(processed / "undead311.duckdb", build, commit, rollback, keep_partial=runner.persistent)
     finally:
         shutil.rmtree(stage_out, ignore_errors=True)
         shutil.rmtree(stage_proc, ignore_errors=True)
-    files = swaps[1].paths
-    report.file_sizes = {f.relative_to(out).as_posix(): f.stat().st_size for f in sorted(set(files))}
-    sizes = getattr(ns, "sizes", {}) or {}
-    report.file_gzip_sizes = dict(sorted(sizes.get("gzip", {}).items()))
-    report.first_view_bytes = first_view_bytes(report.file_gzip_sizes)  # REQ-EXP-SIZE.2: export_all already enforced the budget
-    report.first_view_raw_bytes = first_view_bytes(report.file_sizes)
-    report.stages = [{k: v for k, v in r.items() if k != "delta"} for r in runner.records]
-    report.seconds = time.time() - t0
-    write_text_atomic(processed / "run_report.json", canonical_json(report.to_json()))
     return report
 
 

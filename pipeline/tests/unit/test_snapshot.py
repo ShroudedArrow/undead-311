@@ -255,7 +255,7 @@ def test_cli_without_status_or_data_end_stops_with_a_message(tmp_path):
 def test_make_snapshot_is_wired_to_the_script():
     """REQ-OPS-SNAP.1: `make snapshot` and `make snapshot-check` run the script (no longer a stub)."""
     mk = (REPO / "Makefile").read_text()
-    assert "pipeline/scripts/snapshot.py\n" in mk and "pipeline/scripts/snapshot.py --check" in mk
+    assert "pipeline/scripts/snapshot.py --run-id $(RUN_ID)\n" in mk and "pipeline/scripts/snapshot.py --check" in mk
     assert "snapshot:\n\t$(STUB)" not in mk
 
 

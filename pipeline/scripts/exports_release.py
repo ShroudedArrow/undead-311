@@ -12,10 +12,13 @@ manifest, unpacks it into `web/public/data/`, builds the site and deploys it to 
 
 * `pack` refuses an export whose `status.json` is missing, says `ok: false`, or carries a `DRY RUN ONLY` anomaly: a dry run is
   never published (full-1 was over its first-view budget on purpose and says so).
-* `publish` needs the GitHub CLI and a token in `DATA_RELEASE_TOKEN` (Contents: read and write on the data repo only). It is
-  passed to `gh` for these calls alone, as `GH_TOKEN`, so it cannot collide with another tool's `GH_TOKEN`; the script never
-  reads `GH_TOKEN` itself. `--dry-run` packs and prints the commands without touching GitHub or needing the token. Nothing
-  here prints the token or the environment. `latest` and `unpack` need no token for a public repo (the nightly job passes its own).
+* `publish` needs a token in `DATA_RELEASE_TOKEN` (Contents: read and write on the data repo only). It talks to the GitHub REST
+  API directly (no `gh`, so no GraphQL): look up or create the release, delete a same-named old asset, upload each asset to the
+  uploads endpoint, then download it again with the token and compare its SHA-256 with the local file. A mismatch (or a missing
+  or short asset) is an error and exit code 1; nothing is reported as published. The token is sent only to the API host; the
+  signed redirect to the storage host gets no Authorization header. The script never reads `GH_TOKEN`. `--dry-run` packs and
+  prints the calls without touching GitHub or needing the token. Nothing here prints the token or the environment. `latest`
+  and `unpack` still use `gh` and need no token for a public repo (the nightly job passes its own).
 * `unpack` checks the hash, rejects absolute paths, `..` and links, replaces only the files this pipeline owns
   (`owns_output`) and never touches `frozen/`. `status.json` goes in last.
 """
@@ -32,6 +35,9 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -170,11 +176,9 @@ def unpack(archive: Path, sha_file: Path, dest: Path) -> dict:
 TOKEN_VAR = "DATA_RELEASE_TOKEN"
 
 
-def gh(*args: str, check: bool = True, token: str | None = None) -> subprocess.CompletedProcess:
-    """Run `gh`. With `token`, it goes in as GH_TOKEN for this call only (REQ-OPS-PUBLISH.1); otherwise the caller's
-    environment is used as it is (the nightly job's own `github.token`)."""
-    env = {**os.environ, "GH_TOKEN": token} if token else None
-    return subprocess.run(["gh", *args], capture_output=True, text=True, check=check, timeout=600, env=env)
+def gh(*args: str, check: bool = True) -> subprocess.CompletedProcess:
+    """Run `gh` (used by `latest` only). The caller's environment is used as it is (the nightly job's own `github.token`)."""
+    return subprocess.run(["gh", *args], capture_output=True, text=True, check=check, timeout=600)
 
 
 def latest_tag(repo: str) -> str:
@@ -186,26 +190,140 @@ def latest_tag(repo: str) -> str:
     return max(tags, key=lambda r: r["createdAt"])["tagName"]
 
 
-def publish(run_id: str, exports: Path, repo: str, dry_run: bool, out: Path) -> list[list[str]]:
+API_URL = "https://api.github.com"
+UPLOADS_URL = "https://uploads.github.com"
+API_VERSION = "2022-11-28"
+LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+
+
+def check_endpoint(url: str) -> str:
+    """The token only goes to https, or to a loopback address (the mock server of the tests)."""
+    u = urllib.parse.urlsplit(url)
+    if u.scheme != "https" and not (u.scheme == "http" and u.hostname in LOCAL_HOSTS):
+        raise ExportsError(f"refusing to send the token to {url!r}: the endpoint must be https")
+    return url.rstrip("/")
+
+
+class _SameHostRedirect(urllib.request.HTTPRedirectHandler):
+    """Follow a redirect, but drop the Authorization header when it leaves the original host: the signed storage URL GitHub
+    redirects an asset download to rejects a request that also carries a bearer token, and the token must not travel there."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        new = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new is not None and urllib.parse.urlsplit(newurl).netloc != urllib.parse.urlsplit(req.full_url).netloc:
+            new.headers.pop("Authorization", None)
+            new.unredirected_hdrs.pop("Authorization", None)
+        return new
+
+
+class GitHubRest:
+    """The few REST calls `publish` needs. Every failure becomes an `ExportsError` without the token in its text."""
+
+    def __init__(self, token: str, repo: str, api_url: str = API_URL, uploads_url: str = UPLOADS_URL, timeout: float = 600):
+        self.token, self.repo, self.timeout = token, repo, timeout
+        self.api, self.uploads = check_endpoint(api_url), check_endpoint(uploads_url)
+        self.opener = urllib.request.build_opener(_SameHostRedirect)
+
+    def _request(self, method: str, url: str, *, body: bytes | None = None, content_type: str | None = None,
+                 accept: str = "application/vnd.github+json") -> urllib.request.Request:
+        headers = {"Authorization": f"Bearer {self.token}", "Accept": accept, "X-GitHub-Api-Version": API_VERSION,
+                   "User-Agent": "undead-311-exports-release"}  # fmt: skip
+        if content_type:
+            headers["Content-Type"] = content_type
+        return urllib.request.Request(url, data=body, method=method, headers=headers)
+
+    def call(self, method: str, url: str, payload: dict | None = None, *, raw: bytes | None = None,
+             content_type: str | None = None, ok_missing: bool = False) -> dict | list | None:
+        """One JSON call. A 404 returns None when `ok_missing`; any other failure raises."""
+        body = json.dumps(payload).encode() if payload is not None else raw
+        req = self._request(method, url, body=body, content_type=content_type or ("application/json" if payload is not None else None))
+        try:
+            with self.opener.open(req, timeout=self.timeout) as r:
+                data = r.read()
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404 and ok_missing:
+                return None
+            detail = exc.read(300).decode("utf-8", "replace") if exc.fp else ""
+            raise ExportsError(f"GitHub answered {exc.code} to {method} {urllib.parse.urlsplit(url).path}: {detail[:200]}") from None
+        except (urllib.error.URLError, OSError) as exc:
+            raise ExportsError(f"{method} {urllib.parse.urlsplit(url).path} failed: {type(exc).__name__}") from None
+        return json.loads(data) if data else None
+
+    def release(self, tag: str) -> dict:
+        """The release for `tag`; created (from the default branch) when it does not exist yet."""
+        rel = self.call("GET", f"{self.api}/repos/{self.repo}/releases/tags/{urllib.parse.quote(tag)}", ok_missing=True)
+        if rel is None:
+            rel = self.call("POST", f"{self.api}/repos/{self.repo}/releases", {
+                "tag_name": tag, "name": f"Exports {tag.removeprefix(PREFIX)}",
+                "body": f"Pipeline exports of run {tag.removeprefix(PREFIX)} (one tar.gz and its SHA-256). "
+                        "The nightly job downloads the newest one.",
+            })  # fmt: skip
+        if not isinstance(rel, dict) or "id" not in rel:
+            raise ExportsError("GitHub's release answer has no id")
+        return rel
+
+    def upload(self, release: dict, path: Path) -> dict:
+        """Upload `path` as an asset of `release`, replacing a same-named asset. Returns the new asset's JSON."""
+        for old in release.get("assets", []):
+            if old.get("name") == path.name:
+                self.call("DELETE", f"{self.api}/repos/{self.repo}/releases/assets/{old['id']}")
+        ctype = "application/gzip" if path.suffix == ".gz" else "text/plain"
+        url = f"{self.uploads}/repos/{self.repo}/releases/{release['id']}/assets?name={urllib.parse.quote(path.name)}"
+        asset = self.call("POST", url, raw=path.read_bytes(), content_type=ctype)
+        if not isinstance(asset, dict) or "id" not in asset:
+            raise ExportsError(f"the upload of {path.name} returned no asset id")
+        return asset
+
+    def download_sha256(self, asset_id: int) -> tuple[str, int]:
+        """SHA-256 and size of the asset as GitHub serves it back, fetched with the token (the repo may be private)."""
+        req = self._request("GET", f"{self.api}/repos/{self.repo}/releases/assets/{asset_id}", accept="application/octet-stream")
+        h, size = hashlib.sha256(), 0
+        try:
+            with self.opener.open(req, timeout=self.timeout) as r:
+                for chunk in iter(lambda: r.read(1 << 20), b""):
+                    h.update(chunk)
+                    size += len(chunk)
+        except urllib.error.HTTPError as exc:
+            raise ExportsError(f"GitHub answered {exc.code} to the verification download of asset {asset_id}") from None
+        except (urllib.error.URLError, OSError) as exc:
+            raise ExportsError(f"the verification download of asset {asset_id} failed: {type(exc).__name__}") from None
+        return h.hexdigest(), size
+
+
+def verify_asset(gh_rest: GitHubRest, asset: dict, path: Path) -> None:
+    """Download the uploaded asset again and compare it with the local file (REQ-OPS-PUBLISH.1). Raises on any difference."""
+    want, want_size = sha256_file(path), path.stat().st_size
+    got, got_size = gh_rest.download_sha256(asset["id"])
+    if got != want or got_size != want_size:
+        raise ExportsError(
+            f"UPLOAD VERIFICATION FAILED for {path.name} (asset {asset['id']}): local sha256 {want[:12]} ({want_size} bytes), "
+            f"downloaded sha256 {got[:12]} ({got_size} bytes). The release is NOT usable; run publish again."
+        )
+
+
+def publish(run_id: str, exports: Path, repo: str, dry_run: bool, out: Path,
+            api_url: str = API_URL, uploads_url: str = UPLOADS_URL) -> list[str]:
     archive, digest = pack(run_id, exports, out)
     tag = f"{PREFIX}{run_id}"
-    cmds = [
-        ["gh", "release", "view", tag, "--repo", repo],
-        ["gh", "release", "create", tag, "--repo", repo, "--title", f"Exports {run_id}",
-         "--notes", f"Pipeline exports of run {run_id} (one tar.gz and its SHA-256). The nightly job downloads the newest one."],
-        ["gh", "release", "upload", tag, str(archive), str(digest), "--repo", repo, "--clobber"],
+    calls = [
+        f"GET {api_url}/repos/{repo}/releases/tags/{tag}  (POST {api_url}/repos/{repo}/releases when it does not exist)",
+        *[f"POST {uploads_url}/repos/{repo}/releases/<id>/assets?name={p.name}  (a same-named asset is deleted first)" for p in (archive, digest)],
+        *[f"GET {api_url}/repos/{repo}/releases/assets/<id>  (verify the SHA-256 of {p.name})" for p in (archive, digest)],
     ]  # fmt: skip
     if dry_run:
-        for c in cmds:
-            print("would run:", " ".join(c))
-        return cmds
+        for c in calls:
+            print("would call:", c)
+        return calls
     token = os.environ.get(TOKEN_VAR, "").strip()
     if not token:
         raise ExportsError(f"{TOKEN_VAR} is not set; publishing needs a token with Contents: read and write on {repo} (docs/DEPLOY.md)")
-    if gh(*cmds[0][1:], check=False, token=token).returncode != 0:
-        gh(*cmds[1][1:], token=token)
-    gh(*cmds[2][1:], token=token)
-    return cmds
+    gh_rest = GitHubRest(token, repo, api_url, uploads_url)
+    release = gh_rest.release(tag)
+    uploaded = [(gh_rest.upload(release, p), p) for p in (archive, digest)]
+    for asset, p in uploaded:
+        verify_asset(gh_rest, asset, p)
+        print(f"published and verified {p.name} ({sha256_file(p)[:12]}) in release {tag}")
+    return calls
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -219,6 +337,8 @@ def main(argv: list[str] | None = None) -> int:
         if name == "publish":
             p.add_argument("--repo", default=DATA_REPO)
             p.add_argument("--dry-run", action="store_true")
+            p.add_argument("--api-url", default=API_URL, help=argparse.SUPPRESS)
+            p.add_argument("--uploads-url", default=UPLOADS_URL, help=argparse.SUPPRESS)
     p = sub.add_parser("latest")
     p.add_argument("--repo", default=DATA_REPO)
     p = sub.add_parser("unpack")
@@ -243,7 +363,7 @@ def main(argv: list[str] | None = None) -> int:
             archive, digest = pack(a.run_id, exports, out)
             print(f"wrote {archive} and {digest}")
             return 0
-        publish(a.run_id, exports, a.repo, a.dry_run, out)
+        publish(a.run_id, exports, a.repo, a.dry_run, out, a.api_url, a.uploads_url)
         return 0
     except ExportsError as exc:
         print(f"exports_release: {exc}", file=sys.stderr)

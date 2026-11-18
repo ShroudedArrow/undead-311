@@ -313,14 +313,6 @@ def test_req_ops_publish_2_unpack_refuses_a_bad_hash_unsafe_paths_and_files_it_d
     assert not (tmp_path / "escape.json").exists()
 
 
-def test_req_ops_publish_1_publish_dry_run_prints_the_gh_commands_and_touches_nothing(tmp_path, capsys):
-    src = make_export(tmp_path / "e")
-    cmds = er.publish("r9", src, "ShroudedArrow/undead-311-data", True, tmp_path / "rel")
-    out = capsys.readouterr().out
-    assert "gh release create exports-r9" in out and "--repo ShroudedArrow/undead-311-data" in out and len(cmds) == 3
-    assert all("token" not in " ".join(c).lower() for c in cmds)
-
-
 def test_req_exp_1_3_the_shard_index_is_deterministic():
     """The index lists neighborhoods, years and counts only, so a rerun is byte-identical."""
     result, cases, ctx = town_inputs()
@@ -342,27 +334,6 @@ def test_req_ing_dept_3_a_test_department_case_is_excluded_and_counted():
     report = clean(con)
     assert report.counts["test_data"] == 1 and ids_by_reason(con)["test_data"] == ["t"]
     assert [r[0] for r in con.execute("select id from cases_clean").fetchall()] == ["a"]
-
-
-def test_req_ops_publish_1_the_token_comes_from_data_release_token_never_gh_token(tmp_path, monkeypatch):
-    """Owner decision 2026-11-16: DATA_RELEASE_TOKEN is read and handed to gh as GH_TOKEN for these calls only."""
-    src = make_export(tmp_path / "e")
-    seen: list[dict] = []
-
-    def fake_run(cmd, **kw):
-        seen.append({"cmd": cmd, "env": kw.get("env")})
-        return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
-
-    monkeypatch.setattr(er.subprocess, "run", fake_run)
-    monkeypatch.setenv("GH_TOKEN", "other-tool-token")
-    monkeypatch.delenv("DATA_RELEASE_TOKEN", raising=False)
-    with pytest.raises(er.ExportsError, match="DATA_RELEASE_TOKEN is not set"):
-        er.publish("r1", src, "ShroudedArrow/undead-311-data", False, tmp_path / "rel")  # GH_TOKEN alone is not enough
-    assert not seen
-    monkeypatch.setenv("DATA_RELEASE_TOKEN", "release-token")
-    er.publish("r1", src, "ShroudedArrow/undead-311-data", False, tmp_path / "rel2")
-    assert seen and all(c["env"]["GH_TOKEN"] == "release-token" for c in seen)
-    assert "release-token" not in " ".join(" ".join(c["cmd"]) for c in seen)  # never on a command line
 
 
 # ---- REQ-STAT-AREA: each original's p comes from its own match area (methods.md, 2026-11-16) -------------------------------

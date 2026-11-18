@@ -16,6 +16,14 @@ and the card shards from fresh data, so the files judge mode reads would drift f
 it owns: cards/ and stats/), `collect` leaves the folder out of the table, and `check_frozen` re-verifies the copies in the
 built site (`web/dist/data/frozen/`) against the table before the deploy. A failed night then keeps the last good deploy,
 whose `frozen/` folder is still the snapshot's. The web app reads judge mode from `frozen/` (handoff to:web, ops#161).
+
+Re-checking a tag from a plain checkout (REQ-OPS-SNAP.3). The full exports are about 130 MB and the raw files are not in git,
+so a tag carries two things: the judging table in `data/SNAPSHOT.md` (a hash for every file the run produced: the manifest) and
+the judge-mode files themselves in `data/judging/` (the tour, the points file and the card shards of the three tour zombies,
+under the same relative paths as in `web/public/data/`). `make snapshot-verify` needs no data: it recomputes the combined hash
+from the table, and checks every committed judge-mode file against its row. `make snapshot RUN_ID=<run>` reads the run's own
+export folder (`$DATA_DIR/exports/<run>`), so nothing is ever copied into `web/public/data/`; the nightly job freezes judge mode
+from `data/judging/` (the tag), not from the web folder.
 """
 
 from __future__ import annotations
@@ -37,6 +45,8 @@ DUCKDB_FILE = "undead311.duckdb"
 COUNTS_LABEL = f"processed/{DUCKDB_FILE}#table-row-counts"  # a hashed text of `table<TAB>rows` lines (REQ-OPS-SNAP.1)
 RAW_PREFIX = "raw/"
 FROZEN_DIR = "frozen"                      # under web/public/data; judge mode's copy of the snapshot (REQ-OPS-SNAP.2)
+JUDGING_DIR = "judging"                    # next to data/SNAPSHOT.md: the committed judge-mode files (REQ-OPS-SNAP.3)
+VALIDATION = "stats/validation.json"
 JUDGE_TOUR = "stats/judge_tour.json"
 POINTS = "points.json"
 PUBLIC_PREFIX = "web/public/data/"
@@ -106,19 +116,38 @@ def combined_hash(rows: list[tuple[str, int, str]]) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-def default_tag(data_end: str) -> str:
-    return f"judged-{data_end}"
+def default_tag(data_end: str, stage: str | None = None) -> str:
+    """`judged-<data end>`; the final tag (field labels scored) is `judged-<data end>-final`."""
+    return f"judged-{data_end}-final" if stage == "final" else f"judged-{data_end}"
+
+
+def recorded_tag_and_stage(snapshot_text: str) -> tuple[str | None, str | None]:
+    """The tag name and the stage ('provisional' or 'final') the judging section recorded, or None for each that is absent."""
+    section = extract_section(snapshot_text) or ""
+    tag = re.search(r"Git tag: `([^`]+)`", section)
+    stage = next((k for k, v in STAGES.items() if f"Stage: {v}." in section), None)
+    return (tag.group(1) if tag else None), stage
+
+
+STAGES = {
+    "provisional": "provisional (field labels not scored yet; the judge tour is the provisional ranking)",
+    "final": "final (field labels scored; the judge tour uses only confirmed zombies)",
+}
 
 
 def render_section(
-    rows: list[tuple[str, int, str]], data_end: str, tag: str, counts: dict[str, int] | None = None
+    rows: list[tuple[str, int, str]], data_end: str, tag: str, counts: dict[str, int] | None = None,
+    run_id: str | None = None, data_version: str | None = None, stage: str | None = None,
 ) -> str:
-    """The judging section, markers included. `counts` (DuckDB table row counts) is listed under the file table."""
+    """The judging section, markers included. `counts` (DuckDB table row counts) is listed under the file table.
+    `run_id`, `data_version` and `stage` (REQ-OPS-SNAP.3) name the run the files came from and whether the judge tour is final."""
     lines = [
         BEGIN,
         "## Judging snapshot",
         "",
         f"Data through: {data_end}. The site, the video and the README numbers use these files.",
+        *([f"Run: `{run_id}`" + (f", data version `{data_version}`" if data_version else "") + "."] if run_id else []),
+        *([f"Stage: {STAGES[stage]}."] if stage else []),
         f"Git tag: `{tag}` (created by the owner, see below). Files hashed: {len(rows)}. Combined sha256: `{combined_hash(rows)}`.",
         "",
         "| file | bytes | sha256 |",
@@ -134,9 +163,9 @@ def render_section(
         "",
         "Owner steps after `make snapshot` (the script never tags or pushes):",
         "",
-        f"1. Commit `data/SNAPSHOT.md` and the files under `web/public/data/`, then run `git tag -a {tag} -m \"Judging snapshot, data through {data_end}\"` and `git push origin {tag}`.",
+        f"1. Commit `data/SNAPSHOT.md` and `data/judging/` (the judge-mode files; every other file is a row in the table above, not in git), then run `git tag -a {tag} -m \"Judging snapshot, data through {data_end}\"` and `git push origin {tag}`. Never commit the run's exports into `web/public/data/`.",
         f"2. In `ShroudedArrow/undead-311-data`, set the variable `JUDGED_TAG` to `{tag}` (see `ops/undead-311-data/README.md`).",
-        "3. To check a checkout against this table later, run `make snapshot-check`.",
+        "3. To check a tag from a plain checkout (no data needed), run `make snapshot-verify`. With the run's data, `make snapshot-check RUN_ID=<run>` rehashes every file.",
         END,
     ]
     return "\n".join(lines) + "\n"
@@ -181,8 +210,42 @@ def status_data_end(public_dir: Path) -> str | None:
     return end if isinstance(end, str) and end else None
 
 
+def status_field(public_dir: Path, key: str) -> str | None:
+    """A string field of `public_dir/status.json`, or None."""
+    try:
+        value = json.loads((public_dir / "status.json").read_text()).get(key)
+    except (OSError, ValueError, AttributeError):
+        return None
+    return value if isinstance(value, str) and value else None
+
+
+def check_run(public_dir: Path, processed_dir: Path | None, run_id: str) -> None:
+    """Refuse an export folder that is not a finished full run, or a processed folder that belongs to another run
+    (REQ-OPS-SNAP.3). Exits (SystemExit) with the reason."""
+    try:
+        status = json.loads((public_dir / "status.json").read_text())
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"snapshot: {public_dir}/status.json is missing or damaged; is {run_id!r} a run with exports? ({exc})") from exc
+    if status.get("ok") is not True:
+        raise SystemExit(f"snapshot: run {run_id} has status ok: false; not snapshotting a failed run")
+    if status.get("dataset") != "full":
+        raise SystemExit(f"snapshot: run {run_id} is dataset {status.get('dataset')!r}, not 'full'")
+    dry = [a for a in status.get("anomalies", []) if str(a).startswith("DRY RUN ONLY")]
+    if dry:
+        raise SystemExit(f"snapshot: run {run_id} carries a DRY RUN ONLY anomaly; a dry run is never a judging snapshot")
+    if processed_dir is not None and (processed_dir / "run_report.json").is_file():
+        try:
+            theirs = json.loads((processed_dir / "run_report.json").read_text()).get("data_version")
+        except ValueError:
+            theirs = None
+        if theirs != status.get("data_version"):
+            raise SystemExit(f"snapshot: {processed_dir}/run_report.json is for data version {theirs}, but run {run_id} is "
+                             f"{status.get('data_version')}; the processed folder belongs to another run")
+
+
 def build(
-    public_dir: Path, processed_dir: Path | None, data_end: str | None, tag: str | None, raw_dir: Path | None = None
+    public_dir: Path, processed_dir: Path | None, data_end: str | None, tag: str | None, raw_dir: Path | None = None,
+    *, run_id: str | None = None, stage: str | None = None,
 ) -> str:
     """The judging section. REQ-OPS-SNAP.1: `--data-end` that disagrees with status.json is refused (ops#160), because
     the section would name a "Data through" date the hashed files do not run through."""
@@ -192,7 +255,8 @@ def build(
                          "rerun without --data-end, or rebuild the data")
     end = data_end or data_end_of(public_dir)
     counts = table_row_counts(processed_dir / DUCKDB_FILE) if processed_dir is not None else {}
-    return render_section(collect(public_dir, processed_dir, raw_dir), end, tag or default_tag(end), counts)
+    version = status_field(public_dir, "data_version") if run_id else None
+    return render_section(collect(public_dir, processed_dir, raw_dir), end, tag or default_tag(end, stage), counts, run_id, version, stage)
 
 
 # ---- judge mode on the frozen snapshot (REQ-OPS-SNAP.2) -------------------------------------------------------------
@@ -227,17 +291,19 @@ def section_hashes(snapshot_text: str) -> dict[str, str]:
     return out
 
 
-def freeze_judge(public_dir: Path, snapshot_text: str) -> list[str]:
+def freeze_judge(public_dir: Path, snapshot_text: str, source_dir: Path | None = None) -> list[str]:
     """Copy the judge-mode files into `public_dir/frozen/`, each one only if its sha256 equals the judging table.
 
-    Exits (SystemExit) when the section is missing or a file is absent or differs: freezing files the table does not
-    describe would freeze the wrong thing. Returns the copied relative paths."""
+    `source_dir` (the tag's `data/judging/`, REQ-OPS-SNAP.3) is where the files come from when it holds any; otherwise they
+    come from `public_dir` itself. Exits (SystemExit) when the section is missing or a file is absent or differs: freezing
+    files the table does not describe would freeze the wrong thing. Returns the copied relative paths."""
     table = section_hashes(snapshot_text)
     if not table:
         raise SystemExit("snapshot: data/SNAPSHOT.md has no judging section; run `make snapshot` on the frozen data first")
+    source = source_dir if source_dir is not None and has_files(source_dir) else public_dir
     copied = []
-    for rel in judge_files(public_dir):
-        src = public_dir / rel
+    for rel in judge_files(source):
+        src = source / rel
         want = table.get(PUBLIC_PREFIX + rel)
         if want is None or not src.is_file() or sha256_file(src) != want:
             raise SystemExit(f"snapshot: {rel} does not match the judging section of data/SNAPSHOT.md (tag and table disagree)")
@@ -267,3 +333,86 @@ def check_frozen(public_dir: Path, snapshot_text: str) -> list[str]:
         elif sha256_file(p) != want:
             problems.append(f"{rel} differs from the judging section")
     return problems
+
+
+# ---- the tag carries the judge-mode files, re-checkable from a plain checkout (REQ-OPS-SNAP.3) -----------------------------
+
+def has_files(folder: Path) -> bool:
+    return folder.is_dir() and any(p.is_file() for p in folder.rglob("*"))
+
+
+def commit_judging(public_dir: Path, judging_dir: Path, snapshot_text: str) -> list[str]:
+    """Replace `judging_dir` with the judge-mode files of `public_dir`, each only if its sha256 equals the judging table
+    in `snapshot_text`. Only files inside `judging_dir` are removed. Returns the copied relative paths."""
+    table = section_hashes(snapshot_text)
+    files = judge_files(public_dir)
+    for rel in files:
+        src = public_dir / rel
+        if table.get(PUBLIC_PREFIX + rel) != (sha256_file(src) if src.is_file() else None):
+            raise SystemExit(f"snapshot: {rel} does not match the judging section; not copying it into {judging_dir}")
+    if judging_dir.is_dir():
+        for p in sorted(judging_dir.rglob("*"), reverse=True):
+            if p.is_file():
+                p.unlink()
+            elif p.is_dir() and not any(p.iterdir()):
+                p.rmdir()
+    for rel in files:
+        dest = judging_dir / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(public_dir / rel, dest)
+    return files
+
+
+def section_rows(snapshot_text: str) -> list[tuple[str, int, str]]:
+    """(label, bytes, sha256) of every row of the judging table, in table order; empty without a section."""
+    rows = []
+    for line in (extract_section(snapshot_text) or "").splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) == 3 and cells[1].isdigit() and re.fullmatch(r"[0-9a-f]{64}", cells[2]):
+            rows.append((cells[0], int(cells[1]), cells[2]))
+    return rows
+
+
+def check_committed(snapshot_text: str, judging_dir: Path) -> list[str]:
+    """Problems with a tag, found from a plain checkout (empty list: the tag is consistent). No raw, processed or export
+    file is needed: the combined hash must follow from the table, and the committed judge-mode files must be exactly the
+    ones judge mode reads (tour, points, the tour zombies' shards) and equal their table rows."""
+    section = extract_section(snapshot_text)
+    if section is None:
+        return ["data/SNAPSHOT.md has no judging section"]
+    rows = section_rows(snapshot_text)
+    problems = []
+    m = re.search(r"Files hashed: (\d+)\. Combined sha256: `([0-9a-f]{64})`", section)
+    if m is None:
+        problems.append("the judging section has no 'Files hashed ... Combined sha256' line")
+    else:
+        if int(m.group(1)) != len(rows):
+            problems.append(f"the section says {m.group(1)} files but its table has {len(rows)} rows")
+        if combined_hash(rows) != m.group(2):
+            problems.append("the combined sha256 does not follow from the table rows (the table was edited by hand?)")
+    if not has_files(judging_dir):
+        return problems + [f"{judging_dir} is missing or empty: the tag does not carry the judge-mode files"]
+    table = {label: digest for label, _, digest in rows}
+    try:
+        expected = judge_files(judging_dir)
+    except (OSError, ValueError, KeyError) as exc:
+        return problems + [f"the judge-mode files in {judging_dir} cannot be read ({type(exc).__name__})"]
+    present = sorted(p.relative_to(judging_dir).as_posix() for p in judging_dir.rglob("*") if p.is_file())
+    if present != expected:
+        problems.append(f"{judging_dir} holds {present}, but judge mode reads {expected}")
+    for rel in present:
+        want = table.get(PUBLIC_PREFIX + rel)
+        if want is None:
+            problems.append(f"{rel} has no row in the judging section")
+        elif sha256_file(judging_dir / rel) != want:
+            problems.append(f"{rel} differs from its row in the judging section")
+    return problems
+
+
+def row_changes(old: list[tuple[str, int, str]], new: list[tuple[str, int, str]]) -> dict[str, str]:
+    """Labels whose row differs between two tables: 'changed', 'added' or 'removed'."""
+    a, b = {r[0]: r for r in old}, {r[0]: r for r in new}
+    out = {k: "changed" for k in a.keys() & b.keys() if a[k] != b[k]}
+    out.update({k: "added" for k in b.keys() - a.keys()})
+    out.update({k: "removed" for k in a.keys() - b.keys()})
+    return dict(sorted(out.items()))

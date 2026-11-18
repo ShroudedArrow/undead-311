@@ -8,9 +8,10 @@ UV_CACHE_DIR := $(shell d="$$UV_CACHE_DIR"; if [ -n "$$d" ] && [ -d "$$d" ] && [
 export DATA_DIR
 export UV_CACHE_DIR
 UV ?= uv
+RUN_ID ?=
 STUB = @echo "[stub] $@: not implemented yet"
 
-.PHONY: web-deps cloud-sync-check pipeline-sample validation-sample typecheck schema-check test-town setup data-download data-sample pipeline test test-fast web build e2e copy-lint validate coroner-eval snapshot snapshot-check channel-export trace kiro-stats capture lint
+.PHONY: snapshot-verify judging-final web-deps cloud-sync-check pipeline-sample validation-sample typecheck schema-check test-town setup data-download data-sample pipeline test test-fast web build e2e copy-lint validate coroner-eval snapshot snapshot-check channel-export trace kiro-stats capture lint
 
 setup:
 	$(UV) sync
@@ -87,14 +88,26 @@ validate:
 coroner-eval:
 	PYTHONPATH=pipeline $(UV) run python -m undead311 coroner-eval
 
-# REQ-OPS-SNAP.1: hashes the served data and the processed Parquet into the judging section of data/SNAPSHOT.md.
-# The owner tags the release afterwards (the script prints the commands and never tags or pushes).
+# REQ-OPS-SNAP.1, REQ-OPS-SNAP.3: hashes a run's exports ($(DATA_DIR)/exports/<RUN_ID>, never web/public/data), its raw files and
+# processed database into the judging section of data/SNAPSHOT.md (stage provisional) and copies the judge-mode files into
+# data/judging/. The owner commits both and tags afterwards (the script prints the commands and never tags or pushes).
 snapshot:
-	PYTHONPATH=pipeline $(UV) run python pipeline/scripts/snapshot.py
+	@test -n "$(RUN_ID)" || { echo "usage: make snapshot RUN_ID=<run id of the full run to freeze>" >&2; exit 2; }
+	PYTHONPATH=pipeline $(UV) run python pipeline/scripts/snapshot.py --run-id $(RUN_ID)
 
-# Exits 1 when the files no longer match the committed judging section.
+# Exits 1 when the run's files no longer match the committed judging section (RUN_ID optional: without it web/public/data is used).
 snapshot-check:
-	PYTHONPATH=pipeline $(UV) run python pipeline/scripts/snapshot.py --check
+	PYTHONPATH=pipeline $(UV) run python pipeline/scripts/snapshot.py --check $(if $(RUN_ID),--run-id $(RUN_ID))
+
+# REQ-OPS-SNAP.3: re-checks a tag from a plain checkout, no data needed: the table's combined hash, and data/judging/ against its rows.
+snapshot-verify:
+	PYTHONPATH=pipeline $(UV) run python pipeline/scripts/snapshot.py --verify
+
+# REQ-OPS-SNAP.4: after data/labels/validation_labels.csv exists, regenerates ONLY stats/validation.json, stats/judge_tour.json and
+# data/judging/ for the final tag, and amends the judging section (stage final). Refuses while labels are missing.
+judging-final:
+	@test -n "$(RUN_ID)" || { echo "usage: make judging-final RUN_ID=<the run that make snapshot froze>" >&2; exit 2; }
+	PYTHONPATH=pipeline $(UV) run python pipeline/scripts/judging_final.py --run-id $(RUN_ID)
 
 # REQ-OPS-EVID.1: needs a read-only token in GITHUB_CHANNEL_READ_TOKEN at run time; it is never written to the output.
 channel-export:

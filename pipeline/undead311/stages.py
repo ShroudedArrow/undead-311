@@ -36,6 +36,7 @@ import duckdb
 MARKER_TABLE = "_stage_done"
 META_TABLE = "_run_meta"
 FINGERPRINT_FILE = "fingerprint.txt"
+COMPLETE_FILE = "complete.json"  # written when the whole run is swapped in, just before the database rename (REQ-OPS-RUN.8)
 
 
 def rss_mb() -> float:
@@ -100,10 +101,28 @@ def prepare(stages_dir: Path, db_tmp: Path, fp: str, log: Callable[[str], None] 
     if db_tmp.exists() or wal.exists() or any(stages_dir.glob("*.done.json")):
         why = "inputs changed" if fp_file.is_file() and not same else "no usable partial database"
         log(f"fresh start ({why}): discarding the partial build and its markers")
-    for p in (db_tmp, wal, *stages_dir.glob("*.done.json")):
+    for p in (db_tmp, wal, *stages_dir.glob("*.done.json"), stages_dir / COMPLETE_FILE):
         p.unlink(missing_ok=True)
     fp_file.write_text(fp + "\n")
     return False
+
+
+def mark_complete(stages_dir: Path, fp: str) -> None:
+    """Record that every stage finished and the outputs are swapped in (REQ-OPS-RUN.8). Written before the database
+    rename: a process that dies right after the rename leaves this file and no partial database."""
+    tmp = Path(stages_dir) / (COMPLETE_FILE + ".tmp")
+    tmp.write_text(json.dumps({"fingerprint": fp}) + "\n")
+    tmp.replace(Path(stages_dir) / COMPLETE_FILE)
+
+
+def is_complete(stages_dir: Path, fp: str, db_tmp: Path, final: Path) -> bool:
+    """True when a run with these inputs already finished: the marker names this fingerprint, the finished database is in
+    place and no partial one is left. `prepare` would call that state "no usable partial database" and rebuild everything."""
+    try:
+        doc = json.loads((Path(stages_dir) / COMPLETE_FILE).read_text())
+    except (OSError, ValueError):
+        return False
+    return isinstance(doc, dict) and doc.get("fingerprint") == fp and Path(final).is_file() and not Path(db_tmp).exists()
 
 
 class StageRunner:

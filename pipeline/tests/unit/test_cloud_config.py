@@ -252,3 +252,32 @@ def test_stop_file_check_catches_a_loop_without_a_writer(tmp_path):
     }]}))
     with pytest.raises(AssertionError, match="0 steps inside the loop"):
         test_every_repeat_stop_file_is_written_by_its_own_review_step(bad)
+
+
+# ---- fulldata.workflow.yaml (REQ-OPS-RUN.6-8, REQ-OPS-SNAP.3) ---------------------------------------------------------------
+
+FULLDATA = REPO / ".kiro" / "workflows" / "fulldata.workflow.yaml"
+
+
+def test_req_ops_run_7_the_fulldata_stop_path_is_absolute_literal_and_the_leg_names_the_same_file():
+    """The engine compares the stopCondition path literally: absolute, no environment variable, no `~`, and the leg step
+    passes the very same string as `--done-file`."""
+    (loop,) = repeats_of(FULLDATA)
+    stop = loop["stopCondition"]["fileCheck"]["path"]
+    assert stop.startswith(ABS_REPO + "/.kiro/workflow-runs/") and not re.search(r"[$~`]|\.\./", stop)
+    assert stop.count("{{run_id}}") == 2 and stop.endswith("/{{run_id}}.done.json")
+    leg = next(s for s in walk(loop["steps"]) if s.get("type") == "step")
+    assert f"--done-file {stop}" in leg["prompt"] and f"--snapshot-md {ABS_REPO}/.kiro/workflow-runs/{{{{run_id}}}}/SNAPSHOT.md" in leg["prompt"]
+    # no step outside the loop names the done file by a relative path (the engine would not see it as the stop file)
+    for s in steps_of(FULLDATA):
+        if s["id"] != leg["id"]:
+            for m in re.finditer(r"(\S*\{\{run_id\}\}\.done\.json)", s["prompt"]):
+                assert m.group(1).startswith(ABS_REPO), (s["id"], m.group(1))
+
+
+def test_req_ops_snap_3_the_fulldata_download_step_updates_the_table_instead_of_restoring_it():
+    """`git checkout data/SNAPSHOT.md` after the download put the old Downloaded table back (rehearsal-1)."""
+    download = " ".join(next(s for s in steps_of(FULLDATA) if s["id"] == "download")["prompt"].split())
+    assert download.count("git checkout data/SNAPSHOT.md") == 1 and "do NOT run `git checkout data/SNAPSHOT.md`" in download
+    assert "Copy it to .kiro/workflow-runs/{{run_id}}/SNAPSHOT.md" in download and "committed by the owner" in download
+    assert "git checkout" not in "".join(s["prompt"] for s in steps_of(FULLDATA) if s["id"] != "download")
