@@ -2,7 +2,7 @@ import fc from "fast-check";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { gapWords, neighborhoodImagePath, neighborhoodShareHtml, neighborhoodSummaries, shareSlug, stubHtml, zombieImagePath, zombieShareHtml, type GapText, type ShareText } from "./share";
+import { districtImagePath, districtShareHtml, gapWords, neighborhoodImagePath, neighborhoodShareHtml, neighborhoodSummaries, progressLine, selectShareTargets, shareSlug, siteOgTags, siteShareHtml, SITE_IMAGE_PATH, stubHtml, zombieImagePath, zombieShareHtml, type GapText, type ShareText, type ShareZombie } from "./share";
 import { formatGap } from "./format";
 import { DEFAULT_STREET_STATE, decodeStreetState, encodeStreetState, STREET_RADII_M, type StreetState } from "./url";
 import en from "../copy/en.json";
@@ -71,5 +71,53 @@ describe("share file names and templates (REQ-WEB-LINKS.2)", () => {
     const src = readFileSync(join(__dirname, "..", "..", "scripts", "make-share-images.ts"), "utf8");
     for (const k of ["zombie_where", "zombie_line", "neighborhood_line", "unknown_neighborhood"]) expect(Object.keys(en.share)).toContain(k);
     expect(src).toContain("zombieShareHtml");
+  });
+});
+
+
+describe("share targets: only real share pages get an image (REQ-WEB-LINKS.2, nightly deploy)", () => {
+  const text: ShareText = { ...en.share, stamp_closed: en.card.stamp_closed, stamp_again: en.card.stamp_again };
+  const z = (id: string, neighborhood: string | null, tier = "headline"): ShareZombie => ({ zombie_id: id, tier, type_family: "sign", neighborhood, gap_days: 3 });
+  it("draws the tour zombies in tour order and no other zombie, and lists a tour id no shard holds", () => {
+    const all = [z("a:1", "A"), z("b:2", "B"), z("c:3", "B"), z("d:4", "C")];
+    const out = selectShareTargets(all, ["c:3", "a:1", "gone:9"], (f) => f);
+    expect(out.tour.map((t) => t.zombie_id)).toEqual(["c:3", "a:1"]);
+    expect(out.missingTour).toEqual(["gone:9"]);
+  });
+  it("neighborhood images come from headline zombies only; the number of images does not grow with the number of zombies", () => {
+    const many = Array.from({ length: 5000 }, (_, i) => z(`x:${i}`, `N${i % 25}`));
+    const out = selectShareTargets([...many, z("o:1", "Other", "city_rereport")], ["x:1", "x:2", "x:3"], (f) => f);
+    expect(out.tour).toHaveLength(3);
+    expect(out.neighborhoods).toHaveLength(25);
+    expect(out.neighborhoods.map((n) => n.neighborhood)).not.toContain("Other");
+  });
+  it("property: images = tour found + neighborhoods, whatever the zombies", () => {
+    fc.assert(fc.property(fc.array(fc.record({ id: fc.string({ minLength: 1, maxLength: 6 }), n: fc.constantFrom("A", "B", null), tier: fc.constantFrom("headline", "city_rereport") }), { maxLength: 40 }), fc.array(fc.string({ maxLength: 6 }), { maxLength: 5 }), (rows, ids) => {
+      const zs = rows.map((r) => z(r.id, r.n, r.tier));
+      const out = selectShareTargets(zs, ids, (f) => f);
+      return out.tour.length + out.missingTour.length === ids.length && out.neighborhoods.length <= 2;
+    }));
+  });
+  it("the district and home images carry the count and the floor note, escape markup, and have their own paths", () => {
+    const d = districtShareHtml({ district: "<02>", count: 1239 }, text);
+    expect(d).toContain("council district");
+    expect(d).toContain("&lt;02&gt;");
+    expect(d).toContain("1239 Boston 311 cases");
+    const home = siteShareHtml({ heroLine: en.app.hero_line, count: 19066 }, text);
+    expect(home).toContain("19,066 possible zombies");
+    expect(home).toContain("is a floor");
+    expect(home).toContain("Not affiliated with the City of Boston");
+    expect(districtImagePath("02")).toBe("share/district/02.png");
+    expect(SITE_IMAGE_PATH).toBe("share/site.png");
+  });
+  it("the app shell tags name the generic site image at its size", () => {
+    const tags = siteOgTags("https://x.test/share/site.png", "T", "D");
+    expect(tags).toContain('og:image" content="https://x.test/share/site.png"');
+    expect(tags).toContain('og:image:width" content="1200"');
+    expect(tags).toContain("summary_large_image");
+  });
+  it("progress lines count up and never divide by zero", () => {
+    expect(progressLine(12, 60, 8400)).toBe("make-share-images: 12/60 images (20%), 8.4 s");
+    expect(progressLine(0, 0, 0)).toBe("make-share-images: 0/0 images (100%), 0.0 s");
   });
 });

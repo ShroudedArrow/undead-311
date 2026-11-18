@@ -20,11 +20,19 @@ export function shareSlug(s: string | null | undefined): string {
 export const zombieImagePath = (zombieId: string): string => `share/zombie/${shareSlug(zombieId)}.png`;
 /** Path of a neighborhood's share image under the site root. */
 export const neighborhoodImagePath = (name: string | null | undefined): string => `share/neighborhood/${shareSlug(name)}.png`;
+/** Path of a council district's share image under the site root. */
+export const districtImagePath = (district: string): string => `share/district/${shareSlug(district)}.png`;
+/** Path of the home page's image, which is also the generic site image every other page falls back to. */
+export const SITE_IMAGE_PATH = "share/site.png";
 
 export const esc = (s: string): string => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 export const fill = (template: string, params: Record<string, string | number>): string => template.replace(/\{(\w+)\}/g, (m, k: string) => (k in params ? String(params[k]) : m));
 
 export interface ShareText {
+  district_kicker: string;
+  district_line: string;
+  home_kicker: string;
+  home_line: string;
   zombie_kicker: string;
   zombie_line: string;
   zombie_where: string;
@@ -110,6 +118,36 @@ export function neighborhoodShareHtml(d: NeighborhoodShare, text: ShareText, fon
   );
 }
 
+export interface DistrictShare {
+  district: string;
+  count: number;
+}
+
+/** The page for one council district: the headline count. */
+export function districtShareHtml(d: DistrictShare, text: ShareText, fonts = ""): string {
+  return page(
+    fonts,
+    `<div><p class="kicker">${sprayImg()}${esc(text.district_kicker)}</p><h1>${esc(d.district)}</h1><p class="line">${esc(fill(text.district_line, { count: d.count }))}</p></div>` +
+      `<p class="foot">${esc(text.footer)}</p>`,
+  );
+}
+
+/** The home page's image, also the generic site image: the app's own line and the citywide headline count. */
+export function siteShareHtml(d: { heroLine: string; count: number }, text: ShareText, fonts = ""): string {
+  return page(
+    fonts,
+    `<div><p class="kicker">${sprayImg()}${esc(text.home_kicker)}</p><h1>${esc(d.heroLine)}</h1><p class="line">${esc(fill(text.home_line, { count: d.count.toLocaleString("en-US") }))}</p></div>` +
+      `<p class="stamps"><span class="stamp closed">${esc(text.stamp_closed)}</span><span class="stamp">${esc(text.stamp_again)}</span></p><p class="foot">${esc(text.footer)}</p>`,
+  );
+}
+
+/** Open Graph tags for the app shell (`index.html`), so every route without its own stub page shows the generic site image. */
+export function siteOgTags(imageUrl: string, title: string, description: string): string {
+  return `<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}">` +
+    `<meta property="og:image" content="${esc(imageUrl)}"><meta property="og:image:width" content="${SHARE_W}"><meta property="og:image:height" content="${SHARE_H}">` +
+    `<meta name="twitter:card" content="summary_large_image">`;
+}
+
 /** A stub page for a social crawler: Open Graph tags that name the share image, then a redirect to the app view (no script). */
 export function stubHtml(opts: { title: string; description: string; imageUrl: string; target: string }): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(opts.title)}</title>` +
@@ -134,4 +172,36 @@ export function neighborhoodSummaries<T extends { neighborhood: string | null; t
       return { neighborhood, count: sorted.reduce((n, [, c]) => n + c, 0), topFamilyLabel: sorted[0] ? label(sorted[0][0]) : null, topFamilyCount: sorted[0]?.[1] ?? 0 };
     })
     .sort((a, b) => b.count - a.count || (a.neighborhood < b.neighborhood ? -1 : 1));
+}
+
+export interface ShareZombie { zombie_id: string; tier: string; type_family: string; neighborhood: string | null; gap_days: number }
+
+export interface ShareTargets<Z extends ShareZombie> {
+  /** The judge-mode tour's zombies, in tour order. A tour id that no shard holds is listed in `missingTour`. */
+  tour: Z[];
+  missingTour: string[];
+  neighborhoods: NeighborhoodShare[];
+}
+
+/**
+ * Which pages get their own share image (REQ-WEB-LINKS.2, the nightly deploy): the judge-mode tour's zombies and the neighborhoods.
+ * Districts and the home page are drawn from their own files by the build script. Every other page, including every other
+ * possible zombie, shows the generic site image, so the build draws a few dozen images instead of one per zombie.
+ */
+export function selectShareTargets<Z extends ShareZombie>(zombies: readonly Z[], tourIds: readonly string[], label: (family: string) => string): ShareTargets<Z> {
+  const byId = new Map(zombies.map((z) => [z.zombie_id, z]));
+  const tour: Z[] = [];
+  const missingTour: string[] = [];
+  for (const id of tourIds) {
+    const z = byId.get(id);
+    if (z) tour.push(z);
+    else missingTour.push(id);
+  }
+  return { tour, missingTour, neighborhoods: neighborhoodSummaries(zombies.filter((z) => z.tier === "headline"), label) };
+}
+
+/** One progress line for the build log: `make-share-images: 12/60 images (20%), 8.4 s`. */
+export function progressLine(done: number, total: number, elapsedMs: number): string {
+  const pct = total === 0 ? 100 : Math.floor((done / total) * 100);
+  return `make-share-images: ${done}/${total} images (${pct}%), ${(elapsedMs / 1000).toFixed(1)} s`;
 }
