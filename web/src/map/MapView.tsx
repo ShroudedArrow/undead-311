@@ -26,6 +26,8 @@ function ensureProtocol(): void {
 
 const prefersReducedMotion = (): boolean => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 
+type MapHostElement = HTMLDivElement & { __project?: (lon: number, lat: number) => { x: number; y: number } };
+
 interface Props {
   rows: PointRow[];
   selectedId: string | null;
@@ -76,6 +78,12 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
       overlayRef.current = overlay;
       mapRef.current = map;
       if (host.current) stopWatch = watchOverlay(host.current);
+      // Lets an end-to-end test turn a longitude and latitude into the pixel to click. It lives on the element, not on window.
+      (host.current as MapHostElement).__project = (lon, lat) => {
+        const p = map.project([lon, lat]);
+        const r = host.current?.getBoundingClientRect();
+        return { x: p.x + (r?.left ?? 0), y: p.y + (r?.top ?? 0) };
+      };
       map.on("load", () => setReady(true));
     } catch {
       setFailed(true);

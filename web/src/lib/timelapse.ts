@@ -59,3 +59,61 @@ export function yearCounts(timeline: readonly Dated[]): { year: number; count: n
   let total = 0;
   return [...by.entries()].sort((a, b) => a[0] - b[0]).map(([year, count]) => ({ year, count, total: (total += count) }));
 }
+
+/** Playback speeds offered on the page; 1 is the pace the page had before the control existed. */
+export const SPEEDS = [0.5, 1, 2, 4] as const;
+/** Trail lengths in months. `null` (not listed) means everything so far. */
+export const TRAIL_MONTHS = [3, 6, 12, 24] as const;
+
+export interface Focus {
+  /** A type family key, or null for all. */
+  family: string | null;
+  /** A neighborhood name, or null for all. */
+  neighborhood: string | null;
+  /** First and last year (inclusive) of the day reported again, or null for no limit. */
+  fromYear: number | null;
+  toYear: number | null;
+}
+
+export const NO_FOCUS: Focus = { family: null, neighborhood: null, fromYear: null, toYear: null };
+
+/** Keep the dated items inside the focus. Order is kept, so the result is still sorted. */
+export function focusTimeline(timeline: readonly Dated[], f: Focus): Dated[] {
+  return timeline.filter((d) => {
+    if (f.family !== null && d.row.family !== f.family) return false;
+    if (f.neighborhood !== null && (d.row.neighborhood ?? "") !== f.neighborhood) return false;
+    const y = new Date(d.t).getUTCFullYear();
+    if (f.fromYear !== null && y < f.fromYear) return false;
+    if (f.toYear !== null && y > f.toYear) return false;
+    return true;
+  });
+}
+
+/** The time `months` calendar months before `t` (UTC; the day is clamped to the length of that month). */
+export function monthsBefore(t: number, months: number): number {
+  const d = new Date(t);
+  const first = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - months, 1);
+  const len = new Date(Date.UTC(new Date(first).getUTCFullYear(), new Date(first).getUTCMonth() + 1, 0)).getUTCDate();
+  return first + (Math.min(d.getUTCDate(), len) - 1) * DAY_MS;
+}
+
+/**
+ * The rows to draw at time `now`. With no trail, everything reported again up to `now`; with a trail, only the items
+ * reported again after `now` minus that many months (the day exactly that many months back is out), up to `now`.
+ */
+export function visibleTrail(timeline: readonly Dated[], now: number, trailMonths: number | null): PointRow[] {
+  const upto = countAt(timeline, now);
+  if (trailMonths === null) return timeline.slice(0, upto).map((d) => d.row);
+  const from = monthsBefore(now, trailMonths);
+  return timeline.slice(0, upto).filter((d) => d.t > from).map((d) => d.row);
+}
+
+/** Seconds the whole animation takes at a speed (faster speed, shorter run). */
+export function durationFor(baseSeconds: number, speed: number): number {
+  return baseSeconds / (speed > 0 ? speed : 1);
+}
+
+/** The years that appear in a timeline, ascending, for the year range menus. */
+export function yearsIn(timeline: readonly Dated[]): number[] {
+  return [...new Set(timeline.map((d) => new Date(d.t).getUTCFullYear()))].sort((a, b) => a - b);
+}

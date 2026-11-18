@@ -10,7 +10,7 @@ interface Props {
 /** The count of possible zombies that match the filters, in the same set the map and table show (REQ-WEB-MAP.2-3, REQ-WEB-TIER.2). */
 export function CountLine({ headlineCount, allCount }: Props) {
   return (
-    <div>
+    <div className="count-block">
       <p className="count-line" data-testid="count" aria-live="polite">
         {headlineCount === 1 ? t("filters.count_headline_one") : t("filters.count_headline", { count: headlineCount })}
       </p>

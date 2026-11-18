@@ -68,32 +68,69 @@ describe("keyboard and motion (REQ-WEB-A11Y.1)", () => {
   });
 });
 
-describe("phone layout: the map comes before the hero text (REQ-WEB-MAP.1, design-system.md map is the hero, UX-12)", () => {
-  it("orders the stage ahead of the hero lines under 640 px", () => {
-    const phone = css.slice(css.lastIndexOf("UX-12"));
-    const order = (sel: string) => Number(new RegExp(`${sel.replace(/[.>\s]/g, (c) => `\\${c}`)}\\s*\\{[^}]*order:\\s*(\\d+)`).exec(phone)?.[1]);
-    expect(order(".stage")).toBeLessThan(order(".filters-panel > .hero-text"));
-    expect(order(".filters-panel > h1")).toBeLessThan(order(".stage"));
-    expect(order(".filters-panel > .filters-toggle")).toBeLessThan(order(".stage"));
+/** The body of the first rule whose selector ends with `sel`, searching `css` from `from` on. */
+const ruleBody = (sel: string, from = 0): string => {
+  const rules = css.slice(from).split("}").map((r) => r.split("{")).filter((p) => p.length >= 2);
+  const hit = rules.find((p) => p[p.length - 2].trim() === sel) ?? rules.find((p) => p[p.length - 2].trim().endsWith(sel));
+  return hit ? hit[hit.length - 1] : "";
+};
+
+describe("the map page fills the screen and nothing moves the map (REQ-WEB-MAP.1, design-system.md map is the hero)", () => {
+  it("is exactly one dynamic viewport high, with a floor so a very short window scrolls instead of squeezing the map", () => {
+    const body = ruleBody(".shell[data-fit]");
+    expect(body).toMatch(/height:\s*100dvh/);
+    expect(body).toMatch(/min-height:\s*34rem/);
+    expect(ruleBody(".shell[data-fit] .shell-main")).toMatch(/overflow:\s*hidden/);
+  });
+  it("gives the grid rows a zero minimum so content cannot push the map taller", () => {
+    expect(ruleBody(".shell")).toMatch(/minmax\(0,\s*1fr\)/);
+    expect(ruleBody(".home")).toMatch(/grid-template-rows:\s*minmax\(0,\s*1fr\)/);
+  });
+  it("scrolls the sidebar inside itself on wide screens", () => {
+    expect(ruleBody(".filters-panel")).toMatch(/overflow-y:\s*auto/);
+  });
+  it("sizes the map from its frame, not from its own content", () => {
+    expect(ruleBody(".map-frame .map-host")).toMatch(/position:\s*absolute/);
+    expect(ruleBody(".map-frame .map-host")).toMatch(/inset:\s*0/);
   });
 });
 
-describe("phone home: heading hidden visually, count and filters button share a row, map fills the view (REQ-WEB-MAP.1, UX-49)", () => {
-  const phone = css.slice(css.lastIndexOf("UX-49"));
-  const body = (sel: string) => {
-    const hit = phone.split("}").map((r) => r.split("{")).find((p) => p.length >= 2 && p[p.length - 2].trim().endsWith(sel));
-    return hit ? hit[hit.length - 1] : "";
-  };
+describe("phone home: heading hidden visually, count and filters button share a row, filters are a sheet (REQ-WEB-MAP.1, UX-49)", () => {
+  const phone = css.indexOf("@media (max-width: 640px) {\n  .home { grid-template-columns");
   it("keeps the h1 for screen readers but out of the layout", () => {
-    expect(body(".filters-panel > h1")).toMatch(/clip-path:\s*inset\(50%\)/);
-    expect(body(".filters-panel > h1")).toMatch(/position:\s*absolute/);
-    expect(body(".filters-panel > h1")).not.toMatch(/display:\s*none/);
+    const body = ruleBody(".filters-panel > h1", phone);
+    expect(body).toMatch(/clip-path:\s*inset\(50%\)/);
+    expect(body).toMatch(/position:\s*absolute/);
+    expect(body).not.toMatch(/display:\s*none/);
   });
-  it("lets the count and the Show filters button sit on one row", () => {
-    expect(body(".home")).toMatch(/flex-wrap:\s*wrap/);
-    expect(body(".filters-panel > .filters-toggle")).toMatch(/flex:\s*0 0 auto/);
+  it("puts the count and the Show filters button on one row", () => {
+    expect(ruleBody(".filters-panel > .count-block", phone)).toMatch(/grid-column:\s*1/);
+    expect(ruleBody(".filters-toggle", phone)).toMatch(/grid-column:\s*2/);
+  });
+  it("opens the filters as a fixed sheet that is out of the page flow, capped in height, inside the safe area", () => {
+    expect(phone).toBeGreaterThan(0);
+    const body = ruleBody(".filters-body", phone);
+    expect(body).toMatch(/position:\s*fixed/);
+    expect(body).toMatch(/max-height:\s*min\(70dvh/);
+    expect(body).toMatch(/overflow-y:\s*auto/);
+    expect(body).toMatch(/env\(safe-area-inset-bottom\)/);
   });
   it("gives the stage the rest of the first view", () => {
-    expect(body(".stage")).toMatch(/min-height:\s*max\(24rem,\s*calc\(100svh/);
+    expect(ruleBody(".home", phone)).toMatch(/grid-template-rows:\s*auto minmax\(0,\s*1fr\)/);
+  });
+});
+
+describe("methods page layout (REQ-WEB-METHODS.1)", () => {
+  it("centres a column of about 70 characters", () => {
+    expect(ruleBody(".methods-main")).toMatch(/max-width:\s*var\(--measure\)/);
+    expect(ruleBody(".methods-main")).toMatch(/margin-inline:\s*auto/);
+    expect(readFileSync(join(__dirname, "tokens.css"), "utf8")).toMatch(/--measure:\s*70ch/);
+  });
+  it("keeps the contents list in view beside the column only on wide screens", () => {
+    const wide = css.indexOf("@media (min-width: 70rem)");
+    expect(wide).toBeGreaterThan(0);
+    expect(ruleBody(".toc", wide)).toMatch(/position:\s*sticky/);
+    expect(ruleBody(".toc", wide)).toMatch(/grid-column:\s*3/);
+    expect(ruleBody(".methods-layout")).not.toMatch(/sticky/);
   });
 });

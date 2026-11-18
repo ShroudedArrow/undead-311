@@ -50,7 +50,7 @@ describe("Methods page (REQ-WEB-METHODS.1)", () => {
     const about = screen.getByTestId("about");
     expect(within(about).getByRole("heading", { name: "Who made this" })).toBeTruthy();
     expect(about.textContent).toMatch(/Not affiliated with the City of Boston\.$/);
-    expect(screen.getByTestId("about").closest(".page")?.lastElementChild).toBe(about);
+    expect(screen.getByTestId("about").closest(".methods-main")?.lastElementChild).toBe(about);
     expect(await screen.findByText(/within 60 days of the closure/)).toBeTruthy();
     expect(screen.getByText(/within 30 meters/)).toBeTruthy();
     expect(screen.getByText(/matching segment, radius 30 meters, window 60 days/)).toBeTruthy();
@@ -254,5 +254,28 @@ describe("Methods page offers the sensitivity sliders (REQ-WEB-SLIDERS.1)", () =
     open();
     expect(await screen.findByTestId("sliders")).toBeTruthy();
     expect(await screen.findByTestId("slider-headline")).toBeTruthy();
+  });
+
+  it("builds a contents list from the page's own section headings, each linking to its section (REQ-WEB-METHODS.1)", async () => {
+    stub();
+    open();
+    await screen.findByTestId("methods-intro");
+    const toc = await screen.findByRole("navigation", { name: "On this page" });
+    const links = await within(toc).findAllByRole("link");
+    const headings = [...document.querySelectorAll(".methods-main h2")];
+    expect(links.map((a) => a.textContent)).toEqual(headings.map((h) => h.textContent));
+    for (const [i, a] of links.entries()) {
+      expect(a.getAttribute("href")).toBe(`#${headings[i].id}`);
+      expect(headings[i].id).toBeTruthy();
+    }
+    expect(new Set(headings.map((h) => h.id)).size).toBe(headings.length);
+  });
+  it("puts the page in one centred column that holds all the text, and the contents list before it for keyboard users", async () => {
+    stub();
+    open();
+    await screen.findByTestId("methods-intro");
+    const layout = document.querySelector(".methods-layout") as HTMLElement;
+    expect(layout.firstElementChild?.classList.contains("toc")).toBe(true);
+    expect(layout.querySelector(".methods-main")?.contains(screen.getByTestId("methods-intro"))).toBe(true);
   });
 });

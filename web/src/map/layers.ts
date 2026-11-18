@@ -16,9 +16,18 @@ export interface LayerInput {
   compact?: boolean;
 }
 
-/** Marker size in pixels: 30 (44 when selected), and 20 (36) on a phone. */
+/** Marker size in pixels: 30 (44 when selected), and 26 (38) on a phone, where the stencil letter is still about 9 px tall. */
 export function markerSize(selected: boolean, compact: boolean): number {
-  return compact ? (selected ? 36 : 20) : selected ? 44 : 30;
+  return compact ? (selected ? 38 : 26) : selected ? 44 : 30;
+}
+
+/** Smallest touch target: 44 px across, so a hit area on a phone is at least 22 px in radius. */
+export const MIN_HIT_RADIUS_PX = 22;
+
+/** Pick radius in pixels of the invisible circle that sits over a marker: the whole painted circle, and on a phone at least 44 px across. */
+export function hitRadius(selected: boolean, compact: boolean): number {
+  const visual = markerSize(selected, compact) / 2;
+  return compact ? Math.max(visual, MIN_HIT_RADIUS_PX) : visual;
 }
 
 export function buildLayers(i: LayerInput) {
@@ -38,20 +47,50 @@ export function buildLayers(i: LayerInput) {
           }),
         ]
       : []),
+    // Transparent pixels are not pickable, so a click on a marker's empty middle would miss the sprite. Two invisible circles fix that,
+    // and neither changes what is drawn. The halo lies under the sprites: it widens the target (44 px across on a phone) but never
+    // beats a marker that is visibly under the pointer. The core lies over them at the painted size: it covers the whole circle, and
+    // where markers overlap, the one drawn last (on top) wins, because deck.gl picks the topmost object and a layer draws in data order.
+    new ScatterplotLayer<PointRow>({
+      id: "zombie-halo",
+      data: rows,
+      pickable: true,
+      stroked: false,
+      filled: true,
+      getFillColor: [0, 0, 0, 0],
+      getPosition: (d) => [d.lon, d.lat],
+      radiusUnits: "pixels",
+      getRadius: (d) => hitRadius(d.id === selectedId, compact),
+      updateTriggers: { getRadius: [selectedId, compact] },
+      onClick: (info) => {
+        if (info.object) onSelect(info.object.id);
+      },
+    }),
     new IconLayer<PointRow>({
       id: "zombies",
       data: rows,
-      pickable: true,
       // never let loaders.gl fetch worker scripts from a CDN (REQ-WEB-PERF.2)
       loadOptions: { worker: false },
       iconAtlas: atlas as unknown as string,
       iconMapping: iconMapping(),
-      getIcon: (d) => iconFor(d.id, d.tier),
+      getIcon: (d) => iconFor(d.id, d.tier, d.family),
       getPosition: (d) => [d.lon, d.lat],
       getSize: (d) => markerSize(d.id === selectedId, compact),
       sizeUnits: "pixels",
-      sizeMinPixels: compact ? 12 : 14,
+      sizeMinPixels: compact ? 16 : 18,
       updateTriggers: { getSize: [selectedId, compact] },
+    }),
+    new ScatterplotLayer<PointRow>({
+      id: "zombie-hit",
+      data: rows,
+      pickable: true,
+      stroked: false,
+      filled: true,
+      getFillColor: [0, 0, 0, 0],
+      getPosition: (d) => [d.lon, d.lat],
+      radiusUnits: "pixels",
+      getRadius: (d) => markerSize(d.id === selectedId, compact) / 2,
+      updateTriggers: { getRadius: [selectedId, compact] },
       onClick: (info) => {
         if (info.object) onSelect(info.object.id);
       },

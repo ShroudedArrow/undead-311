@@ -22,7 +22,7 @@ interface Props {
 export function Filters({ rows, filters, onChange }: Props) {
   const any = DIMS.some((d) => filters[d.field].length > 0);
   return (
-    <form aria-label={t("filters.heading")} onSubmit={(e) => e.preventDefault()}>
+    <form className="filters-form" aria-label={t("filters.heading")} onSubmit={(e) => e.preventDefault()}>
       {DIMS.map(({ by, field, label }) => {
         const selected = filters[field] as (string | number)[];
         const counts = new Map(aggregate(rows, by).map((c) => [c.key, c.count]));

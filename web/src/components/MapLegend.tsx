@@ -1,0 +1,42 @@
+import { useState } from "react";
+import { familyLabel } from "../lib/labels";
+import { t } from "../lib/t";
+import { useNarrow } from "../lib/useNarrow";
+import { PALETTE } from "../map/palette";
+import { FAMILY_ORDER, spraySvg } from "../map/sprites";
+
+/** Markup is generated from our own seeded geometry (no user text), so it is safe to inline. */
+const marker = (family: string) => ({ __html: spraySvg(0, 28, family) });
+const ring = (color: string, width: number) => `<circle cx="32" cy="32" r="20.5" fill="none" stroke="${color}" stroke-width="${width}" stroke-dasharray="7 5"/>`;
+const DASHED = {
+  __html: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 64 64" aria-hidden="true" focusable="false">${ring(PALETTE.asphalt, 6)}${ring(PALETTE.surveyPink, 3)}</svg>`,
+};
+
+/**
+ * Key to the map markers (REQ-WEB-MAP.1): the stencil letter for each case type, and the dashed ring for cases outside the
+ * headline. It sits over the map's lower left corner, open on wide screens and shut on phones so the map keeps the room.
+ */
+export function MapLegend({ showOutline }: { showOutline: boolean }) {
+  const narrow = useNarrow();
+  const [openChoice, setOpenChoice] = useState<boolean | null>(null);
+  const open = openChoice ?? !narrow;
+  return (
+    <details className="map-legend" open={open} onToggle={(e) => setOpenChoice((e.currentTarget as HTMLDetailsElement).open)} data-testid="map-legend">
+      <summary>{t("map.legend_title")}</summary>
+      <ul>
+        {FAMILY_ORDER.map((f) => (
+          <li key={f}>
+            <span className="legend-mark" dangerouslySetInnerHTML={marker(f)} />
+            <span>{familyLabel(f)}</span>
+          </li>
+        ))}
+        {showOutline ? (
+          <li>
+            <span className="legend-mark" dangerouslySetInnerHTML={DASHED} />
+            <span>{t("map.legend_outline")}</span>
+          </li>
+        ) : null}
+      </ul>
+    </details>
+  );
+}

@@ -13,6 +13,8 @@ export function Shell() {
   const toggle = useRef<HTMLButtonElement>(null);
   const { pathname } = useLocation();
   useEffect(() => setOpen(false), [pathname]);
+  // The map page (and its card route) fills the screen exactly: no page scroll, so nothing opened on it can move the map.
+  const fit = pathname === "/" || pathname.startsWith("/zombie/");
   useEffect(() => {
     if (!open) return;
     // Escape hides the links, so focus goes back to the Menu button rather than dropping to the page body (UX-48).
@@ -25,7 +27,7 @@ export function Shell() {
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
   return (
-    <div className="shell">
+    <div className="shell" data-fit={fit ? "true" : undefined}>
       <a className="skip-link" href="#main">
         {t("app.skip_to_content")}
       </a>

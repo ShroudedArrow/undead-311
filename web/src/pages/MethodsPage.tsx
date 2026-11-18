@@ -1,3 +1,5 @@
+import { useRef } from "react";
+import { PageToc } from "../components/PageToc";
 import { OpenData } from "../components/OpenData";
 import { Sliders } from "../components/Sliders";
 import { LeavesOut } from "../components/LeavesOut";
@@ -225,43 +227,49 @@ function MethodsSampleNotice() {
 
 /** Methods page: definitions, baselines, shift test, placebo, validation, limits, nightly status and what the headline leaves out (REQ-WEB-METHODS.1, REQ-WEB-FRESH.2, REQ-WEB-DEATHS.1). */
 export default function MethodsPage() {
+  const content = useRef<HTMLDivElement>(null);
   return (
-    <div className="page">
-      <h1>{t("methods.title")}</h1>
-      <MethodsSampleNotice />
-      <p data-testid="methods-intro">{t("methods.intro")}</p>
-      <Definitions />
-      <Baselines />
-      <NullTowns />
-      <section className="chart-section" aria-labelledby="adjusted-h" data-testid="baseline-uses">
-        <h2 id="adjusted-h">{t("methods.adjusted_heading")}</h2>
-        <p data-testid="adjusted-text">{t("methods.adjusted_text")}</p>
-        <p data-testid="confidence-text">{t("methods.confidence_text")}</p>
-      </section>
-      <Sliders />
-      <Validation />
-      <section className="chart-section" aria-labelledby="limits-h">
-        <h2 id="limits-h">{t("methods.limits_heading")}</h2>
-        <ul className="plain-list">
-          <li>{t("methods.limit_floor")}</li>
-          <li>{t("methods.limit_intersection")}</li>
-          <li>{t("methods.limit_origin")}</li>
-        </ul>
-      </section>
-      <LeavesOut />
-      <OpenData />
-      <Status />
-      <section className="chart-section" aria-labelledby="report-h">
-        <h2 id="report-h">{t("methods.report_heading")}</h2>
-        <p>{t("methods.report_text")}</p>
-        <p>
-          <ReportError page={t("methods.title")} /> <Link to="/corrections">{t("links.corrections")}</Link>
-        </p>
-      </section>
-      <section className="chart-section" aria-labelledby="about-h" data-testid="about">
-        <h2 id="about-h">{t("about.heading")}</h2>
-        <p>{t("about.body")}</p>
-      </section>
+    <div className="page methods-page">
+      <div className="methods-layout">
+        <PageToc contentRef={content} />
+        <div className="methods-main" ref={content}>
+          <h1>{t("methods.title")}</h1>
+          <MethodsSampleNotice />
+          <p data-testid="methods-intro">{t("methods.intro")}</p>
+          <Definitions />
+          <Baselines />
+          <NullTowns />
+          <section className="chart-section" aria-labelledby="adjusted-h" data-testid="baseline-uses">
+            <h2 id="adjusted-h">{t("methods.adjusted_heading")}</h2>
+            <p data-testid="adjusted-text">{t("methods.adjusted_text")}</p>
+            <p data-testid="confidence-text">{t("methods.confidence_text")}</p>
+          </section>
+          <Sliders />
+          <Validation />
+          <section className="chart-section" aria-labelledby="limits-h">
+            <h2 id="limits-h">{t("methods.limits_heading")}</h2>
+            <ul className="plain-list">
+              <li>{t("methods.limit_floor")}</li>
+              <li>{t("methods.limit_intersection")}</li>
+              <li>{t("methods.limit_origin")}</li>
+            </ul>
+          </section>
+          <LeavesOut />
+          <OpenData />
+          <Status />
+          <section className="chart-section" aria-labelledby="report-h">
+            <h2 id="report-h">{t("methods.report_heading")}</h2>
+            <p>{t("methods.report_text")}</p>
+            <p>
+              <ReportError page={t("methods.title")} /> <Link to="/corrections">{t("links.corrections")}</Link>
+            </p>
+          </section>
+          <section className="chart-section" aria-labelledby="about-h" data-testid="about">
+            <h2 id="about-h">{t("about.heading")}</h2>
+            <p>{t("about.body")}</p>
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
