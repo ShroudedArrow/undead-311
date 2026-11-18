@@ -358,6 +358,29 @@ def test_the_cli_freezes_and_checks_the_frozen_copy(tmp_path):
     assert r.returncode == 1 and "judge_tour.json differs" in r.stderr
 
 
+def test_freeze_and_check_frozen_run_without_duckdb_installed(tmp_path):
+    """REQ-OPS-SNAP.2, REQ-OPS-NIGHTLY.2: the nightly job runs `--freeze-judge` and `--check-frozen` where duckdb may be
+    missing (it failed with ModuleNotFoundError). Only `table_row_counts` opens a database, so duckdb is imported there."""
+    public, text = judge_site(tmp_path)
+    snapshot = tmp_path / "SNAPSHOT.md"
+    snapshot.write_text(text)
+    # `sys.modules["duckdb"] = None` makes any `import duckdb` (and `from undead311.duck import connect`) raise ImportError.
+    code = ("import runpy, sys; sys.modules['duckdb'] = None; sys.argv = ['snapshot.py', *sys.argv[1:]]; "
+            f"runpy.run_path({str(SCRIPT)!r}, run_name='__main__')")
+    env = {**os.environ, "PYTHONPATH": str(REPO / "pipeline")}
+
+    def run(*args):
+        return subprocess.run([sys.executable, "-c", code, "--public", str(public), "--snapshot", str(snapshot), *args],
+                              capture_output=True, text=True, check=False, env=env, timeout=120)
+
+    assert run("--freeze-judge").returncode == 0
+    r = run("--check-frozen")
+    assert r.returncode == 0 and "ModuleNotFoundError" not in r.stderr and "ImportError" not in r.stderr
+    assert "ImportError" not in run("--verify").stderr
+    # the one place that does need duckdb still reports a missing database as no counts, not as an error
+    assert snap.table_row_counts(tmp_path / "missing.duckdb") == {}
+
+
 def test_snapshot_refuses_a_data_end_the_files_do_not_run_through(site, tmp_path):
     """REQ-OPS-SNAP.1 (ops#160): `--data-end` must equal status.json's data_end; the same date is accepted."""
     public, processed = site

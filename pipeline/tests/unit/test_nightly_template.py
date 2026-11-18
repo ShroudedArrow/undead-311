@@ -230,7 +230,7 @@ def test_each_stage_failing_is_named(stage):
 def test_the_history_step_validates_against_the_status_schema():
     """REQ-OPS-NIGHTLY.3 (ops#159): the merge runs where jsonschema is installed and passes the schema."""
     step = steps()[index("history")]
-    assert "uv run python ops/undead-311-data/status_history.py merge" in step["run"]
+    assert "uv run --locked python ops/undead-311-data/status_history.py merge" in step["run"]
     assert "--schema schemas/status.schema.json" in step["run"] and step["working-directory"] == "judged"
 
 
@@ -305,3 +305,73 @@ def test_the_nightly_build_installs_a_browser_and_requires_share_images():
     build = steps()[index("build")]
     assert build["run"].index("playwright install") < build["run"].index("make build")
     assert build["env"]["SHARE_IMAGES"] == "required"
+
+
+# ---- repo scripts run through uv, from the judged checkout (the duckdb ModuleNotFoundError) ---------------------------
+
+def run_lines() -> list[tuple[str, str]]:
+    """(step name, command line) for every non-blank, non-comment line of every `run:` script."""
+    out = []
+    for s in steps():
+        for line in str(s.get("run", "")).splitlines():
+            if line.strip() and not line.strip().startswith("#"):
+                out.append((s.get("name", s.get("id", "?")), line.strip()))
+    return out
+
+
+def test_no_step_calls_bare_python_for_a_repo_script():
+    """REQ-OPS-NIGHTLY.2: the runner's own python has none of the judged checkout's dependencies (duckdb, jsonschema), so
+    `python3 pipeline/scripts/snapshot.py` failed with ModuleNotFoundError. Every `.py` in a run script goes through
+    `uv run --locked python`, and no command line starts a bare `python` or `python3`."""
+    bare = re.compile(r"(^|[\s;&|(`$])python3?(\s|$)")
+    repo_script = re.compile(r"[\w./-]+\.py\b")
+    seen = 0
+    for name, line in run_lines():
+        if repo_script.search(line):
+            seen += 1
+            assert "uv run --locked python " in line, f"{name}: {line}"
+        stripped = line.replace("uv run --locked python ", "uv-run-python ")
+        assert not bare.search(stripped), f"{name}: bare python in: {line}"
+    assert seen >= 8                                  # freeze, latest, unpack, check, merge, verify, clear, record, alert
+
+
+def test_every_script_runs_from_the_judged_checkout_and_exists_there():
+    """REQ-OPS-NIGHTLY.2: `uv run` finds the project (pyproject.toml, uv.lock) from the working directory, so each step that
+    runs a repo script sets `working-directory: judged`, and the script path is relative to it and exists in the repo."""
+    for s in steps():
+        text = str(s.get("run", ""))
+        scripts = re.findall(r"uv run --locked python (\S+\.py)", text)
+        if not scripts:
+            continue
+        assert s.get("working-directory") == "judged", s.get("name")
+        for script in scripts:
+            assert not script.startswith(("judged/", "/")), f"{script} is relative to the judged checkout"
+            assert (REPO / script).is_file(), f"{script} does not exist in the repo"
+
+
+def test_uv_is_set_up_and_the_dependencies_are_installed_locked_before_any_script_runs():
+    """REQ-OPS-NIGHTLY.2: setup-uv, then `uv sync --locked` and `npm ci` (not the unlocked `make setup`), then the first
+    `uv run`. The scripts at a tag need nothing the tag does not already have."""
+    uses = [s.get("uses", "") for s in steps()]
+    uv_at = next(i for i, u in enumerate(uses) if u.startswith("astral-sh/setup-uv@"))
+    setup = steps()[index("setup")]
+    assert "uv sync --locked" in setup["run"] and "npm --prefix web ci" in setup["run"] and "make setup" not in runs()
+    first_run = next(i for i, s in enumerate(steps()) if "uv run" in str(s.get("run", "")))
+    assert uv_at < index("setup") < first_run
+    assert all("uv run" not in str(s.get("run", "")) or "uv run --locked" in str(s.get("run", "")) for s in steps())
+    assert "uv run python" not in runs()
+
+
+def test_actions_are_on_node_24_majors():
+    """REQ-OPS-NIGHTLY.2: checkout and setup-node v5+ and setup-uv v7+ run on Node 24 (their action.yml says `node24`);
+    v4 and setup-uv v5 and v6 still run on Node 20, which GitHub is retiring and warns about."""
+    minimum = {"actions/checkout": 5, "actions/setup-node": 5, "astral-sh/setup-uv": 7}
+    found = {}
+    for s in steps():
+        uses = str(s.get("uses", ""))
+        if "@" in uses:
+            action, ref = uses.split("@", 1)
+            found[action] = int(re.match(r"v(\d+)", ref).group(1))
+    assert set(found) == set(minimum)
+    for action, major in found.items():
+        assert major >= minimum[action], f"{action}@v{major} runs on Node 20"
