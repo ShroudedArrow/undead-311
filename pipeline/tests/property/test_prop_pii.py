@@ -9,10 +9,14 @@ from hypothesis import strategies as st
 
 from undead311.ingest.pii import PATTERNS, REMOVED, scrub_text
 
-words = st.text(alphabet=st.characters(whitelist_categories=("Ll",), max_codepoint=0x7A), min_size=1, max_size=8)
+words = st.text(
+    alphabet=st.characters(whitelist_categories=("Ll",), max_codepoint=0x7A), min_size=1, max_size=8
+)
 emails = st.builds(
     lambda u, d, t: f"{u}@{d}.{t}",
-    st.text("abcdefghijklmnopqrstuvwxyz0123456789._", min_size=1, max_size=10).filter(lambda s: s[0] not in "._"),
+    st.text("abcdefghijklmnopqrstuvwxyz0123456789._", min_size=1, max_size=10).filter(
+        lambda s: s[0] not in "._"
+    ),
     st.text("abcdefghijklmnopqrstuvwxyz", min_size=1, max_size=8),
     st.sampled_from(["com", "org", "net", "gov"]),
 )
@@ -49,3 +53,19 @@ def test_prop_p20_scrub_is_idempotent_on_arbitrary_text(text):
     once = scrub_text(text)
     assert scrub_text(once) == once
     assert all(regex.search(REMOVED) is None for _, regex, _ in PATTERNS)
+
+
+_CAP = st.text(alphabet="abcdefghijklmnopqrstuvwxyz", min_size=3, max_size=9).map(str.capitalize)
+_FIRST = st.sampled_from(["Michael", "Mary", "Gerald", "Dana", "Peter", "Brian", "Karen"])
+
+
+@given(filler, _FIRST, _CAP, filler)
+def test_prop_p20_first_name_rules_are_idempotent_and_never_add_text(a, first, second, b):
+    """REQ-ING-PII.7: any generated "<First> <Word> @ <place>" and "<First> from <Org>" note scrubs once and stays put."""
+    from undead311.ingest import first_names
+
+    text = f"{a} {first} {second} @ Place {b} {first} from Org"
+    out = first_names.apply(text)[0]
+    assert first_names.apply(out)[0] == out
+    assert " @ Place" in out and " from Org" in out  # the place and the organization always stay
+    assert len(out) <= len(text) + 2 * len(REMOVED)

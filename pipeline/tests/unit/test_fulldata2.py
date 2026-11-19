@@ -265,6 +265,23 @@ def make_export(folder: Path, **status) -> Path:
     return folder
 
 
+def tar_contents(archive: Path) -> list[tuple[str, bytes]]:
+    """(name, bytes) of every member in order. The manifest's `created_utc` (to the second) is the only field that changes
+    between two packs of the same files, so it is dropped; every other byte is compared."""
+    out = []
+    with tarfile.open(archive) as tar:
+        for m in tar.getmembers():
+            if not m.isfile():
+                continue
+            data = tar.extractfile(m).read()
+            if m.name == "MANIFEST.json":
+                manifest = json.loads(data)
+                manifest.pop("created_utc")
+                data = json.dumps(manifest, sort_keys=True).encode()
+            out.append((m.name, data))
+    return out
+
+
 def test_req_ops_publish_1_pack_and_unpack_round_trip_keeps_frozen_files_and_puts_status_last(tmp_path):
     src = make_export(tmp_path / "exports" / "r1")
     archive, digest = er.pack("r1", src, tmp_path / "rel")
@@ -280,7 +297,8 @@ def test_req_ops_publish_1_pack_and_unpack_round_trip_keeps_frozen_files_and_put
         assert (dest / f.relative_to(src)).read_bytes() == f.read_bytes()
     with tarfile.open(archive) as tar:
         assert tar.getnames()[0] == "MANIFEST.json" and tar.getnames()[-1] == "status.json"
-    assert er.pack("r1", src, tmp_path / "rel2")[0].read_bytes()[10:] == archive.read_bytes()[10:]  # same files, same bytes (after the header time)
+    again = er.pack("r1", src, tmp_path / "rel2")[0]
+    assert tar_contents(again) == tar_contents(archive)  # same member names, in the same order, with the same bytes
 
 
 def test_req_ops_publish_1_a_dry_run_or_failed_export_is_never_packed(tmp_path):
