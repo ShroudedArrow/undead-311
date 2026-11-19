@@ -139,6 +139,8 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .site-footer p { margin: 0; max-width: none; }
 /* The close button sits in the bar's top right corner, a 44 px square (design-system.md quality floor). */
 .site-footer .footer-close { position: absolute; top: 0; right: 0; width: 2.75rem; padding: 0; font-size: var(--step-1); line-height: 1; border-width: 0 0 2px 2px; }
+/* the ring is drawn inside the button, so the screen edge never clips it */
+.site-footer .footer-close:focus-visible { outline-offset: -6px; }
 /* Collapsed: one line of text. On the map pages it floats over the bottom-left corner, so the map gets the whole bar's height; elsewhere it stays in the page flow. */
 .site-footer-note { padding: var(--space-1) var(--space-3); background: var(--crew-white); border-top: 2px solid var(--asphalt); font-size: var(--step--1); }
 .site-footer-note button { max-width: 100%; padding: 0.2rem var(--space-2); text-align: left; font-size: var(--step--1); line-height: 1.25; }

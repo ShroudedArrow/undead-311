@@ -19,15 +19,15 @@ export function Footer({ pinned = false }: { pinned?: boolean }) {
   };
   if (collapsed && !pinned) {
     return (
-      <footer className="site-footer-note" id="site-footer">
-        <button ref={noteRef} type="button" aria-expanded={false} aria-controls="site-footer" onClick={() => change(false)}>
+      <footer className="site-footer-note">
+        <button ref={noteRef} type="button" aria-expanded={false} onClick={() => change(false)}>
           {t("app.footer_note")}
         </button>
       </footer>
     );
   }
   return (
-    <footer className="site-footer" id="site-footer">
+    <footer className="site-footer">
       <p>{t("app.footer_independent")}</p>
       <p>
         {t("app.footer_attribution")}{" "}
@@ -39,7 +39,7 @@ export function Footer({ pinned = false }: { pinned?: boolean }) {
       <p>{t("app.footer_data_license")}</p>
       <p>{t("app.footer_fonts_license")}</p>
       {pinned ? null : (
-        <button ref={closeRef} type="button" className="footer-close" aria-expanded={true} aria-controls="site-footer" aria-label={t("app.footer_close")} onClick={() => change(true)}>
+        <button ref={closeRef} type="button" className="footer-close" aria-expanded={true} aria-label={t("app.footer_close")} onClick={() => change(true)}>
           <span aria-hidden="true">×</span>
         </button>
       )}
