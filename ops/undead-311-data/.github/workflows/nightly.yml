@@ -9,6 +9,12 @@
 # last step that changes anything public, and a failed night never reaches it, so Netlify keeps the last good deploy. On failure the job writes a failure entry (kept in the release
 # `nightly-state`, merged into the next good deploy's status.json `history`) and opens a needs-human alert.
 #
+# Deploy in two steps (REQ-OPS-NIGHTLY.5): `netlify deploy --no-build` WITHOUT --prod uploads web/dist as a draft and prints its
+# URL, ops/undead-311-data/smoke_test.py checks the draft, and only when it passes does `netlify deploy --no-build --prod` publish
+# the same files (Netlify has them already, so that step uploads next to nothing). --no-build matters: without it the CLI runs the
+# project's build command again (15 minutes) after this job has already built the site. A failed smoke test stops the job before
+# production and the failure steps below record it and alert.
+#
 # Every action is pinned to a tag and the job sets its own permissions (pipeline/tests/unit/test_workflows_pinned.py).
 # The actions are on Node 24 majors (checkout, setup-node and setup-uv v7), which clears the Node 20 deprecation warning.
 # Every repo script runs from the judged checkout as `uv run --locked python <script>`, never as bare `python3`: the runner's
@@ -27,6 +33,9 @@ on:
 
 permissions: {}
 
+# One nightly run at a time: a manual run and the scheduled run share this group, so the second waits for the first to finish
+# (cancel-in-progress is false, so a running deploy is never cut off). GitHub keeps one waiting run per group; a third request
+# replaces the waiting one.
 concurrency:
   group: nightly
   cancel-in-progress: false
@@ -35,7 +44,8 @@ jobs:
   refresh:
     name: refresh (download exports, build, deploy)
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    # The two deploy steps have their own 60-minute limit, so the job limit has to be higher than both together would need.
+    timeout-minutes: 120
     # contents: write is for the failure history in the `nightly-state` release. The exports release is only read.
     permissions:
       contents: write
@@ -128,6 +138,8 @@ jobs:
         working-directory: judged
         env:
           SHARE_IMAGES: required
+          # Optional repository variable: the site's address, so the share images' Open Graph URLs are absolute. Empty keeps them relative.
+          SITE_URL: ${{ vars.SITE_URL }}
         run: |
           npm --prefix web exec playwright install --with-deps chromium
           make build
@@ -138,13 +150,49 @@ jobs:
         working-directory: judged
         run: uv run --locked python pipeline/scripts/snapshot.py --check-frozen --public web/dist/data
 
-      - name: Deploy the whole site (production)
-        id: deploy
+      # Nothing in the app fetches these (every route was loaded in a browser to check), so they are not deployed: the incident shards
+      # (216 files, 17 MB) and three small files. The lists are LEFT_OUT_* in smoke_test.py, which checks they are absent on the draft.
+      - name: Leave out files the site never fetches
+        id: trim
         working-directory: judged
+        run: |
+          [ ! -d web/dist/data/incidents ] || find web/dist/data/incidents -delete
+          rm -f -- web/dist/data/separate_deaths.json web/dist/data/stats/trends.json web/dist/data/stats/stats_status.json
+
+      # A draft deploy (no --prod): the site is uploaded under its own URL and production is not touched.
+      - name: Deploy a draft (no production)
+        id: draft
+        working-directory: judged
+        timeout-minutes: 60
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        run: npx --yes netlify-cli@27.19.0 deploy --prod --dir web/dist --message "nightly $GITHUB_RUN_ID"
+        run: |
+          npx --yes netlify-cli@27.19.0 deploy --no-build --dir web/dist --json --message "nightly draft $GITHUB_RUN_ID" > "$RUNNER_TEMP/draft.json"
+          url="$(jq -r '.deploy_url // empty' "$RUNNER_TEMP/draft.json")"
+          if [ -z "$url" ]; then echo "The draft deploy printed no deploy_url." >&2; exit 1; fi
+          echo "draft: $url"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      # The draft must look right before it can go live: see the docstring of smoke_test.py for the checks.
+      - name: Smoke test the draft
+        id: smoke
+        working-directory: judged
+        timeout-minutes: 10
+        env:
+          DRAFT_URL: ${{ steps.draft.outputs.url }}
+        run: |
+          uv run --locked python ops/undead-311-data/smoke_test.py --base-url "$DRAFT_URL" --archive "$(ls "$RUNNER_TEMP"/exports/exports-*.tar.gz)" --public web/public/data --judging data/judging
+
+      # Only reached when the smoke test passed. The files are already on Netlify, so this publishes them without uploading again.
+      - name: Deploy the whole site (production)
+        id: deploy
+        working-directory: judged
+        timeout-minutes: 60
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: npx --yes netlify-cli@27.19.0 deploy --no-build --prod --dir web/dist --message "nightly $GITHUB_RUN_ID"
 
       - name: Clear the failure history (the deploy that carries it succeeded)
         id: clear
@@ -173,11 +221,14 @@ jobs:
           S_HISTORY: ${{ steps.history.outcome }}
           S_BUILD: ${{ steps.build.outcome }}
           S_VERIFY: ${{ steps.verify.outcome }}
+          S_TRIM: ${{ steps.trim.outcome }}
+          S_DRAFT: ${{ steps.draft.outcome }}
+          S_SMOKE: ${{ steps.smoke.outcome }}
           S_DEPLOY: ${{ steps.deploy.outcome }}
           S_CLEAR: ${{ steps.clear.outcome }}
         run: |
           gh release download nightly-state --repo "$DATA_REPO" --pattern failure-history.json --dir "$RUNNER_TEMP" --clobber || echo "no failure history yet"
-          uv run --locked python ops/undead-311-data/status_history.py record --history "$RUNNER_TEMP/failure-history.json" --run-url "$RUN_URL" --outcomes "tag=$S_TAG" "checkout=$S_CHECKOUT" "setup=$S_SETUP" "freeze=$S_FREEZE" "download=$S_DOWNLOAD" "exports=$S_EXPORTS" "check=$S_CHECK" "history=$S_HISTORY" "build=$S_BUILD" "verify=$S_VERIFY" "deploy=$S_DEPLOY" "clear=$S_CLEAR"
+          uv run --locked python ops/undead-311-data/status_history.py record --history "$RUNNER_TEMP/failure-history.json" --run-url "$RUN_URL" --outcomes "tag=$S_TAG" "checkout=$S_CHECKOUT" "setup=$S_SETUP" "freeze=$S_FREEZE" "download=$S_DOWNLOAD" "exports=$S_EXPORTS" "check=$S_CHECK" "history=$S_HISTORY" "build=$S_BUILD" "verify=$S_VERIFY" "trim=$S_TRIM" "draft=$S_DRAFT" "smoke=$S_SMOKE" "deploy=$S_DEPLOY" "clear=$S_CLEAR"
           gh release view nightly-state --repo "$DATA_REPO" > /dev/null 2>&1 || gh release create nightly-state --repo "$DATA_REPO" --title "nightly state" --notes "Failure history for the nightly refresh. Not a data release."
           gh release upload nightly-state "$RUNNER_TEMP/failure-history.json" --repo "$DATA_REPO" --clobber
 
@@ -186,5 +237,10 @@ jobs:
         continue-on-error: true
         env:
           GITHUB_CHANNEL_TOKEN: ${{ secrets.CHANNEL_TOKEN }}
+          DRAFT_URL: ${{ steps.draft.outputs.url }}
+          S_SMOKE: ${{ steps.smoke.outcome }}
         working-directory: judged
-        run: uv run --locked python scripts/ci_channel.py alert --title "Nightly data refresh failed" --detail "The nightly refresh failed; the last good deploy is still live." --run-url "$RUN_URL"
+        run: |
+          detail="The nightly refresh failed; the last good deploy is still live."
+          if [ "$S_SMOKE" = "failure" ]; then detail="The smoke test failed on the draft deploy, so production was not updated; the last good deploy is still live. Draft: $DRAFT_URL"; fi
+          uv run --locked python scripts/ci_channel.py alert --title "Nightly data refresh failed" --detail "$detail" --run-url "$RUN_URL"

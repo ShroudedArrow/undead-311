@@ -67,14 +67,14 @@ def test_it_checks_out_the_judged_repo_at_the_frozen_tag():
 def test_stages_run_in_order_and_the_deploy_comes_after_every_check():
     """REQ-OPS-NIGHTLY.2, .3, REQ-OPS-PUBLISH.3: download the exports, unpack, status check, history merge, build, deploy.
     A failure never reaches the deploy, and the pipeline itself no longer runs here."""
-    order = ["tag", "checkout", "setup", "freeze", "download", "exports", "check", "history", "build", "verify", "deploy"]
+    order = ["tag", "checkout", "setup", "freeze", "download", "exports", "check", "history", "build", "verify", "trim", "draft", "smoke", "deploy"]
     assert [index(i) for i in order] == sorted(index(i) for i in order)
     for step_id, needle in (("download", "exports_release.py latest"), ("exports", "exports_release.py unpack"), ("build", "make build")):
         assert needle in steps()[index(step_id)]["run"]
     assert "make pipeline" not in runs() and "make data-download" not in runs()
     assert "status_history.py check" in steps()[index("check")]["run"]
     assert "netlify-cli@" in steps()[index("deploy")]["run"] and "--prod" in steps()[index("deploy")]["run"]
-    for sid in ("download", "exports", "check", "build", "deploy"):
+    for sid in ("download", "exports", "check", "build", "draft", "smoke", "deploy"):
         assert not steps()[index(sid)].get("continue-on-error"), sid   # a failing stage must fail the job
         assert "if" not in steps()[index(sid)], sid
 
@@ -100,7 +100,7 @@ def test_secrets_reach_only_the_steps_that_need_them():
         for key, value in (s.get("env") or {}).items():
             if "secrets." in str(value):
                 holders.setdefault(key, []).append(s.get("id") or s.get("name"))
-    assert holders == {"NETLIFY_AUTH_TOKEN": ["deploy"], "NETLIFY_SITE_ID": ["deploy"],
+    assert holders == {"NETLIFY_AUTH_TOKEN": ["draft", "deploy"], "NETLIFY_SITE_ID": ["draft", "deploy"],
                        "GITHUB_CHANNEL_TOKEN": ["Open a needs-human alert in the channel"]}
     assert next(s for s in steps() if s.get("name", "").startswith("Open a needs-human"))["env"][
         "GITHUB_CHANNEL_TOKEN"] == "${{ secrets.CHANNEL_TOKEN }}"
@@ -122,7 +122,7 @@ def test_a_failure_keeps_the_last_deploy_records_itself_and_alerts():
     assert "ci_channel.py alert" in alert["run"]
     assert steps().index(record) > index("clear") and steps().index(alert) > steps().index(record)
     for stage in ("TAG", "CHECKOUT", "SETUP", "FREEZE", "DOWNLOAD", "EXPORTS", "CHECK", "HISTORY", "BUILD", "VERIFY",
-                  "DEPLOY", "CLEAR"):
+                  "TRIM", "DRAFT", "SMOKE", "DEPLOY", "CLEAR"):
         assert f"S_{stage}" in record["env"]
 
 
@@ -375,3 +375,125 @@ def test_actions_are_on_node_24_majors():
     assert set(found) == set(minimum)
     for action, major in found.items():
         assert major >= minimum[action], f"{action}@v{major} runs on Node 20"
+
+
+# ---- deploy: draft, smoke test, production (REQ-OPS-NIGHTLY.5) -------------------------------------------------------------
+
+def netlify_commands() -> list[str]:
+    return [line for line in runs().splitlines() if "netlify-cli@" in line]
+
+
+def test_every_netlify_deploy_skips_the_build_because_the_job_already_built_the_site():
+    """REQ-OPS-NIGHTLY.5: without --no-build the CLI ran the project's build again (15 minutes, every share image)."""
+    commands = netlify_commands()
+    assert len(commands) == 2
+    for c in commands:
+        assert " deploy " in c and "--no-build" in c and "--dir web/dist" in c, c
+    assert not any("--build" in c.replace("--no-build", "") for c in commands)
+
+
+def test_the_first_deploy_is_a_draft_the_second_is_production_and_only_the_second_says_prod():
+    """REQ-OPS-NIGHTLY.5: a draft has no --prod and prints its URL as JSON; production has --prod."""
+    draft, prod = steps()[index("draft")], steps()[index("deploy")]
+    assert "--prod" not in draft["run"] and "--json" in draft["run"] and "deploy_url" in draft["run"]
+    assert "--prod" in prod["run"]
+    assert "GITHUB_OUTPUT" in draft["run"] and "url=" in draft["run"]
+
+
+def test_the_smoke_test_runs_on_the_draft_between_the_two_deploys_and_blocks_production():
+    """REQ-OPS-NIGHTLY.5: draft, then smoke test, then production; the smoke step cannot be skipped or allowed to fail."""
+    assert index("verify") < index("trim") < index("draft") < index("smoke") < index("deploy") < index("clear")
+    smoke = steps()[index("smoke")]
+    assert "uv run --locked python ops/undead-311-data/smoke_test.py" in smoke["run"]
+    assert smoke["env"]["DRAFT_URL"] == "${{ steps.draft.outputs.url }}" and '--base-url "$DRAFT_URL"' in smoke["run"]
+    assert "--archive" in smoke["run"] and "exports-*.tar.gz" in smoke["run"] and "--judging data/judging" in smoke["run"]
+    for sid in ("draft", "smoke", "deploy"):
+        s = steps()[index(sid)]
+        assert not s.get("continue-on-error") and "if" not in s and s["working-directory"] == "judged", sid
+    assert "--allow-excess" not in smoke["run"] and "--strict-at" not in smoke["run"]
+
+
+def test_the_deploy_steps_have_a_60_minute_limit_and_the_job_limit_leaves_room_for_them():
+    """REQ-OPS-NIGHTLY.5: timeout-minutes: 60 on the draft and production deploys; the job limit is higher than one of them."""
+    assert steps()[index("draft")]["timeout-minutes"] == 60 and steps()[index("deploy")]["timeout-minutes"] == 60
+    assert 0 < steps()[index("smoke")]["timeout-minutes"] <= 15
+    assert workflow()["jobs"]["refresh"]["timeout-minutes"] > 60
+
+
+def test_a_manual_run_and_the_scheduled_run_never_overlap():
+    """REQ-OPS-NIGHTLY.5: one concurrency group for the workflow; a running deploy is never cancelled by a newer run."""
+    c = workflow()["concurrency"]
+    assert c["group"] == "nightly" and c["cancel-in-progress"] is False
+    assert "concurrency" not in workflow()["jobs"]["refresh"]        # a second group on the job would let the two runs overlap again
+
+
+def test_a_failed_smoke_test_alerts_with_the_draft_and_production_is_not_reached():
+    """REQ-OPS-NIGHTLY.5, REQ-OPS-ALERT.1: the alert step runs on failure and names the draft when the smoke test is what failed."""
+    alert = next(s for s in steps() if s.get("name", "").startswith("Open a needs-human"))
+    assert "failure()" in alert["if"] and alert["env"]["S_SMOKE"] == "${{ steps.smoke.outcome }}"
+    assert alert["env"]["DRAFT_URL"] == "${{ steps.draft.outputs.url }}" and "smoke test failed" in alert["run"]
+    assert steps().index(alert) > index("clear")
+
+
+def test_the_build_step_passes_the_optional_site_url_for_absolute_share_image_addresses():
+    """REQ-WEB-LINKS.2: SITE_URL comes from a repository variable (an empty value keeps the addresses relative)."""
+    assert steps()[index("build")]["env"]["SITE_URL"] == "${{ vars.SITE_URL }}"
+
+
+def test_the_smoke_test_script_exists_in_the_repo_the_template_runs_it_from():
+    """REQ-OPS-NIGHTLY.5: the path in the workflow is a real file (a tag cut before it existed would fail the step, not skip it)."""
+    assert (OPS / "smoke_test.py").is_file()
+
+
+# ---- files left out of the deploy -------------------------------------------------------------------------------------
+
+_spec2 = importlib.util.spec_from_file_location("smoke_test", OPS / "smoke_test.py")
+smoke = importlib.util.module_from_spec(_spec2)
+sys.modules.setdefault("smoke_test", smoke)
+_spec2.loader.exec_module(smoke)
+
+
+def test_the_trim_step_runs_after_the_build_and_before_the_draft_and_leaves_out_exactly_the_smoke_test_lists():
+    """REQ-OPS-NIGHTLY.5: the deleted paths are the ones the smoke test expects to be absent, and nothing else."""
+    step = steps()[index("trim")]
+    assert index("build") < index("trim") < index("draft")
+    assert step["working-directory"] == "judged" and not step.get("continue-on-error") and "if" not in step
+    named = set(re.findall(r"web/dist/([\w./-]+)", step["run"]))
+    assert named == set(smoke.LEFT_OUT_DIRS) | set(smoke.LEFT_OUT_FILES)
+
+
+def test_running_the_trim_step_deletes_only_those_files(tmp_path):
+    """REQ-OPS-NIGHTLY.5: the step's own shell text, run on a small copy of web/dist."""
+    dist = tmp_path / "web" / "dist"
+    keep = ["index.html", "data/status.json", "data/points.json", "data/stats/scorecard.json", "data/stats/judge_tour.json",
+            "data/cards/back-bay-2020.json", "data/zombies/index.json", "data/frozen/points.json", "share/site.png"]
+    gone = ["data/incidents/back-bay-2020.json", "data/incidents/dorchester-2021.json", "data/separate_deaths.json",
+            "data/stats/trends.json", "data/stats/stats_status.json"]
+    for rel in keep + gone:
+        f = dist / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text("{}")
+    script = steps()[index("trim")]["run"]
+    result = subprocess.run(["sh", "-ec", script], cwd=tmp_path, capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stderr
+    assert all((dist / rel).exists() for rel in keep)
+    assert not any((dist / rel).exists() for rel in gone) and not (dist / "data" / "incidents").exists()
+    # a second run on the already trimmed folder succeeds (a re-run of the job)
+    assert subprocess.run(["sh", "-ec", script], cwd=tmp_path, check=False).returncode == 0
+
+
+def test_no_page_of_the_app_fetches_the_files_that_are_left_out():
+    """REQ-OPS-NIGHTLY.5: the app's source never names these files as data to load (the parser registry names them only as
+    schema validators), so deleting them cannot break a page."""
+    src = REPO / "web" / "src"
+    names = ("separate_deaths.json", "trends.json", "stats_status.json", "incidents/")
+    offenders = []
+    for f in src.rglob("*.ts*"):
+        rel = f.relative_to(src).as_posix()
+        if rel.startswith("lib/parse/generated") or ".test." in rel:
+            continue
+        text = f.read_text()
+        offenders += [f"{rel}: {n}" for n in names if n in text]
+    assert offenders == []
+    from_stats = (src / "lib" / "statsFiles.ts").read_text()
+    assert "trends" not in from_stats and "stats_status" not in from_stats

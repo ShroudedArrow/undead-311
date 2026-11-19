@@ -118,6 +118,10 @@
     "neighborhood_kicker": "Possible zombies in",
     "neighborhood_line": "{count} Boston 311 cases closed, then reported again at the same place. A measured count is a floor.",
     "neighborhood_top": "Most often: {family} ({count})",
+    "district_kicker": "Possible zombies in council district",
+    "district_line": "{count} Boston 311 cases closed, then reported again at the same place. A measured count is a floor.",
+    "home_kicker": "The Undead 311",
+    "home_line": "{count} possible zombies found in the city's public 311 records. A measured count is a floor.",
     "footer": "Independent project. Not affiliated with the City of Boston.",
     "unknown_neighborhood": "an unnamed neighborhood",
     "neighborhood_not_found": "No neighborhood called that has possible zombies. Go to the map and pick one."

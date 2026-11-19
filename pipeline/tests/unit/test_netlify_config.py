@@ -174,3 +174,16 @@ def test_share_images_are_required_in_every_deploy_build():
     for cmd in (cfg["build"]["command"], cfg["context"]["production"]["command"], cfg["context"]["deploy-preview"]["command"]):
         assert "playwright install chromium" in cmd and "SHARE_IMAGES=required" in cmd
         assert cmd.index("web ci") < cmd.index("playwright install") < cmd.index("make build")
+
+
+def test_netlify_skips_production_git_builds_so_only_the_nightly_deploy_publishes():
+    """REQ-OPS-HOST.1, REQ-OPS-NIGHTLY.2: `ignore` exits 0 (build cancelled) for the production context and 1 for every other, so a
+    push to main never replaces the nightly full-data deploy and deploy previews still build. The nightly CLI deploys are not Git
+    builds and are not affected."""
+    ignore = config()["build"]["ignore"]
+    assert ignore == '[ "$CONTEXT" = "production" ]'
+    import subprocess
+
+    for context, code in (("production", 0), ("deploy-preview", 1), ("branch-deploy", 1)):
+        r = subprocess.run(["sh", "-c", ignore], env={"CONTEXT": context, "PATH": "/usr/bin:/bin"}, check=False)
+        assert r.returncode == code, context

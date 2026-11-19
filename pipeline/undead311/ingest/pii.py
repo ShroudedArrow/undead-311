@@ -5,7 +5,8 @@ after "called by", "spoke with" and "per", and digit runs of 7 or more. Staff na
 everything after a sign-off phrase (`signoff`: "please do not hesitate to contact me", "Sincerely", "Regards",
 "Thank you" followed by a name), runs of slash-separated surnames or initials (`slash_names`: "A.LOWELL / B.NASH",
 and bare names such as "rowan/marsh" when they close the note), and the name beside a job title (`name_title`:
-engineer, foreman, supervisor, manager, director, commissioner, inspector, chief). Addresses and street names are public case
+engineer, foreman, supervisor, manager, director, commissioner, inspector, chief). Names inside a sentence (REQ-ING-PII.7, `first_names.py`): "<first name> <word>", "<first name> from <organization>" and
+"<name> @ <place>", using the 2,000 most common US first names; streets and known places are kept. Addresses and street names are public case
 locations and are kept (REQ-ING-PII.2). Case IDs are public identifiers and are kept: new-system IDs written
 `BCS-<digits>` in any letter case (`bcs-` too), and legacy IDs, which are exactly 12 digits starting with 101 (for example 101002227052; every legacy
 `case_enquiry_id` has this form, ops#221). A longer digit run that starts with 101 is still removed.
@@ -18,6 +19,8 @@ from __future__ import annotations
 import re
 from collections import Counter
 from collections.abc import Iterable
+
+from undead311.ingest import first_names
 
 REMOVED = "[removed]"
 LEGACY_CASE_ID = r"101\d{9}"  # legacy case_enquiry_id: 12 digits starting with 101 (ops#221)
@@ -170,6 +173,9 @@ def scrub(text: str | None, staff: bool = True) -> tuple[str | None, Counter[str
         text, n = _STAFF.subn(REMOVED, text)
         if n:
             counts["staff_name"] += n
+    # REQ-ING-PII.7: last, so it sees every `[removed]` the patterns and the staff list left and can take a first name beside one
+    text, first = first_names.apply(text)
+    counts.update(first)
     return text, counts
 
 
