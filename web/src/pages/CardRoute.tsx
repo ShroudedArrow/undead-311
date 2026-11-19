@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AutopsyCard, type CardWithPartial } from "../components/AutopsyCard";
 import { PanelError } from "../components/PanelError";
@@ -39,13 +39,17 @@ export default function CardRoute() {
     return () => before?.focus?.();
   }, []);
 
-  useEffect(() => {
+  // Escape closes the card. Registered once, before the first paint, and reading the latest search through a ref: re-registering
+  // on every change left a gap in which an Escape pressed as soon as the card showed was lost (an e2e test caught it 1 time in 6).
+  const closeRef = useRef(close);
+  closeRef.current = close;
+  useLayoutEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") navigate({ pathname: "/", search: params.toString() });
+      if (e.key === "Escape") closeRef.current();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [navigate, params]);
+  }, []);
 
   const missing = (points.status === "ok" && index < 0) || (shard.status === "ok" && !card);
   return (

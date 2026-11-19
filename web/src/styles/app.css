@@ -86,23 +86,29 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 
 .shell {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   min-height: 100%;
 }
 .shell-main { min-width: 0; }
+/* The map page fills the screen exactly. dvh follows the phone's moving address bar; 34rem is the floor under which a very short window scrolls instead of squeezing the map to nothing. */
+.shell[data-fit] { height: 100dvh; min-height: 34rem; }
+.shell[data-fit] .shell-main { min-height: 0; overflow: hidden; }
 
 .site-header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2) var(--space-4);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) max(var(--space-3), env(safe-area-inset-right)) var(--space-2) max(var(--space-3), env(safe-area-inset-left));
   background: var(--asphalt);
   color: var(--crew-white);
 }
 .site-header a { color: var(--crew-white); }
 .site-title { font-size: var(--step-1); font-weight: 700; margin: 0; }
 .site-title a { text-decoration: none; }
+/* Touch targets: every header and footer link is at least 44 px tall (design-system.md quality floor). */
+.site-title a, .site-nav a, .site-footer a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 .site-nav { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .nav-toggle { display: none; }
 .site-nav a[aria-current="page"] { font-weight: 700; text-decoration-thickness: 3px; }
@@ -111,10 +117,10 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
   .nav-toggle[aria-expanded="true"] { background: var(--crew-white); color: var(--asphalt); }
   .site-nav[data-open="false"] { display: none; }
   .site-nav { flex-direction: column; flex-basis: 100%; gap: var(--space-1); }
-  .site-nav a { display: block; padding: var(--space-2) 0; }
-  .site-header .data-status { flex-basis: 100%; margin-left: 0; }
+  .site-nav a { display: flex; padding: 0; }
+  .site-header .data-status { flex-basis: 100%; margin-left: 0; text-align: left; }
 }
-.site-header .data-status { margin-left: auto; font-size: var(--step--1); max-width: 34rem; }
+.site-header .data-status { margin-left: auto; font-size: var(--step--1); max-width: 34rem; flex: 1 1 24rem; text-align: right; }
 .site-header .data-status p { margin: 0; max-width: none; }
 /* Ops issue 216: the sample note shares the "Data as of" line; on small phones the two lines sit tighter so the map stays high. */
 @media (max-width: 380px) {
@@ -124,7 +130,7 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .site-header .fixture-notice { border: 2px dashed var(--crew-white); padding: var(--space-1) var(--space-2); margin-top: var(--space-1); font-weight: 600; }
 
 .site-footer {
-  padding: var(--space-3);
+  padding: var(--space-3) max(var(--space-3), env(safe-area-inset-right)) max(var(--space-3), env(safe-area-inset-bottom)) max(var(--space-3), env(safe-area-inset-left));
   background: var(--crew-white);
   border-top: 2px solid var(--asphalt);
   font-size: var(--step--1);
@@ -139,11 +145,17 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
   max-width: var(--measure);
 }
 
-/* Map page layout (REQ-WEB-MAP) */
+/*
+ * Map page layout (REQ-WEB-MAP). The route fills the screen (see .shell[data-fit]), so the page never scrolls and nothing the
+ * visitor opens can move or resize the map: the sidebar scrolls inside itself, and under 640 px the filters open as a sheet over
+ * the map. Sidebar order is set with `order`, because .filters-body dissolves (display: contents) on wide screens.
+ */
+.shell-main { display: flex; flex-direction: column; }
+.shell-main > .home { flex: 1 1 0; min-height: 0; }
 .home {
   display: grid;
-  grid-template-columns: minmax(16rem, 20rem) 1fr;
-  height: 100%;
+  grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   min-height: 0;
   position: relative;
 }
@@ -152,27 +164,115 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
   border-right: 2px solid var(--asphalt);
   padding: var(--space-3);
   overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
-.filters-panel h2 { margin-top: var(--space-3); }
+.filters-panel p { margin: 0; max-width: none; }
+.filters-panel > h1 { order: 0; margin: 0; }
+.filters-body { display: contents; }
+.hero-text { order: 1; display: grid; gap: var(--space-2); }
+.count-block { order: 2; display: grid; gap: var(--space-1); }
+.filters-form { order: 3; }
+.filter-options { order: 4; display: grid; gap: var(--space-2); }
 .tagline { font-size: var(--step--1); }
-.stage { position: relative; min-width: 0; min-height: 24rem; display: flex; flex-direction: column; }
+.filters-toggle { display: none; }
+.stage { position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .view-switch { display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--concrete); }
-.map-host { flex: 1; min-height: 24rem; width: 100%; }
-.shell-main { display: flex; flex-direction: column; }
-.shell-main > .home { flex: 1; }
+.map-frame { position: relative; flex: 1 1 0; min-height: 0; }
+.map-frame .map-host { position: absolute; inset: 0; min-height: 0; }
+.map-host { width: 100%; }
 
 .filter-group { border: 2px solid var(--asphalt); background: var(--concrete); margin: 0 0 var(--space-2); }
 .filter-group summary { padding: var(--space-2) var(--space-3); cursor: pointer; font-weight: 600; min-height: 2.75rem; display: flex; align-items: center; gap: var(--space-2); }
 .filter-group summary::-webkit-details-marker { display: none; }
 .filter-group ul { list-style: none; margin: 0; padding: 0 var(--space-3) var(--space-2); max-height: 14rem; overflow-y: auto; }
-.filter-group li label { display: flex; gap: var(--space-2); align-items: center; padding: var(--space-1) 0; min-height: 2rem; }
+.filter-group li label { display: flex; gap: var(--space-2); align-items: center; padding: var(--space-1) 0; min-height: 2.75rem; }
 .filter-group input[type="checkbox"] { width: 1.25rem; height: 1.25rem; accent-color: var(--asphalt); }
-.count-line { font-weight: 600; }
+.count-line { font-weight: 600; margin: 0; }
 .count-note { font-size: var(--step--1); }
 
+/* Marker key over the map's lower left corner (REQ-WEB-MAP.1). Under the card (20) and the phone filter sheet (30). */
+/* It sits above the bottom credit line (which must stay visible, tech.md) and left of the zoom buttons, and scrolls inside itself when tall. */
+.map-legend { position: absolute; left: var(--space-2); bottom: 2.25rem; z-index: 5; background: var(--crew-white); border: 2px solid var(--asphalt); max-width: min(24rem, calc(100% - 4.5rem)); }
+.map-legend summary { cursor: pointer; font-weight: 600; min-height: 2.75rem; padding: 0 var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
+.map-legend summary::-webkit-details-marker { display: none; }
+/* Open, the key has a close button in its top right corner; the summary leaves room for it. Shut, the browser hides the button with the list. */
+.map-legend[open] > summary { padding-right: 3.25rem; }
+.legend-close { position: absolute; top: 0; right: 0; width: 2.75rem; height: 2.75rem; min-height: 2.75rem; padding: 0; border: 0; border-left: 2px solid var(--asphalt); border-bottom: 2px solid var(--asphalt); background: var(--crew-white); font-size: var(--step-2); line-height: 1; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.map-legend ul { list-style: none; margin: 0; padding: 0 var(--space-3) var(--space-2); max-height: min(50dvh, 20rem); overflow-y: auto; }
+/* On a phone the open key is capped below the zoom buttons: the stage less the top 7.5rem (controls) and the bottom 2.25rem (credit). */
 @media (max-width: 640px) {
-  .home { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-  .filters-panel { border-right: 0; border-bottom: 2px solid var(--asphalt); max-height: 14rem; }
+  .map-legend ul { max-height: max(4rem, calc(100cqh - 11rem)); }
+  .map-frame { container-type: size; }
+}
+.map-legend li { display: flex; align-items: center; gap: var(--space-2); font-size: var(--step--1); min-height: 1.5rem; }
+.legend-mark { flex: none; display: inline-flex; width: 1.5rem; height: 1.5rem; }
+.legend-mark svg { width: 100%; height: 100%; }
+
+@media (max-width: 640px) {
+  .home { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .filters-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-1) var(--space-3);
+    padding: var(--space-2) max(var(--space-3), env(safe-area-inset-right)) var(--space-2) max(var(--space-3), env(safe-area-inset-left));
+    border-right: 0;
+    border-bottom: 2px solid var(--asphalt);
+    background: var(--concrete);
+    overflow: visible;
+  }
+  /* The header already names the site, so the page heading stays for screen readers only. */
+  .filters-panel > h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .filters-panel > .count-block { grid-column: 1; grid-row: 1; }
+  .filters-toggle { display: inline-flex; align-items: center; grid-column: 2; grid-row: 1; }
+  /* The filters are a sheet over the lower part of the map. It is out of the page flow, so opening it moves nothing. */
+  .filters-body {
+    display: none;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    max-height: min(70dvh, 36rem);
+    overflow-y: auto;
+    flex-direction: column;
+    gap: var(--space-3);
+    background: var(--crew-white);
+    border-top: 2px solid var(--asphalt);
+    padding: var(--space-3) max(var(--space-3), env(safe-area-inset-right)) max(var(--space-3), env(safe-area-inset-bottom)) max(var(--space-3), env(safe-area-inset-left));
+  }
+  .filters-body.filters-open { display: flex; }
+  .stage { border-top: 0; }
+  /* The sheet would cut through the Map and Table buttons, so they step out of the way while it is open. */
+  .home:has(.filters-open) .view-switch { visibility: hidden; }
+}
+/* The count block arrives with the data; the strip holds the height it will have, measured at 320, 360, 390/430 and 640 px, so the map does not shrink when it fills in. */
+@media (max-width: 640px) {
+  .filters-panel { min-height: 5.4rem; }
+}
+@media (min-width: 381px) and (max-width: 480px) {
+  .filters-panel { min-height: 8.1rem; }
+}
+@media (max-width: 380px) {
+  .filters-panel { min-height: 6.9rem; }
+}
+/* Under about 345 px the floor note wraps to a third line (reviewer-ux r3: 0.012 shift at 320). */
+@media (max-width: 345px) {
+  .filters-panel { min-height: 8.4rem; }
+}
+/* On the map page the footer keeps every line but runs them together, so the map keeps the room. */
+.shell[data-fit] .site-footer { display: block; padding-block: var(--space-2) max(var(--space-2), env(safe-area-inset-bottom)); line-height: 1.35; }
+.shell[data-fit] .site-footer p { display: inline; margin-right: var(--space-2); }
+/* In the run-in footer the link stays inline; padding gives it the 44 px target without breaking the line. */
+.shell[data-fit] .site-footer a { display: inline-block; min-height: 2.75rem; padding-block: 0.65rem; margin-block: -0.65rem; line-height: 1.45; vertical-align: baseline; }
+/* Below about 380 px the count heading and Show filters share a row, and the floor note takes its own full-width line (UX-52). */
+@media (max-width: 380px) {
+  .filters-panel > .count-block { display: contents; }
+  .count-line { grid-column: 1; grid-row: 1; }
+  .count-all, .count-block .count-note { grid-column: 1 / -1; }
 }
 
 /* Table view (REQ-WEB-TABLE) */
@@ -245,7 +345,8 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
     right: 0;
     bottom: 0;
     width: auto;
-    max-height: 85vh;
+    max-height: 85dvh;
+    padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
     border-width: 2px 0 0;
   }
   .autopsy { margin: 0; }
@@ -254,7 +355,8 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 }
 
 /* Pages and scorecard (REQ-WEB-SCORE) */
-.page { padding: var(--space-3); max-width: 60rem; }
+.page { padding: var(--space-4) max(var(--space-3), env(safe-area-inset-right)) var(--space-5) max(var(--space-3), env(safe-area-inset-left)); max-width: 60rem; }
+.page > h1 { margin-bottom: var(--space-3); }
 .score-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-3); }
 .score-row { background: var(--crew-white); border: 2px solid var(--asphalt); padding: var(--space-3); }
 .score-pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
@@ -270,7 +372,8 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .slider-stops { margin: 0; }
 .slider-group input[type="range"] { width: min(24rem, 100%); min-height: 2.75rem; accent-color: var(--asphalt); }
 .slider-radio { display: flex; align-items: center; gap: var(--space-2); min-height: 2.75rem; }
-.slider-result { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-3); }
+.slider-result { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: var(--space-1) var(--space-3); }
+.slider-result dt, .slider-result dd { overflow-wrap: anywhere; }
 .slider-result dd { margin: 0; font-weight: 600; }
 .street-search { display: grid; gap: var(--space-2); max-width: 32rem; }
 .street-search input { min-height: 2.75rem; padding: 0 var(--space-2); border: 2px solid var(--asphalt); border-radius: 2px; font: inherit; }
@@ -283,18 +386,14 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .copy-link { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .copy-link button, .card-share a { min-height: 2.75rem; padding: 0 var(--space-3); border: 2px solid var(--asphalt); border-radius: 2px; background: var(--crew-white); font: inherit; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; color: var(--asphalt); }
 .card-share, .filters-share { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
-.timelapse-controls { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin: var(--space-3) 0; }
 .timelapse-controls button { min-height: 2.75rem; padding: 0 var(--space-3); border: 2px solid var(--asphalt); border-radius: 2px; background: var(--crew-white); font: inherit; font-weight: 600; cursor: pointer; }
 .timelapse-controls button:disabled { opacity: .6; cursor: default; }
-.timelapse-controls input[type="range"] { width: min(24rem, 100%); min-height: 2.75rem; accent-color: var(--asphalt); }
-.timelapse-map { height: 32rem; margin: var(--space-3) 0; border: 2px solid var(--asphalt); }
-.timelapse-map .map-host { height: 100%; min-height: 0; }
 .lang-switch { display: flex; gap: var(--space-1); }
 .lang-switch button { min-height: 2.75rem; padding: 0 var(--space-3); border: 2px solid var(--crew-white); border-radius: 2px; background: transparent; color: var(--crew-white); font: inherit; cursor: pointer; }
 .lang-switch button[aria-pressed="true"] { background: var(--crew-white); color: var(--asphalt); font-weight: 700; }
 .street-near { display: grid; gap: var(--space-2); margin: var(--space-3) 0; }
 .score-excess { margin-top: var(--space-3); padding-top: var(--space-2); border-top: 1px solid var(--asphalt); }
-.score-excess h3 { margin: 0 0 var(--space-1); font-size: 1rem; }
+.score-excess h3 { margin: 0 0 var(--space-1); font-size: var(--step-0); }
 .score-excess p { margin: var(--space-1) 0; }
 .score-detail { margin-top: var(--space-2); }
 .score-detail summary { cursor: pointer; min-height: 2.75rem; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--crew-white); border: 2px solid var(--asphalt); border-radius: 2px; font-weight: 600; }
@@ -335,15 +434,6 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .score-detail[open] > summary::before {
   border-width: 0.65rem 0.4rem 0 0.4rem;
   border-color: var(--asphalt) transparent transparent transparent;
-}
-
-/* UX-7 (ops#20): on phones the count stays in full and the filters sit behind a button, not in a clipped scroll box. */
-.filters-toggle { display: none; margin-bottom: var(--space-3); }
-@media (max-width: 640px) {
-  .filters-panel { max-height: none; overflow-y: visible; }
-  .filters-toggle { display: inline-flex; align-items: center; }
-  .filters-body:not(.filters-open) { display: none; }
-  .filters-body.filters-open { max-height: 60vh; overflow-y: auto; }
 }
 
 /* UX-2 (ops#15): MapLibre's own controls restyled to the palette: square, no shadow, Public Sans, drawn + and - marks. */
@@ -406,60 +496,6 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 }
 .map-host .maplibregl-ctrl-attrib a { color: var(--asphalt); }
 
-/*
- * UX-12 (ops#25): on phones the map is the hero. The filters panel stops being a box (display: contents) so its parts
- * and the map share one column: title, count, Show filters, the filters when open, the map, then the two hero lines.
- */
-@media (max-width: 640px) {
-  .home { display: flex; flex-direction: column; height: auto; }
-  .filters-panel { display: contents; }
-  .filters-panel > * { margin-inline: var(--space-3); }
-  .filters-panel > h1 { order: 0; }
-  .filters-panel > div:not(.hero-text):not(.filters-body) { order: 1; }
-  .filters-panel > .filters-toggle { order: 2; align-self: flex-start; }
-  .filters-panel > .filters-body { order: 3; }
-  .stage { order: 4; flex: 0 0 auto; border-top: 2px solid var(--asphalt); }
-  .filters-panel > .hero-text { order: 5; margin-block: var(--space-3); }
-}
-
-/*
- * UX-49 (channel issue 188): the header already names the site, so on phones the page heading stays for screen readers only, and
- * the count and the Show filters button share one row. The stage then fills the rest of the first view, so the map gets
- * about 60% of it instead of 45%.
- */
-@media (max-width: 640px) {
-  .filters-panel > h1 {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: 0;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-  .home { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
-  .home > * { flex: 1 1 100%; min-width: 0; }
-  .filters-panel > div:not(.hero-text):not(.filters-body) { flex: 1 1 8rem; margin-block: var(--space-2) 0; }
-  .filters-panel > .filters-toggle { flex: 0 0 auto; align-self: center; margin-block: var(--space-2) 0; }
-  .filters-panel > .filters-body { flex: 1 1 100%; }
-  .stage { flex: 1 1 100%; min-height: max(24rem, calc(100svh - 17rem)); }
-}
-
-/*
- * UX-52 (issue 192): below about 380 px the count block no longer shares one narrow column with Show filters (it grew to
- * 160-204 px tall at 360 and 320 px wide). The block dissolves so the count heading and Show filters share a row, and the
- * floor note, and the all-tier count when shown, get their own full-width lines. The 390 px layout above is unchanged.
- */
-@media (max-width: 380px) {
-  .filters-panel > div:not(.hero-text):not(.filters-body) { display: contents; }
-  .filters-panel .count-line { order: 1; flex: 1 1 8rem; min-width: 0; margin: var(--space-2) var(--space-3) 0; align-self: center; }
-  .filters-panel > .filters-toggle { order: 2; margin-inline: 0 var(--space-3); }
-  .filters-panel .count-all, .filters-panel .count-note { order: 3; flex: 1 1 100%; margin-inline: var(--space-3); }
-  .filters-panel > .filters-body { order: 4; }
-  .stage { order: 5; }
-  .filters-panel > .hero-text { order: 6; }
-}
-
 /* UX-13 (ops#26): the card repeats a short preview notice, because the phone sheet can cover the header notice. */
 .card-fixture-notice { border: 2px dashed var(--asphalt); padding: var(--space-1) var(--space-2); margin: 0 0 var(--space-3); font-weight: 600; max-width: none; }
 
@@ -489,7 +525,7 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .chart-controls label { display: flex; gap: var(--space-2); align-items: center; min-height: 2.75rem; }
 .chart-controls input[type="radio"] { width: 1.25rem; height: 1.25rem; accent-color: var(--asphalt); }
 .chart-pick { flex-direction: column; align-items: flex-start; }
-.chart-pick select { min-height: 2.75rem; background-color: var(--crew-white); color: var(--asphalt); border: 2px solid var(--asphalt); border-radius: 0; padding: var(--space-2) var(--space-3); font-family: var(--font-ui); }
+.chart-pick select { min-height: 2.75rem; }
 .chart-legend { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-3); padding: 0; margin: var(--space-2) 0; }
 .chart-legend li { display: flex; align-items: center; gap: var(--space-2); }
 .chart-table { padding: var(--space-3) 0; }
@@ -502,6 +538,167 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .calibration-warning { border: 2px solid var(--asphalt); border-left: 0.6rem solid var(--cone-orange); padding: var(--space-2) var(--space-3); background: var(--crew-white); max-width: var(--measure); }
 .report-error { font-weight: 600; }
 .autopsy-report { margin: var(--space-3) 0 0; }
+
+
+/* ---- UI polish (design-system.md): one rhythm, one control style, hard-edged form layers, no layout shifts ---- */
+
+/* Headings: the same step each time, with room above a heading and none below the last line of its section. */
+h2 { margin-top: var(--space-4); }
+h3 { margin-top: var(--space-3); }
+.page > h1 + *, .page h2:first-child { margin-top: 0; }
+
+/* One style for every drop-down: square, Asphalt border, Crew white, the 44 px floor. */
+select {
+  min-height: 2.75rem;
+  background-color: var(--crew-white);
+  color: var(--asphalt);
+  border: 2px solid var(--asphalt);
+  border-radius: 0;
+  padding: 0 var(--space-3);
+  font-family: var(--font-ui);
+  max-width: 100%;
+}
+
+/* Night of the Living 311: playback on one row, the focus controls in one boxed form below it (REQ-WEB-TIMELAPSE.1). */
+/*
+ * Night of the Living 311 (REQ-WEB-TIMELAPSE.1). The map is the hero: the section fills the screen under the site header
+ * (--site-header-h, set by the shell), with one compact toolbar on top and the map in the rest. "Focus the view" opens over the map,
+ * so the map never changes size. The year table and the notes sit below, in a readable column.
+ */
+.timelapse-page { width: 100%; }
+.timelapse-hero { display: flex; flex-direction: column; height: calc(100dvh - var(--site-header-h, 5.5rem)); min-height: 26rem; }
+.timelapse-toolbar {
+  position: relative;
+  z-index: 26;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) max(var(--space-3), env(safe-area-inset-right)) var(--space-2) max(var(--space-3), env(safe-area-inset-left));
+  background: var(--crew-white);
+  border-bottom: 2px solid var(--asphalt);
+}
+.timelapse-toolbar h1 { margin: 0; font-size: var(--step-1); flex: 0 0 auto; }
+.timelapse-toolbar p { margin: 0; max-width: none; }
+.timelapse-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); flex: 1 1 28rem; min-width: 0; }
+.timelapse-reduced { flex: 1 1 28rem; font-size: var(--step--1); }
+.timelapse-scrub { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; flex: 1 1 14rem; min-width: 0; }
+.timelapse-scrub input[type="range"] { flex: 1 1 auto; width: auto; min-width: 6rem; min-height: 2.75rem; accent-color: var(--asphalt); }
+.timelapse-focus-panel > summary { list-style: none; cursor: pointer; font-weight: 600; min-height: 2.75rem; display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); border: 2px solid var(--asphalt); border-radius: 2px; background: var(--crew-white); }
+.timelapse-focus-panel > summary::-webkit-details-marker { display: none; }
+.timelapse-focus-panel > summary::before { content: ""; flex: none; border-style: solid; border-width: 0.4rem 0 0.4rem 0.65rem; border-color: transparent transparent transparent var(--asphalt); }
+.timelapse-focus-panel[open] > summary::before { border-width: 0.65rem 0.4rem 0 0.4rem; border-color: var(--asphalt) transparent transparent transparent; }
+.timelapse-focus-panel[open] > summary { background: var(--asphalt); color: var(--crew-white); }
+.timelapse-focus-panel[open] > summary::before { border-color: var(--crew-white) transparent transparent transparent; }
+.timelapse-focus-body {
+  position: absolute;
+  top: 100%;
+  right: var(--space-3);
+  width: min(46rem, calc(100% - 2 * var(--space-3)));
+  max-height: calc(100dvh - var(--site-header-h, 5.5rem) - 8rem);
+  overflow-y: auto;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--crew-white);
+  border: 2px solid var(--asphalt);
+  border-top: 0;
+}
+.timelapse-focus-body p { margin: 0; }
+.timelapse-focus {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.timelapse-focus label { display: grid; gap: var(--space-1); font-weight: 600; min-width: 0; }
+.timelapse-focus select { width: 100%; min-width: 0; }
+#trail-note { font-size: var(--step-0); }
+.timelapse-map { position: relative; flex: 1 1 0; min-height: 0; }
+.timelapse-map .map-host { position: absolute; inset: 0; min-height: 0; }
+.timelapse-map-note { margin: var(--space-3); }
+/* The date stamp: a rubber date stamp over the map's top left corner, large enough to read while the time-lapse plays. Fixed-width digits, so it does not jitter. */
+.date-stamp {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 4;
+  pointer-events: none;
+  display: grid;
+  gap: var(--space-1);
+  max-width: calc(100% - 5.5rem);
+  padding: var(--space-1) var(--space-3) var(--space-2);
+  background: var(--crew-white);
+  border: 3px solid var(--asphalt);
+  transform: rotate(-2deg);
+  font-variant-numeric: tabular-nums;
+}
+.date-stamp-date { font-size: clamp(1.6rem, 3.2vw, 2.6rem); font-weight: 700; line-height: 1.1; white-space: nowrap; }
+.date-stamp-count { font-size: var(--step-0); font-weight: 600; }
+.timelapse-after { width: min(60rem, 100%); margin-inline: auto; padding: var(--space-4) max(var(--space-3), env(safe-area-inset-right)) var(--space-5) max(var(--space-3), env(safe-area-inset-left)); }
+@media (max-width: 640px) {
+  .timelapse-toolbar h1 { font-size: var(--step-0); }
+  /* title and Focus the view share the first row; the playback controls take the next */
+  .timelapse-focus-panel { order: 1; margin-left: auto; }
+  .timelapse-controls, .timelapse-reduced { order: 2; flex-basis: 100%; }
+  /* On a phone the panel is a sheet at the bottom of the screen, so the toolbar, the date stamp and the top of the map stay in view (reviewer-ux r4 F2). */
+  .timelapse-focus-body {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    max-height: 45dvh;
+    border-width: 2px 0 0;
+    padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
+  }
+  /* each label beside its select, so the current value is not cut off (F3) */
+  .timelapse-focus { grid-template-columns: 1fr; gap: var(--space-1); }
+  .timelapse-focus label { grid-template-columns: 7.5rem minmax(0, 1fr); align-items: center; gap: var(--space-2); }
+  .date-stamp { top: var(--space-2); left: var(--space-2); }
+}
+
+/*
+ * Methods page: the text sits in a centred column about 70 characters wide. On screens 70rem and wider the contents list takes
+ * the right-hand side and stays in view while the column scrolls; below that it is one column, with the contents list folded
+ * into a disclosure above the text.
+ */
+.methods-page { max-width: none; }
+.methods-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+.methods-main { min-width: 0; max-width: var(--measure); width: 100%; margin-inline: auto; }
+.methods-main .chart-section { max-width: none; }
+.methods-main .plain-list, .methods-main .panel-error, .methods-main .calibration-warning { max-width: none; }
+.methods-main .shift-bar { max-width: 100%; }
+/*
+ * Contents list: static, under the page title, inside the text column. Two columns from 40rem (one on phones). The numbers sit outside
+ * each item with room for two digits ("12."), so none is cut off (reviewer-ux, round 3 owner review).
+ */
+.toc { margin: 0 0 var(--space-4); padding: var(--space-2) var(--space-3); background: var(--crew-white); border: 2px solid var(--asphalt); }
+.toc-title { font-weight: 700; margin: 0; }
+.toc ol { margin: 0; padding-left: 2.25rem; }
+.toc li { break-inside: avoid; font-variant-numeric: tabular-nums; }
+.toc li::marker { font-weight: 600; }
+.toc a { display: flex; align-items: center; min-height: 2.75rem; line-height: 1.25; }
+@media (min-width: 40rem) {
+  .toc ol { columns: 2; column-gap: var(--space-5); }
+}
+
+/* Layout shifts: the header's data line keeps two lines on phones, where the sample note wraps once the data arrives. */
+@media (max-width: 640px) {
+  .site-header .data-status { min-height: calc(2 * 1.5 * var(--step--1)); text-align: left; flex-basis: 100%; }
+}
+
+
+/*
+ * Reserved space (layout shift, design-system.md quality floor). A page that fills in after its data arrives shows a placeholder one
+ * screen high until every file it reads has come back, then draws all of it at once. The footer stays below the fold either way, so
+ * nothing visible moves.
+ */
+[data-slot="page-loading"] { min-height: 100dvh; }
 
 /* Print: one clean page per district report card (REQ-WEB-OPEN.2). Black on white, no navigation, no controls. */
 .print-only { display: none; }

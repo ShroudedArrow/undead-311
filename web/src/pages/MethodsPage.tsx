@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { PageToc } from "../components/PageToc";
 import { OpenData } from "../components/OpenData";
 import { Sliders } from "../components/Sliders";
 import { LeavesOut } from "../components/LeavesOut";
@@ -10,7 +12,7 @@ import { formatDateTime } from "../lib/format";
 import { familyLabel } from "../lib/labels";
 import { excessShown, familyExcessRows, num1, readPlacebo, readShift } from "../lib/methods";
 import { NULL_TOWNS, STRESS_ABOVE, STRESS_TOWNS, signed, sumOf } from "../lib/nullTowns";
-import { parseExcess, parseScorecard, parseStatus, parseValidation } from "../lib/parse";
+import { parseBulkClosures, parseExcess, parseExclusions, parseScorecard, parseSensitivityGrid, parseStatus, parseTemporaryFixes, parseValidation } from "../lib/parse";
 import { pct } from "../lib/rates";
 import { t } from "../lib/t";
 
@@ -30,7 +32,7 @@ function Definitions() {
         <li>{t("methods.def_city")}</li>
         <li>{t("methods.def_mirror")}</li>
       </ul>
-      {p ? <p className="count-note">{t("methods.def_params", { matching: p.matching, radius: p.RADIUS_M, window: p.WINDOW_DAYS })}</p> : null}
+      <p className="count-note">{p ? t("methods.def_params", { matching: p.matching, radius: p.RADIUS_M, window: p.WINDOW_DAYS }) : "\u00a0"}</p>
     </section>
   );
 }
@@ -225,43 +227,65 @@ function MethodsSampleNotice() {
 
 /** Methods page: definitions, baselines, shift test, placebo, validation, limits, nightly status and what the headline leaves out (REQ-WEB-METHODS.1, REQ-WEB-FRESH.2, REQ-WEB-DEATHS.1). */
 export default function MethodsPage() {
+  // the element, in state, so the contents list is built in a synchronous re-render before the first paint
+  const [content, setContent] = useState<HTMLDivElement | null>(null);
+  // Every file the sections read settles first (a few milliseconds from the same origin), and the placeholder is a screen high, so nothing
+  // visible moves when the sections arrive (layout shift, design-system.md quality floor). Sections then mount with their data in hand.
+  const files = [useData("status.json", parseStatus), useData("scorecard.json", parseScorecard), useData("excess.json", parseExcess), useData("validation.json", parseValidation), useData("sensitivity_grid.json", parseSensitivityGrid), useData("temporary_fixes.json", parseTemporaryFixes), useData("exclusions.json", parseExclusions), useData("bulk_closures.json", parseBulkClosures)];
+  if (files.some((f) => f.status === "loading")) {
+    return (
+      <div className="page methods-page" aria-busy="true">
+        <div className="methods-layout">
+          <div className="methods-main" data-slot="page-loading">
+            <h1>{t("methods.title")}</h1>
+            <p className="count-note">{t("app.loading_section")}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
-    <div className="page">
-      <h1>{t("methods.title")}</h1>
-      <MethodsSampleNotice />
-      <p data-testid="methods-intro">{t("methods.intro")}</p>
-      <Definitions />
-      <Baselines />
-      <NullTowns />
-      <section className="chart-section" aria-labelledby="adjusted-h" data-testid="baseline-uses">
-        <h2 id="adjusted-h">{t("methods.adjusted_heading")}</h2>
-        <p data-testid="adjusted-text">{t("methods.adjusted_text")}</p>
-        <p data-testid="confidence-text">{t("methods.confidence_text")}</p>
-      </section>
-      <Sliders />
-      <Validation />
-      <section className="chart-section" aria-labelledby="limits-h">
-        <h2 id="limits-h">{t("methods.limits_heading")}</h2>
-        <ul className="plain-list">
-          <li>{t("methods.limit_floor")}</li>
-          <li>{t("methods.limit_intersection")}</li>
-          <li>{t("methods.limit_origin")}</li>
-        </ul>
-      </section>
-      <LeavesOut />
-      <OpenData />
-      <Status />
-      <section className="chart-section" aria-labelledby="report-h">
-        <h2 id="report-h">{t("methods.report_heading")}</h2>
-        <p>{t("methods.report_text")}</p>
-        <p>
-          <ReportError page={t("methods.title")} /> <Link to="/corrections">{t("links.corrections")}</Link>
-        </p>
-      </section>
-      <section className="chart-section" aria-labelledby="about-h" data-testid="about">
-        <h2 id="about-h">{t("about.heading")}</h2>
-        <p>{t("about.body")}</p>
-      </section>
+    <div className="page methods-page">
+      <div className="methods-layout">
+        <div className="methods-main" ref={setContent}>
+          <h1>{t("methods.title")}</h1>
+          <MethodsSampleNotice />
+          <PageToc content={content} />
+          <p data-testid="methods-intro">{t("methods.intro")}</p>
+          <Definitions />
+          <Baselines />
+          <NullTowns />
+          <section className="chart-section" aria-labelledby="adjusted-h" data-testid="baseline-uses">
+            <h2 id="adjusted-h">{t("methods.adjusted_heading")}</h2>
+            <p data-testid="adjusted-text">{t("methods.adjusted_text")}</p>
+            <p data-testid="confidence-text">{t("methods.confidence_text")}</p>
+          </section>
+          <Sliders />
+          <Validation />
+          <section className="chart-section" aria-labelledby="limits-h">
+            <h2 id="limits-h">{t("methods.limits_heading")}</h2>
+            <ul className="plain-list">
+              <li>{t("methods.limit_floor")}</li>
+              <li>{t("methods.limit_intersection")}</li>
+              <li>{t("methods.limit_origin")}</li>
+            </ul>
+          </section>
+          <LeavesOut />
+          <OpenData />
+          <Status />
+          <section className="chart-section" aria-labelledby="report-h">
+            <h2 id="report-h">{t("methods.report_heading")}</h2>
+            <p>{t("methods.report_text")}</p>
+            <p>
+              <ReportError page={t("methods.title")} /> <Link to="/corrections">{t("links.corrections")}</Link>
+            </p>
+          </section>
+          <section className="chart-section" aria-labelledby="about-h" data-testid="about">
+            <h2 id="about-h">{t("about.heading")}</h2>
+            <p>{t("about.body")}</p>
+          </section>
+        </div>
+      </div>
     </div>
   );
 }

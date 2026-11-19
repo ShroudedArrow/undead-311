@@ -29,6 +29,7 @@ Requirement IDs: REQ-OPS-HOST.1 to .4, REQ-OPS-NIGHTLY.2.
 3. Set **Deploy Previews** to **Automatically build deploy previews for all pull requests** (against `main`).
 4. Set **Branch deploys** to **None**.
 5. Keep **Deploy Preview comments** (the pull request comment with the preview URL) on, under the same page's notifications section. This provides the preview URL on each PR (REQ-OPS-HOST.2).
+6. Turn off the **Netlify Drawer** (the review toolbar Netlify adds to deploy previews and branch deploys): **Project configuration**, then **Developer settings**, then **Continuous deployment**, then **Collaboration tools**, then **Configure**, and disable the Netlify Drawer. The drawer loads in a frame from `app.netlify.com`, and the site's Content Security Policy only allows same-origin frames (`child-src 'self' blob:` in `web/src/lib/csp.ts`), so the browser blocks it and shows an empty grey box with a broken-page icon at the bottom of the page. The console reports "Framing 'https://app.netlify.com/' violates the following Content Security Policy directive". Do not allow `app.netlify.com` in the policy: the site makes no third-party requests (tech.md). To hide the drawer for one visit without changing the setting, open the preview with `?ntl-drawer-state=hidden`. The drawer is never added to production deploys, so the public site is not affected.
 
 ### 4. Personal access token (becomes `NETLIFY_AUTH_TOKEN`)
 1. Click your avatar, then **User settings**, then **Applications**, then **Personal access tokens**, then **New access token**.
@@ -55,6 +56,7 @@ Copy the site URL from the top of the Netlify site page (`https://<name>.netlify
 
 ## Checks after the first deploy
 - The production URL loads with no login.
+- If the production URL asks for a Netlify login (an HTTP 401 that redirects to `app.netlify.com/edge-access`), the project is private: **Project configuration**, then **General**, then **Visitor access**, then **Project visibility**. Set it to **Public**, or keep it private for **Previews only**. Judges must reach the site with no login, so production must be public by the judging date.
 - A test pull request shows a **Deploy Preview** check and a comment with the preview URL.
 - The page footer reads "Independent project. Not affiliated with the City of Boston." and the browser console shows no blocked requests.
 

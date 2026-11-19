@@ -47,12 +47,22 @@ export async function loadFrozen<T>(file: string, parse: (d: unknown) => ParseRe
 }
 
 const cache = new Map<string, Promise<Load<unknown>>>();
+/** Results that have already come back, so a component that mounts later starts with its data and does not flash "loading" (layout shift). */
+const settled = new Map<string, Load<unknown>>();
+/** Record a result only while its promise is still the cached one, so a load that finishes after the cache was cleared cannot leave a stale result behind. */
+const remember = <T,>(key: string, load: Promise<Load<T>>): Promise<Load<T>> => {
+  const p: Promise<Load<T>> = load.then((r) => {
+    if (cache.get(key) === (p as Promise<Load<unknown>>)) settled.set(key, r);
+    return r;
+  });
+  return p;
+};
 
 /** Load once per file per page view; later callers share the promise. */
 export function loadOnce<T>(file: string, parse: (d: unknown) => ParseResult<T>): Promise<Load<T>> {
   let p = cache.get(file);
   if (!p) {
-    p = loadData(file, parse);
+    p = remember(file, loadData(file, parse));
     cache.set(file, p);
   }
   return p as Promise<Load<T>>;
@@ -63,7 +73,7 @@ export function loadFrozenOnce<T>(file: string, parse: (d: unknown) => ParseResu
   const key = `frozen:${file}`;
   let p = cache.get(key);
   if (!p) {
-    p = loadFrozen(file, parse);
+    p = remember(key, loadFrozen(file, parse));
     cache.set(key, p);
   }
   return p as Promise<Load<T>>;
@@ -71,20 +81,33 @@ export function loadFrozenOnce<T>(file: string, parse: (d: unknown) => ParseResu
 
 export function clearDataCache(): void {
   cache.clear();
+  settled.clear();
 }
 
 export function useData<T>(file: string | null, parse: (d: unknown) => ParseResult<T>, frozen = false): Load<T> {
-  const [state, setState] = useState<Load<T>>({ status: "loading" });
+  const key = file === null ? null : frozen ? `frozen:${file}` : file;
+  // The state remembers which file it belongs to. A component that mounts after its file has come back starts with that result and
+  // never starts a load of its own (no "loading" flash, no layout shift, and no stray request after the cache is cleared).
+  const [held, setHeld] = useState<{ key: string | null; load: Load<T> }>(() => {
+    const known = key !== null ? (settled.get(key) as Load<T> | undefined) : undefined;
+    return known ? { key, load: known } : { key: null, load: { status: "loading" } };
+  });
   useEffect(() => {
-    if (file === null) return;
+    if (file === null || key === null) return;
+    if (held.key === key && held.load.status !== "loading") return; // already have this file's result
     let live = true;
-    setState({ status: "loading" });
-    void (frozen ? loadFrozenOnce(file, parse) : loadOnce(file, parse)).then((r) => live && setState(r));
+    const known = settled.get(key) as Load<T> | undefined;
+    if (known) {
+      setHeld({ key, load: known });
+      return;
+    }
+    setHeld({ key: null, load: { status: "loading" } });
+    void (frozen ? loadFrozenOnce(file, parse) : loadOnce(file, parse)).then((r) => live && setHeld({ key, load: r }));
     return () => {
       live = false;
     };
     // `parse` is a module-level function; the file name is the only real dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file]);
-  return state;
+  }, [key]);
+  return held.key === key || key === null ? held.load : { status: "loading" };
 }

@@ -11,9 +11,10 @@ import { useEffect, useRef, useState } from "react";
 import type { PointRow } from "../lib/points";
 import { watchOverlay } from "./overlayA11y";
 import { t } from "../lib/t";
-import { buildLayers } from "./layers";
+import { buildLayers, type MarkerMode } from "./layers";
+import { DENSITY_ZOOM, groupRows, type Cluster } from "./density";
 import { makeAtlasCanvas } from "./sprites";
-import { BOSTON_BOUNDS, BOSTON_CENTER, BOSTON_ZOOM, buildStyle, tilesUrl } from "./style";
+import { BOSTON_BOUNDS, BOSTON_CENTER, BOSTON_ZOOM, buildStyle, MIN_ZOOM, tilesUrl } from "./style";
 
 let protocolAdded = false;
 function ensureProtocol(): void {
@@ -26,17 +27,24 @@ function ensureProtocol(): void {
 
 const prefersReducedMotion = (): boolean => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 
+type MapHostElement = HTMLDivElement & {
+  __project?: (lon: number, lat: number) => { x: number; y: number };
+  __clusterPixels?: () => { x: number; y: number; count: number }[];
+};
+
 interface Props {
   rows: PointRow[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   /** IDs to ring in Cone orange (bulk-closure layer, REQ-WEB-DEATHS.1); null when the layer is off. */
   bulkIds?: ReadonlySet<string> | null;
+  /** "density" clusters at city zoom (the main map); "dots" never clusters (the time-lapse). */
+  mode?: MarkerMode;
   /** Zoom to this box, [west, south, east, north] ("Check my street", REQ-WEB-STREET.1). */
   bounds?: [number, number, number, number] | null;
 }
 
-export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bounds = null }: Props) {
+export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bounds = null, mode = "density" }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const overlayRef = useRef<MapboxOverlay | null>(null);
@@ -44,7 +52,19 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
   const onSelectRef = useRef(onSelect);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
+  // map zoom in half steps: the density view and the marker size follow it (REQ-WEB-MAP.1)
+  const [zoom, setZoom] = useState(BOSTON_ZOOM);
   onSelectRef.current = onSelect;
+  const onClusterRef = useRef<(c: Cluster) => void>(() => undefined);
+  const groupRowsRef = useRef<() => ReturnType<typeof groupRows>>(() => ({ clusters: [], singles: [] }));
+  groupRowsRef.current = () => (mode === "dots" ? { clusters: [], singles: rows } : groupRows(rows, zoom, selectedId));
+  onClusterRef.current = (c) => {
+    const map = mapRef.current;
+    if (!map) return;
+    // two steps in, and always past the density threshold, so one click turns a cluster into its markers
+    const to = Math.min(18, Math.max(map.getZoom() + 2, DENSITY_ZOOM + 0.2));
+    map.easeTo({ center: [c.lon, c.lat], zoom: to, duration: prefersReducedMotion() ? 0 : 500 });
+  };
 
   useEffect(() => {
     if (!host.current) return;
@@ -59,7 +79,7 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
         center: BOSTON_CENTER,
         zoom: BOSTON_ZOOM,
         maxBounds: BOSTON_BOUNDS,
-        minZoom: 9,
+        minZoom: MIN_ZOOM,
         maxZoom: 18,
         attributionControl: { compact: false },
         cooperativeGestures: false,
@@ -76,7 +96,24 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
       overlayRef.current = overlay;
       mapRef.current = map;
       if (host.current) stopWatch = watchOverlay(host.current);
+      // Lets an end-to-end test turn a longitude and latitude into the pixel to click. It lives on the element, not on window.
+      (host.current as MapHostElement).__project = (lon, lat) => {
+        const p = map.project([lon, lat]);
+        const r = host.current?.getBoundingClientRect();
+        return { x: p.x + (r?.left ?? 0), y: p.y + (r?.top ?? 0) };
+      };
+      // The same for the clusters now on the map, for the end-to-end tests that click one.
+      (host.current as MapHostElement).__clusterPixels = () => {
+        const r = host.current?.getBoundingClientRect();
+        return groupRowsRef.current().clusters.map((c) => {
+          const p = map.project([c.lon, c.lat]);
+          return { x: p.x + (r?.left ?? 0), y: p.y + (r?.top ?? 0), count: c.count };
+        });
+      };
       map.on("load", () => setReady(true));
+      const onZoom = () => setZoom(Math.floor(map.getZoom() * 2) / 2);
+      map.on("zoom", onZoom);
+      map.on("zoomend", onZoom);
     } catch {
       setFailed(true);
       return;
@@ -94,9 +131,9 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
     const overlay = overlayRef.current;
     if (!overlay || !atlasRef.current) return;
     overlay.setProps({
-      layers: buildLayers({ rows, selectedId, atlas: atlasRef.current, bulkIds, onSelect: (id) => onSelectRef.current(id), compact: typeof window.matchMedia === "function" && window.matchMedia("(max-width: 640px)").matches }),
+      layers: buildLayers({ rows, selectedId, atlas: atlasRef.current, bulkIds, onSelect: (id) => onSelectRef.current(id), compact: typeof window.matchMedia === "function" && window.matchMedia("(max-width: 640px)").matches, zoom, mode, onCluster: (c) => onClusterRef.current(c) }),
     });
-  }, [rows, selectedId, ready, bulkIds]);
+  }, [rows, selectedId, ready, bulkIds, zoom, mode]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -127,6 +164,9 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
       data-testid="map"
       data-ready={ready ? "true" : "false"}
       data-marker-count={rows.length}
+      data-zoom={zoom}
+      data-cluster-count={mode === "dots" ? 0 : groupRows(rows, zoom, selectedId).clusters.length}
+      data-mode={mode}
       data-bulk-count={bulkIds ? bulkIds.size : 0}
     />
   );

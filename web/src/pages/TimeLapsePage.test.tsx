@@ -53,4 +53,70 @@ describe("Night of the Living 311 (REQ-WEB-TIMELAPSE.1)", () => {
     open(false, { ...POINTS, date: IDS.map(() => "") });
     expect(await screen.findByTestId("timelapse-empty")).toBeTruthy();
   });
+
+  const MIXED = { ...POINTS, family: ["sign", "sidewalk", "sign", "sign"], neighborhood: ["Dorchester", "Mattapan", "Mattapan", "Dorchester"] };
+
+  it("narrows to a case type, a neighborhood and a year range, and the count and the table follow", async () => {
+    open(false, MIXED);
+    expect((await screen.findByTestId("timelapse-now")).textContent).toContain("4 of 4");
+    fireEvent.change(screen.getByLabelText("Case type"), { target: { value: "sign" } });
+    expect(screen.getByTestId("timelapse-now").textContent).toContain("3 of 3");
+    fireEvent.change(screen.getByLabelText("Neighborhood"), { target: { value: "Mattapan" } });
+    expect(screen.getByTestId("timelapse-now").textContent).toContain("1 of 1");
+    fireEvent.change(screen.getByLabelText("Neighborhood"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("From year"), { target: { value: "2018" } });
+    expect(screen.getByTestId("timelapse-now").textContent).toContain("2 of 2");
+    expect(screen.getByTestId("map").getAttribute("data-count")).toBe("2");
+    const rows = within(screen.getByTestId("year-table")).getAllByRole("row").slice(1).map((r) => r.textContent);
+    expect(rows).toEqual(["201811", "202412"]);
+  });
+  it("keeps the year range in order, and says so when nothing matches the focus", async () => {
+    open(false, MIXED);
+    await screen.findByTestId("timelapse-now");
+    fireEvent.change(screen.getByLabelText("To year"), { target: { value: "2016" } });
+    expect((screen.getByLabelText("From year") as HTMLSelectElement).value).toBe("2016");
+    fireEvent.change(screen.getByLabelText("Case type"), { target: { value: "sidewalk" } });
+    expect(screen.getByTestId("timelapse-now").textContent).toContain("No possible zombies match this focus");
+    expect(screen.getByLabelText("Case type")).toBeTruthy(); // the controls stay, so the focus can be widened
+  });
+  it("a trail shows only the last months before the date shown", async () => {
+    open();
+    await screen.findByTestId("timelapse-now");
+    fireEvent.change(screen.getByLabelText("Trail"), { target: { value: "3" } });
+    // the view sits at the end (2024-02-02): only that one is within 3 months
+    expect(screen.getByTestId("timelapse-now").textContent).toContain("1 possible zombies in the last 3 months (4 match this focus)");
+    expect(screen.getByTestId("map").getAttribute("data-count")).toBe("1");
+    fireEvent.change(screen.getByLabelText("Trail"), { target: { value: "" } });
+    expect(screen.getByTestId("map").getAttribute("data-count")).toBe("4");
+  });
+  it("plays faster at a higher speed", async () => {
+    const { unmount } = open();
+    await screen.findByTestId("timelapse-now");
+    fireEvent.click(screen.getByRole("button", { name: "Play the time-lapse" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(7_000); });
+    expect(screen.getByTestId("timelapse-now").textContent).not.toContain("4 of 4");
+    unmount(); clearDataCache();
+    open();
+    await screen.findByTestId("timelapse-now");
+    fireEvent.change(screen.getByLabelText("Playback speed"), { target: { value: "4" } });
+    fireEvent.click(screen.getByRole("button", { name: "Play the time-lapse" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(7_000); });
+    expect(screen.getByTestId("timelapse-now").textContent).toContain("4 of 4");
+  });
+  it("changing the focus while it plays stops the clock and shows the whole focused view", async () => {
+    open(false, MIXED);
+    await screen.findByTestId("timelapse-now");
+    fireEvent.click(screen.getByRole("button", { name: "Play the time-lapse" }));
+    fireEvent.change(screen.getByLabelText("Case type"), { target: { value: "sign" } });
+    expect(screen.getByRole("button", { name: "Play again" })).toBeTruthy();
+    expect(screen.getByTestId("timelapse-now").textContent).toContain("3 of 3");
+  });
+  it("under reduced motion the focus and trail stay, but there is no speed control or play button", async () => {
+    open(true, MIXED);
+    await screen.findByTestId("reduced-note");
+    expect(screen.queryByLabelText("Playback speed")).toBeNull();
+    expect(screen.getByLabelText("Trail")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Case type"), { target: { value: "sign" } });
+    expect(screen.getByTestId("map").getAttribute("data-count")).toBe("3");
+  });
 });

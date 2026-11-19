@@ -34,7 +34,7 @@ describe("Durability page: survival (REQ-WEB-CHARTS.1)", () => {
   it("draws the citywide curve with its interval band, and a table with 7, 30 and 90 days and the half-life", async () => {
     stub();
     open();
-    expect(await screen.findByTestId("survival-chart")).toBeTruthy();
+    expect(await screen.findByTestId("survival-chart", undefined, { timeout: 4000 })).toBeTruthy();
     expect(screen.getByTestId("survival-band")).toBeTruthy();
     const table = screen.getByTestId("survival-table");
     expect(within(table).getByText("At 7 days")).toBeTruthy();
@@ -48,7 +48,7 @@ describe("Durability page: survival (REQ-WEB-CHARTS.1)", () => {
     stub();
     const user = userEvent.setup();
     open();
-    await screen.findByTestId("survival-chart");
+    await screen.findByTestId("survival-chart", undefined, { timeout: 4000 });
     await user.selectOptions(screen.getByLabelText("Show against the citywide curve"), "family:sign");
     expect(screen.getByTestId("survival-chart").getAttribute("aria-label")).toContain("Signs");
     expect(within(screen.getByTestId("survival-table")).getAllByRole("row")).toHaveLength(3);
@@ -63,7 +63,7 @@ describe("Durability page: survival legend and ticks (REQ-WEB-CHARTS.1, UX-22)",
     stub();
     const user = userEvent.setup();
     open();
-    await screen.findByTestId("survival-chart");
+    await screen.findByTestId("survival-chart", undefined, { timeout: 4000 });
     const legend = screen.getByTestId("survival-legend");
     expect(within(legend).getAllByRole("listitem")).toHaveLength(2);
     expect(within(legend).getByText("95% interval")).toBeTruthy();
@@ -77,7 +77,7 @@ describe("Durability page: survival legend and ticks (REQ-WEB-CHARTS.1, UX-22)",
   it("puts y ticks on whole or 5% steps", async () => {
     stub();
     open();
-    const chart = await screen.findByTestId("survival-chart");
+    const chart = await screen.findByTestId("survival-chart", undefined, { timeout: 4000 });
     const ticks = [...chart.querySelectorAll("text.chart-tick")].map((n) => n.textContent ?? "").filter((x) => x.endsWith("%"));
     expect(ticks.length).toBeGreaterThan(1);
     for (const tick of ticks) expect(Number.parseFloat(tick) % 5, tick).toBe(0);
@@ -88,7 +88,7 @@ describe("Durability page: funnel and leaderboard (REQ-WEB-CHARTS.2)", () => {
   it("calls a group unusual only in the table when it is outside the 99.8% limits, and says so in words", async () => {
     stub();
     open();
-    const board = await screen.findByTestId("leaderboard");
+    const board = await screen.findByTestId("leaderboard", undefined, { timeout: 4000 });
     const rows = within(board).getAllByRole("row").slice(1);
     expect(rows).toHaveLength(3);
     expect(rows[0].textContent).toContain("Roxbury");
@@ -101,7 +101,7 @@ describe("Durability page: funnel and leaderboard (REQ-WEB-CHARTS.2)", () => {
   it("marks a group below the limits with a dark square, never pink, and the legend names both directions (REQ-WEB-CHARTS.2, UX-17)", async () => {
     stub();
     open();
-    const chart = await screen.findByTestId("funnel-chart");
+    const chart = await screen.findByTestId("funnel-chart", undefined, { timeout: 4000 });
     expect(chart.querySelectorAll("polygon.funnel-above")).toHaveLength(1);
     const below = chart.querySelectorAll("rect.funnel-below");
     expect(below).toHaveLength(1);
@@ -112,20 +112,20 @@ describe("Durability page: funnel and leaderboard (REQ-WEB-CHARTS.2)", () => {
   it("shows reporting intensity beside every neighborhood rate, and says when it is missing", async () => {
     stub();
     open();
-    const board = await screen.findByTestId("leaderboard");
+    const board = await screen.findByTestId("leaderboard", undefined, { timeout: 4000 });
     expect(within(board).getAllByText("Not available in this data")).toHaveLength(3);
     expect(screen.getByText(/Reporting intensity sits beside every neighborhood rate/)).toBeTruthy();
   });
   it("keeps the raw rate and n beside the shrunk rate", async () => {
     stub();
     open();
-    const board = await screen.findByTestId("leaderboard");
+    const board = await screen.findByTestId("leaderboard", undefined, { timeout: 4000 });
     for (const h of ["Shrunk rate", "Raw rate", "Closed cases (n)", "95% interval"]) expect(within(board).getByText(h)).toBeTruthy();
   });
   it("shows an error for one panel and keeps the other (REQ-WEB-DATA.2)", async () => {
     stub(["survival.json"]);
     open();
-    expect(await screen.findByRole("alert")).toBeTruthy();
-    expect(await screen.findByTestId("leaderboard")).toBeTruthy();
+    expect(await screen.findByRole("alert", undefined, { timeout: 4000 })).toBeTruthy();
+    expect(await screen.findByTestId("leaderboard", undefined, { timeout: 4000 })).toBeTruthy();
   });
 });

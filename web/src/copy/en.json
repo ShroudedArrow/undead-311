@@ -14,7 +14,8 @@
     "fixture_notice": "Preview data: these numbers come from a rough stand-in built from the sample file, not from the detector. Do not quote them.",
     "data_as_of_unknown": "Data date unavailable",
     "data_as_of_stale": "Data as of {date}. The latest refresh failed, so this is the last good data.",
-    "sample_notice": "Sample of {count} cases, not all of Boston."
+    "sample_notice": "Sample of {count} cases, not all of Boston.",
+    "loading_section": "Loading this section"
   },
   "nav": {
     "label": "Main",
@@ -84,7 +85,25 @@
     "col_total": "Total so far",
     "caption": "Headline possible zombies by the year they were reported again",
     "empty": "There are no dated possible zombies to show.",
-    "floor": "A measured count is a floor: a possible zombie appears only when someone reports again."
+    "floor": "A measured count is a floor: a possible zombie appears only when someone reports again.",
+    "controls_heading": "Focus the view",
+    "family": "Case type",
+    "neighborhood": "Neighborhood",
+    "all_families": "All case types",
+    "all_neighborhoods": "All neighborhoods",
+    "year_from": "From year",
+    "year_to": "To year",
+    "speed": "Playback speed",
+    "speed_option": "{speed}×",
+    "trail": "Trail",
+    "trail_all": "Everything so far",
+    "trail_months": "Last {count} months",
+    "trail_note": "The trail keeps only possible zombies reported again within that many months before the date shown.",
+    "no_match": "No possible zombies match this focus. Widen the years or choose all case types.",
+    "now_trail": "{date}: {count} possible zombies in the last {months} months ({total} match this focus)",
+    "stamp_count": "{count} possible zombies",
+    "stamp_count_one": "1 possible zombie",
+    "stamp_trail": "{count} in the last {months} months"
   },
   "share": {
     "copy_link": "Copy link to this view",
@@ -253,7 +272,8 @@
     "status_version": "Data version {version}",
     "report_heading": "Found a mistake?",
     "report_text": "Open an issue with the case numbers and what is wrong. Confirmed corrections go in the log.",
-    "sample_notice": "Every number on this page comes from a sample of {count} cases, not from all Boston 311 cases. The full-data run will replace them."
+    "sample_notice": "Every number on this page comes from a sample of {count} cases, not from all Boston 311 cases. The full-data run will replace them.",
+    "toc_heading": "On this page"
   },
   "errors": {
     "panel_failed": "This panel’s data didn’t load. Reload the page; if it still fails, the file named below is missing or out of date.",
@@ -296,7 +316,11 @@
     "view_switch": "View",
     "zoom_in": "Zoom in",
     "zoom_out": "Zoom out",
-    "attribution_toggle": "Show map credits"
+    "attribution_toggle": "Show map credits",
+    "legend_title": "Marker key",
+    "legend_outline": "Dashed ring: counted outside the headline",
+    "legend_cluster": "Pink dots with a number: that many possible zombies close together. Zoom in to see each one.",
+    "legend_close": "Close marker key"
   },
   "filters": {
     "heading": "Filters",

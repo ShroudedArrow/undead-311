@@ -109,11 +109,20 @@ function FunnelPanel() {
 
 /** How long fixes last: survival curves, funnel plot and leaderboards (REQ-WEB-CHARTS.1-2). */
 export default function DurabilityPage() {
+  // The panels read three files; the page waits for all of them behind a screen-high placeholder, so the charts do not push each other down.
+  const files = [useData("survival.json", parseSurvival), useData("funnel.json", parseFunnel), useData("groups.json", parseGroups)];
+  const loading = files.some((f) => f.status === "loading");
   return (
     <div className="page">
       <h1>{t("charts.title")}</h1>
-      <SurvivalPanel />
-      <FunnelPanel />
+      {loading ? (
+        <div data-slot="page-loading" aria-busy="true"><p className="count-note">{t("app.loading_section")}</p></div>
+      ) : (
+        <>
+          <SurvivalPanel />
+          <FunnelPanel />
+        </>
+      )}
     </div>
   );
 }

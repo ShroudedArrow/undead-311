@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { NavLink, Link, Outlet, useLocation } from "react-router-dom";
 import { useLang } from "../lib/lang";
 import { t } from "../lib/t";
@@ -11,8 +11,22 @@ export function Shell() {
   const { lang, setLang, spanish } = useLang();
   const [open, setOpen] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
+  const header = useRef<HTMLElement>(null);
+  // The header's height, as --site-header-h on the page root, so a page can fill exactly the rest of the screen (the time-lapse hero).
+  useLayoutEffect(() => {
+    const el = header.current;
+    if (!el) return;
+    const set = () => document.documentElement.style.setProperty("--site-header-h", `${Math.round(el.getBoundingClientRect().height)}px`);
+    set();
+    if (typeof ResizeObserver !== "function") return;
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const { pathname } = useLocation();
   useEffect(() => setOpen(false), [pathname]);
+  // The map page (and its card route) fills the screen exactly: no page scroll, so nothing opened on it can move the map.
+  const fit = pathname === "/" || pathname.startsWith("/zombie/");
   useEffect(() => {
     if (!open) return;
     // Escape hides the links, so focus goes back to the Menu button rather than dropping to the page body (UX-48).
@@ -25,11 +39,11 @@ export function Shell() {
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
   return (
-    <div className="shell">
+    <div className="shell" data-fit={fit ? "true" : undefined}>
       <a className="skip-link" href="#main">
         {t("app.skip_to_content")}
       </a>
-      <header className="site-header on-dark">
+      <header className="site-header on-dark" ref={header}>
         <p className="site-title">
           <Link to="/">{t("app.title")}</Link>
         </p>

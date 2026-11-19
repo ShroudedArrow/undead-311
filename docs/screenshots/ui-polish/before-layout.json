@@ -1,0 +1,80 @@
+{
+ "desktop-map": {
+  "scrollH": 1134,
+  "innerH": 800,
+  "scrollW": 1280,
+  "innerW": 1280
+ },
+ "desktop-methods": {
+  "scrollH": 8559,
+  "innerH": 800,
+  "scrollW": 1280,
+  "innerW": 1280
+ },
+ "desktop-timelapse": {
+  "scrollH": 1664,
+  "innerH": 800,
+  "scrollW": 1280,
+  "innerW": 1280
+ },
+ "desktop-scorecard": {
+  "scrollH": 3349,
+  "innerH": 800,
+  "scrollW": 1280,
+  "innerW": 1280
+ },
+ "desktop-filter": {
+  "before": {
+   "x": 320,
+   "y": 132.78125,
+   "width": 960,
+   "height": 875.421875
+  },
+  "after": {
+   "x": 320,
+   "y": 132.78125,
+   "width": 960,
+   "height": 1099.421875
+  },
+  "moved": true
+ },
+ "phone-map": {
+  "scrollH": 1242,
+  "innerH": 844,
+  "scrollW": 390,
+  "innerW": 390
+ },
+ "phone-methods": {
+  "scrollH": 12369,
+  "innerH": 844,
+  "scrollW": 390,
+  "innerW": 390
+ },
+ "phone-timelapse": {
+  "scrollH": 2043,
+  "innerH": 844,
+  "scrollW": 390,
+  "innerW": 390
+ },
+ "phone-scorecard": {
+  "scrollH": 5241,
+  "innerH": 844,
+  "scrollW": 390,
+  "innerW": 390
+ },
+ "phone-filter": {
+  "before": {
+   "x": 0,
+   "y": 824.3125,
+   "width": 390,
+   "height": 510
+  },
+  "after": {
+   "x": 0,
+   "y": 824.3125,
+   "width": 390,
+   "height": 510
+  },
+  "moved": false
+ }
+}
