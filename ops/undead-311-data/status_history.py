@@ -28,7 +28,7 @@ KEEP = 10
 # Every workflow step that has an id, in run order. A failed night names the first one that did not succeed, so a step
 # missing here would be recorded as `unknown` (ops#158).
 STAGES = (
-    "tag", "checkout", "setup", "freeze", "download", "exports", "check", "history", "build", "verify", "deploy", "clear",
+    "tag", "checkout", "setup", "freeze", "download", "exports", "check", "history", "build", "verify", "trim", "draft", "smoke", "deploy", "clear",
 )
 ENTRY_KEYS = {"at", "ok", "stage", "run_url"}
 
