@@ -6,6 +6,8 @@
     "hero_line": "Boston 311 cases closed, then reported again at the same spot.",
     "hero_subtitle": "These are possible zombies: a failed fix only shows up here if someone reports it again.",
     "footer_independent": "Independent project. Not affiliated with the City of Boston.",
+    "footer_note": "Independent project, not affiliated with the City of Boston",
+    "footer_close": "Hide the notice bar",
     "footer_attribution": "Map data from OpenStreetMap contributors.",
     "footer_osm_license": "OpenStreetMap data is available under the Open Database License.",
     "footer_data_license": "Case data: Boston 311 service requests from Analyze Boston, used under the Open Data Commons Public Domain Dedication and License (ODC-PDDL).",

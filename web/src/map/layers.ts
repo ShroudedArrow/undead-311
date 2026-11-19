@@ -1,12 +1,13 @@
 /**
  * Layer stack for the haunted map (REQ-WEB-MAP.1). Pure: builds the deck.gl layers in paint order, bottom to top:
- * bulk rings, the marker hit halo, the stencil markers, the marker hit core, then (below zoom 13 only) spray-dot clusters with their
+ * bulk rings, the marker hit halo (phone only), the stencil markers (which are their own hit area), then (below zoom 13 only) spray-dot clusters with their
  * counts and hit circles. Every layer is always present, empty when it has nothing to draw, so the stack never changes shape.
+ * The halo only has data on a phone, where a 44 px touch target is wider than the painted circle (REQ-WEB-PERF: one pickable layer).
  * There is no neighborhood label layer (owner decision 11, issue 190): the names collided.
  */
 import { IconLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import type { PointRow } from "../lib/points";
-import { clusterLabel, clusterSize, DENSITY_ZOOM, dotScale, groupRows, markerScale, type Cluster } from "./density";
+import { clusterLabel, clusterSize, DENSITY_ZOOM, dotScale, groupRows, markerScale, type Cluster, type Grouped } from "./density";
 import { clusterIcon, iconFor, iconMapping } from "./sprites";
 
 export interface LayerInput {
@@ -19,6 +20,8 @@ export interface LayerInput {
   compact?: boolean;
   /** Map zoom. Below the density threshold nearby markers are drawn as clusters, and markers shrink with the zoom. Omitted: full size, no clusters. */
   zoom?: number;
+  /** The clusters and singles for `zoom`, when the caller has them already (the map keeps them per zoom level). Omitted: worked out here. */
+  grouped?: Grouped;
   /** A cluster was clicked or tapped. */
   onCluster?: (c: Cluster) => void;
   /**
@@ -48,6 +51,27 @@ export function hitRadius(selected: boolean, compact: boolean, zoom: number = In
   return compact ? Math.max(visual, MIN_HIT_RADIUS_PX) : visual;
 }
 
+/** The bulk-ring rows, kept per input so a view change that leaves the rows alone hands deck.gl the same array and nothing is rebuilt. */
+const bulkRowCache = new WeakMap<object, WeakMap<object, PointRow[]>>();
+function bulkRowsOf(rows: PointRow[], bulkIds: ReadonlySet<string>): PointRow[] {
+  let byIds = bulkRowCache.get(rows);
+  if (!byIds) bulkRowCache.set(rows, (byIds = new WeakMap()));
+  let out = byIds.get(bulkIds);
+  if (!out) byIds.set(bulkIds, (out = rows.filter((r) => bulkIds.has(r.id))));
+  return out;
+}
+const NO_ROWS: PointRow[] = [];
+
+/**
+ * In the time-lapse the rows grow at the end while it plays. Telling deck.gl that only the new rows changed lets it fill in those
+ * rows, not re-run every accessor over every row again each frame. Anything else (a filter, a trail that drops old rows) is a full update.
+ */
+export function appendOnlyDiff(next: PointRow[], prev: PointRow[]): { startRow: number; endRow: number }[] | null {
+  if (prev.length === 0 || next.length <= prev.length) return null;
+  for (const at of [0, prev.length >> 1, prev.length - 1]) if (next[at] !== prev[at]) return null;
+  return [{ startRow: prev.length, endRow: next.length }];
+}
+
 export function buildLayers(i: LayerInput) {
   const { selectedId, atlas, bulkIds, onSelect } = i;
   const compact = i.compact ?? false;
@@ -55,7 +79,8 @@ export function buildLayers(i: LayerInput) {
   const onCluster = i.onCluster ?? (() => undefined);
   // below the density threshold, nearby possible zombies become clusters; the selected one is always its own marker
   const mode = i.mode ?? "density";
-  const { clusters, singles: rows } = mode === "dots" ? { clusters: [] as Cluster[], singles: i.rows } : groupRows(i.rows, zoom, selectedId);
+  const { clusters, singles: rows } = i.grouped ?? (mode === "dots" ? { clusters: [] as Cluster[], singles: i.rows } : groupRows(i.rows, zoom, selectedId));
+  const diff = mode === "dots" ? { _dataDiff: appendOnlyDiff as never } : {};
   // in dots mode below the density threshold the letter would not read, so the marker is the plain ring
   const plain = mode === "dots" && zoom < DENSITY_ZOOM;
   const hit = (c: Cluster) => (compact ? Math.max(clusterSize(c.count) / 2, MIN_HIT_RADIUS_PX) : clusterSize(c.count) / 2);
@@ -64,22 +89,24 @@ export function buildLayers(i: LayerInput) {
     ...(bulkIds && bulkIds.size > 0
       ? [
           new ScatterplotLayer<PointRow>({
-            id: "bulk-ring-edge", data: rows.filter((r) => bulkIds.has(r.id)), getPosition: (d) => [d.lon, d.lat], stroked: true, filled: false,
+            id: "bulk-ring-edge", data: bulkRowsOf(rows, bulkIds), getPosition: (d) => [d.lon, d.lat], stroked: true, filled: false,
             radiusUnits: "pixels", getRadius: 22, lineWidthUnits: "pixels", getLineWidth: 8, getLineColor: [46, 49, 52, 255],
           }),
           new ScatterplotLayer<PointRow>({
-            id: "bulk-ring", data: rows.filter((r) => bulkIds.has(r.id)), getPosition: (d) => [d.lon, d.lat], stroked: true, filled: false,
+            id: "bulk-ring", data: bulkRowsOf(rows, bulkIds), getPosition: (d) => [d.lon, d.lat], stroked: true, filled: false,
             radiusUnits: "pixels", getRadius: 22, lineWidthUnits: "pixels", getLineWidth: 4, getLineColor: [242, 107, 29, 255],
           }),
         ]
       : []),
-    // Transparent pixels are not pickable, so a click on a marker's empty middle would miss the sprite. Two invisible circles fix that,
-    // and neither changes what is drawn. The halo lies under the sprites: it widens the target (44 px across on a phone) but never
-    // beats a marker that is visibly under the pointer. The core lies over them at the painted size: it covers the whole circle, and
-    // where markers overlap, the one drawn last (on top) wins, because deck.gl picks the topmost object and a layer draws in data order.
+    // The sprite itself is the hit area: alphaCutoff 0 keeps its transparent pixels, so a click anywhere on the marker's square (its
+    // empty middle too) picks it, and where markers overlap the one drawn on top wins (deck.gl picks the topmost object; a layer draws
+    // in data order). That is one pickable layer instead of an extra invisible circle layer drawn over every marker on every frame.
+    // A phone also gets an invisible halo under the sprites: it widens the target to 44 px across but never beats a marker that is
+    // visibly under the finger. On a wider screen the halo has no data and costs nothing.
     new ScatterplotLayer<PointRow>({
       id: "zombie-halo",
-      data: rows,
+      data: compact ? rows : NO_ROWS,
+      ...diff,
       pickable: true,
       stroked: false,
       filled: true,
@@ -95,6 +122,7 @@ export function buildLayers(i: LayerInput) {
     new IconLayer<PointRow>({
       id: "zombies",
       data: rows,
+      ...diff,
       // never let loaders.gl fetch worker scripts from a CDN (REQ-WEB-PERF.2)
       loadOptions: { worker: false },
       iconAtlas: atlas as unknown as string,
@@ -105,18 +133,8 @@ export function buildLayers(i: LayerInput) {
       sizeUnits: "pixels",
       sizeMinPixels: mode === "dots" ? 3 : compact ? 16 : 18,
       updateTriggers: { getSize: [selectedId, compact, zoom, mode], getIcon: [plain] },
-    }),
-    new ScatterplotLayer<PointRow>({
-      id: "zombie-hit",
-      data: rows,
       pickable: true,
-      stroked: false,
-      filled: true,
-      getFillColor: [0, 0, 0, 0],
-      getPosition: (d) => [d.lon, d.lat],
-      radiusUnits: "pixels",
-      getRadius: (d) => markerSize(d.id === selectedId, compact, zoom, mode) / 2,
-      updateTriggers: { getRadius: [selectedId, compact, zoom, mode] },
+      alphaCutoff: 0,
       onClick: (info) => {
         if (info.object) onSelect(info.object.id);
       },

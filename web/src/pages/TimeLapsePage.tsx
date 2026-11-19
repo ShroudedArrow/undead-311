@@ -5,7 +5,7 @@ import { formatDay } from "../lib/format";
 import { usePrefersReducedMotion } from "../lib/motion";
 import { parsePoints } from "../lib/parse";
 import { pointsToRows } from "../lib/points";
-import { buildTimeline, DAY_MS, DURATION_S, durationFor, focusTimeline, SPEEDS, timeAt, TRAIL_MONTHS, visibleTrail, yearCounts, yearsIn } from "../lib/timelapse";
+import { buildTimeline, countAt, DAY_MS, DURATION_S, durationFor, focusTimeline, SPEEDS, timeAt, TRAIL_MONTHS, visibleTrail, yearCounts, yearsIn } from "../lib/timelapse";
 import { familyLabel } from "../lib/labels";
 import { t } from "../lib/t";
 import { MapLegend } from "../components/MapLegend";
@@ -86,7 +86,15 @@ export default function TimeLapsePage() {
   }, [playing, stop]);
 
   const now = timeAt(start, end, progress);
-  const shown = useMemo(() => visibleTrail(focused, now, trail), [focused, now, trail]);
+  // With no trail the visible rows are a prefix of the focused rows, so the same array is handed on until a new row appears: a frame in
+  // which nothing new shows up costs the map nothing, and deck.gl can see which rows were appended (layers.ts appendOnlyDiff).
+  const focusedRows = useMemo(() => focused.map((d) => d.row), [focused]);
+  const upto = countAt(focused, now);
+  const shown = useMemo(
+    () => (trail === null ? focusedRows.slice(0, upto) : visibleTrail(focused, now, trail)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [focused, focusedRows, trail === null ? upto : now, trail],
+  );
   const perYear = useMemo(() => yearCounts(focused), [focused]);
   // a new focus starts from the whole view: stop the clock and show everything in it
   const refocus = (apply: () => void) => {

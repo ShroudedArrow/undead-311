@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import type { PointRow } from "../lib/points";
-import { CELL_PX, clusterLabel, MIN_CLUSTER_GAP_PX, clusterSize, DENSITY_ZOOM, groupRows, markerScale } from "./density";
+import { buildClusterIndex, CELL_PX, clusterLabel, MIN_CLUSTER_GAP_PX, clusterSize, DENSITY_ZOOM, groupRows, markerScale } from "./density";
 
 const row = (id: string, lon: number, lat: number): PointRow => ({ id, lon, lat, tier: "headline", family: "sign", department: null, neighborhood: null, year: 2020 });
 const pt = fc.record({ id: fc.string({ minLength: 1, maxLength: 6 }), lon: fc.double({ min: -71.2, max: -70.95, noNaN: true }), lat: fc.double({ min: 42.2, max: 42.45, noNaN: true }) });
@@ -74,7 +74,7 @@ describe("density view: clusters below the zoom threshold (REQ-WEB-MAP.1)", () =
   it("property: no two cluster badges are closer on screen than the minimum gap, so no count covers another", () => {
     fc.assert(fc.property(fc.array(pt, { maxLength: 80 }), fc.double({ min: 9, max: 12.9, noNaN: true }), (xs, z) => {
       const g = groupRows(rowsOf(xs), z);
-      const zz = Math.floor(z * 2) / 2;
+      const zz = Math.floor(z); // clusters are worked out per whole zoom level
       const px = (c: { lon: number; lat: number }) => {
         const r = (c.lat * Math.PI) / 180;
         return [((c.lon + 180) / 360) * 512 * 2 ** zz, ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * 512 * 2 ** zz];
@@ -107,5 +107,70 @@ describe("density view: clusters below the zoom threshold (REQ-WEB-MAP.1)", () =
     const g = groupRows(rows, z);
     expect(g.clusters).toHaveLength(1);
     expect(g.clusters[0].ids).toEqual(["a", "b", "c", "d"]);
+  });
+});
+
+/** The first, brute-force grouping (every pair rescanned after each merge), kept here as the oracle for the indexed version. */
+function oracle(rows: readonly PointRow[], zoom: number, keep: ReadonlySet<string>) {
+  const z = Math.floor(zoom);
+  const wx = (lon: number) => ((lon + 180) / 360) * 512 * 2 ** z;
+  const wy = (lat: number) => {
+    const r = (Math.min(85, Math.max(-85, lat)) * Math.PI) / 180;
+    return ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * 512 * 2 ** z;
+  };
+  const byId = (a: PointRow, b: PointRow) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  const centre = (m: PointRow[]) => {
+    const s = [...m].sort(byId);
+    return { x: s.reduce((t, r) => t + wx(r.lon), 0) / s.length, y: s.reduce((t, r) => t + wy(r.lat), 0) / s.length };
+  };
+  const cells = new Map<string, PointRow[]>();
+  for (const r of rows) {
+    if (keep.has(r.id)) continue;
+    const key = `${Math.floor(wx(r.lon) / CELL_PX)}:${Math.floor(wy(r.lat) / CELL_PX)}`;
+    cells.set(key, [...(cells.get(key) ?? []), r]);
+  }
+  type D = { members: PointRow[]; x: number; y: number; key: string };
+  let drafts: D[] = [];
+  for (const [key, members] of [...cells.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))) if (members.length >= 2) drafts.push({ members, key, ...centre(members) });
+  for (;;) {
+    let best: [number, number, number] | null = null;
+    for (let a = 0; a < drafts.length; a++) for (let b = a + 1; b < drafts.length; b++) {
+      const d = Math.hypot(drafts[a].x - drafts[b].x, drafts[a].y - drafts[b].y);
+      if (d < MIN_CLUSTER_GAP_PX && (!best || d < best[2])) best = [a, b, d];
+    }
+    if (!best) break;
+    const [a, b] = best;
+    const members = [...drafts[a].members, ...drafts[b].members];
+    drafts = [...drafts.filter((_, i) => i !== a && i !== b), { members, key: drafts[a].key < drafts[b].key ? drafts[a].key : drafts[b].key, ...centre(members) }].sort((p, q) => (p.key < q.key ? -1 : p.key > q.key ? 1 : 0));
+  }
+  return drafts.map((d) => ({ key: `${d.key}@${z}`, ids: d.members.map((r) => r.id).sort(), count: d.members.length }));
+}
+
+describe("indexed grouping matches the brute-force grouping (REQ-WEB-PERF)", () => {
+  it("property: same clusters as the oracle, with and without a kept marker, on dense and sparse maps", () => {
+    const dense = fc.record({ id: fc.string({ minLength: 1, maxLength: 5 }), lon: fc.double({ min: -71.07, max: -71.05, noNaN: true }), lat: fc.double({ min: 42.34, max: 42.36, noNaN: true }) });
+    fc.assert(fc.property(fc.array(fc.oneof(pt, dense), { maxLength: 120 }), fc.double({ min: 8.5, max: 12.9, noNaN: true }), fc.boolean(), (xs, z, useKeep) => {
+      const rows = rowsOf(xs);
+      const keep = new Set(useKeep && rows.length > 0 ? [rows[0].id] : []);
+      const got = buildClusterIndex(rows).group(z, keep);
+      expect(got.clusters.map((c) => ({ key: c.key, ids: c.ids, count: c.count }))).toEqual(oracle(rows, z, keep));
+    }), { numRuns: 300 });
+  });
+  it("answers again from its cache for the same whole zoom level, and works the clusters out again for the next one", () => {
+    const rows = Array.from({ length: 200 }, (_, i) => row(`r${i}`, -71.1 + (i % 20) * 0.002, 42.3 + Math.floor(i / 20) * 0.002));
+    const index = buildClusterIndex(rows);
+    const a = index.group(11.1);
+    expect(index.group(11.9)).toBe(a);
+    expect(index.group(10.9)).not.toBe(a);
+    expect(index.group(13)).toBe(index.group(15)); // no clusters from the threshold up: one shared answer
+  });
+  it("handles twelve thousand points in well under a second", () => {
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
+    const rows = Array.from({ length: 12000 }, (_, i) => row(`p${i}`, -71.2 + rnd() * 0.25, 42.2 + rnd() * 0.25));
+    const t0 = performance.now();
+    const index = buildClusterIndex(rows);
+    for (const z of [9, 10, 11, 12]) index.group(z);
+    expect(performance.now() - t0).toBeLessThan(1500);
   });
 });

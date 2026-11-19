@@ -2,17 +2,18 @@
  * Haunted map (REQ-WEB-MAP.1, .5). MapLibre draws the self-hosted PMTiles basemap; a deck.gl IconLayer draws the
  * possible zombies as spray-circle sprites. Loaded lazily from the page so the first view stays small (REQ-WEB-PERF.1).
  */
-import { MapboxOverlay } from "@deck.gl/mapbox";
+import type { MapboxOverlay } from "@deck.gl/mapbox";
+import { ClickOnlyOverlay } from "./clickOnlyOverlay";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { Protocol } from "pmtiles";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { PointRow } from "../lib/points";
 import { watchOverlay } from "./overlayA11y";
 import { t } from "../lib/t";
 import { buildLayers, type MarkerMode } from "./layers";
-import { DENSITY_ZOOM, groupRows, type Cluster } from "./density";
+import { clusterLevel, DENSITY_ZOOM, groupRows, type Cluster, type Grouped } from "./density";
 import { makeAtlasCanvas } from "./sprites";
 import { BOSTON_BOUNDS, BOSTON_CENTER, BOSTON_ZOOM, buildStyle, MIN_ZOOM, tilesUrl } from "./style";
 
@@ -24,6 +25,10 @@ function ensureProtocol(): void {
   maplibregl.addProtocol("pmtiles", new Protocol().tile);
   protocolAdded = true;
 }
+
+/** Draw at no more than twice the CSS pixels: a phone at 2.6 pixels per CSS pixel would otherwise fill 1.7 times the pixels for no visible gain on a map. */
+export const MAX_PIXEL_RATIO = 2;
+const pixelRatio = (): number => Math.min(MAX_PIXEL_RATIO, typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1);
 
 const prefersReducedMotion = (): boolean => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 
@@ -56,8 +61,11 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
   const [zoom, setZoom] = useState(BOSTON_ZOOM);
   onSelectRef.current = onSelect;
   const onClusterRef = useRef<(c: Cluster) => void>(() => undefined);
-  const groupRowsRef = useRef<() => ReturnType<typeof groupRows>>(() => ({ clusters: [], singles: [] }));
-  groupRowsRef.current = () => (mode === "dots" ? { clusters: [], singles: rows } : groupRows(rows, zoom, selectedId));
+  // Clusters are worked out once per whole zoom level (and again when the rows or the selection change), not on every zoom step or render.
+  const level = clusterLevel(zoom);
+  const grouped = useMemo<Grouped>(() => (mode === "dots" ? { clusters: [], singles: rows } : groupRows(rows, level, selectedId)), [rows, level, selectedId, mode]);
+  const groupedRef = useRef(grouped);
+  groupedRef.current = grouped;
   onClusterRef.current = (c) => {
     const map = mapRef.current;
     if (!map) return;
@@ -82,6 +90,7 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
         minZoom: MIN_ZOOM,
         maxZoom: 18,
         attributionControl: { compact: false },
+        pixelRatio: pixelRatio(),
         cooperativeGestures: false,
         // control labels come from en.json (REQ-WEB-COPY.1), not the library's built-in English
         locale: {
@@ -91,7 +100,7 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
         },
       });
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
-      const overlay = new MapboxOverlay({ interleaved: false, layers: [] });
+      const overlay = new ClickOnlyOverlay({ interleaved: false, layers: [], useDevicePixels: pixelRatio() });
       map.addControl(overlay as unknown as maplibregl.IControl);
       overlayRef.current = overlay;
       mapRef.current = map;
@@ -105,7 +114,7 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
       // The same for the clusters now on the map, for the end-to-end tests that click one.
       (host.current as MapHostElement).__clusterPixels = () => {
         const r = host.current?.getBoundingClientRect();
-        return groupRowsRef.current().clusters.map((c) => {
+        return groupedRef.current.clusters.map((c) => {
           const p = map.project([c.lon, c.lat]);
           return { x: p.x + (r?.left ?? 0), y: p.y + (r?.top ?? 0), count: c.count };
         });
@@ -131,9 +140,9 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
     const overlay = overlayRef.current;
     if (!overlay || !atlasRef.current) return;
     overlay.setProps({
-      layers: buildLayers({ rows, selectedId, atlas: atlasRef.current, bulkIds, onSelect: (id) => onSelectRef.current(id), compact: typeof window.matchMedia === "function" && window.matchMedia("(max-width: 640px)").matches, zoom, mode, onCluster: (c) => onClusterRef.current(c) }),
+      layers: buildLayers({ rows, grouped, selectedId, atlas: atlasRef.current, bulkIds, onSelect: (id) => onSelectRef.current(id), compact: typeof window.matchMedia === "function" && window.matchMedia("(max-width: 640px)").matches, zoom, mode, onCluster: (c) => onClusterRef.current(c) }),
     });
-  }, [rows, selectedId, ready, bulkIds, zoom, mode]);
+  }, [rows, grouped, selectedId, ready, bulkIds, zoom, mode]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -165,7 +174,7 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
       data-ready={ready ? "true" : "false"}
       data-marker-count={rows.length}
       data-zoom={zoom}
-      data-cluster-count={mode === "dots" ? 0 : groupRows(rows, zoom, selectedId).clusters.length}
+      data-cluster-count={grouped.clusters.length}
       data-mode={mode}
       data-bulk-count={bulkIds ? bulkIds.size : 0}
     />
