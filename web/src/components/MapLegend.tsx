@@ -5,7 +5,13 @@ import { PALETTE } from "../map/palette";
 import { clusterSvg, FAMILY_ORDER, spraySvg } from "../map/sprites";
 
 /** Markup is generated from our own seeded geometry (no user text), so it is safe to inline. */
-const marker = (family: string) => ({ __html: spraySvg(0, 28, family) });
+// built once per case type: the time-lapse re-renders its page every frame, and drawing the spray each time was its top script cost
+const markerCache = new Map<string, { __html: string }>();
+const marker = (family: string) => {
+  let m = markerCache.get(family);
+  if (!m) markerCache.set(family, (m = { __html: spraySvg(0, 28, family) }));
+  return m;
+};
 const ring = (color: string, width: number) => `<circle cx="32" cy="32" r="20.5" fill="none" stroke="${color}" stroke-width="${width}" stroke-dasharray="7 5"/>`;
 const CLUSTER = { __html: clusterSvg(0, 28) };
 const DASHED = {

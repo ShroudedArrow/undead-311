@@ -74,7 +74,7 @@ export function Shell() {
       <main id="main" className="shell-main" tabIndex={-1}>
         <Outlet />
       </main>
-      <Footer />
+      <Footer pinned={pathname === "/methods"} />
     </div>
   );
 }

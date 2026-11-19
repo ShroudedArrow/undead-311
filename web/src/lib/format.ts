@@ -4,12 +4,17 @@ import { t } from "./t";
 
 const BOSTON = "America/New_York";
 
+// Building an Intl.DateTimeFormat costs about as much as formatting a thousand dates, and the time-lapse formats one every frame: build each once.
+const dateTimeFormat = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: BOSTON });
+const dayFormatBoston = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: BOSTON });
+const dayFormatUtc = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
+
 /** "Nov 13, 2026, 4:05 PM" in Boston time. Returns the input when it is not a date. */
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: BOSTON }).format(d);
+  return dateTimeFormat.format(d);
 }
 
 /** "Nov 13, 2026" in Boston time. A bare date (YYYY-MM-DD) is shown as written, without a zone shift. */
@@ -18,7 +23,7 @@ export function formatDay(iso: string | null | undefined): string {
   const bare = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   const d = bare ? new Date(Date.UTC(+bare[1], +bare[2] - 1, +bare[3], 12)) : new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: bare ? "UTC" : BOSTON }).format(d);
+  return (bare ? dayFormatUtc : dayFormatBoston).format(d);
 }
 
 /** Days with one decimal; "1 day" when it rounds to one. */

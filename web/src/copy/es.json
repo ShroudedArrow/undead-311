@@ -22,6 +22,8 @@
   "app": {
     "title": "The Undead 311",
     "footer_independent": "Proyecto independiente. Sin afiliación con la Ciudad de Boston.",
+    "footer_note": "Proyecto independiente, sin afiliación con la Ciudad de Boston",
+    "footer_close": "Ocultar la barra de aviso",
     "footer_attribution": "Datos del mapa de colaboradores de OpenStreetMap.",
     "sample_notice": "Muestra de {count} casos, no todo Boston.",
     "footer_data_license": "Datos de casos: solicitudes de servicio del 311 de Boston en Analyze Boston, usadas bajo la licencia Open Data Commons Public Domain Dedication and License (ODC-PDDL)."

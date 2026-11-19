@@ -135,8 +135,27 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
   border-top: 2px solid var(--asphalt);
   font-size: var(--step--1);
 }
-.site-footer { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); }
+.site-footer { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); position: relative; min-height: 2.75rem; padding-right: max(3.75rem, env(safe-area-inset-right)); }
 .site-footer p { margin: 0; max-width: none; }
+/* The close button sits in the bar's top right corner, a 44 px square (design-system.md quality floor). */
+.site-footer .footer-close { position: absolute; top: 0; right: 0; width: 2.75rem; padding: 0; font-size: var(--step-1); line-height: 1; border-width: 0 0 2px 2px; }
+/* the ring is drawn inside the button, so the screen edge never clips it */
+.site-footer .footer-close:focus-visible { outline-offset: -6px; }
+/* Collapsed: one line of text. On the map pages it floats over the bottom-left corner, so the map gets the whole bar's height; elsewhere it stays in the page flow. */
+.site-footer-note { padding: var(--space-1) var(--space-3); background: var(--crew-white); border-top: 2px solid var(--asphalt); font-size: var(--step--1); }
+.site-footer-note button { max-width: 100%; padding: 0.2rem var(--space-2); text-align: left; font-size: var(--step--1); line-height: 1.25; }
+.shell[data-fit] .site-footer-note { position: fixed; left: max(var(--space-2), env(safe-area-inset-left)); bottom: max(var(--space-2), env(safe-area-inset-bottom)); z-index: 6; padding: 0; border: 0; background: none; max-width: calc(100vw - 5rem); }
+.shell[data-fit] .site-footer-note button { border-width: 2px; }
+/* The marker key moves up clear of the floating note; on a wide screen the sidebar's last control does too. */
+.shell[data-fit]:has(.site-footer-note) .map-legend { bottom: 4rem; }
+@media (min-width: 641px) {
+  .shell[data-fit]:has(.site-footer-note) .filters-panel { padding-bottom: 4.5rem; }
+}
+/* On a phone the map spans the whole width, so the note sits above the map credit, and the key above the note. */
+@media (max-width: 640px) {
+  .shell[data-fit] .site-footer-note { bottom: calc(1.75rem + env(safe-area-inset-bottom)); max-width: calc(100vw - 1rem); }
+  .shell[data-fit]:has(.site-footer-note) .map-legend { bottom: 5.5rem; }
+}
 
 .panel-error {
   border: 2px dashed var(--asphalt);
@@ -705,7 +724,7 @@ select {
 .open-links { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
 .open-links a, .open-links button, .district-page button { min-height: 2.75rem; padding: 0 var(--space-3); border: 2px solid var(--asphalt); border-radius: 2px; background: var(--crew-white); color: var(--asphalt); font: inherit; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; }
 @media print {
-  .site-header, .site-footer, .skip-link, .no-print { display: none !important; }
+  .site-header, .site-footer, .site-footer-note, .skip-link, .no-print { display: none !important; }
   .print-only { display: block; }
   body, .shell, .shell-main, .page { background: var(--crew-white); color: var(--asphalt); }
   .district-page .zombie-table { border-collapse: collapse; }
