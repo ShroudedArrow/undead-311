@@ -246,7 +246,7 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
   /* The sheet would cut through the Map and Table buttons, so they step out of the way while it is open. */
   .home:has(.filters-open) .view-switch { visibility: hidden; }
 }
-/* The count block arrives with the data; the strip holds the height it will have, measured at 320/360, 390/430 and 640 px, so the map does not shrink when it fills in. */
+/* The count block arrives with the data; the strip holds the height it will have, measured at 320, 360, 390/430 and 640 px, so the map does not shrink when it fills in. */
 @media (max-width: 640px) {
   .filters-panel { min-height: 5.4rem; }
 }
@@ -255,6 +255,10 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 }
 @media (max-width: 380px) {
   .filters-panel { min-height: 6.9rem; }
+}
+/* Under about 345 px the floor note wraps to a third line (reviewer-ux r3: 0.012 shift at 320). */
+@media (max-width: 345px) {
+  .filters-panel { min-height: 8.4rem; }
 }
 /* On the map page the footer keeps every line but runs them together, so the map keeps the room. */
 .shell[data-fit] .site-footer { display: block; padding-block: var(--space-2) max(var(--space-2), env(safe-area-inset-bottom)); line-height: 1.35; }

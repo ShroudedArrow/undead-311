@@ -22,7 +22,8 @@ export function MapLegend({ showOutline }: { showOutline: boolean }) {
   return (
     <details className="map-legend" open={open} onToggle={(e) => setOpenChoice((e.currentTarget as HTMLDetailsElement).open)} data-testid="map-legend">
       <summary>{t("map.legend_title")}</summary>
-      <ul>
+      {/* The list scrolls inside the box on short screens, so it is a focus stop with a name: keyboard users can scroll it. */}
+      <ul tabIndex={0} aria-label={t("map.legend_title")}>
         {FAMILY_ORDER.map((f) => (
           <li key={f}>
             <span className="legend-mark" dangerouslySetInnerHTML={marker(f)} />

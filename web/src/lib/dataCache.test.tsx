@@ -45,4 +45,26 @@ describe("data cache: a later reader starts with the data (layout shift)", () =>
     render(<Read />);
     expect(seen[0]).toBe("loading");
   });
+  it("does not start a load of its own when it mounts with a result in hand, so nothing loads after the cache is cleared", async () => {
+    const fetch = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ a: 1 }) }) as Response);
+    vi.stubGlobal("fetch", fetch);
+    await loadOnce("w.json", ok);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const { rerender } = render(<Probe file="w.json" />);
+    expect(screen.getByTestId("s").textContent).toBe("ok");
+    clearDataCache();
+    rerender(<Probe file="w.json" />);
+    await act(async () => { await Promise.resolve(); });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("s").textContent).toBe("ok");
+  });
+  it("loads the new file when the file name changes", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) }) as Response));
+    await loadOnce("p.json", ok);
+    const { rerender } = render(<Probe file="p.json" />);
+    expect(screen.getByTestId("s").textContent).toBe("ok");
+    rerender(<Probe file="q.json" />);
+    expect(screen.getByTestId("s").textContent).toBe("loading");
+    expect(await screen.findByText("ok")).toBeTruthy();
+  });
 });

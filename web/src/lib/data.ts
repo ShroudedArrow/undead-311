@@ -86,18 +86,28 @@ export function clearDataCache(): void {
 
 export function useData<T>(file: string | null, parse: (d: unknown) => ParseResult<T>, frozen = false): Load<T> {
   const key = file === null ? null : frozen ? `frozen:${file}` : file;
-  const [state, setState] = useState<Load<T>>(() => (key !== null ? (settled.get(key) as Load<T> | undefined) : undefined) ?? { status: "loading" });
+  // The state remembers which file it belongs to. A component that mounts after its file has come back starts with that result and
+  // never starts a load of its own (no "loading" flash, no layout shift, and no stray request after the cache is cleared).
+  const [held, setHeld] = useState<{ key: string | null; load: Load<T> }>(() => {
+    const known = key !== null ? (settled.get(key) as Load<T> | undefined) : undefined;
+    return known ? { key, load: known } : { key: null, load: { status: "loading" } };
+  });
   useEffect(() => {
-    if (file === null) return;
+    if (file === null || key === null) return;
+    if (held.key === key && held.load.status !== "loading") return; // already have this file's result
     let live = true;
-    const known = settled.get(frozen ? `frozen:${file}` : file) as Load<T> | undefined;
-    setState(known ?? { status: "loading" });
-    void (frozen ? loadFrozenOnce(file, parse) : loadOnce(file, parse)).then((r) => live && setState(r));
+    const known = settled.get(key) as Load<T> | undefined;
+    if (known) {
+      setHeld({ key, load: known });
+      return;
+    }
+    setHeld({ key: null, load: { status: "loading" } });
+    void (frozen ? loadFrozenOnce(file, parse) : loadOnce(file, parse)).then((r) => live && setHeld({ key, load: r }));
     return () => {
       live = false;
     };
     // `parse` is a module-level function; the file name is the only real dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file]);
-  return state;
+  }, [key]);
+  return held.key === key || key === null ? held.load : { status: "loading" };
 }

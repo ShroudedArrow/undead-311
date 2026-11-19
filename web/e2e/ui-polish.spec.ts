@@ -331,3 +331,26 @@ test("at city zoom no two cluster counts overlap", async ({ page }) => {
     expect(Math.hypot(pts[a].x - pts[b].x, pts[a].y - pts[b].y)).toBeGreaterThanOrEqual(43);
   }
 });
+
+test("the marker key list can be reached and scrolled from the keyboard", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByTestId("map")).toHaveAttribute("data-ready", "true");
+  await page.getByText("Marker key").click();
+  const list = page.locator(".map-legend ul");
+  await list.focus();
+  await expect(list).toBeFocused();
+  await expect(list).toHaveAttribute("aria-label", "Marker key");
+});
+
+test("the home page does not shift at 320 px wide either", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.addInitScript(() => {
+    (window as unknown as { __cls: number }).__cls = 0;
+    new PerformanceObserver((l) => {
+      for (const e of l.getEntries() as unknown as { value: number; hadRecentInput: boolean }[]) if (!e.hadRecentInput) (window as unknown as { __cls: number }).__cls += e.value;
+    }).observe({ type: "layout-shift", buffered: true });
+  });
+  await page.goto("/");
+  await page.waitForTimeout(2500);
+  expect(await page.evaluate(() => (window as unknown as { __cls: number }).__cls)).toBeLessThan(0.005);
+});
