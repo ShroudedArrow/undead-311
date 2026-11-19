@@ -130,6 +130,10 @@ describe("time-lapse markers never cluster and grow with zoom (REQ-WEB-TIMELAPSE
     expect(markerSize(false, false, 11.2, "dots")).toBeLessThan(markerSize(false, false, 11.2, "density"));
     expect(markerSize(false, false, 14.5, "dots")).toBe(30);
     expect(markerSize(false, false, 12, "dots")).toBeGreaterThan(markerSize(false, false, 11, "dots"));
+    // zoomed out to the floor the dots keep shrinking, so the core reads as dots, not a blob (reviewer-ux r4 F1)
+    expect(markerSize(false, true, 9.2, "dots")).toBeLessThan(markerSize(false, true, 11.2, "dots") * 0.6);
+    expect(markerSize(false, true, 9.2, "dots")).toBeGreaterThanOrEqual(3);
+    for (let z = 8; z < 15; z += 0.25) expect(markerSize(false, false, z + 0.25, "dots")).toBeGreaterThanOrEqual(markerSize(false, false, z, "dots"));
     const icon = (zoom: number) => (layer(zoom)["zombies"].props as unknown as { getIcon: (d: PointRow) => string }).getIcon(rows[0]);
     expect(icon(11.2)).toMatch(/^other-/); // no letter at city zoom
     expect(icon(14)).toMatch(/^sign-/);

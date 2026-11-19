@@ -103,7 +103,7 @@ export function buildLayers(i: LayerInput) {
       getPosition: (d) => [d.lon, d.lat],
       getSize: (d) => markerSize(d.id === selectedId, compact, zoom, mode),
       sizeUnits: "pixels",
-      sizeMinPixels: mode === "dots" ? 7 : compact ? 16 : 18,
+      sizeMinPixels: mode === "dots" ? 3 : compact ? 16 : 18,
       updateTriggers: { getSize: [selectedId, compact, zoom, mode], getIcon: [plain] },
     }),
     new ScatterplotLayer<PointRow>({

@@ -644,8 +644,21 @@ select {
   /* title and Focus the view share the first row; the playback controls take the next */
   .timelapse-focus-panel { order: 1; margin-left: auto; }
   .timelapse-controls, .timelapse-reduced { order: 2; flex-basis: 100%; }
-  .timelapse-focus-body { left: 0; right: 0; width: auto; border-left: 0; border-right: 0; }
-  .timelapse-focus { grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+  /* On a phone the panel is a sheet at the bottom of the screen, so the toolbar, the date stamp and the top of the map stay in view (reviewer-ux r4 F2). */
+  .timelapse-focus-body {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    max-height: 45dvh;
+    border-width: 2px 0 0;
+    padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
+  }
+  /* each label beside its select, so the current value is not cut off (F3) */
+  .timelapse-focus { grid-template-columns: 1fr; gap: var(--space-1); }
+  .timelapse-focus label { grid-template-columns: 7.5rem minmax(0, 1fr); align-items: center; gap: var(--space-2); }
   .date-stamp { top: var(--space-2); left: var(--space-2); }
 }
 
