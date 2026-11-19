@@ -169,12 +169,13 @@ def scrub(text: str | None, staff: bool = True) -> tuple[str | None, Counter[str
         text, n = regex.subn(repl, text)
         if n:
             counts[name] += n
-    text, first = first_names.apply(text)  # REQ-ING-PII.7: after the patterns above, so it sees what they left
-    counts.update(first)
     if staff and _STAFF is not None:
         text, n = _STAFF.subn(REMOVED, text)
         if n:
             counts["staff_name"] += n
+    # REQ-ING-PII.7: last, so it sees every `[removed]` the patterns and the staff list left and can take a first name beside one
+    text, first = first_names.apply(text)
+    counts.update(first)
     return text, counts
 
 

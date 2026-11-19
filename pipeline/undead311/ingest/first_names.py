@@ -12,6 +12,11 @@ most common US first names (`first_names.txt`, SSA public data; source and build
 (c) `name_at`: in "<name> @ <place>" the pair is removed on a weaker test (the second word may be a street word), because
     the "@" shows a person at a place. The place after the "@" always stays.
 
+Two more forms (REQ-ING-PII.7): `first_name_beside_removed` (a listed first name directly beside `[removed]`, on either side,
+only the first name goes) and `first_name_initial` ("Mike S." / "Mike S": the pair goes, the period stays unless a surname
+follows it; kept before a street suffix, known place or street word, and for "X"). `scrub` runs these rules last, after the
+patterns and the staff list, so they see every `[removed]`.
+
 Street words come from the run (`set_place_words`: SAM segment names and the case street list), plus the static
 `STREET_SUFFIXES` and `PLACES` here. A name that is also a street word is kept: a lost name is the cheaper mistake than
 a street erased from a note. Replacement text is `[removed]`; the rules never see their own output, so they are idempotent.
@@ -32,6 +37,7 @@ def _words(text: str) -> frozenset[str]:
     return frozenset(text.split())
 
 
+MAX_PASSES = 5
 NAMES_FILE = Path(__file__).with_name("first_names.txt")
 
 STREET_SUFFIXES = _words(
@@ -87,6 +93,10 @@ _FIRST = re.compile(r"[A-Z][a-z]+")
 _SECOND = re.compile(r"[A-Z](?:[a-z]+|['\u2019][A-Z][a-z]+)(?:['\u2019-]?[A-Z][a-z]+)?")
 _GAP_SPACE = re.compile(r"\s+")
 _GAP_AT = re.compile(r"\s*@")
+_REMOVED_AFTER = re.compile(r"\s+\[removed\]")
+_REMOVED_BEFORE = re.compile(r"\[removed\]\s+$")
+_INITIAL = re.compile(r"[A-WYZ]")  # not X: "Malcolm X"
+_DOTTED = re.compile(r"\.[A-Za-z]")  # "S.W.": a direction or an abbreviation, not one initial
 
 _place_words: frozenset[str] = frozenset()
 
@@ -115,14 +125,24 @@ def _second_ok(word: str, relaxed: bool) -> bool:
     return relaxed or (w not in PLACES and w not in _place_words)
 
 
+def _street_follows(text: str, toks: list[re.Match[str]], j: int, after: int) -> bool:
+    """True when the word after an initial is a street suffix, a known place or a street word of the run: "William F McClellan
+    Hwy", "Malcolm X Blvd", "Richard B. Ross Way" are street names with a middle initial, not a name and an initial."""
+    if j >= len(toks) or not re.fullmatch(r"\.?\s+", text[after : toks[j].start()]):
+        return False
+    w = toks[j].group().lower()
+    return w in STREET_SUFFIXES or w in PLACES or w in _place_words
+
+
 def find(text: str) -> list[tuple[int, int, str, str]]:
     """Spans to replace as (start, end, rule, replacement), in text order, never overlapping."""
     toks = list(_TOKEN.finditer(text))
     names = first_names()
     out: list[tuple[int, int, str, str]] = []
     i = 0
-    while i < len(toks) - 1:
-        a, b = toks[i], toks[i + 1]
+    while i < len(toks):
+        a = toks[i]
+        b = toks[i + 1] if i + 1 < len(toks) else None
         if not (
             _FIRST.fullmatch(a.group())
             and a.group().lower() in names
@@ -130,6 +150,10 @@ def find(text: str) -> list[tuple[int, int, str, str]]:
         ):
             i += 1
             continue
+        if b is None:
+            if _REMOVED_BEFORE.search(text, 0, a.start()):
+                out.append((a.start(), a.end(), "first_name_beside_removed", REMOVED))
+            break
         gap = text[a.end() : b.start()]
         if b.group() == "from" and _GAP_SPACE.fullmatch(gap) and i + 2 < len(toks):
             c = toks[i + 2]
@@ -137,6 +161,21 @@ def find(text: str) -> list[tuple[int, int, str, str]]:
                 out.append((a.start(), a.end(), "first_name_from", REMOVED))
                 i += 2
                 continue
+        if (
+            _GAP_SPACE.fullmatch(gap)
+            and _INITIAL.fullmatch(b.group())
+            and not _DOTTED.match(text, b.end())
+            and not _street_follows(text, toks, i + 2, b.end())
+        ):
+            # "Mike S." or "Mike S": the first name and the initial. A period stays unless a surname follows it.
+            end = b.end()
+            if text.startswith(". ", end) and i + 2 < len(toks):
+                c = toks[i + 2]
+                if c.start() == end + 2 and _SECOND.fullmatch(c.group()) and _second_ok(c.group(), False):
+                    end, i = c.end(), i + 1
+            out.append((a.start(), end, "first_name_initial", REMOVED))
+            i += 2
+            continue
         if _GAP_SPACE.fullmatch(gap):
             at = _GAP_AT.match(text, b.end())
             relaxed = at is not None
@@ -144,15 +183,24 @@ def find(text: str) -> list[tuple[int, int, str, str]]:
                 out.append((a.start(), b.end(), "name_at" if relaxed else "first_name", REMOVED))
                 i += 2
                 continue
+        if _REMOVED_AFTER.match(text, a.end()) or _REMOVED_BEFORE.search(text, 0, a.start()):
+            out.append(
+                (a.start(), a.end(), "first_name_beside_removed", REMOVED)
+            )  # a name next to a removed surname
         i += 1
     return out
 
 
 def apply(text: str) -> tuple[str, Counter[str]]:
-    """`text` with the three rules applied, and the replacement count per rule."""
+    """`text` with the rules applied, and the replacement count per rule. A pass can leave a first name beside a `[removed]`
+    that the same pass made ("Maggie Van Scoy" with "Van Scoy" removed), so passes repeat until nothing changes; each pass
+    shortens the text or the count of names, so it stops (at most `MAX_PASSES`) and a second call changes nothing."""
     counts: Counter[str] = Counter()
-    spans = find(text)
-    for start, end, rule, repl in reversed(spans):
-        text = text[:start] + repl + text[end:]
-        counts[rule] += 1
+    for _ in range(MAX_PASSES):
+        spans = find(text)
+        if not spans:
+            break
+        for start, end, rule, repl in reversed(spans):
+            text = text[:start] + repl + text[end:]
+            counts[rule] += 1
     return text, counts
