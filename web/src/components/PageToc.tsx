@@ -1,14 +1,10 @@
 import { useLayoutEffect, useState } from "react";
 import { t } from "../lib/t";
-import { useMedia } from "../lib/useMedia";
 
 interface Item {
   id: string;
   text: string;
 }
-
-/** Wide enough for the contents list to sit beside a 70-character column (70rem = 1120 px at the default size). */
-export const TOC_WIDE_QUERY = "(min-width: 70rem)";
 
 /** Read the section headings (h2) under `el`, giving any heading without an id one, and follow the page as sections load. */
 function useHeadings(el: HTMLElement | null): Item[] {
@@ -32,35 +28,23 @@ function useHeadings(el: HTMLElement | null): Item[] {
 }
 
 /**
- * Table of contents for a long page, built from the page's own h2 headings so it cannot drift from the content. On wide screens it is a
- * plain list that stays in view beside the column; on narrower screens it is one closed disclosure above the content.
+ * Table of contents for a long page, built from the page's own h2 headings so it cannot drift from the content. A plain, static list
+ * under the page title (two columns on wide screens, one on phones, app.css): nothing in it moves while the page scrolls.
  */
 export function PageToc({ content }: { content: HTMLElement | null }) {
   const items = useHeadings(content);
-  const wide = useMedia(TOC_WIDE_QUERY);
-  if (items.length === 0) return <nav className="toc" aria-label={t("methods.toc_heading")} />;
-  const list = (
-    <ol>
-      {items.map((i) => (
-        <li key={i.id}>
-          <a href={`#${i.id}`}>{i.text}</a>
-        </li>
-      ))}
-    </ol>
-  );
   return (
-    <nav className="toc" aria-label={t("methods.toc_heading")}>
-      {wide ? (
-        <>
-          <p className="toc-title">{t("methods.toc_heading")}</p>
-          {list}
-        </>
-      ) : (
-        <details>
-          <summary>{t("methods.toc_heading")}</summary>
-          {list}
-        </details>
-      )}
+    <nav className="toc" aria-labelledby="toc-title">
+      <p className="toc-title" id="toc-title">{t("methods.toc_heading")}</p>
+      {items.length > 0 ? (
+        <ol>
+          {items.map((i) => (
+            <li key={i.id}>
+              <a href={`#${i.id}`}>{i.text}</a>
+            </li>
+          ))}
+        </ol>
+      ) : null}
     </nav>
   );
 }

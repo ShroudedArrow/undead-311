@@ -6,7 +6,7 @@
  */
 import { IconLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import type { PointRow } from "../lib/points";
-import { clusterLabel, clusterSize, groupRows, markerScale, type Cluster } from "./density";
+import { clusterLabel, clusterSize, DENSITY_ZOOM, dotScale, groupRows, markerScale, type Cluster } from "./density";
 import { clusterIcon, iconFor, iconMapping } from "./sprites";
 
 export interface LayerInput {
@@ -21,23 +21,30 @@ export interface LayerInput {
   zoom?: number;
   /** A cluster was clicked or tapped. */
   onCluster?: (c: Cluster) => void;
+  /**
+   * "density" (the main map): clusters below zoom 13 and markers at 70% to full size. "dots" (the time-lapse): never clusters, and every
+   * marker is a small plain spray ring at city zoom (no letter, which would not read at that size), growing to a full stencil circle.
+   */
+  mode?: MarkerMode;
 }
+
+export type MarkerMode = "density" | "dots";
 
 /**
  * Marker size in pixels at full size: 30 (44 when selected), and 26 (38) on a phone, where the stencil letter is still about 9 px tall.
  * Below two zoom steps past the density threshold the unselected markers scale down to 70%; the selected one never shrinks.
  */
-export function markerSize(selected: boolean, compact: boolean, zoom: number = Infinity): number {
+export function markerSize(selected: boolean, compact: boolean, zoom: number = Infinity, mode: MarkerMode = "density"): number {
   const full = compact ? (selected ? 38 : 26) : selected ? 44 : 30;
-  return selected ? full : full * markerScale(zoom);
+  return selected ? full : full * (mode === "dots" ? dotScale(zoom) : markerScale(zoom));
 }
 
 /** Smallest touch target: 44 px across, so a hit area on a phone is at least 22 px in radius. */
 export const MIN_HIT_RADIUS_PX = 22;
 
 /** Pick radius in pixels of the invisible circle that sits over a marker: the whole painted circle, and on a phone at least 44 px across. */
-export function hitRadius(selected: boolean, compact: boolean, zoom: number = Infinity): number {
-  const visual = markerSize(selected, compact, zoom) / 2;
+export function hitRadius(selected: boolean, compact: boolean, zoom: number = Infinity, mode: MarkerMode = "density"): number {
+  const visual = markerSize(selected, compact, zoom, mode) / 2;
   return compact ? Math.max(visual, MIN_HIT_RADIUS_PX) : visual;
 }
 
@@ -47,7 +54,10 @@ export function buildLayers(i: LayerInput) {
   const zoom = i.zoom ?? Infinity;
   const onCluster = i.onCluster ?? (() => undefined);
   // below the density threshold, nearby possible zombies become clusters; the selected one is always its own marker
-  const { clusters, singles: rows } = groupRows(i.rows, zoom, selectedId);
+  const mode = i.mode ?? "density";
+  const { clusters, singles: rows } = mode === "dots" ? { clusters: [] as Cluster[], singles: i.rows } : groupRows(i.rows, zoom, selectedId);
+  // in dots mode below the density threshold the letter would not read, so the marker is the plain ring
+  const plain = mode === "dots" && zoom < DENSITY_ZOOM;
   const hit = (c: Cluster) => (compact ? Math.max(clusterSize(c.count) / 2, MIN_HIT_RADIUS_PX) : clusterSize(c.count) / 2);
   return [
     // Cone orange rings under the markers: a warning, never text (design-system.md). Asphalt ring beneath keeps 3:1 on Concrete.
@@ -76,8 +86,8 @@ export function buildLayers(i: LayerInput) {
       getFillColor: [0, 0, 0, 0],
       getPosition: (d) => [d.lon, d.lat],
       radiusUnits: "pixels",
-      getRadius: (d) => hitRadius(d.id === selectedId, compact, zoom),
-      updateTriggers: { getRadius: [selectedId, compact, zoom] },
+      getRadius: (d) => hitRadius(d.id === selectedId, compact, zoom, mode),
+      updateTriggers: { getRadius: [selectedId, compact, zoom, mode] },
       onClick: (info) => {
         if (info.object) onSelect(info.object.id);
       },
@@ -89,12 +99,12 @@ export function buildLayers(i: LayerInput) {
       loadOptions: { worker: false },
       iconAtlas: atlas as unknown as string,
       iconMapping: iconMapping(),
-      getIcon: (d) => iconFor(d.id, d.tier, d.family),
+      getIcon: (d) => iconFor(d.id, d.tier, plain ? "" : d.family),
       getPosition: (d) => [d.lon, d.lat],
-      getSize: (d) => markerSize(d.id === selectedId, compact, zoom),
+      getSize: (d) => markerSize(d.id === selectedId, compact, zoom, mode),
       sizeUnits: "pixels",
-      sizeMinPixels: compact ? 16 : 18,
-      updateTriggers: { getSize: [selectedId, compact, zoom] },
+      sizeMinPixels: mode === "dots" ? 7 : compact ? 16 : 18,
+      updateTriggers: { getSize: [selectedId, compact, zoom, mode], getIcon: [plain] },
     }),
     new ScatterplotLayer<PointRow>({
       id: "zombie-hit",
@@ -105,8 +115,8 @@ export function buildLayers(i: LayerInput) {
       getFillColor: [0, 0, 0, 0],
       getPosition: (d) => [d.lon, d.lat],
       radiusUnits: "pixels",
-      getRadius: (d) => markerSize(d.id === selectedId, compact, zoom) / 2,
-      updateTriggers: { getRadius: [selectedId, compact, zoom] },
+      getRadius: (d) => markerSize(d.id === selectedId, compact, zoom, mode) / 2,
+      updateTriggers: { getRadius: [selectedId, compact, zoom, mode] },
       onClick: (info) => {
         if (info.object) onSelect(info.object.id);
       },

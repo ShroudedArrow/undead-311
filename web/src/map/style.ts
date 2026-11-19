@@ -8,10 +8,16 @@ import { PALETTE } from "./palette";
 
 export const BOSTON_CENTER: [number, number] = [-71.075, 42.325];
 export const BOSTON_ZOOM = 11.2;
+/**
+ * Pan limits: greater Boston (the Route 128 ring) plus a margin. They equal the bounds of the self-hosted tile extract
+ * (web/scripts/make-basemap.sh), so the view can never leave the area the tiles draw; a test reads the file's header to keep the two equal.
+ */
 export const BOSTON_BOUNDS: [[number, number], [number, number]] = [
-  [-71.25, 42.19],
-  [-70.93, 42.45],
+  [-71.55, 42.05],
+  [-70.65, 42.65],
 ];
+/** Lowest zoom: two steps out from the opening view. On a wide screen the pan limits stop the zoom-out a little earlier (about 9.6). */
+export const MIN_ZOOM = BOSTON_ZOOM - 2;
 
 export function tilesUrl(origin: string, baseUrl: string): string {
   return `pmtiles://${origin}${baseUrl}tiles/boston.pmtiles`;

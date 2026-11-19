@@ -32,3 +32,28 @@ describe("MapLibre controls are restyled (REQ-WEB-DESIGN.2, UX-2)", () => {
     expect(css).toMatch(/\.score-detail summary::before/);
   });
 });
+
+describe("pan limits match the tile extract, so the map never goes blank (REQ-WEB-MAP.1)", () => {
+  it("keeps the pan limits inside the bounds stored in public/tiles/boston.pmtiles", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { BOSTON_BOUNDS, BOSTON_CENTER, BOSTON_ZOOM, MIN_ZOOM } = await import("./style");
+    const head = readFileSync(join(__dirname, "..", "..", "public", "tiles", "boston.pmtiles")).subarray(0, 127);
+    expect(head.subarray(0, 7).toString()).toBe("PMTiles");
+    const deg = (o: number) => head.readInt32LE(o) / 1e7;
+    const [minLon, minLat, maxLon, maxLat] = [deg(102), deg(106), deg(110), deg(114)];
+    const [[w, s], [e, n]] = BOSTON_BOUNDS;
+    expect(w).toBeGreaterThanOrEqual(minLon - 1e-6);
+    expect(s).toBeGreaterThanOrEqual(minLat - 1e-6);
+    expect(e).toBeLessThanOrEqual(maxLon + 1e-6);
+    expect(n).toBeLessThanOrEqual(maxLat + 1e-6);
+    expect(head[101]).toBeGreaterThanOrEqual(13); // full detail where the possible zombies are
+    // greater Boston: at least a quarter degree of map on every side of downtown
+    expect(BOSTON_CENTER[0] - w).toBeGreaterThan(0.25);
+    expect(e - BOSTON_CENTER[0]).toBeGreaterThan(0.25);
+    expect(BOSTON_CENTER[1] - s).toBeGreaterThan(0.25);
+    expect(n - BOSTON_CENTER[1]).toBeGreaterThan(0.25);
+    expect(BOSTON_ZOOM - MIN_ZOOM).toBeGreaterThanOrEqual(1);
+    expect(BOSTON_ZOOM - MIN_ZOOM).toBeLessThanOrEqual(2);
+  });
+});

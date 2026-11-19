@@ -40,6 +40,15 @@ export function markerScale(zoom: number): number {
   return Math.min(1, Math.max(0.7, 0.7 + (zoom - DENSITY_ZOOM) * 0.15));
 }
 
+/**
+ * Marker size multiplier for the time-lapse, which never clusters (every possible zombie appears on its own): about a third of full size at
+ * city zoom, so the build-up reads as spray dots gathering rather than one blob, growing to full size at zoom 14.5.
+ */
+export function dotScale(zoom: number): number {
+  if (!Number.isFinite(zoom)) return 1;
+  return Math.min(1, Math.max(0.3, 0.35 + (zoom - 11) * (0.65 / 3.5)));
+}
+
 /** Icon size in pixels for a cluster: grows with the log of the count, from about 37 px for 2 to 60 px. */
 export function clusterSize(count: number): number {
   return Math.min(60, 30 + 7 * Math.log2(Math.max(2, count)));

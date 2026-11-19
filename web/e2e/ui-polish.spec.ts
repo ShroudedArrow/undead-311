@@ -51,33 +51,106 @@ test("the marker key lists the seven case types and the cluster mark", async ({ 
   await expect(legend.getByText("Street fixtures")).toBeVisible();
 });
 
-test("methods: a readable column, and the contents list beside it on wide screens only", async ({ page }, info) => {
+test("methods: a centred readable column with a static contents list under the title", async ({ page }, info) => {
   await page.goto("/methods");
-  await expect(page.getByTestId("methods-intro")).toBeVisible(); // the page draws once its data is in; before that the column holds a placeholder
+  await expect(page.getByTestId("methods-intro")).toBeVisible(); // the page draws once its data is in
   const main = page.locator(".methods-main");
-  await expect(main).toBeVisible();
   const col = (await main.boundingBox())!;
   const vw = page.viewportSize()!.width;
-  expect(col.width).toBeLessThanOrEqual(70 * 16 * 0.62 + 1 + 600); // about 70 characters: never the full width of a wide screen
+  expect(col.width).toBeLessThanOrEqual(760); // about 70 characters
+  if (vw > 800) expect(Math.abs(col.x + col.width / 2 - vw / 2)).toBeLessThan(12); // centred
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const toc = page.getByRole("navigation", { name: "On this page" });
-  if (vw >= 1120) {
-    const box = (await toc.boundingBox())!;
-    expect(box.x).toBeGreaterThan(col.x + col.width);
-    await page.evaluate(() => window.scrollTo(0, 2000));
-    const after = (await toc.boundingBox())!;
-    expect(after.y).toBeGreaterThanOrEqual(0); // sticky: still in view after scrolling
-    expect(after.y).toBeLessThan(200);
-  } else {
-    await expect(toc.locator("details")).toBeVisible();
-    expect(info.project.name).toBe("phone");
+  const title = (await page.locator("h1").boundingBox())!;
+  const tocBox = (await toc.boundingBox())!;
+  expect(tocBox.y).toBeGreaterThan(title.y); // under the title
+  expect(tocBox.x).toBeGreaterThanOrEqual(col.x - 1); // inside the column
+  // room for "12." before each item, so no number is cut off
+  expect(await toc.locator("ol").evaluate((el) => parseFloat(getComputedStyle(el).paddingLeft))).toBeGreaterThanOrEqual(34);
+  const xs = new Set((await toc.locator("a").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)))));
+  expect(xs.size).toBe(info.project.name === "phone" ? 1 : 2); // one column on phones, two on wide screens
+  // static: it scrolls away with the page instead of following it
+  await page.evaluate(() => window.scrollTo(0, 1500));
+  await page.waitForTimeout(200);
+  expect((await toc.boundingBox())!.y).toBeLessThan(tocBox.y - 1000);
+});
+
+test("the marker key closes with its close button and with Escape, and focus goes back to the Marker key button", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByTestId("map")).toHaveAttribute("data-ready", "true");
+  const summary = page.locator(".map-legend > summary");
+  await summary.click();
+  const close = page.getByRole("button", { name: "Close marker key" });
+  await expect(close).toBeVisible();
+  const box = (await close.boundingBox())!;
+  expect(box.height).toBeGreaterThanOrEqual(44);
+  await close.click();
+  await expect(page.locator(".map-legend ul")).toBeHidden();
+  await expect(summary).toBeFocused();
+  await summary.press("Enter");
+  await expect(close).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".map-legend ul")).toBeHidden();
+  await expect(summary).toBeFocused();
+});
+
+test("time-lapse: the map fills the first view, full width, and never clusters", async ({ page }) => {
+  await page.goto("/timelapse");
+  const map = page.getByTestId("map");
+  await expect(map).toHaveAttribute("data-ready", "true");
+  const box = (await map.boundingBox())!;
+  const vp = page.viewportSize()!;
+  expect(box.width).toBeGreaterThanOrEqual(vp.width - 1);
+  expect(box.y).toBeLessThan(vp.height * 0.4); // the toolbar above it is compact
+  expect(box.y + box.height).toBeLessThanOrEqual(vp.height + 1); // the whole map is on screen without scrolling
+  expect(box.height).toBeGreaterThan(vp.height * 0.55);
+  await expect(map).toHaveAttribute("data-mode", "dots");
+  await expect(map).toHaveAttribute("data-cluster-count", "0");
+  await expect(map).toHaveAttribute("data-marker-count", /^[1-9]/);
+  // "Focus the view" starts closed and opens over the map without moving or resizing it
+  const panel = page.locator(".timelapse-focus-panel");
+  expect(await panel.evaluate((d) => (d as HTMLDetailsElement).open)).toBe(false);
+  await panel.locator("summary").click();
+  await expect(page.getByLabel("Case type")).toBeVisible();
+  expect(await map.boundingBox()).toEqual(box);
+});
+
+test("time-lapse: a large date stamp on the map shows the date and the count, and follows playback", async ({ page }, info) => {
+  await page.goto("/timelapse");
+  await expect(page.getByTestId("map")).toHaveAttribute("data-ready", "true");
+  const stamp = page.getByTestId("date-stamp");
+  await expect(stamp).toBeVisible();
+  await expect(stamp).toContainText(/[A-Z][a-z]{2} \d{1,2}, \d{4}/);
+  await expect(stamp).toContainText(/possible zombie/);
+  const size = await stamp.locator(".date-stamp-date").evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
+  expect(size).toBeGreaterThanOrEqual(24);
+  const mapBox = (await page.getByTestId("map").boundingBox())!;
+  const s = (await stamp.boundingBox())!;
+  expect(s.y).toBeGreaterThanOrEqual(mapBox.y); // on the map
+  const end = await stamp.textContent();
+  await page.getByRole("button", { name: "Play the time-lapse" }).click();
+  await page.waitForTimeout(info.project.name === "phone" ? 1200 : 900);
+  await expect(stamp).not.toHaveText(end ?? "");
+  await page.getByRole("button", { name: "Pause" }).click();
+});
+
+test("the maps zoom out past the opening view and pan across greater Boston", async ({ page }) => {
+  for (const path of ["/", "/timelapse"]) {
+    await page.goto(path);
+    const map = page.getByTestId("map");
+    await expect(map).toHaveAttribute("data-ready", "true");
+    const zoomOut = page.getByRole("button", { name: "Zoom out" });
+    for (let i = 0; i < 6; i++) { try { await zoomOut.click({ timeout: 1500 }); } catch { break; } await page.waitForTimeout(450); }
+    await page.waitForTimeout(500);
+    expect(Number(await map.getAttribute("data-zoom")), path).toBeLessThanOrEqual(10); // at least a step past the 11.2 opening view
   }
 });
 
 test("time-lapse: focus on a case type and show a trail", async ({ page }) => {
   await page.goto("/timelapse");
   const now = page.getByTestId("timelapse-now");
-  await expect(now).toBeVisible();
+  await expect(now).toHaveText(/possible zombies/); // a visually hidden status line for screen readers
+  await page.locator(".timelapse-focus-panel > summary").click();
   const all = (await now.textContent())!;
   await page.getByLabel("Case type").selectOption({ index: 1 });
   await expect(now).not.toHaveText(all);
@@ -310,11 +383,10 @@ test("the phone filter sheet starts right under the count strip, with no band be
   expect(Math.abs(sheet.y - (strip.y + strip.height))).toBeLessThanOrEqual(1);
 });
 
-test("methods contents links are 44 px tall", async ({ page }, info) => {
+test("methods contents links are 44 px tall", async ({ page }) => {
   await page.goto("/methods");
   await expect(page.getByTestId("methods-intro")).toBeVisible();
   const toc = page.getByRole("navigation", { name: "On this page" });
-  if (info.project.name === "phone") await toc.locator("summary").click();
   const heights = await toc.locator("a").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
   expect(heights.length).toBeGreaterThan(5);
   for (const h of heights) expect(h).toBeGreaterThanOrEqual(44);

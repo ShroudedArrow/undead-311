@@ -11,10 +11,10 @@ import { useEffect, useRef, useState } from "react";
 import type { PointRow } from "../lib/points";
 import { watchOverlay } from "./overlayA11y";
 import { t } from "../lib/t";
-import { buildLayers } from "./layers";
+import { buildLayers, type MarkerMode } from "./layers";
 import { DENSITY_ZOOM, groupRows, type Cluster } from "./density";
 import { makeAtlasCanvas } from "./sprites";
-import { BOSTON_BOUNDS, BOSTON_CENTER, BOSTON_ZOOM, buildStyle, tilesUrl } from "./style";
+import { BOSTON_BOUNDS, BOSTON_CENTER, BOSTON_ZOOM, buildStyle, MIN_ZOOM, tilesUrl } from "./style";
 
 let protocolAdded = false;
 function ensureProtocol(): void {
@@ -38,11 +38,13 @@ interface Props {
   onSelect: (id: string) => void;
   /** IDs to ring in Cone orange (bulk-closure layer, REQ-WEB-DEATHS.1); null when the layer is off. */
   bulkIds?: ReadonlySet<string> | null;
+  /** "density" clusters at city zoom (the main map); "dots" never clusters (the time-lapse). */
+  mode?: MarkerMode;
   /** Zoom to this box, [west, south, east, north] ("Check my street", REQ-WEB-STREET.1). */
   bounds?: [number, number, number, number] | null;
 }
 
-export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bounds = null }: Props) {
+export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bounds = null, mode = "density" }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const overlayRef = useRef<MapboxOverlay | null>(null);
@@ -55,7 +57,7 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
   onSelectRef.current = onSelect;
   const onClusterRef = useRef<(c: Cluster) => void>(() => undefined);
   const groupRowsRef = useRef<() => ReturnType<typeof groupRows>>(() => ({ clusters: [], singles: [] }));
-  groupRowsRef.current = () => groupRows(rows, zoom, selectedId);
+  groupRowsRef.current = () => (mode === "dots" ? { clusters: [], singles: rows } : groupRows(rows, zoom, selectedId));
   onClusterRef.current = (c) => {
     const map = mapRef.current;
     if (!map) return;
@@ -77,7 +79,7 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
         center: BOSTON_CENTER,
         zoom: BOSTON_ZOOM,
         maxBounds: BOSTON_BOUNDS,
-        minZoom: 9,
+        minZoom: MIN_ZOOM,
         maxZoom: 18,
         attributionControl: { compact: false },
         cooperativeGestures: false,
@@ -129,9 +131,9 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
     const overlay = overlayRef.current;
     if (!overlay || !atlasRef.current) return;
     overlay.setProps({
-      layers: buildLayers({ rows, selectedId, atlas: atlasRef.current, bulkIds, onSelect: (id) => onSelectRef.current(id), compact: typeof window.matchMedia === "function" && window.matchMedia("(max-width: 640px)").matches, zoom, onCluster: (c) => onClusterRef.current(c) }),
+      layers: buildLayers({ rows, selectedId, atlas: atlasRef.current, bulkIds, onSelect: (id) => onSelectRef.current(id), compact: typeof window.matchMedia === "function" && window.matchMedia("(max-width: 640px)").matches, zoom, mode, onCluster: (c) => onClusterRef.current(c) }),
     });
-  }, [rows, selectedId, ready, bulkIds, zoom]);
+  }, [rows, selectedId, ready, bulkIds, zoom, mode]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -163,7 +165,8 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
       data-ready={ready ? "true" : "false"}
       data-marker-count={rows.length}
       data-zoom={zoom}
-      data-cluster-count={groupRows(rows, zoom, selectedId).clusters.length}
+      data-cluster-count={mode === "dots" ? 0 : groupRows(rows, zoom, selectedId).clusters.length}
+      data-mode={mode}
       data-bulk-count={bulkIds ? bulkIds.size : 0}
     />
   );

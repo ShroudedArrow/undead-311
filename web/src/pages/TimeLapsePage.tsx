@@ -98,91 +98,128 @@ export default function TimeLapsePage() {
   const play = () => { progressRef.current = 0; setProgress(0); setPlayed(true); setPlaying(true); };
   const ready = timeline !== null && timeline.length > 0;
 
+  const today = formatDay(iso(now));
+  const stampCount =
+    trail === null
+      ? shown.length === 1 ? t("timelapse.stamp_count_one") : t("timelapse.stamp_count", { count: shown.length })
+      : t("timelapse.stamp_trail", { count: shown.length, months: trail });
+  // the toolbar keeps the same controls while the data loads (disabled), so the map below it never moves when they come to life
+  const idle = !ready || focused.length === 0;
+
   return (
-    <div className="page timelapse-page">
-      <h1>{t("timelapse.title")}</h1>
-      {(points.status === "error") && <PanelError file={points.file} error={points.error} />}
-      {points.status === "loading" && <div data-slot="page-loading" aria-busy="true"><p className="count-note">{t("app.loading_section")}</p></div>}
-      {timeline && !ready && <p data-testid="timelapse-empty">{t("timelapse.empty")}</p>}
-      {ready && (
-        <>
-          <p>{t("timelapse.intro", { from: formatDay(iso(focused.length ? start : timeline[0].t)), to: formatDay(iso(focused.length ? end : timeline[timeline.length - 1].t)) })}</p>
-          <div className="timelapse-bar">
-            {reduced ? <p data-testid="reduced-note">{t("timelapse.reduced_note")}</p> : (
-              <div className="timelapse-controls" role="group" aria-label={t("timelapse.title")}>
-                {playing ? (
-                  <button type="button" onClick={stop}>{t("timelapse.pause")}</button>
-                ) : played && progress < 1 ? (
-                  <button type="button" onClick={() => setPlaying(true)}>{t("timelapse.resume")}</button>
-                ) : (
-                  <button type="button" onClick={play} disabled={focused.length === 0}>{played ? t("timelapse.restart") : t("timelapse.play")}</button>
-                )}
-                <button type="button" onClick={() => { stop(); progressRef.current = 1; setProgress(1); }} disabled={progress >= 1 && !playing}>{t("timelapse.skip")}</button>
-                <label className="timelapse-scrub">
-                  {t("timelapse.scrub")}
-                  <input type="range" min={0} max={1000} value={Math.round(progress * 1000)} disabled={focused.length === 0} aria-valuetext={formatDay(iso(now))} onChange={(e) => { stop(); const v = Number(e.target.value) / 1000; progressRef.current = v; setProgress(v); }} />
-                </label>
-              </div>
-            )}
-            <fieldset className="timelapse-focus">
-              <legend>{t("timelapse.controls_heading")}</legend>
-              <label>
-                {t("timelapse.family")}
-                <select value={family ?? ""} onChange={(e) => refocus(() => setFamily(e.target.value || null))}>
-                  <option value="">{t("timelapse.all_families")}</option>
-                  {families.map((f) => <option key={f} value={f}>{familyLabel(f)}</option>)}
-                </select>
+    <div className="timelapse-page">
+      {/* The hero fills the screen under the site header: a compact toolbar, then the map. */}
+      <section className="timelapse-hero" aria-labelledby="timelapse-h">
+        <div className="timelapse-toolbar">
+          <h1 id="timelapse-h">{t("timelapse.title")}</h1>
+          {reduced ? (
+            <p className="timelapse-reduced" data-testid="reduced-note">{t("timelapse.reduced_note")}</p>
+          ) : (
+            <div className="timelapse-controls" role="group" aria-label={t("timelapse.title")}>
+              {playing ? (
+                <button type="button" onClick={stop}>{t("timelapse.pause")}</button>
+              ) : played && progress < 1 ? (
+                <button type="button" onClick={() => setPlaying(true)}>{t("timelapse.resume")}</button>
+              ) : (
+                <button type="button" onClick={play} disabled={idle}>{played ? t("timelapse.restart") : t("timelapse.play")}</button>
+              )}
+              <button type="button" onClick={() => { stop(); progressRef.current = 1; setProgress(1); }} disabled={idle || (progress >= 1 && !playing)}>{t("timelapse.skip")}</button>
+              <label className="timelapse-scrub">
+                <span>{t("timelapse.scrub")}</span>
+                <input type="range" min={0} max={1000} value={Math.round(progress * 1000)} disabled={idle} aria-valuetext={ready ? today : undefined} onChange={(e) => { stop(); const v = Number(e.target.value) / 1000; progressRef.current = v; setProgress(v); }} />
               </label>
-              <label>
-                {t("timelapse.neighborhood")}
-                <select value={neighborhood ?? ""} onChange={(e) => refocus(() => setNeighborhood(e.target.value || null))}>
-                  <option value="">{t("timelapse.all_neighborhoods")}</option>
-                  {neighborhoods.map((n) => <option key={n} value={n}>{n}</option>)}
-                </select>
-              </label>
-              <label>
-                {t("timelapse.year_from")}
-                <select value={range[0]} onChange={(e) => refocus(() => { const v = Number(e.target.value); setYearRange([v, Math.max(v, range[1])]); })}>
-                  {years.map((y) => <option key={y} value={y}>{y}</option>)}
-                </select>
-              </label>
-              <label>
-                {t("timelapse.year_to")}
-                <select value={range[1]} onChange={(e) => refocus(() => { const v = Number(e.target.value); setYearRange([Math.min(v, range[0]), v]); })}>
-                  {years.map((y) => <option key={y} value={y}>{y}</option>)}
-                </select>
-              </label>
-              <label>
-                {t("timelapse.trail")}
-                <select value={trail ?? ""} aria-describedby="trail-note" onChange={(e) => setTrail(e.target.value ? Number(e.target.value) : null)}>
-                  <option value="">{t("timelapse.trail_all")}</option>
-                  {TRAIL_MONTHS.map((m) => <option key={m} value={m}>{t("timelapse.trail_months", { count: m })}</option>)}
-                </select>
-              </label>
-              {reduced ? null : (
+            </div>
+          )}
+          {/* Starts closed. It opens over the map, so the map keeps its size. */}
+          <details className="timelapse-focus-panel">
+            <summary>{t("timelapse.controls_heading")}</summary>
+            <div className="timelapse-focus-body">
+              <fieldset className="timelapse-focus" disabled={!ready}>
+                <legend className="visually-hidden">{t("timelapse.controls_heading")}</legend>
                 <label>
-                  {t("timelapse.speed")}
-                  <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
-                    {SPEEDS.map((v) => <option key={v} value={v}>{t("timelapse.speed_option", { speed: v })}</option>)}
+                  {t("timelapse.family")}
+                  <select value={family ?? ""} onChange={(e) => refocus(() => setFamily(e.target.value || null))}>
+                    <option value="">{t("timelapse.all_families")}</option>
+                    {families.map((f) => <option key={f} value={f}>{familyLabel(f)}</option>)}
                   </select>
                 </label>
-              )}
-            </fieldset>
-            <p className="count-note" id="trail-note">{t("timelapse.trail_note")}</p>
-          </div>
-          <p role="status" aria-live={playing ? "off" : "polite"} data-testid="timelapse-now">
-            {focused.length === 0
-              ? t("timelapse.no_match")
-              : trail === null
-                ? t("timelapse.now", { date: formatDay(iso(now)), count: shown.length, total: focused.length })
-                : t("timelapse.now_trail", { date: formatDay(iso(now)), count: shown.length, months: trail, total: focused.length })}
-          </p>
-          <div className="timelapse-map">
-            <Suspense fallback={<p>{t("map.loading")}</p>}>
-              <MapView rows={shown} selectedId={null} onSelect={() => undefined} />
-            </Suspense>
-            <MapLegend showOutline={false} />
-          </div>
+                <label>
+                  {t("timelapse.neighborhood")}
+                  <select value={neighborhood ?? ""} onChange={(e) => refocus(() => setNeighborhood(e.target.value || null))}>
+                    <option value="">{t("timelapse.all_neighborhoods")}</option>
+                    {neighborhoods.map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </label>
+                <label>
+                  {t("timelapse.year_from")}
+                  <select value={range[0]} onChange={(e) => refocus(() => { const v = Number(e.target.value); setYearRange([v, Math.max(v, range[1])]); })}>
+                    {years.map((y) => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </label>
+                <label>
+                  {t("timelapse.year_to")}
+                  <select value={range[1]} onChange={(e) => refocus(() => { const v = Number(e.target.value); setYearRange([Math.min(v, range[0]), v]); })}>
+                    {years.map((y) => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </label>
+                <label>
+                  {t("timelapse.trail")}
+                  <select value={trail ?? ""} aria-describedby="trail-note" onChange={(e) => setTrail(e.target.value ? Number(e.target.value) : null)}>
+                    <option value="">{t("timelapse.trail_all")}</option>
+                    {TRAIL_MONTHS.map((m) => <option key={m} value={m}>{t("timelapse.trail_months", { count: m })}</option>)}
+                  </select>
+                </label>
+                {reduced ? null : (
+                  <label>
+                    {t("timelapse.speed")}
+                    <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
+                      {SPEEDS.map((v) => <option key={v} value={v}>{t("timelapse.speed_option", { speed: v })}</option>)}
+                    </select>
+                  </label>
+                )}
+              </fieldset>
+              <p className="count-note" id="trail-note">{t("timelapse.trail_note")}</p>
+            </div>
+          </details>
+          {/* For screen readers; the date stamp on the map shows the same line. */}
+          {ready ? (
+            <p className="visually-hidden" role="status" aria-live={playing ? "off" : "polite"} data-testid="timelapse-now">
+              {focused.length === 0
+                ? t("timelapse.no_match")
+                : trail === null
+                  ? t("timelapse.now", { date: today, count: shown.length, total: focused.length })
+                  : t("timelapse.now_trail", { date: today, count: shown.length, months: trail, total: focused.length })}
+            </p>
+          ) : null}
+        </div>
+        <div className="timelapse-map">
+          {points.status === "error" ? <PanelError file={points.file} error={points.error} /> : null}
+          {points.status === "loading" ? <p className="timelapse-map-note" aria-busy="true">{t("app.loading_section")}</p> : null}
+          {timeline && !ready ? <p className="timelapse-map-note" data-testid="timelapse-empty">{t("timelapse.empty")}</p> : null}
+          {ready ? (
+            <>
+              <Suspense fallback={<p className="timelapse-map-note">{t("map.loading")}</p>}>
+                <MapView rows={shown} selectedId={null} onSelect={() => undefined} mode="dots" />
+              </Suspense>
+              {/* The date stamp: large, so it reads while the time-lapse plays. Screen readers get the status line above. */}
+              <div className="date-stamp" aria-hidden="true" data-testid="date-stamp">
+                {focused.length === 0 ? (
+                  <span className="date-stamp-count">{t("timelapse.no_match")}</span>
+                ) : (
+                  <>
+                    <span className="date-stamp-date">{today}</span>
+                    <span className="date-stamp-count">{stampCount}</span>
+                  </>
+                )}
+              </div>
+              <MapLegend showOutline={false} showCluster={false} />
+            </>
+          ) : null}
+        </div>
+      </section>
+      {ready ? (
+        <div className="timelapse-after">
+          <p>{t("timelapse.intro", { from: formatDay(iso(focused.length ? start : timeline[0].t)), to: formatDay(iso(focused.length ? end : timeline[timeline.length - 1].t)) })}</p>
           <h2>{t("timelapse.summary_heading")}</h2>
           <div className="table-wrap" tabIndex={0} role="region" aria-label={t("timelapse.caption")}>
             <table className="zombie-table" data-testid="year-table">
@@ -192,8 +229,8 @@ export default function TimeLapsePage() {
             </table>
           </div>
           <p className="count-note">{t("timelapse.floor")}</p>
-        </>
-      )}
+        </div>
+      ) : null}
     </div>
   );
 }

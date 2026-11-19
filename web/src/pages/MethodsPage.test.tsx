@@ -271,12 +271,17 @@ describe("Methods page offers the sensitivity sliders (REQ-WEB-SLIDERS.1)", () =
     }
     expect(new Set(headings.map((h) => h.id)).size).toBe(headings.length);
   });
-  it("puts the page in one centred column that holds all the text, and the contents list before it for keyboard users", async () => {
+  it("puts the page in one centred column, with a static contents list under the title, before the sections", async () => {
     stub();
     open();
-    await screen.findByTestId("methods-intro");
-    const layout = document.querySelector(".methods-layout") as HTMLElement;
-    expect(layout.firstElementChild?.classList.contains("toc")).toBe(true);
-    expect(layout.querySelector(".methods-main")?.contains(screen.getByTestId("methods-intro"))).toBe(true);
+    await screen.findByTestId("methods-intro", undefined, { timeout: 4000 });
+    const main = document.querySelector(".methods-main") as HTMLElement;
+    const toc = screen.getByRole("navigation", { name: "On this page" });
+    expect(main.contains(toc)).toBe(true);
+    expect(main.contains(screen.getByTestId("methods-intro"))).toBe(true);
+    const h1 = main.querySelector("h1") as HTMLElement;
+    expect(h1.compareDocumentPosition(toc) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(toc.compareDocumentPosition(main.querySelector("h2") as HTMLElement) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(toc.querySelector("details")).toBeNull(); // a plain list, never folded away
   });
 });

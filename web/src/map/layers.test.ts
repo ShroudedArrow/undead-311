@@ -115,3 +115,24 @@ describe("density view and zoom-scaled markers (REQ-WEB-MAP.1)", () => {
     expect(p.sizeMinPixels).toBeGreaterThanOrEqual(16);
   });
 });
+
+describe("time-lapse markers never cluster and grow with zoom (REQ-WEB-TIMELAPSE.1)", () => {
+  const near = (id: string, dx: number): PointRow => ({ id, lat: 42.35, lon: -71.06 + dx, tier: "headline", family: "sign" }) as unknown as PointRow;
+  const rows = [near("a", 0), near("b", 0.00005), near("c", 0.0001)];
+  const layer = (zoom: number) => Object.fromEntries(buildLayers({ ...base, bulkIds: null, rows, zoom, mode: "dots" }).map((l) => [l.id, l]));
+  const data = (l: { props: unknown }) => (l.props as { data: unknown[] }).data;
+  it("draws every possible zombie on its own at city zoom", () => {
+    expect(data(layer(11.2)["clusters"])).toHaveLength(0);
+    expect(data(layer(11.2)["zombies"])).toHaveLength(3);
+  });
+  it("draws small plain rings at city zoom and full stencil circles zoomed in", () => {
+    expect(markerSize(false, false, 11.2, "dots")).toBeLessThan(13);
+    expect(markerSize(false, false, 11.2, "dots")).toBeLessThan(markerSize(false, false, 11.2, "density"));
+    expect(markerSize(false, false, 14.5, "dots")).toBe(30);
+    expect(markerSize(false, false, 12, "dots")).toBeGreaterThan(markerSize(false, false, 11, "dots"));
+    const icon = (zoom: number) => (layer(zoom)["zombies"].props as unknown as { getIcon: (d: PointRow) => string }).getIcon(rows[0]);
+    expect(icon(11.2)).toMatch(/^other-/); // no letter at city zoom
+    expect(icon(14)).toMatch(/^sign-/);
+    expect((layer(11.2)["zombies"].props as unknown as { sizeMinPixels: number }).sizeMinPixels).toBeLessThan(10);
+  });
+});

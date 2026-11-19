@@ -198,6 +198,9 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .map-legend { position: absolute; left: var(--space-2); bottom: 2.25rem; z-index: 5; background: var(--crew-white); border: 2px solid var(--asphalt); max-width: min(24rem, calc(100% - 4.5rem)); }
 .map-legend summary { cursor: pointer; font-weight: 600; min-height: 2.75rem; padding: 0 var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
 .map-legend summary::-webkit-details-marker { display: none; }
+/* Open, the key has a close button in its top right corner; the summary leaves room for it. Shut, the browser hides the button with the list. */
+.map-legend[open] > summary { padding-right: 3.25rem; }
+.legend-close { position: absolute; top: 0; right: 0; width: 2.75rem; height: 2.75rem; min-height: 2.75rem; padding: 0; border: 0; border-left: 2px solid var(--asphalt); border-bottom: 2px solid var(--asphalt); background: var(--crew-white); font-size: var(--step-2); line-height: 1; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 .map-legend ul { list-style: none; margin: 0; padding: 0 var(--space-3) var(--space-2); max-height: min(50dvh, 20rem); overflow-y: auto; }
 /* On a phone the open key is capped below the zoom buttons: the stage less the top 7.5rem (controls) and the bottom 2.25rem (credit). */
 @media (max-width: 640px) {
@@ -383,12 +386,8 @@ button:disabled { opacity: 1; border-style: dashed; cursor: not-allowed; }
 .copy-link { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .copy-link button, .card-share a { min-height: 2.75rem; padding: 0 var(--space-3); border: 2px solid var(--asphalt); border-radius: 2px; background: var(--crew-white); font: inherit; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; color: var(--asphalt); }
 .card-share, .filters-share { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
-.timelapse-controls { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin: var(--space-3) 0; }
 .timelapse-controls button { min-height: 2.75rem; padding: 0 var(--space-3); border: 2px solid var(--asphalt); border-radius: 2px; background: var(--crew-white); font: inherit; font-weight: 600; cursor: pointer; }
 .timelapse-controls button:disabled { opacity: .6; cursor: default; }
-.timelapse-controls input[type="range"] { width: min(24rem, 100%); min-height: 2.75rem; accent-color: var(--asphalt); }
-.timelapse-map { position: relative; height: clamp(20rem, 60dvh, 40rem); margin: var(--space-3) 0; border: 2px solid var(--asphalt); }
-.timelapse-map .map-host { height: 100%; min-height: 0; }
 .lang-switch { display: flex; gap: var(--space-1); }
 .lang-switch button { min-height: 2.75rem; padding: 0 var(--space-3); border: 2px solid var(--crew-white); border-radius: 2px; background: transparent; color: var(--crew-white); font: inherit; cursor: pointer; }
 .lang-switch button[aria-pressed="true"] { background: var(--crew-white); color: var(--asphalt); font-weight: 700; }
@@ -561,24 +560,94 @@ select {
 }
 
 /* Night of the Living 311: playback on one row, the focus controls in one boxed form below it (REQ-WEB-TIMELAPSE.1). */
-.timelapse-bar { display: grid; gap: var(--space-3); margin: var(--space-3) 0; }
-.timelapse-bar .timelapse-controls { margin: 0; }
-.timelapse-bar p { margin: 0; }
-.timelapse-bar #trail-note { font-size: var(--step-0); }
-.timelapse-page { margin-inline: auto; width: min(60rem, 100%); max-width: none; }
-.timelapse-scrub { display: grid; gap: var(--space-1); font-weight: 600; flex: 1 1 16rem; min-width: 0; }
+/*
+ * Night of the Living 311 (REQ-WEB-TIMELAPSE.1). The map is the hero: the section fills the screen under the site header
+ * (--site-header-h, set by the shell), with one compact toolbar on top and the map in the rest. "Focus the view" opens over the map,
+ * so the map never changes size. The year table and the notes sit below, in a readable column.
+ */
+.timelapse-page { width: 100%; }
+.timelapse-hero { display: flex; flex-direction: column; height: calc(100dvh - var(--site-header-h, 5.5rem)); min-height: 26rem; }
+.timelapse-toolbar {
+  position: relative;
+  z-index: 26;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) max(var(--space-3), env(safe-area-inset-right)) var(--space-2) max(var(--space-3), env(safe-area-inset-left));
+  background: var(--crew-white);
+  border-bottom: 2px solid var(--asphalt);
+}
+.timelapse-toolbar h1 { margin: 0; font-size: var(--step-1); flex: 0 0 auto; }
+.timelapse-toolbar p { margin: 0; max-width: none; }
+.timelapse-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); flex: 1 1 28rem; min-width: 0; }
+.timelapse-reduced { flex: 1 1 28rem; font-size: var(--step--1); }
+.timelapse-scrub { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; flex: 1 1 14rem; min-width: 0; }
+.timelapse-scrub input[type="range"] { flex: 1 1 auto; width: auto; min-width: 6rem; min-height: 2.75rem; accent-color: var(--asphalt); }
+.timelapse-focus-panel > summary { list-style: none; cursor: pointer; font-weight: 600; min-height: 2.75rem; display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); border: 2px solid var(--asphalt); border-radius: 2px; background: var(--crew-white); }
+.timelapse-focus-panel > summary::-webkit-details-marker { display: none; }
+.timelapse-focus-panel > summary::before { content: ""; flex: none; border-style: solid; border-width: 0.4rem 0 0.4rem 0.65rem; border-color: transparent transparent transparent var(--asphalt); }
+.timelapse-focus-panel[open] > summary::before { border-width: 0.65rem 0.4rem 0 0.4rem; border-color: var(--asphalt) transparent transparent transparent; }
+.timelapse-focus-panel[open] > summary { background: var(--asphalt); color: var(--crew-white); }
+.timelapse-focus-panel[open] > summary::before { border-color: var(--crew-white) transparent transparent transparent; }
+.timelapse-focus-body {
+  position: absolute;
+  top: 100%;
+  right: var(--space-3);
+  width: min(46rem, calc(100% - 2 * var(--space-3)));
+  max-height: calc(100dvh - var(--site-header-h, 5.5rem) - 8rem);
+  overflow-y: auto;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--crew-white);
+  border: 2px solid var(--asphalt);
+  border-top: 0;
+}
+.timelapse-focus-body p { margin: 0; }
 .timelapse-focus {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
   gap: var(--space-3);
   margin: 0;
-  padding: var(--space-2) var(--space-3) var(--space-3);
-  background: var(--crew-white);
-  border: 2px solid var(--asphalt);
+  padding: 0;
+  border: 0;
+  min-width: 0;
 }
-.timelapse-focus legend { font-weight: 700; padding: 0 var(--space-1); }
 .timelapse-focus label { display: grid; gap: var(--space-1); font-weight: 600; min-width: 0; }
-.timelapse-focus select, .timelapse-scrub input { width: 100%; min-width: 0; }
+.timelapse-focus select { width: 100%; min-width: 0; }
+#trail-note { font-size: var(--step-0); }
+.timelapse-map { position: relative; flex: 1 1 0; min-height: 0; }
+.timelapse-map .map-host { position: absolute; inset: 0; min-height: 0; }
+.timelapse-map-note { margin: var(--space-3); }
+/* The date stamp: a rubber date stamp over the map's top left corner, large enough to read while the time-lapse plays. Fixed-width digits, so it does not jitter. */
+.date-stamp {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 4;
+  pointer-events: none;
+  display: grid;
+  gap: var(--space-1);
+  max-width: calc(100% - 5.5rem);
+  padding: var(--space-1) var(--space-3) var(--space-2);
+  background: var(--crew-white);
+  border: 3px solid var(--asphalt);
+  transform: rotate(-2deg);
+  font-variant-numeric: tabular-nums;
+}
+.date-stamp-date { font-size: clamp(1.6rem, 3.2vw, 2.6rem); font-weight: 700; line-height: 1.1; white-space: nowrap; }
+.date-stamp-count { font-size: var(--step-0); font-weight: 600; }
+.timelapse-after { width: min(60rem, 100%); margin-inline: auto; padding: var(--space-4) max(var(--space-3), env(safe-area-inset-right)) var(--space-5) max(var(--space-3), env(safe-area-inset-left)); }
+@media (max-width: 640px) {
+  .timelapse-toolbar h1 { font-size: var(--step-0); }
+  /* title and Focus the view share the first row; the playback controls take the next */
+  .timelapse-focus-panel { order: 1; margin-left: auto; }
+  .timelapse-controls, .timelapse-reduced { order: 2; flex-basis: 100%; }
+  .timelapse-focus-body { left: 0; right: 0; width: auto; border-left: 0; border-right: 0; }
+  .timelapse-focus { grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+  .date-stamp { top: var(--space-2); left: var(--space-2); }
+}
 
 /*
  * Methods page: the text sits in a centred column about 70 characters wide. On screens 70rem and wider the contents list takes
@@ -591,21 +660,18 @@ select {
 .methods-main .chart-section { max-width: none; }
 .methods-main .plain-list, .methods-main .panel-error, .methods-main .calibration-warning { max-width: none; }
 .methods-main .shift-bar { max-width: 100%; }
-.toc ol { margin: 0; padding-left: var(--space-4); }
-.toc li { margin-bottom: 0; }
-.toc a { display: flex; align-items: center; min-height: 2.75rem; }
-.toc details { background: var(--crew-white); border: 2px solid var(--asphalt); }
-.toc summary { cursor: pointer; font-weight: 600; min-height: 2.75rem; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); }
-.toc summary::-webkit-details-marker { display: none; }
-.toc summary::before { content: ""; flex: none; border-style: solid; border-width: 0.4rem 0 0.4rem 0.65rem; border-color: transparent transparent transparent var(--asphalt); }
-.toc details[open] > summary::before { border-width: 0.65rem 0.4rem 0 0.4rem; border-color: var(--asphalt) transparent transparent transparent; }
-.toc details ol { padding: var(--space-2) var(--space-3) var(--space-3) var(--space-5); }
-.toc-title { font-weight: 700; margin: 0 0 var(--space-2); }
-@media (min-width: 70rem) {
-  .methods-layout { grid-template-columns: minmax(0, 1fr) minmax(0, var(--measure)) minmax(0, 1fr); column-gap: var(--space-5); align-items: start; }
-  .methods-main { grid-column: 2; grid-row: 1; }
-  .toc { grid-column: 3; grid-row: 1; position: sticky; top: var(--space-3); max-height: calc(100dvh - 2 * var(--space-3)); overflow-y: auto; max-width: 18rem; line-height: 1.3; }
-  .toc a { padding: 0; font-size: var(--step-0); }
+/*
+ * Contents list: static, under the page title, inside the text column. Two columns from 40rem (one on phones). The numbers sit outside
+ * each item with room for two digits ("12."), so none is cut off (reviewer-ux, round 3 owner review).
+ */
+.toc { margin: 0 0 var(--space-4); padding: var(--space-2) var(--space-3); background: var(--crew-white); border: 2px solid var(--asphalt); }
+.toc-title { font-weight: 700; margin: 0; }
+.toc ol { margin: 0; padding-left: 2.25rem; }
+.toc li { break-inside: avoid; font-variant-numeric: tabular-nums; }
+.toc li::marker { font-weight: 600; }
+.toc a { display: flex; align-items: center; min-height: 2.75rem; line-height: 1.25; }
+@media (min-width: 40rem) {
+  .toc ol { columns: 2; column-gap: var(--space-5); }
 }
 
 /* Layout shifts: the header's data line keeps two lines on phones, where the sample note wraps once the data arrives. */

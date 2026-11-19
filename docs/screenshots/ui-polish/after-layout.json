@@ -7,14 +7,14 @@
   "cls": 0.001
  },
  "desktop-methods": {
-  "scrollH": 8726,
+  "scrollH": 9058,
   "innerH": 800,
   "scrollW": 1280,
   "innerW": 1280,
   "cls": 0
  },
  "desktop-timelapse": {
-  "scrollH": 2009,
+  "scrollH": 1759,
   "innerH": 800,
   "scrollW": 1280,
   "innerW": 1280,
@@ -57,14 +57,14 @@
   "cls": 0
  },
  "phone-methods": {
-  "scrollH": 12537,
+  "scrollH": 13069,
   "innerH": 844,
   "scrollW": 390,
   "innerW": 390,
   "cls": 0
  },
  "phone-timelapse": {
-  "scrollH": 2775,
+  "scrollH": 2063,
   "innerH": 844,
   "scrollW": 390,
   "innerW": 390,

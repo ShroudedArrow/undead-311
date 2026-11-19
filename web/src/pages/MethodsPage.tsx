@@ -227,7 +227,7 @@ function MethodsSampleNotice() {
 
 /** Methods page: definitions, baselines, shift test, placebo, validation, limits, nightly status and what the headline leaves out (REQ-WEB-METHODS.1, REQ-WEB-FRESH.2, REQ-WEB-DEATHS.1). */
 export default function MethodsPage() {
-  // the element, in state, so the contents list is built in a synchronous re-render before the first paint (it comes before the content in the DOM)
+  // the element, in state, so the contents list is built in a synchronous re-render before the first paint
   const [content, setContent] = useState<HTMLDivElement | null>(null);
   // Every file the sections read settles first (a few milliseconds from the same origin), and the placeholder is a screen high, so nothing
   // visible moves when the sections arrive (layout shift, design-system.md quality floor). Sections then mount with their data in hand.
@@ -247,10 +247,10 @@ export default function MethodsPage() {
   return (
     <div className="page methods-page">
       <div className="methods-layout">
-        <PageToc content={content} />
         <div className="methods-main" ref={setContent}>
           <h1>{t("methods.title")}</h1>
           <MethodsSampleNotice />
+          <PageToc content={content} />
           <p data-testid="methods-intro">{t("methods.intro")}</p>
           <Definitions />
           <Baselines />

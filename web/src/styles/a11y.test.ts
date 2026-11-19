@@ -126,12 +126,10 @@ describe("methods page layout (REQ-WEB-METHODS.1)", () => {
     expect(ruleBody(".methods-main")).toMatch(/margin-inline:\s*auto/);
     expect(readFileSync(join(__dirname, "tokens.css"), "utf8")).toMatch(/--measure:\s*70ch/);
   });
-  it("keeps the contents list in view beside the column only on wide screens", () => {
-    const wide = css.indexOf("@media (min-width: 70rem)");
-    expect(wide).toBeGreaterThan(0);
-    expect(ruleBody(".toc", wide)).toMatch(/position:\s*sticky/);
-    expect(ruleBody(".toc", wide)).toMatch(/grid-column:\s*3/);
-    expect(ruleBody(".methods-layout")).not.toMatch(/sticky/);
+  it("keeps the contents list static: never sticky, two columns from 40rem, room for two-digit numbers", () => {
+    expect(css).not.toMatch(/\.toc[^{]*\{[^}]*position:\s*sticky/);
+    expect(css).toMatch(/@media \(min-width: 40rem\)\s*\{\s*\.toc ol\s*\{\s*columns:\s*2/);
+    expect(ruleBody(".toc ol")).toMatch(/padding-left:\s*2\.25rem/);
   });
 });
 
