@@ -151,7 +151,8 @@ def make_export(folder: Path) -> Path:
 
 
 @pytest.fixture
-def env(monkeypatch):
+def env(monkeypatch, tmp_path):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))  # hermetic: data_dir() never falls back to git rev-parse
     monkeypatch.setenv("DATA_RELEASE_TOKEN", TOKEN)
     monkeypatch.delenv("GH_TOKEN", raising=False)
 
