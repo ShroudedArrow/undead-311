@@ -1,0 +1,51 @@
+zombie_id,resurrection_id,type_family,neighborhood,system,status,status_at_snapshot,closure_code,coroner_label,label_source,closure_text,class,ambiguous_reason,checked_on
+101006685196:101006756076,101006756076,sign,South End,legacy,Open,Open,,,none,,still_open,,2026-11-21
+101006697934:BCS-00363178,BCS-00363178,sign,Roxbury,new,Closed,Closed,,other,none,,other,unlabeled,2026-11-21
+101006736881:BCS-00365628,BCS-00365628,sign,South End,new,In progress,In progress,,,none,,still_open,,2026-11-21
+BCS-00233814:BCS-00347336,BCS-00347336,sidewalk,South End,new,In progress,In progress,,,none,,still_open,,2026-11-21
+BCS-00236310:BCS-00336204,BCS-00336204,sidewalk,South End,new,In progress,In progress,,,none,,still_open,,2026-11-21
+BCS-00250574:BCS-00343490,BCS-00343490,streetlight,South End,new,Closed,Closed,Resolved,resolved,table,Completed by Task,repaired_again,,2026-11-21
+BCS-00261305:BCS-00343428,BCS-00343428,streetlight,South End,new,Closed,Closed,,other,none,,other,unlabeled,2026-11-21
+BCS-00280351:BCS-00345642,BCS-00345642,pothole_roadway,Fenway / Kenmore / Audubon Circle / Longwood,new,Closed,Closed,Resolved,resolved,code,[hidden: fewer than 5 closed cases share this note],repaired_again,conflicting_cue,2026-11-21
+BCS-00282388:BCS-00329569,BCS-00329569,pothole_roadway,South End,new,Closed,Closed,Noted,invalid,table,Unable to Locate,invalid_or_nothing_found,,2026-11-21
+BCS-00284775:BCS-00357056,BCS-00357056,streetlight,South End,new,Closed,Closed,,other,none,,other,unlabeled,2026-11-21
+BCS-00300829:BCS-00349047,BCS-00349047,sidewalk,Fenway / Kenmore / Audubon Circle / Longwood,new,Closed,Closed,Noted,duplicate,table,Duplicate Request,duplicate,,2026-11-21
+BCS-00305005:BCS-00360230,BCS-00360230,pothole_roadway,Roxbury,new,Closed,Closed,Resolved,resolved,table,Violation issued.,repaired_again,conflicting_cue,2026-11-21
+BCS-00305174:BCS-00343322,BCS-00343322,pothole_roadway,South End,new,Closed,Closed,Noted,noted,code,"No issues, area has been inspected - could not locate please provide pictures",invalid_or_nothing_found,,2026-11-21
+BCS-00308626:BCS-00338388,BCS-00338388,streetlight,Roxbury,new,Closed,Closed,Resolved,resolved,table,Completed by Task,repaired_again,,2026-11-21
+BCS-00308665:BCS-00371916,BCS-00371916,streetlight,Roxbury,new,Closed,Closed,Resolved,resolved,code,[hidden: fewer than 5 closed cases share this note],repaired_again,,2026-11-21
+BCS-00318345:BCS-00383827,BCS-00383827,streetlight,South End,new,Closed,Closed,Resolved,resolved,code,Completed by Task - replaced defective fixture,repaired_again,,2026-11-21
+BCS-00327279:BCS-00331576,BCS-00331576,streetlight,South End,new,Closed,Closed,Resolved,resolved,code,[hidden: fewer than 5 closed cases share this note],repaired_again,,2026-11-21
+BCS-00328012:BCS-00358229,BCS-00358229,pothole_roadway,Fenway / Kenmore / Audubon Circle / Longwood,new,Closed,Closed,Transitioned,referred,code,Reallocated to Non-City of Boston Stakeholder,referred,,2026-11-21
+BCS-00328059:BCS-00373206,BCS-00373206,streetlight,South End,new,Closed,Closed,,resolved,phrase,[hidden: fewer than 5 closed cases share this note],repaired_again,,2026-11-21
+BCS-00331359:BCS-00333825,BCS-00333825,pothole_roadway,Roxbury,new,Closed,Closed,Resolved,resolved,table,Violation issued.,repaired_again,conflicting_cue,2026-11-21
+BCS-00332349:BCS-00350938,BCS-00350938,streetlight,South End,new,In progress,In progress,,,none,,still_open,,2026-11-21
+BCS-00333262:BCS-00358821,BCS-00358821,pothole_roadway,Fenway / Kenmore / Audubon Circle / Longwood,new,Closed,Closed,Transitioned,referred,code,[hidden: fewer than 5 closed cases share this note],referred,,2026-11-21
+BCS-00333583:BCS-00352799,BCS-00352799,pothole_roadway,South End,new,Closed,Closed,,other,none,,other,unlabeled,2026-11-21
+BCS-00333825:BCS-00337048,BCS-00337048,pothole_roadway,Roxbury,new,Closed,Closed,Resolved,resolved,table,Violation issued.,repaired_again,conflicting_cue,2026-11-21
+BCS-00335570:BCS-00340526,BCS-00340526,pothole_roadway,South End,new,Closed,Closed,Resolved,resolved,table,Roadway has been repaired.,repaired_again,,2026-11-21
+BCS-00336431:BCS-00345953,BCS-00345953,pothole_roadway,South End,new,Closed,Closed,,other,none,,other,unlabeled,2026-11-21
+BCS-00337048:BCS-00339545,BCS-00339545,pothole_roadway,Roxbury,new,Closed,Closed,Resolved,resolved,table,Violation issued.,repaired_again,conflicting_cue,2026-11-21
+BCS-00337150:BCS-00355392,BCS-00355392,streetlight,South End,new,Closed,Closed,Resolved,resolved,code,[hidden: fewer than 5 closed cases share this note],repaired_again,,2026-11-21
+BCS-00338294:BCS-00388938,BCS-00388938,streetlight,South End,new,In progress,In progress,,,none,,still_open,,2026-11-21
+BCS-00340144:BCS-00355515,BCS-00355515,sidewalk,Roxbury,new,Closed,Closed,Resolved,resolved,code,"See notes, area has been inspected - Engineer has been notified",repaired_again,conflicting_cue,2026-11-21
+BCS-00341732:BCS-00352179,BCS-00352179,pothole_roadway,South End,new,Closed,Closed,Resolved,resolved,table,Violation issued.,repaired_again,conflicting_cue,2026-11-21
+BCS-00343399:BCS-00349088,BCS-00349088,streetlight,Roxbury,new,Closed,Closed,Resolved,resolved,code,[hidden: fewer than 5 closed cases share this note],repaired_again,,2026-11-21
+BCS-00343496:BCS-00348166,BCS-00348166,streetlight,South End,new,Closed,Closed,,resolved,phrase,[hidden: fewer than 5 closed cases share this note],repaired_again,,2026-11-21
+BCS-00343503:BCS-00390813,BCS-00390813,streetlight,South End,new,In progress,In progress,,,none,,still_open,,2026-11-21
+BCS-00344269:BCS-00373240,BCS-00373240,pothole_roadway,Roxbury,new,Closed,Closed,Resolved,resolved,code,"Violation issued. - We have notified Eversource, and they are scheduling repairs.",repaired_again,conflicting_cue,2026-11-21
+BCS-00345716:BCS-00361824,BCS-00361824,pothole_roadway,Mission Hill,new,Closed,Closed,,other,none,,other,unlabeled,2026-11-21
+BCS-00346623:BCS-00353186,BCS-00353186,pothole_roadway,Roxbury,new,Closed,Closed,,other,none,,other,unlabeled,2026-11-21
+BCS-00346824:BCS-00358596,BCS-00358596,pothole_roadway,Roxbury,new,Closed,Closed,Resolved,resolved,table,Violation issued.,repaired_again,conflicting_cue,2026-11-21
+BCS-00347545:BCS-00347946,BCS-00347946,sign,Roxbury,new,Closed,Closed,Noted,duplicate,table,Duplicate Case,duplicate,,2026-11-21
+BCS-00352181:BCS-00385754,BCS-00385754,pothole_roadway,South End,new,Closed,Closed,Noted,invalid,table,No issue found at location,invalid_or_nothing_found,,2026-11-21
+BCS-00353029:BCS-00363452,BCS-00363452,pothole_roadway,South End,new,Closed,Closed,,other,none,,other,unlabeled,2026-11-21
+BCS-00353512:BCS-00355286,BCS-00355286,pothole_roadway,South End,new,Closed,Closed,,other,none,,other,unlabeled,2026-11-21
+BCS-00355286:BCS-00368780,BCS-00368780,pothole_roadway,South End,new,In progress,In progress,,,none,,still_open,,2026-11-21
+BCS-00355382:BCS-00357816,BCS-00357816,streetlight,South End,new,In progress,In progress,,,none,,still_open,,2026-11-21
+BCS-00355392:BCS-00384095,BCS-00384095,streetlight,South End,new,In progress,In progress,,,none,,still_open,,2026-11-21
+BCS-00356438:BCS-00381540,BCS-00381540,pothole_roadway,Roxbury,new,In progress,In progress,,,none,,still_open,,2026-11-21
+BCS-00357849:BCS-00368524,BCS-00368524,streetlight,South End,new,Closed,Closed,Noted,noted,code,[hidden: fewer than 5 closed cases share this note],invalid_or_nothing_found,,2026-11-21
+BCS-00360877:BCS-00371707,BCS-00371707,pothole_roadway,Roxbury,new,Closed,Closed,Resolved,resolved,table,Violation issued.,repaired_again,conflicting_cue,2026-11-21
+BCS-00379734:BCS-00380837,BCS-00380837,sidewalk,South End,new,Closed,Closed,Resolved,resolved,code,[hidden: fewer than 5 closed cases share this note],repaired_again,conflicting_cue,2026-11-21
+BCS-00382363:BCS-00385544,BCS-00385544,streetlight,South End,new,Closed,Closed,,other,none,[hidden: fewer than 5 closed cases share this note],other,unlabeled,2026-11-21

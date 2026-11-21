@@ -297,11 +297,15 @@ export interface JudgeTourFile {
    * Whether the run read the committed sample or the full data; a sample rate is not a citywide figure. REQ-STAT-EXP.1
    */
   dataset?: "sample" | "full";
+  /**
+   * How the three zombies were confirmed: field (two raters on the street), records (record-confirmed: the city's closure of the re-report says it was repaired again), null while provisional. REQ-STAT-VAL.5
+   */
+  confirmation?: ("field" | "records") | null;
   [k: string]: unknown;
 }
 
 /**
- * REQ-STAT-VAL.
+ * REQ-STAT-VAL. `method` field: two raters on the street; records: how the city closed each re-report (REQ-STAT-VAL.5), where `precision` is the share repaired again over all sampled zombies and `confirmed` the record-confirmed ones.
  */
 export interface ValidationFile {
   data_version: string;
@@ -321,6 +325,21 @@ export interface ValidationFile {
   sample_ids?: string[];
   kappa_still_broken?: number | null;
   n_paired?: number;
+  method?: "field" | "records";
+  records?: {
+    checked_on: string;
+    classes: {
+      [k: string]: number;
+    };
+    ambiguous_ids: string[];
+    ambiguous_reasons?: {
+      [k: string]: number;
+    };
+    repaired_again_with_ambiguous?: {};
+    repaired_again_of_closed?: {};
+    by_type?: {};
+    [k: string]: unknown;
+  };
   [k: string]: unknown;
 }
 

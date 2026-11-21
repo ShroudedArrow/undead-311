@@ -1,14 +1,23 @@
-"""`make judging-final`: after the field labels exist, regenerate ONLY the validation and judge-mode files and amend the
+"""`make judging-final`: after the validation labels exist, regenerate ONLY the validation and judge-mode files and amend the
 judging section, for the final tag before the Dec 2 freeze (REQ-OPS-SNAP.4).
 
-  python pipeline/scripts/judging_final.py --run-id full-4 [--dry-run]
+  python pipeline/scripts/judging_final.py --run-id full-4 [--source auto|field|records] [--dry-run]
 
 The Friday snapshot freezes the data with `stats/validation.json` saying `awaiting_field_labels` and a provisional judge tour
-(`make snapshot RUN_ID=full-4`, stage provisional). When `data/labels/validation_labels.csv` holds two raters' labels, this script:
+(`make snapshot RUN_ID=full-4`, stage provisional). Two sources of confirmation exist (`--source`, default `auto`: field labels
+when they score, else the records check):
 
-1. scores the labels (`undead311.stats.validation`) and builds the tour from the confirmed zombies, with the owner's override
-   `data/labels/judge_tour_override.json` when it lists three confirmed ones; it stops, changing nothing, while no pair of
-   raters has labeled a zombie or fewer than three zombies are confirmed;
+* `field`: `data/labels/validation_labels.csv` holds two raters' labels (a zombie is confirmed when both say still broken);
+* `records`: `data/labels/validation_records.csv` (written once by `make records-check`; no field visits were made, owner decision
+  2026-11-21) says how each sampled zombie's re-report was closed. Zombies whose re-report was repaired again and not ambiguous
+  are record-confirmed; the tour file says `confirmation: records` and the site labels the tour as record-confirmed.
+
+This script:
+
+1. scores the chosen source (`undead311.stats.validation`) and builds the tour from the confirmed zombies, with the owner's
+   override `data/labels/judge_tour_override.json` when it lists three confirmed ones; it stops, changing nothing, while there is
+   no scored source or fewer than three zombies are confirmed (a records tour also needs a re-report of at least 1 hour after the
+   closure, and no Skeptic "explained away");
 2. rewrites `stats/validation.json` and `stats/judge_tour.json` in the run's export folder (schema-checked first) and the
    field-validation block of `docs/VALIDATION.md`. No other export file, no database and no raw file is touched;
 3. rebuilds the judging section (stage final, tag `judged-<data end>-final`) and refuses to write it unless exactly those two
@@ -35,6 +44,7 @@ sys.path.insert(0, str(HERE.parent))
 from undead311 import snapshot as snap
 from undead311.export.writers import canonical_json, validate, write_text_atomic
 from undead311.paths import data_dir
+from undead311.stats import records_check as rc
 from undead311.stats import validation as val
 from undead311.stats.pipeline import OVERRIDE_FILE
 from undead311.stats.tour import build_tour, read_override
@@ -47,22 +57,34 @@ class FinalError(SystemExit):
     """A reason to stop; nothing has been changed when it is raised before the files are written."""
 
 
-def plan(public: Path, labels_dir: Path) -> tuple[dict, dict, val.Validation]:
+def score_source(labels_dir: Path, source: str) -> val.Validation:
+    """Score the field labels or the records check; `auto` takes the field labels when they score, else the records."""
+    ids = val.read_sample_ids(labels_dir / val.SAMPLE_FILE)
+    if source in ("auto", "field"):
+        v = val.score(ids, val.read_labels(labels_dir / val.LABELS_FILE))
+        if v.status == "scored" or source == "field":
+            return v
+    return val.score_records(ids, rc.read_records(labels_dir / rc.RECORDS_FILE))
+
+
+def plan(public: Path, labels_dir: Path, source: str = "auto") -> tuple[dict, dict, val.Validation]:
     """The new validation.json and judge_tour.json payloads, or a FinalError (REQ-OPS-SNAP.4)."""
     old_val = json.loads((public / snap.VALIDATION).read_text())
     old_tour = json.loads((public / snap.JUDGE_TOUR).read_text())
-    v = val.score(val.read_sample_ids(labels_dir / val.SAMPLE_FILE), val.read_labels(labels_dir / val.LABELS_FILE))
+    v = score_source(labels_dir, source)
     if v.status != "scored":
-        raise FinalError("judging-final: awaiting field labels (no zombie has two raters' labels in "
-                         f"{labels_dir / val.LABELS_FILE}); nothing changed, the tour stays provisional")
+        raise FinalError("judging-final: awaiting field labels or a records check (no zombie has two raters' labels in "
+                         f"{labels_dir / val.LABELS_FILE} and {labels_dir / rc.RECORDS_FILE} is missing or empty); "
+                         "nothing changed, the tour stays provisional")
     records = val.read_zombie_records(public / "zombies.json")
     if records is None:
         raise FinalError(f"judging-final: {public}/zombies/ is missing; is this the run's export folder?")
     zombies = [SimpleNamespace(**r) for r in records]
-    tour = build_tour(zombies, read_override(labels_dir / OVERRIDE_FILE), v.confirmed)
+    tour = build_tour(zombies, read_override(labels_dir / OVERRIDE_FILE), v.confirmed, "records" if v.method == "records" else "field")
     if tour is None or tour.provisional:
+        how = "repaired again in the records" if v.method == "records" else "both raters: still broken"
         raise FinalError(f"judging-final: {len(v.confirmed)} confirmed zombies; a final tour needs at least 3 "
-                         "(both raters: still broken). Nothing changed, the tour stays provisional")
+                         f"({how}). Nothing changed, the tour stays provisional")
     version, dataset = old_tour["data_version"], old_tour["dataset"]
     if old_val["data_version"] != version:
         raise FinalError("judging-final: validation.json and judge_tour.json disagree on data_version; not touching them")
@@ -76,6 +98,7 @@ def plan(public: Path, labels_dir: Path) -> tuple[dict, dict, val.Validation]:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--run-id", required=True)
+    ap.add_argument("--source", choices=("auto", "field", "records"), default="auto", help="what confirms the tour (default auto)")
     ap.add_argument("--labels-dir", type=Path, default=CHECKOUT / "data" / "labels")
     ap.add_argument("--validation-md", type=Path, default=CHECKOUT / "docs" / "VALIDATION.md")
     ap.add_argument("--snapshot", type=Path, default=CHECKOUT / "data" / "SNAPSHOT.md")
@@ -95,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
         raise FinalError(f"judging-final: {a.snapshot} has no judging section for run {a.run_id}; run `make snapshot RUN_ID={a.run_id}` first")
     snap.check_run(public, processed, a.run_id)
     old_rows = snap.section_rows(text)
-    new_val, new_tour, v = plan(public, a.labels_dir)
+    new_val, new_tour, v = plan(public, a.labels_dir, a.source)
 
     paths = {public / snap.VALIDATION: canonical_json(new_val), public / snap.JUDGE_TOUR: canonical_json(new_tour)}
     backup = {p: p.read_text(encoding="utf-8") for p in paths}
@@ -114,7 +137,11 @@ def main(argv: list[str] | None = None) -> int:
             raise _Undo
         new_text = snap.upsert_section(text, new_section)
         snap.commit_judging(public, judging, new_text)
-        val.write_section(a.validation_md, val.render_section(v))
+        if v.method == "records":
+            rows = rc.read_records(a.labels_dir / rc.RECORDS_FILE)
+            rc.write_section(a.validation_md, rc.render_section(rows, rows[0]["checked_on"]))
+        else:
+            val.write_section(a.validation_md, val.render_section(v))
         a.snapshot.write_text(new_text)
     except (_Undo, SystemExit, Exception) as exc:  # put the two export files back unless everything was written
         for p, body in backup.items():
@@ -124,8 +151,9 @@ def main(argv: list[str] | None = None) -> int:
         raise
     tag = snap.recorded_tag_and_stage(new_text)[0]
     p = v.precision or {}
-    print(f"judging-final: {v.n_paired} labeled pairs, precision {p.get('rate')} ({p.get('k')} of {p.get('n')}), "
-          f"{len(v.confirmed)} confirmed; tour {new_tour['zombie_ids']}")
+    what = "record-checked zombies, repaired again" if v.method == "records" else "labeled pairs, precision"
+    print(f"judging-final: {v.n_paired} {what} {p.get('rate')} ({p.get('k')} of {p.get('n')}), "
+          f"{len(v.confirmed)} confirmed ({v.method}); tour {new_tour['zombie_ids']}")
     print(f"judging-final: changed {sorted(changed)}; judge-mode files in {judging}; {a.validation_md} updated")
     print(f"judging-final: next, commit data/SNAPSHOT.md, data/judging/ and docs/VALIDATION.md, then "
           f"git tag -a {tag} -m 'Final judging snapshot' && git push origin {tag}")

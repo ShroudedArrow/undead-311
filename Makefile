@@ -11,7 +11,7 @@ UV ?= uv
 RUN_ID ?=
 STUB = @echo "[stub] $@: not implemented yet"
 
-.PHONY: snapshot-verify judging-final web-deps cloud-sync-check pipeline-sample validation-sample typecheck schema-check test-town setup data-download data-sample pipeline test test-fast web build e2e copy-lint validate coroner-eval snapshot snapshot-check channel-export trace kiro-stats capture lint
+.PHONY: records-check snapshot-verify judging-final web-deps cloud-sync-check pipeline-sample validation-sample typecheck schema-check test-town setup data-download data-sample pipeline test test-fast web build e2e copy-lint validate coroner-eval snapshot snapshot-check channel-export trace kiro-stats capture lint
 
 setup:
 	$(UV) sync
@@ -103,11 +103,18 @@ snapshot-check:
 snapshot-verify:
 	PYTHONPATH=pipeline $(UV) run python pipeline/scripts/snapshot.py --verify
 
-# REQ-OPS-SNAP.4: after data/labels/validation_labels.csv exists, regenerates ONLY stats/validation.json, stats/judge_tour.json and
-# data/judging/ for the final tag, and amends the judging section (stage final). Refuses while labels are missing.
+# REQ-STAT-VAL.5: no field visits were made, so the 50-site sample is checked against how the city closed each re-report. Run once
+# (refuses to overwrite data/labels/validation_records.csv). RAW is a folder with the raw 311 CSVs; EXPORTS is the run's export folder.
+records-check:
+	@test -n "$(RAW)" && test -n "$(CHECKED_ON)" || { echo "usage: make records-check RAW=<raw csv folder> CHECKED_ON=<YYYY-MM-DD> [EXPORTS=<export folder>]" >&2; exit 2; }
+	PYTHONPATH=pipeline $(UV) run python pipeline/scripts/records_check.py --raw $(RAW) --checked-on $(CHECKED_ON) $(if $(EXPORTS),--exports $(EXPORTS))
+
+# REQ-OPS-SNAP.4: after data/labels/validation_labels.csv (field) or data/labels/validation_records.csv (records) exists, regenerates
+# ONLY stats/validation.json, stats/judge_tour.json and data/judging/ for the final tag, and amends the judging section (stage
+# final). SOURCE is auto (default), field or records. Refuses while neither source scores.
 judging-final:
-	@test -n "$(RUN_ID)" || { echo "usage: make judging-final RUN_ID=<the run that make snapshot froze>" >&2; exit 2; }
-	PYTHONPATH=pipeline $(UV) run python pipeline/scripts/judging_final.py --run-id $(RUN_ID)
+	@test -n "$(RUN_ID)" || { echo "usage: make judging-final RUN_ID=<the run that make snapshot froze> [SOURCE=auto|field|records]" >&2; exit 2; }
+	PYTHONPATH=pipeline $(UV) run python pipeline/scripts/judging_final.py --run-id $(RUN_ID) $(if $(SOURCE),--source $(SOURCE))
 
 # REQ-OPS-EVID.1: needs a read-only token in GITHUB_CHANNEL_READ_TOKEN at run time; it is never written to the output.
 channel-export:

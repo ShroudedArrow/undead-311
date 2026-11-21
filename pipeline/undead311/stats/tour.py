@@ -34,11 +34,14 @@ class JudgeTour:
     provisional: bool
     zombie_ids: tuple[str, ...]
     source: Literal["override", "most_reports"]
+    # how the three were confirmed: "field" (two raters on the street), "records" (record-confirmed: the re-report's closure
+    # says it was repaired again; REQ-STAT-VAL.5) or None while provisional
+    confirmation: Literal["field", "records"] | None = None
 
     def to_json(self, data_version: str, params: Params = DEFAULT, dataset: str = "full") -> dict:
         return {
             "data_version": data_version, "dataset": dataset, "params": params_json(params), "provisional": self.provisional,
-            "seed": None, "zombie_ids": list(self.zombie_ids), "source": self.source,
+            "seed": None, "zombie_ids": list(self.zombie_ids), "source": self.source, "confirmation": self.confirmation,
         }  # fmt: skip
 
 
@@ -57,13 +60,15 @@ def read_override(path: Path) -> list[str] | None:
 
 
 def build_tour(
-    zombies: Iterable[Zombie], override: list[str] | None = None, confirmed: Iterable[str] | None = None
+    zombies: Iterable[Zombie], override: list[str] | None = None, confirmed: Iterable[str] | None = None,
+    confirmation: Literal["field", "records"] = "field",
 ) -> JudgeTour | None:
     """The tour, or None when fewer than three headline zombies exist (REQ-STAT-TOUR.1, .2).
 
     With at least three confirmed zombie IDs (REQ-STAT-VAL.3) the tour is `provisional: false` and uses only confirmed
     zombies: the owner's override if every listed ID is confirmed, else the confirmed ones with the most re-reports.
-    Fewer than three confirmed IDs leaves the tour provisional (a tour needs three).
+    Fewer than three confirmed IDs leaves the tour provisional (a tour needs three). `confirmation` says what confirmed them
+    ("field" or "records", recorded in the tour file and shown on the site as record-confirmed for "records").
 
     An override is used only if it lists exactly three distinct headline zombies; otherwise it is ignored. A zombie the
     Skeptic explained away is never featured, in the override or the ranking (REQ-SKEP, ops#45).
@@ -78,12 +83,12 @@ def build_tour(
         provisional = True
     named = override is not None and len(override) == TOUR_SIZE and len(set(override)) == TOUR_SIZE
     if named and all(i in headline for i in override):  # type: ignore[union-attr]
-        return JudgeTour(provisional, tuple(override), "override")  # type: ignore[arg-type]
+        return JudgeTour(provisional, tuple(override), "override", None if provisional else confirmation)  # type: ignore[arg-type]
     if len(headline) < TOUR_SIZE:
         return None
-    if provisional:  # the confirmed set was checked in the field; only the provisional ranking is filtered (ops#44)
+    if provisional or confirmation == "records":  # a field check needs no filter (ops#44); a records check has no one on the street
         headline = {i: z for i, z in headline.items() if z.gap_days * 24.0 >= MIN_TOUR_GAP_HOURS and not z.city_rereport}
         if len(headline) < TOUR_SIZE:
             return None
     ranked = sorted(headline.values(), key=lambda z: (VERDICT_RANK.get(z.skeptic_verdict, 3), -z.reports_after, z.zombie_id))
-    return JudgeTour(provisional, tuple(z.zombie_id for z in ranked[:TOUR_SIZE]), "most_reports")
+    return JudgeTour(provisional, tuple(z.zombie_id for z in ranked[:TOUR_SIZE]), "most_reports", None if provisional else confirmation)

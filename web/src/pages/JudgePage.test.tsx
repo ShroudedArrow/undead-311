@@ -15,7 +15,7 @@ const STATUS = { data_version: "v", last_run: "2026-11-11T00:00:00Z", ok: true, 
 
 const requested: string[] = [];
 
-function setup(opts: { provisional?: boolean; reduced?: boolean; noFrozen?: boolean } = {}) {
+function setup(opts: { provisional?: boolean; reduced?: boolean; noFrozen?: boolean; confirmation?: string | null } = {}) {
   requested.length = 0;
   clearDataCache();
   vi.stubGlobal("matchMedia", (q: string) => ({ matches: !!opts.reduced && q.includes("reduce"), addEventListener() {}, removeEventListener() {}, media: q }));
@@ -23,7 +23,7 @@ function setup(opts: { provisional?: boolean; reduced?: boolean; noFrozen?: bool
     const u = String(url);
     requested.push(u);
     if (opts.noFrozen && u.includes("/frozen/")) return { ok: false, status: 404, json: async () => ({}) } as Response;
-    const body = u.endsWith("judge_tour.json") ? { data_version: "v", provisional: opts.provisional ?? true, zombie_ids: IDS, source: "most_reports", params: { WINDOW_DAYS: 60, RADIUS_M: 30, matching: "segment" }, seed: null } : u.endsWith("points.json") ? POINTS : u.includes("cards/") ? SHARD : STATUS;
+    const body = u.endsWith("judge_tour.json") ? { data_version: "v", provisional: opts.provisional ?? true, zombie_ids: IDS, source: "most_reports", confirmation: opts.confirmation ?? null, params: { WINDOW_DAYS: 60, RADIUS_M: 30, matching: "segment" }, seed: null } : u.endsWith("points.json") ? POINTS : u.includes("cards/") ? SHARD : STATUS;
     return { ok: true, status: 200, json: async () => body } as Response;
   }));
   render(<MemoryRouter initialEntries={["/judge"]}><App /></MemoryRouter>);
@@ -101,6 +101,18 @@ describe("Judge mode (REQ-WEB-JUDGE.1, .3)", () => {
   it("shows the provisional notice only while the tour is provisional (REQ-WEB-JUDGE.3)", async () => {
     setup({ provisional: true });
     expect(await screen.findByTestId("provisional-notice")).toBeTruthy();
+  });
+  it("labels a record-confirmed tour as not checked in person", async () => {
+    setup({ provisional: false, confirmation: "records" });
+    const note = await screen.findByTestId("record-confirmed-notice");
+    expect(note.textContent).toContain("Record-confirmed.");
+    expect(note.textContent).toContain("not checked in person");
+    expect(screen.queryByTestId("provisional-notice")).toBeNull();
+  });
+  it("shows no record-confirmed label for a field-checked tour", async () => {
+    setup({ provisional: false, confirmation: "field" });
+    await screen.findByRole("button", { name: "Start the tour" });
+    expect(screen.queryByTestId("record-confirmed-notice")).toBeNull();
   });
   it("shows no notice for a final tour", async () => {
     setup({ provisional: false });

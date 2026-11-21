@@ -100,6 +100,19 @@ describe("Methods page (REQ-WEB-METHODS.1)", () => {
     expect(scored.textContent).toContain("kappa): 0.72");
     expect(scored.textContent).toContain("Could not tell: 10.0% of the sample.");
   });
+  it("describes a records-based validation as a check of recorded closures, not of the street (REQ-STAT-VAL.5)", async () => {
+    stub({ "validation.json": { data_version: V, status: "scored", method: "records", precision: { rate: 0.2, lo: 0.112, hi: 0.33, k: 10, n: 50 }, cant_tell_share: null, kappa: null, confirmed: ["a"], sample_ids: [],
+      records: { checked_on: "2026-11-21", classes: { repaired_again: 21 }, ambiguous_ids: ["x", "y"], repaired_again_with_ambiguous: { rate: 0.42 } } } });
+    open();
+    const rec = await screen.findByTestId("validation-records");
+    expect(rec.textContent).toContain("No one visited the sites.");
+    expect(rec.textContent).toContain("as of 2026-11-21");
+    expect(rec.textContent).toContain("Repaired again: 20.0%, 95% interval 11.2% to 33.0% (10 of 50)");
+    expect(rec.textContent).toContain("up to 42.0%");
+    expect(rec.textContent).toContain("2 closures are ambiguous");
+    expect(rec.textContent).toContain("not conditions on the street");
+    expect(screen.queryByTestId("validation-scored")).toBeNull();
+  });
   it("states the limits: counts are a floor and the intersection note", async () => {
     stub();
     open();
