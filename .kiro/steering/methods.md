@@ -1,4 +1,4 @@
----
+vvv---
 inclusion: fileMatch
 fileMatchPattern: ["**/pipeline/undead311/stats/**", "**/pipeline/undead311/detect/**", "**/docs/METHODS.md"]
 ---
@@ -43,4 +43,4 @@ A zombie appears only if someone reports again. Show resurrection rates next to 
 - Label groups "unusual" only outside the 99.8% funnel limits.
 
 ## Validation
-Field validation uses RECENT possible zombies (re-reported within the last ~60 days of the snapshot), so the site visit still means something; older zombies are judged from case records only. Sample 40–50, solo shortcut: within 3–4 easily reached neighborhoods, stated as a limitation (at 50 the 95% interval is about ±12–13 points; at 40 about ±14), drawn with a fixed seed and committed before any visit → two raters label each independently, blind to the confidence score (solo project: you visit and photograph each site; a volunteer friend rates the same cases from your photos and the case records) (still broken / fixed since / different issue / can't tell) → report precision with a Wilson 95% interval and inter-rater agreement (Cohen's kappa) in `docs/VALIDATION.md`. Record visit dates against case dates.
+Validation: the 50-site sample (seed 311, drawn at the judging snapshot) is checked against the City's own records instead of field visits. Each re-report's closure is classified as repaired again, duplicate, invalid or nothing found, referred, still open, or other, by rules fixed before any closure was read. The share repaired again is reported with a 95% interval, alongside the higher figure if ambiguous repairs counted. This measures what crews recorded, not field conditions; there is one reader and no second rater. Judge-mode zombies are record-confirmed (repaired again) when no field labels exist.
