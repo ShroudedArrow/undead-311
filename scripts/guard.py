@@ -7,6 +7,11 @@ Blocks (exit 2, reason on stderr) regardless of trust settings:
   * `rm -rf` (any recursive+force spelling) whose target is inside the repo or $DATA_DIR
     (build caches such as node_modules, dist, __pycache__ are allowed; see ARTIFACT_NAMES);
   * `git push --force` / `-f` / `--force-with-lease` / `+refspec`; `git reset --hard`; `git clean -f`;
+  * commands that print environment variables (sandbox secrets must not reach the transcript): env, printenv,
+    bare `set`/`export`/`declare -p|-x`, `compgen -e|-v`, `ps` with e/E (BSD) or an env output column, `pgrep -a`/`-af`
+    (`--list-full`), reads of /proc/*/environ, and inline python/node/perl/ruby that dump the environment, also
+    inside `sh -c`, `eval`, `$(...)`, `xargs`, `sudo` and similar wrappers. `env VAR=x cmd`, pkill, kill, `pgrep -x`
+    and `ps -o pid,comm` stay allowed;
   * any modification of a PROTECTED path, through a write tool or a shell command:
       .kiro/steering/**, .kiro/settings/**, .kiro/hooks/**, .kiro/agents/**  (humans only)
       .kiro/STOP                                                           (humans only)
@@ -196,9 +201,217 @@ def git_problem(toks: list[str], root: Path) -> str | None:
     return None
 
 
+# ---- environment-printing commands -------------------------------------------------------------------------------
+WRAPPERS = {"sudo", "command", "nohup", "time", "xargs", "timeout", "nice", "exec", "watch", "stdbuf", "setsid",
+            "builtin", "ionice"}
+WRAPPER_ARG_FLAGS = {"sudo": {"-u", "-g", "-C", "-h", "-p", "-r", "-t", "-U"},
+                     "xargs": {"-I", "-n", "-P", "-L", "-s", "-d", "-E", "-a"},
+                     "nice": {"-n"}, "watch": {"-n", "-d"}, "stdbuf": set(), "timeout": {"-k", "-s"}}
+SHELLS = {"sh", "bash", "zsh", "dash", "ksh"}
+PS_ARG_FLAGS = set("CpoOuUgGtsqPNjJ")  # ps option letters that take a value
+PROC_ENVIRON_RE = re.compile(r"\S*/proc/\S*environ\S*")
+SCRIPT_ENV_RE = re.compile(r"environ(?!\s*(\[|\.get\b))|process\.env(?!\s*[.\[])|%ENV\b|\bENV\b(?!\s*[\[{]|\.fetch)")
+SUBST_RE = re.compile(r"\$\(([^)]*)\)|`([^`]*)`")
+HEREDOC_RE = re.compile(r"<<-?\s*(['\"]?)(\w+)\1[^\n]*\n.*?\n[ \t]*\2[ \t]*(?=\n|$)", re.DOTALL)
+ENV_MSG = ("prints environment variables (secrets can reach the transcript). Find processes with pgrep -x or "
+           "ps -o pid,comm instead")
+
+
+def command_segments(cmd: str) -> tuple[list[list[str]], list[str]]:
+    """Quote-aware split into simple commands (separators ; & | newline ( ) and backtick outside quotes).
+
+    Also returns the text found inside double quotes, where $(...) and backticks still run (single quotes do not)."""
+    segs: list[list[str]] = []
+    dq: list[str] = []
+    toks: list[str] = []
+    cur: list[str] = []
+    has = False
+    q = None
+    i, n = 0, len(cmd)
+
+    def flush_tok() -> None:
+        nonlocal cur, has
+        if has:
+            toks.append("".join(cur))
+        cur, has = [], False
+
+    def flush_seg() -> None:
+        nonlocal toks
+        flush_tok()
+        if toks:
+            segs.append(toks)
+        toks = []
+
+    while i < n:
+        c = cmd[i]
+        if q == "'":
+            if c == "'":
+                q = None
+            else:
+                cur.append(c)
+        elif q == '"':
+            if c == '"':
+                q = None
+                dq.append("\n")
+            elif c == "\\" and i + 1 < n:
+                cur.append(cmd[i + 1])
+                i += 1
+            else:
+                cur.append(c)
+                dq.append(c)
+        elif c in "'\"":
+            q, has = c, True
+        elif c == "\\" and i + 1 < n:
+            cur.append(cmd[i + 1])
+            i += 1
+            has = True
+        elif c == "#" and not has:
+            while i < n and cmd[i] != "\n":
+                i += 1
+            continue
+        elif c in " \t":
+            flush_tok()
+        elif c in ";&|\n()`":
+            flush_seg()
+        else:
+            cur.append(c)
+            has = True
+        i += 1
+    flush_seg()
+    return segs, ["".join(dq)] if dq else []
+
+
+def _ps_leak(args: list[str]) -> bool:
+    """ps: BSD `e`/`E` modifier (any cluster of letters, e.g. `ps eww`, `ps auxe`) or an env output column."""
+    skip = False
+    for a in args:
+        if skip:
+            skip = False
+            if re.search(r"(^|[,\s=])env(?:iron)?\b", a):
+                return True
+            continue
+        if a.startswith("--"):
+            if a.startswith("--format") and re.search(r"env(?:iron)?\b", a):
+                return True
+            if a == "--format":
+                skip = True
+            continue
+        if a.startswith("-"):
+            body = a[1:]
+            if re.search(r"o(.*[,=])?env(?:iron)?\b", body):
+                return True
+            for k, ch in enumerate(body):
+                if ch in PS_ARG_FLAGS:
+                    skip = k == len(body) - 1
+                    break
+            continue
+        if re.fullmatch(r"[A-Za-z]+", a):  # BSD cluster: ps e, ps ewwo, ps auxe
+            for k, ch in enumerate(a):
+                if ch in "eE":
+                    return True
+                if ch in "oO":
+                    skip = k == len(a) - 1
+                    break
+    return False
+
+
+def _wrapped(exe: str, args: list[str]) -> list[str]:
+    """Tokens of the command a wrapper (sudo, timeout, xargs ...) runs: options and numeric arguments skipped."""
+    flags = WRAPPER_ARG_FLAGS.get(exe, set())
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a in flags:
+            i += 2
+        elif a.startswith("-") or re.fullmatch(r"\d+(\.\d+)?[smhd]?", a) or re.match(r"^[A-Za-z_]\w*=", a):
+            i += 1
+        else:
+            break
+    return args[i:]
+
+
+def segment_env_leak(toks: list[str], depth: int) -> str | None:
+    while toks and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", toks[0]):
+        toks = toks[1:]
+    if not toks:
+        return None
+    exe, args = os.path.basename(toks[0]), toks[1:]
+    dashes = [a for a in args if a.startswith("-")]
+    operands = [a for a in args if not a.startswith("-")]
+    if exe == "printenv":
+        return "printenv " + ENV_MSG
+    if exe == "env":
+        i = 0
+        while i < len(args):
+            a = args[i]
+            if a in ("-u", "-C", "--unset", "--chdir"):
+                i += 2
+            elif a.startswith("-") or re.match(r"^[A-Za-z_]\w*=", a):
+                i += 1
+            else:
+                break
+        rest = args[i:]
+        if not rest:
+            return "env " + ENV_MSG
+        return segment_env_leak(rest, depth)
+    if exe == "set" and not args:
+        return "set " + ENV_MSG
+    if exe == "export" and (not args or "-p" in args):
+        return "export " + ENV_MSG
+    if exe in ("declare", "typeset") and (
+            not args or any("p" in a[1:] for a in dashes) or (not operands and any("x" in a[1:] for a in dashes))):
+        return f"{exe} " + ENV_MSG
+    if exe == "compgen" and any(re.search(r"[ev]", a[1:]) for a in dashes):
+        return "compgen -e/-v " + ENV_MSG
+    if exe == "ps" and _ps_leak(args):
+        return "ps with an environment column " + ENV_MSG
+    if exe == "pgrep" and any(a == "--list-full" or (not a.startswith("--") and "a" in a[1:]) for a in dashes):
+        return "pgrep -a/-af " + ENV_MSG
+    if exe in ("python", "python3", "node", "perl", "ruby") or re.fullmatch(r"python3?\.\d+", exe):
+        for k, a in enumerate(args[:-1]):
+            if a in ("-c", "-e", "-pe", "-ne") and SCRIPT_ENV_RE.search(args[k + 1]):
+                return f"inline {exe} script dumping the environment (secrets can reach the transcript)"
+    if depth >= 4:
+        return None
+    if exe in SHELLS:
+        for k, a in enumerate(args[:-1]):
+            if a.startswith("-") and not a.startswith("--") and "c" in a:
+                return env_leak(args[k + 1], depth + 1)
+    if exe == "eval" and args:
+        return env_leak(" ".join(args), depth + 1)
+    if exe in WRAPPERS:
+        rest = _wrapped(exe, args)
+        if rest:
+            return segment_env_leak(rest, depth + 1)
+    return None
+
+
+def env_leak(cmd: str, depth: int = 0) -> str | None:
+    """Reason when the command line prints environment variables, else None."""
+    cmd = HEREDOC_RE.sub("", cmd)
+    segs, dq = command_segments(cmd)
+    if depth < 4:
+        for text in dq:
+            for m in SUBST_RE.finditer(text):
+                why = env_leak(m.group(1) or m.group(2) or "", depth + 1)
+                if why:
+                    return why
+    for toks in segs:
+        for t in toks:
+            if PROC_ENVIRON_RE.fullmatch(t):
+                return "reading /proc/*/environ " + ENV_MSG
+        why = segment_env_leak(toks, depth)
+        if why:
+            return why
+    return None
+
+
 def check_shell(cmd: str, root: Path) -> str | None:
     dd = os.environ.get("DATA_DIR")
     data_dir = Path(dd).resolve() if dd else None
+    leak = env_leak(cmd)
+    if leak:
+        return leak
     # redirections into protected paths: > path, >> path, tee path
     for m in re.finditer(r"(?:>>?|>\|)\s*([^\s;&|]+)", cmd):
         if is_protected(m.group(1).strip("'\"")):
