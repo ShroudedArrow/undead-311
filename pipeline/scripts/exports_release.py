@@ -354,11 +354,13 @@ def main(argv: list[str] | None = None) -> int:
             m = unpack(a.archive, a.sha256, a.dest)
             print(f"unpacked {len(m['files'])} files of run {m['run_id']} ({m['data_version']}) into {a.dest}")
             return 0
-        from undead311.paths import data_dir
+        base: Path | None = None
+        if a.exports is None or a.out is None:  # data_dir() may run git; skip it when both paths are given
+            from undead311.paths import data_dir
 
-        base = data_dir()
-        exports = a.exports or base / "exports" / a.run_id
-        out = a.out or base / "releases" / a.run_id
+            base = data_dir()
+        exports = a.exports if a.exports is not None else base / "exports" / a.run_id
+        out = a.out if a.out is not None else base / "releases" / a.run_id
         if a.cmd == "pack":
             archive, digest = pack(a.run_id, exports, out)
             print(f"wrote {archive} and {digest}")
