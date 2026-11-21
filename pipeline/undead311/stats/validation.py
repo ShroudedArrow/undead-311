@@ -119,6 +119,8 @@ def cohen_kappa(a: list[str], b: list[str]) -> float | None:
 
 @dataclass(frozen=True)
 class Validation:
+    """`method` is `field` (two raters on the street) or `records` (closures recorded by the city; REQ-STAT-VAL.5)."""
+
     status: str
     sample_ids: tuple[str, ...]
     n_paired: int
@@ -127,13 +129,34 @@ class Validation:
     kappa: float | None
     kappa_still_broken: float | None
     confirmed: tuple[str, ...]
+    method: str = "field"
+    records: dict | None = None
 
     def to_json(self, data_version: str) -> dict:
-        return {
+        out = {
             "data_version": data_version, "status": self.status, "precision": self.precision,
             "cant_tell_share": self.cant_tell_share, "kappa": self.kappa, "kappa_still_broken": self.kappa_still_broken,
             "n_paired": self.n_paired, "confirmed": list(self.confirmed), "sample_ids": list(self.sample_ids),
+            "method": self.method,
         }  # fmt: skip
+        if self.records is not None:
+            out["records"] = self.records
+        return out
+
+
+def score_records(sample_ids: list[str], rows: list[dict]) -> Validation:
+    """The records-based check as a Validation (REQ-STAT-VAL.5): `precision` is the share of sampled zombies whose re-report was
+    repaired again (not ambiguous) over all sampled zombies; `confirmed` is that set (record-confirmed). No raters, so kappa and
+    the can't-tell share are null; `records` carries the classes, the ambiguous list and the shares by case type."""
+    from undead311.stats import records_check as rc
+
+    rows = [r for r in rows if not sample_ids or r["zombie_id"] in sample_ids]
+    if not rows:
+        return Validation("awaiting_field_labels", tuple(sample_ids), 0, None, None, None, None, (), "records")
+    s = rc.count_classes(rows)
+    records = {k: s[k] for k in ("classes", "repaired_again_with_ambiguous", "repaired_again_of_closed", "by_type", "ambiguous_ids",
+                                 "ambiguous_reasons")} | {"checked_on": rows[0].get("checked_on", "")}  # fmt: skip
+    return Validation("scored", tuple(sample_ids), len(rows), s["repaired_again"], None, None, None, tuple(s["confirmed"]), "records", records)
 
 
 def score(sample_ids: list[str], labels: dict[str, dict[str, str]]) -> Validation:

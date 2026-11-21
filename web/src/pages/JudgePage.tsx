@@ -64,6 +64,11 @@ export default function JudgePage() {
           <strong>{t("judge.provisional_label")}.</strong> {t("judge.provisional_notice")}
         </p>
       )}
+      {tour.status === "ok" && !tour.data.provisional && tour.data.confirmation === "records" && (
+        <p className="provisional-notice" role="note" data-testid="record-confirmed-notice">
+          <strong>{t("judge.record_confirmed_label")}.</strong> {t("judge.record_confirmed_notice")}
+        </p>
+      )}
       {cards.status === "error" && <PanelError file={cards.file} error={cards.error} />}
 
       {!started && tour.status === "ok" && (

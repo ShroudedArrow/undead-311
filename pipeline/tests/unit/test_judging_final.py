@@ -16,6 +16,7 @@ import pytest
 
 from undead311 import snapshot as snap
 from undead311.export.writers import canonical_json, validate
+from undead311.stats import records_check as rc
 from undead311.stats import validation as val
 from undead311.stats.tour import JudgeTour
 
@@ -275,3 +276,69 @@ def test_req_ops_snap_4_the_provisional_tour_works_while_validation_says_awaitin
     tour = build_tour(zs, None, v.confirmed)
     assert tour is not None and tour.provisional is True and len(tour.zombie_ids) == 3
     validate("judge_tour", tour.to_json(VERSION, dataset="full"))
+
+
+# ---- make judging-final from the records check (REQ-STAT-VAL.5, owner decision 2026-11-21: no field visits) ------------------------
+
+def records(world, repaired: int, ambiguous: int = 0) -> None:
+    """validation_records.csv for the sample: the first `repaired` are repaired again (the next `ambiguous` of them ambiguous)."""
+    rows = []
+    for i, zid in enumerate(world["sample"]):
+        sure = i < repaired
+        amb = repaired <= i < repaired + ambiguous
+        rows.append({"zombie_id": zid, "resurrection_id": f"r{i}", "type_family": "pothole_roadway", "neighborhood": HOODS[i % 3],
+                     "system": "new", "status": "Closed", "status_at_snapshot": "Closed", "closure_code": "Resolved",
+                     "coroner_label": "resolved" if sure or amb else "noted", "label_source": "table", "closure_text": "",
+                     "class": "repaired_again" if sure or amb else "invalid_or_nothing_found",
+                     "ambiguous_reason": "conflicting_cue" if amb else "", "checked_on": "2026-11-21"})  # fmt: skip
+    rc.write_records(world["labels"] / rc.RECORDS_FILE, rows)
+
+
+def test_req_stat_val_5_records_confirm_the_tour_and_it_says_record_confirmed(world):
+    records(world, repaired=5, ambiguous=1)
+    assert final(world) == 0
+    tour = json.loads((world["exp"] / "stats" / "judge_tour.json").read_text())
+    v = json.loads((world["exp"] / "stats" / "validation.json").read_text())
+    assert tour["provisional"] is False and tour["confirmation"] == "records"
+    assert set(tour["zombie_ids"]) <= set(v["confirmed"]) and len(v["confirmed"]) == 5  # the ambiguous one is not confirmed
+    assert v["method"] == "records" and v["precision"]["k"] == 5 and v["precision"]["n"] == 8
+    assert v["records"]["ambiguous_ids"] == [world["sample"][5]] and v["records"]["checked_on"] == "2026-11-21"
+    md = world["md"].read_text()
+    assert "Records-based check" in md and "No field visits were made" in md and "not what is on the street" in md
+
+
+def test_req_stat_val_5_fewer_than_three_record_confirmed_changes_nothing(world):
+    records(world, repaired=2, ambiguous=3)
+    before = (tree(world["exp"]), world["snapshot"].read_text(), tree(world["judging"]))
+    with pytest.raises(SystemExit, match="repaired again in the records"):
+        final(world)
+    assert (tree(world["exp"]), world["snapshot"].read_text(), tree(world["judging"])) == before
+
+
+def test_req_stat_val_5_field_labels_win_in_auto_and_records_are_used_only_when_asked_or_alone(world):
+    records(world, repaired=5)
+    label(world, confirmed=4)
+    assert final(world) == 0
+    assert json.loads((world["exp"] / "stats" / "judge_tour.json").read_text())["confirmation"] == "field"
+
+
+def test_req_stat_val_5_the_records_source_ignores_field_labels(world):
+    records(world, repaired=5)
+    label(world, confirmed=4)
+    assert final(world, "--source", "records") == 0
+    assert json.loads((world["exp"] / "stats" / "judge_tour.json").read_text())["confirmation"] == "records"
+
+
+def test_req_stat_val_5_a_records_tour_skips_a_re_report_opened_within_an_hour_of_the_closure(world):
+    """No one is on the street, so the ops#44 rule (a crew's work log is not a resurrection to show) still applies."""
+    records(world, repaired=4)
+    for shard in (world["exp"] / "zombies").glob("*.json"):
+        if shard.name == "index.json":
+            continue
+        d = json.loads(shard.read_text())
+        for z in d["zombies"]:
+            if z["zombie_id"] in world["sample"][:3]:
+                z["gap_days"] = 0.01  # 14 minutes
+        write(shard, canonical_json(d))
+    with pytest.raises(SystemExit, match="repaired again in the records"):
+        final(world)

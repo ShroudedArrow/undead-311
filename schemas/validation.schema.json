@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://undead-311/schemas/validation.schema.json",
-  "title": "Field validation",
-  "description": "REQ-STAT-VAL.",
+  "title": "Validation of the sample (field labels or records-based check)",
+  "description": "REQ-STAT-VAL. `method` field: two raters on the street; records: how the city closed each re-report (REQ-STAT-VAL.5), where `precision` is the share repaired again over all sampled zombies and `confirmed` the record-confirmed ones.",
   "type": "object",
   "properties": {
     "data_version": {
@@ -138,6 +138,55 @@
     "n_paired": {
       "type": "integer",
       "minimum": 0
+    },
+    "method": {
+      "enum": [
+        "field",
+        "records"
+      ]
+    },
+    "records": {
+      "type": "object",
+      "properties": {
+        "checked_on": {
+          "type": "string"
+        },
+        "classes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "ambiguous_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ambiguous_reasons": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "repaired_again_with_ambiguous": {
+          "type": "object"
+        },
+        "repaired_again_of_closed": {
+          "type": "object"
+        },
+        "by_type": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "checked_on",
+        "classes",
+        "ambiguous_ids"
+      ],
+      "additionalProperties": true
     }
   },
   "required": [

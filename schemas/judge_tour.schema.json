@@ -60,6 +60,20 @@
         "full"
       ],
       "description": "Whether the run read the committed sample or the full data; a sample rate is not a citywide figure. REQ-STAT-EXP.1"
+    },
+    "confirmation": {
+      "anyOf": [
+        {
+          "enum": [
+            "field",
+            "records"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "How the three zombies were confirmed: field (two raters on the street), records (record-confirmed: the city's closure of the re-report says it was repaired again), null while provisional. REQ-STAT-VAL.5"
     }
   },
   "required": [

@@ -174,7 +174,15 @@ function Validation() {
       <h2 id="val-h">{t("methods.validation_heading")}</h2>
       {v.status === "error" && <PanelError file={v.file} error={v.error} />}
       {v.status === "ok" && (v.data.status === "awaiting_field_labels" || !v.data.precision || v.data.precision.rate === null) ? <p data-testid="validation-awaiting">{t("methods.validation_awaiting")}</p> : null}
-      {v.status === "ok" && v.data.status === "scored" && v.data.precision && v.data.precision.rate !== null ? (
+      {v.status === "ok" && v.data.status === "scored" && v.data.method === "records" && v.data.records && v.data.precision && v.data.precision.rate !== null ? (
+        <div data-testid="validation-records">
+          <p>{t("methods.validation_records_intro", { n: v.data.precision.n, date: v.data.records.checked_on })}</p>
+          <p>{t("methods.validation_records_share", { rate: pct(v.data.precision.rate), lo: pct(v.data.precision.lo), hi: pct(v.data.precision.hi), k: v.data.precision.k ?? 0, n: v.data.precision.n, rate_hi: pct((v.data.records.repaired_again_with_ambiguous as { rate?: number | null } | undefined)?.rate ?? null) })}</p>
+          <p>{t("methods.validation_records_ambiguous", { count: v.data.records.ambiguous_ids.length })}</p>
+          <p>{t("methods.validation_records_limits", { n: v.data.precision.n })}</p>
+        </div>
+      ) : null}
+      {v.status === "ok" && v.data.status === "scored" && v.data.method !== "records" && v.data.precision && v.data.precision.rate !== null ? (
         <div data-testid="validation-scored">
           <p>{t("methods.validation_precision", { rate: pct(v.data.precision.rate), lo: pct(v.data.precision.lo), hi: pct(v.data.precision.hi), n: v.data.precision.n })}</p>
           {v.data.cant_tell_share !== null && v.data.cant_tell_share !== undefined ? <p>{t("methods.validation_cant_tell", { share: pct(v.data.cant_tell_share) })}</p> : null}
