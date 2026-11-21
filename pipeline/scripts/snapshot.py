@@ -82,7 +82,7 @@ def main(argv: list[str] | None = None) -> int:
     stage = (stage or "provisional") if args.run_id else None
     section = snap.build(args.public, processed, args.data_end, tag, raw, run_id=args.run_id, stage=stage)
     if args.check:
-        same = snap.extract_section(current) == section
+        same = snap.strip_note(snap.extract_section(current) or "") == section
         print("snapshot: files match the judging section" if same else "snapshot: files differ from the judging section (or it is missing)")
         return 0 if same else 1
     args.snapshot.parent.mkdir(parents=True, exist_ok=True)

@@ -342,3 +342,179 @@ def test_req_stat_val_5_a_records_tour_skips_a_re_report_opened_within_an_hour_o
         write(shard, canonical_json(d))
     with pytest.raises(SystemExit, match="repaired again in the records"):
         final(world)
+
+
+# ---- make judging-final ARCHIVE_SHA256=... (exports-only, REQ-OPS-SNAP.5) ---------------------------------------------------------
+# The download itself is tested against a mock GitHub in test_exports_release_rest.py; here `fetch_release` is replaced by a stand-in
+# that unpacks a locally packed copy of the run's exports, with the same hash check, so the judging logic runs on the real files.
+
+def release(world, monkeypatch, tmp_path_factory=None, mutate=None) -> str:
+    """Pack the run's provisional exports as the release, then drop raw/ and processed/ and the export folder: this machine has none."""
+    rel = world["tmp"] / "release"
+    if mutate:
+        mutate(world["exp"])
+    archive, _ = judging_final.er.pack(RUN, world["exp"], rel)
+    want = judging_final.er.sha256_file(archive)
+
+    def fake(run_id, dest, expected, repo=None, token=None, api_url=None, transport="rest"):
+        if judging_final.er.sha256_file(archive) != expected:
+            raise judging_final.er.ExportsError(f"SHA-256 mismatch for {archive.name}: the snapshot recorded {expected[:12]}")
+        return judging_final.er.unpack(archive, rel / f"exports-{run_id}.sha256", dest / "exports")
+
+    monkeypatch.setattr(judging_final.er, "fetch_release", fake)
+    return want
+
+
+def only(world, sha: str, *extra) -> int:
+    return final(world, "--source", "records", "--exports-only", "--archive-sha256", sha, *extra)
+
+
+def strip_machine(world) -> None:
+    import shutil
+
+    for p in (world["proc"], world["tmp"] / "data_dir" / "raw", world["tmp"] / "data_dir" / "exports"):
+        shutil.rmtree(p)
+
+
+def test_req_ops_snap_5_exports_only_changes_the_two_files_carries_raw_and_processed_and_says_so(world, monkeypatch):
+    records(world, repaired=5)
+    old = world["snapshot"].read_text()
+    sha = release(world, monkeypatch)
+    exp_before = tree(world["exp"])
+    strip_machine(world)
+    assert only(world, sha) == 0
+    new = world["snapshot"].read_text()
+    changed = snap.row_changes(snap.section_rows(old), snap.section_rows(new))
+    assert set(changed) == {"web/public/data/stats/validation.json", "web/public/data/stats/judge_tour.json"}
+    carried = lambda t: [r for r in snap.section_rows(t) if not r[0].startswith(snap.PUBLIC_PREFIX)]
+    assert carried(new) == carried(old) and any(r[0] == "raw/311_2026.csv" for r in carried(new))
+    assert snap.section_counts(new) == snap.section_counts(old)
+    assert f"{snap.NOTE_PREFIX}exports checked against release `exports-{RUN}` (archive sha256 `{sha}`)" in new
+    assert "not re-hashed here" in new and "Stage: final" in new and "`judged-2026-11-19-final`" in new
+    assert snap.check_committed(new, world["judging"]) == [] and snapshot_cli.main(["--verify", "--snapshot", str(world["snapshot"])]) == 0
+    tour = json.loads((world["judging"] / "stats" / "judge_tour.json").read_text())
+    assert tour["provisional"] is False and tour["confirmation"] == "records" and set(exp_before) >= {"stats/judge_tour.json"}
+    assert "Records-based check" in world["md"].read_text()
+    assert not list((world["tmp"] / "data_dir").glob("exports-only-*"))  # the scratch folder is gone
+    # the release still holds the provisional files, so a rerun refuses until the final exports are published again
+    with pytest.raises(SystemExit, match=r"stats/judge_tour\.json \(changed\)"):
+        only(world, sha)
+    assert world["snapshot"].read_text() == new
+
+
+def test_req_ops_snap_5_exports_only_writes_the_same_table_as_the_full_mode(world, monkeypatch):
+    """The two modes differ in the note only: the rows, the combined hash, the judge-mode files and VALIDATION.md are equal."""
+    records(world, repaired=5)
+    old = world["snapshot"].read_text()
+    sha = release(world, monkeypatch)
+    assert only(world, sha) == 0
+    text_only, judged_only, md_only = world["snapshot"].read_text(), tree(world["judging"]), world["md"].read_text()
+    world["snapshot"].write_text(old)
+    world["md"].unlink()
+    assert final(world, "--source", "records") == 0
+    assert snap.NOTE_PREFIX not in world["snapshot"].read_text()
+    assert snap.strip_note(text_only) == world["snapshot"].read_text()
+    assert judged_only == tree(world["judging"]) and md_only == world["md"].read_text()
+
+
+def test_req_ops_snap_5_the_full_data_check_ignores_the_note(world, monkeypatch):
+    records(world, repaired=5)
+    sha = release(world, monkeypatch)
+    assert only(world, sha) == 0
+    with_note = world["snapshot"].read_text()
+    assert snap.NOTE_PREFIX in with_note
+    assert final(world, "--source", "records") == 0  # writes the final export files here, and a section without the note
+    world["snapshot"].write_text(with_note)
+    assert snapshot_cli.main(["--check", "--run-id", RUN, "--snapshot", str(world["snapshot"])]) == 0
+
+
+def test_req_ops_snap_5_a_wrong_recorded_hash_changes_nothing(world, monkeypatch):
+    records(world, repaired=5)
+    release(world, monkeypatch)
+    before = (world["snapshot"].read_text(), tree(world["judging"]))
+    with pytest.raises(SystemExit, match="SHA-256 mismatch.*Nothing changed"):
+        only(world, "0" * 64)
+    assert (world["snapshot"].read_text(), tree(world["judging"])) == before and not world["md"].exists()
+
+
+@pytest.mark.parametrize("drift", ["changed", "added", "removed"])
+def test_req_ops_snap_5_a_release_that_differs_from_the_section_changes_nothing(world, monkeypatch, drift):
+    records(world, repaired=5)
+
+    def mutate(exp):
+        if drift == "changed":
+            write(exp / "stats" / "scorecard.json", '{"drifted": true}')
+        elif drift == "added":
+            write(exp / "cards" / "stray-2026.json", "{}")
+        else:
+            (exp / "cards" / "roxbury-2026.json").unlink()
+
+    sha = release(world, monkeypatch, mutate=mutate)
+    before = (world["snapshot"].read_text(), tree(world["judging"]))
+    with pytest.raises(SystemExit, match=rf"does not match the judging section.*\({drift}\).*Nothing changed"):
+        only(world, sha)
+    assert (world["snapshot"].read_text(), tree(world["judging"])) == before and not world["md"].exists()
+
+
+def test_req_ops_snap_5_a_release_of_another_data_version_is_refused(world, monkeypatch):
+    records(world, repaired=5)
+
+    def mutate(exp):
+        st = json.loads((exp / "status.json").read_text())
+        write(exp / "status.json", canonical_json({**st, "data_version": "2026-11-20+other+other"}))
+
+    sha = release(world, monkeypatch, mutate=mutate)
+    with pytest.raises(SystemExit, match="data_version 2026-11-20\\+other\\+other differs"):
+        only(world, sha)
+
+
+def test_req_ops_snap_5_a_hand_edited_section_is_refused(world, monkeypatch):
+    records(world, repaired=5)
+    sha = release(world, monkeypatch)
+    text = world["snapshot"].read_text()
+    digest = next(r[2] for r in snap.section_rows(text) if r[0].startswith("raw/"))
+    world["snapshot"].write_text(text.replace(digest, "0" * 64))  # the carried rows would be taken on trust
+    with pytest.raises(SystemExit, match="not self-consistent"):
+        only(world, sha)
+
+
+def test_req_ops_snap_5_anything_besides_the_two_files_changing_stops_it_and_writes_nothing(world, monkeypatch):
+    """Even when the release matches the section, a plan that also touched another export file is refused."""
+    records(world, repaired=5)
+    sha = release(world, monkeypatch)
+    real_plan = judging_final.plan
+
+    def greedy(public, labels_dir, source="auto"):
+        out = real_plan(public, labels_dir, source)
+        write(public / "stats" / "scorecard.json", '{"touched": true}')
+        return out
+
+    monkeypatch.setattr(judging_final, "plan", greedy)
+    before = (world["snapshot"].read_text(), tree(world["judging"]))
+    with pytest.raises(SystemExit, match=r"scorecard\.json \(changed\)\. Nothing was written"):
+        only(world, sha)
+    assert (world["snapshot"].read_text(), tree(world["judging"])) == before and not world["md"].exists()
+
+
+def test_req_ops_snap_5_a_dry_run_writes_nothing(world, monkeypatch, capsys):
+    records(world, repaired=5)
+    sha = release(world, monkeypatch)
+    before = (world["snapshot"].read_text(), tree(world["judging"]))
+    assert only(world, sha, "--dry-run") == 0
+    assert (world["snapshot"].read_text(), tree(world["judging"])) == before and not world["md"].exists()
+    assert "dry run" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("args,msg", [
+    (["--exports-only"], "needs --archive-sha256"),
+    (["--archive-sha256", "a" * 64], "only for --exports-only"),
+    (["--exports-only", "--archive-sha256", "a" * 64, "--raw", "x"], "takes no --public, --processed or --raw"),
+])
+def test_req_ops_snap_5_the_flags_are_checked(world, args, msg):
+    with pytest.raises(SystemExit, match=msg):
+        final(world, *args)
+
+
+def test_req_ops_snap_5_the_makefile_turns_archive_sha256_into_exports_only():
+    mk = (REPO / "Makefile").read_text()
+    assert "--exports-only --archive-sha256 $(ARCHIVE_SHA256)" in mk and "--transport $(TRANSPORT)" in mk

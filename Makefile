@@ -112,9 +112,11 @@ records-check:
 # REQ-OPS-SNAP.4: after data/labels/validation_labels.csv (field) or data/labels/validation_records.csv (records) exists, regenerates
 # ONLY stats/validation.json, stats/judge_tour.json and data/judging/ for the final tag, and amends the judging section (stage
 # final). SOURCE is auto (default), field or records. Refuses while neither source scores.
+# REQ-OPS-SNAP.5: with ARCHIVE_SHA256=<hex> (the release archive's hash recorded at the snapshot) it runs exports-only: no raw/ or
+# processed/ needed; it downloads release exports-<RUN_ID> over REST (DATA_RELEASE_TOKEN, or TRANSPORT=gh for `gh api`), checks the hash and the export rows.
 judging-final:
-	@test -n "$(RUN_ID)" || { echo "usage: make judging-final RUN_ID=<the run that make snapshot froze> [SOURCE=auto|field|records]" >&2; exit 2; }
-	PYTHONPATH=pipeline $(UV) run python pipeline/scripts/judging_final.py --run-id $(RUN_ID) $(if $(SOURCE),--source $(SOURCE))
+	@test -n "$(RUN_ID)" || { echo "usage: make judging-final RUN_ID=<the run that make snapshot froze> [SOURCE=auto|field|records] [ARCHIVE_SHA256=<hex>]" >&2; exit 2; }
+	PYTHONPATH=pipeline $(UV) run python pipeline/scripts/judging_final.py --run-id $(RUN_ID) $(if $(SOURCE),--source $(SOURCE)) $(if $(ARCHIVE_SHA256),--exports-only --archive-sha256 $(ARCHIVE_SHA256) $(if $(TRANSPORT),--transport $(TRANSPORT)))
 
 # REQ-OPS-EVID.1: needs a read-only token in GITHUB_CHANNEL_READ_TOKEN at run time; it is never written to the output.
 channel-export:
