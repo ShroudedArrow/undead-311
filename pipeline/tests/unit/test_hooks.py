@@ -87,6 +87,96 @@ def test_guard_allows_ordinary_commands(root, command):
     assert guard.decide(shell("execute_bash", command), root) is None
 
 
+# ---- guard: commands that print the environment ---------------------------------------------------------------
+
+ENV_PRINTING = [
+    "env",
+    "env | grep TOKEN",
+    "env -0",
+    "FOO=1 env",
+    "sudo env",
+    "printenv",
+    "printenv HOME",
+    "set",
+    "set | grep X",
+    "export",
+    "export -p",
+    "declare -x",
+    "declare -p",
+    "compgen -e",
+    "ps e",
+    "ps eww",
+    "ps auxe",
+    "ps axeww",
+    "ps aux ewww",
+    "ps -o pid,comm,env",
+    "ps -eo pid,env",
+    "ps -o environ",
+    "ps --format pid,env",
+    "pgrep -a node",
+    "pgrep -af node",
+    "pgrep -la node",
+    "pgrep --list-full node",
+    "cat /proc/self/environ",
+    "cat /proc/*/environ",
+    "tr '\\0' '\\n' < /proc/1/environ",
+    "xargs -0 -a /proc/1/environ",
+    "bash -c 'env'",
+    'sh -lc "echo hi; printenv"',
+    "echo $(env)",
+    "echo `printenv`",
+    'echo "a $(env) b"',
+    'echo "a `printenv`"',
+    "timeout 5 env",
+    "ls | xargs printenv",
+    "eval env",
+    "cd /tmp && env",
+    'python3 -c "import os; print(dict(os.environ))"',
+    'node -e "console.log(process.env)"',
+    "perl -e 'print %ENV'",
+]
+
+
+@pytest.mark.parametrize("command", ENV_PRINTING)
+def test_guard_blocks_commands_that_print_the_environment(root, command):
+    """Sandbox secrets must not reach the transcript (docs/LEARNINGS.md 2026-11-21)."""
+    assert guard.decide(shell("execute_bash", command), root)
+
+
+@pytest.mark.parametrize("command", [
+    "env FOO=1 make test",
+    "env -u X python3 a.py",
+    "FOO=1 make test",
+    "set -e",
+    "set -euo pipefail",
+    "export FOO=bar",
+    "declare -r X=1",
+    "pkill -x node",
+    "kill 123",
+    "kill -9 123",
+    "pgrep -x node",
+    "pgrep -f vite",
+    "ps -o pid,comm",
+    "ps -eo pid,comm",
+    "ps -ef",
+    "ps aux",
+    "ps -p 123 -o pid,comm",
+    "ps -C bash -o pid,comm",
+    "ps -u root",
+    'git commit -m "block env; printenv and /proc/1/environ"',
+    'echo "env"',
+    "python3 -c \"import os; print(os.environ['A'])\"",
+    "python3 -c \"import os; print(os.environ.get('A'))\"",
+    'node -e "console.log(process.env.HOME)"',
+    "grep -n environment README.md",
+    "printf '%s\\n' 'note: `env` and `printenv` are blocked' >> docs/LEARNINGS.md",
+    "git commit -m 'guard: block `env`, $(printenv) and ps eww'",
+    "cat <<'EOF'\nenv\nEOF",
+])
+def test_guard_allows_commands_that_do_not_print_the_environment(root, command):
+    assert guard.decide(shell("execute_bash", command), root) is None
+
+
 # ---- guard: file-writing tools --------------------------------------------------------------------------------
 
 PROTECTED = [
