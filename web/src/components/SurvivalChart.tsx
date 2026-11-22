@@ -74,7 +74,10 @@ export function SurvivalLegend({ curve, baseline }: { curve: Curve; baseline: Cu
 
 /** Table that mirrors the chart: shares at 7, 30 and 90 days with intervals, and the half-life (REQ-WEB-CHARTS.1, REQ-WEB-A11Y.1). */
 export function SurvivalTable({ curves }: { curves: readonly Curve[] }) {
+  // A column that says the same thing in every row carries nothing: it is left out, with one sentence under the table (design review 8).
+  const sameHalf = curves.length > 1 && curves.every((c) => c.half_life === curves[0].half_life);
   return (
+    <>
     <div className="table-wrap chart-table" tabIndex={0} role="region" aria-label={t("charts.survival_table_caption")}>
       <table className="zombie-table" data-testid="survival-table">
         <caption>{t("charts.survival_table_caption")}</caption>
@@ -84,7 +87,7 @@ export function SurvivalTable({ curves }: { curves: readonly Curve[] }) {
             <th scope="col">{t("charts.col_7")}</th>
             <th scope="col">{t("charts.col_30")}</th>
             <th scope="col">{t("charts.col_90")}</th>
-            <th scope="col">{t("charts.col_half")}</th>
+            {sameHalf ? null : <th scope="col">{t("charts.col_half")}</th>}
           </tr>
         </thead>
         <tbody>
@@ -94,11 +97,17 @@ export function SurvivalTable({ curves }: { curves: readonly Curve[] }) {
               <td>{share(c, "at_7")}</td>
               <td>{share(c, "at_30")}</td>
               <td>{share(c, "at_90")}</td>
-              <td>{c.half_life === null ? t("charts.half_life_none") : t("charts.half_life_days", { days: c.half_life })}</td>
+              {sameHalf ? null : <td>{c.half_life === null ? t("charts.half_life_none") : t("charts.half_life_days", { days: c.half_life })}</td>}
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+    {sameHalf ? (
+      <p className="count-note" data-testid="half-life-note">
+        {curves[0].half_life === null ? t("charts.half_life_same_none") : t("charts.half_life_same_days", { days: curves[0].half_life as number })}
+      </p>
+    ) : null}
+    </>
   );
 }

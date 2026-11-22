@@ -42,7 +42,7 @@ test("Escape shuts the phone filter sheet and returns focus to its button", asyn
   await expect(page.getByRole("button", { name: /show filters/i })).toBeFocused();
 });
 
-test("the marker key lists the seven case types and the cluster mark", async ({ page }) => {
+test("the map key lists the seven case types and the cluster mark", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByTestId("map")).toHaveAttribute("data-ready", "true");
   const legend = page.getByTestId("map-legend");
@@ -75,12 +75,12 @@ test("methods: a centred readable column with a static contents list under the t
   expect((await toc.boundingBox())!.y).toBeLessThan(tocBox.y - 1000);
 });
 
-test("the marker key closes with its close button and with Escape, and focus goes back to the Marker key button", async ({ page }) => {
+test("the map key closes with its close button and with Escape, and focus goes back to the Map key button", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByTestId("map")).toHaveAttribute("data-ready", "true");
   const summary = page.locator(".map-legend > summary");
   await summary.click();
-  const close = page.getByRole("button", { name: "Close marker key" });
+  const close = page.getByRole("button", { name: "Close map key" });
   await expect(close).toBeVisible();
   const box = (await close.boundingBox())!;
   expect(box.height).toBeGreaterThanOrEqual(44);
@@ -173,7 +173,7 @@ async function markerPixels(page: Page, only?: (i: number, p: PointsFile) => boo
     (el, p) => (p as { lon: number[]; lat: number[] }).lon.map((lon, i) => (el as unknown as { __project: (a: number, b: number) => { x: number; y: number } }).__project(lon, (p as { lat: number[] }).lat[i])),
     { lon: pts.lon, lat: pts.lat },
   );
-  // inside the map, clear of the zoom buttons (top right), the closed marker key (bottom left) and the credits (bottom right)
+  // inside the map, clear of the zoom buttons (top right), the closed map key (bottom left) and the credits (bottom right)
   const inView = (x: number, y: number) =>
     x > box.x + 24 && x < box.x + box.width - 24 && y > box.y + 24 && y < box.y + box.height - 40 &&
     !(x > box.x + box.width - 90 && y < box.y + 120) && !(x < box.x + 200 && y > box.y + box.height - 80);
@@ -361,10 +361,10 @@ test("every header and footer link is at least 44 px tall", async ({ page }, inf
   for (const box of await links.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height))) expect(box).toBeGreaterThanOrEqual(44);
 });
 
-test("the open marker key leaves the map credit and the zoom buttons uncovered", async ({ page }) => {
+test("the open map key leaves the map credit and the zoom buttons uncovered", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByTestId("map")).toHaveAttribute("data-ready", "true");
-  await page.getByText("Marker key").click();
+  await page.getByText("Map key").click();
   const box = async (sel: string) => (await page.locator(sel).first().boundingBox())!;
   const key = await box(".map-legend");
   const overlaps = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
@@ -404,14 +404,14 @@ test("at city zoom no two cluster counts overlap", async ({ page }) => {
   }
 });
 
-test("the marker key list can be reached and scrolled from the keyboard", async ({ page }) => {
+test("the map key list can be reached and scrolled from the keyboard", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByTestId("map")).toHaveAttribute("data-ready", "true");
-  await page.getByText("Marker key").click();
+  await page.getByText("Map key").click();
   const list = page.locator(".map-legend ul");
   await list.focus();
   await expect(list).toBeFocused();
-  await expect(list).toHaveAttribute("aria-label", "Marker key");
+  await expect(list).toHaveAttribute("aria-label", "Map key");
 });
 
 test("the home page does not shift at 320 px wide either", async ({ page }) => {

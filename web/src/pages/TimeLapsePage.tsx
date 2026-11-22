@@ -207,7 +207,7 @@ export default function TimeLapsePage() {
           {ready ? (
             <>
               <Suspense fallback={<p className="timelapse-map-note">{t("map.loading")}</p>}>
-                <MapView rows={shown} selectedId={null} onSelect={() => undefined} mode="dots" />
+                <MapView rows={shown} selectedId={null} onSelect={() => undefined} mode="dots" theme="night" />
               </Suspense>
               {/* The date stamp: large, so it reads while the time-lapse plays. Screen readers get the status line above. */}
               <div className="date-stamp" aria-hidden="true" data-testid="date-stamp">

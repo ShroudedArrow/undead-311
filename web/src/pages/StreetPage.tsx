@@ -1,6 +1,9 @@
 import { lazy, Suspense, useEffect, useId, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { PageHeader } from "../components/PageHeader";
 import { PanelError } from "../components/PanelError";
+import { ShowMore } from "../components/ShowMore";
+import { decodeShown, PAGE_SIZE, writeShown } from "../lib/paging";
 import { useData } from "../lib/data";
 import { familyLabel } from "../lib/labels";
 import { methodsPageSettings } from "../lib/sensitivityNote";
@@ -49,11 +52,13 @@ export default function StreetPage() {
   const bounds = useMemo(() => (chosen ? boundsOf(chosen) : null), [chosen]);
   const note = grid.status === "ok" ? methodsPageSettings(grid.data) : null;
 
+  const shown = decodeShown(params);
+  const showMore = () => setParams(writeShown(new URLSearchParams(params), shown + PAGE_SIZE), { replace: true });
   const choose = (key: string, r: number = radius) => setParams(encodeStreetState({ key, radius: r }), { replace: false });
 
   return (
-    <div className="page street-page">
-      <h1>{t("street.title")}</h1>
+    <div className="page street-page form-sheet">
+      <PageHeader title={t("street.title")} />
       <p>{t("street.intro")}</p>
       {loadError && <PanelError file="streets.json" error={loadError} />}
       {!index && !loadError && <p>{t("street.loading")}</p>}
@@ -90,7 +95,7 @@ export default function StreetPage() {
                 <>
                   <p data-testid="street-count">{t("street.near_count", { count: near.length })}</p>
                   <ul className="street-near plain-list">
-                    {near.map(({ item, meters }) => (
+                    {near.slice(0, shown).map(({ item, meters }) => (
                       <li key={item.id}>
                         <Link to={`/zombie/${encodeURIComponent(item.id)}`}>
                           {familyLabel(item.family)}, {item.neighborhood ?? t("filters.unknown_neighborhood")}, {item.year}
@@ -99,6 +104,7 @@ export default function StreetPage() {
                       </li>
                     ))}
                   </ul>
+                  <ShowMore shown={shown} total={near.length} onMore={showMore} />
                 </>
               ) : (
                 <div data-testid="street-empty">

@@ -9,10 +9,20 @@ interface Props {
 
 /** The count of possible zombies that match the filters, in the same set the map and table show (REQ-WEB-MAP.2-3, REQ-WEB-TIER.2). */
 export function CountLine({ headlineCount, allCount }: Props) {
+  const line = headlineCount === 1 ? t("filters.count_headline_one") : t("filters.count_headline", { count: headlineCount });
+  // The number leads at display size; the words follow. textContent stays the one sentence the copy file holds.
+  const lead = /^(\d[\d,.]*)(\s.*)$/s.exec(line);
   return (
     <div className="count-block">
       <p className="count-line" data-testid="count" aria-live="polite">
-        {headlineCount === 1 ? t("filters.count_headline_one") : t("filters.count_headline", { count: headlineCount })}
+        {lead ? (
+          <>
+            <span className="count-number">{lead[1]}</span>
+            {lead[2]}
+          </>
+        ) : (
+          line
+        )}
       </p>
       {allCount !== undefined ? (
         <p className="count-all" data-testid="count-all" aria-live="polite">

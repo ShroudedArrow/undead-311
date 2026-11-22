@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
@@ -104,6 +105,70 @@ describe("AutopsyCard content (REQ-WEB-CARD.1, .3, .6)", () => {
     // UX-35: the note is its own block under the case number, not an inline run-on.
     expect(note.tagName).toBe("P");
     expect(note.closest("span")).toBeNull();
+  });
+});
+
+describe("AutopsyCard as a mock postmortem report (REQ-WEB-CARD.1-3, design review 13)", () => {
+  const MANY = "First objection here. Second objection here. Third objection here. Fourth objection here.";
+  it("heads the form with the fictional report title, the re-report's case number and the page line, and names no agency", () => {
+    render(<AutopsyCard card={CARD} />);
+    const card = screen.getByTestId("autopsy-card");
+    expect(within(card).getByText("Undead 311, report of postmortem examination")).toBeTruthy();
+    expect(within(card).getByText("Case no. BCS-2")).toBeTruthy();
+    expect(within(card).getByText("Page 1 of 1")).toBeTruthy();
+    expect(card.textContent).not.toMatch(/City of Boston|seal|department of/i);
+  });
+  it("labels the fields and keeps each value a plain fact", () => {
+    render(<AutopsyCard card={CARD} />);
+    const card = screen.getByTestId("autopsy-card");
+    const field = (label: string) => within(card).getByText(label).parentElement as HTMLElement;
+    expect(field("Decedent").textContent).toContain("Request for Pothole Repair, Dorchester Ave");
+    expect(field("Date of death (closed as fixed)").textContent).toContain("Jan 12, 2026");
+    expect(field("Date of resurrection (reported again)").textContent).toContain("Jan 20, 2026");
+    expect(field("Time in the grave").textContent).toContain("8 days");
+    expect(field("Cause of death").textContent).toContain("Made safe for now");
+  });
+  it("states the findings: case types, and the distance between the two reports", () => {
+    const far = { ...CARD, rereport: { ...CARD.rereport, lat: 42.3003, lon: -71.05 } };
+    render(<AutopsyCard card={far} />);
+    const findings = screen.getByTestId("findings").textContent ?? "";
+    expect(findings).toContain("Different case types: Request for Pothole Repair and Pothole.");
+    expect(findings).toMatch(/The two reports are 33 m apart\./);
+  });
+  it("says the two reports sit at the same point when they share coordinates, and draws the sketch with a text alternative", () => {
+    render(<AutopsyCard card={CARD} />);
+    expect(screen.getByTestId("findings").textContent).toContain("The two reports sit at the same point.");
+    const svg = within(screen.getByTestId("location-diagram")).getByRole("img");
+    expect(svg.getAttribute("aria-label")).toBe("Sketch of the two reports on Dorchester Ave: the first report and the report after the closure, 0 m apart.");
+    expect(within(screen.getByTestId("location-diagram")).getByText("Dorchester Ave. Sketch, not to scale.")).toBeTruthy();
+  });
+  it("shows the top two objections under 'Why this might not be a zombie', the rest behind Show more, with a Skeptic byline", async () => {
+    const user = userEvent.setup();
+    render(<AutopsyCard card={{ ...CARD, skeptic_notes: MANY }} />);
+    const card = screen.getByTestId("autopsy-card");
+    expect(within(card).getByText("Second opinion")).toBeTruthy();
+    expect(within(card).getByText("Why this might not be a zombie")).toBeTruthy();
+    expect(within(card).getByText("Skeptic")).toBeTruthy();
+    expect(within(card).getAllByRole("listitem").filter((li) => /objection here/.test(li.textContent ?? ""))).toHaveLength(2);
+    const more = within(card).getByRole("button", { name: "Show 2 more" });
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+    await user.click(more);
+    expect(within(card).getAllByRole("listitem").filter((li) => /objection here/.test(li.textContent ?? ""))).toHaveLength(4);
+    expect(within(card).getByRole("button", { name: "Show fewer" }).getAttribute("aria-expanded")).toBe("true");
+  });
+  it("offers no Show more for two objections or fewer", () => {
+    render(<AutopsyCard card={CARD} />);
+    expect(screen.queryByRole("button", { name: /Show .* more/ })).toBeNull();
+  });
+  it("signs the form as the Coroner (automated)", () => {
+    render(<AutopsyCard card={CARD} />);
+    expect(screen.getByText("Examined by: the Coroner (automated)")).toBeTruthy();
+  });
+  it("stamps POSSIBLE on an ordinary card and RECORD-CONFIRMED only when asked, with the status readable as text", () => {
+    const { rerender } = render(<AutopsyCard card={CARD} />);
+    expect(screen.getByTestId("verdict-stamp").textContent).toBe("Status: POSSIBLE");
+    rerender(<AutopsyCard card={CARD} recordConfirmed />);
+    expect(screen.getByTestId("verdict-stamp").textContent).toBe("Status: RECORD-CONFIRMED");
   });
 });
 

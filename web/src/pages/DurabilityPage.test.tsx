@@ -40,8 +40,9 @@ describe("Durability page: survival (REQ-WEB-CHARTS.1)", () => {
     expect(within(table).getByText("At 7 days")).toBeTruthy();
     expect(within(table).getByText("At 30 days")).toBeTruthy();
     expect(within(table).getByText("At 90 days")).toBeTruthy();
-    expect(within(table).getByText("Half-life")).toBeTruthy();
-    expect(within(table).getAllByText("Above 50% through day 90").length).toBeGreaterThan(0);
+    // design review 8: a half-life column that says the same in every row is left out, with one sentence under the table
+    expect(within(table).queryByText("Half-life")).toBeNull();
+    expect(screen.getByTestId("half-life-note").textContent).toMatch(/still above 50% at day 90/);
     expect(within(table).getByText(/99\.0% \(97\.2% to 100\.0%\)/)).toBeTruthy();
   });
   it("shows a picked group against the citywide curve and switches to all tiers", async () => {
@@ -113,7 +114,9 @@ describe("Durability page: funnel and leaderboard (REQ-WEB-CHARTS.2)", () => {
     stub();
     open();
     const board = await screen.findByTestId("leaderboard", undefined, { timeout: 4000 });
-    expect(within(board).getAllByText("Not available in this data")).toHaveLength(3);
+    // design review 8: with no intensity value anywhere the column is left out, instead of "Not available" on every row
+    expect(within(board).queryByText("Not available in this data")).toBeNull();
+    expect(within(board).queryByText("Reporting intensity")).toBeNull();
     expect(screen.getByText(/Reporting intensity sits beside every neighborhood rate/)).toBeTruthy();
   });
   it("keeps the raw rate and n beside the shrunk rate", async () => {

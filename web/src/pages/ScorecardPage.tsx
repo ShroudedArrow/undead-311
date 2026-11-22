@@ -1,3 +1,4 @@
+import { PageHeader } from "../components/PageHeader";
 import { PanelError } from "../components/PanelError";
 import { Scorecard } from "../components/Scorecard";
 import { useData } from "../lib/data";
@@ -11,8 +12,8 @@ export default function ScorecardPage() {
   // Until then a screen-high placeholder holds the space, so nothing visible moves when they arrive (data-slot, app.css).
   const settled = card.status !== "loading" && excess.status !== "loading";
   return (
-    <div className="page">
-      <h1>{t("score.title")}</h1>
+    <div className="page form-sheet">
+      <PageHeader title={t("score.title")} />
       <div data-slot={settled ? undefined : "page-loading"} aria-busy={!settled}>
         {!settled && <p className="count-note">{t("app.loading_section")}</p>}
         {settled && card.status === "error" && <PanelError file={card.file} error={card.error} />}

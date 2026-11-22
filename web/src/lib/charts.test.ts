@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { tickPct, yTitle, chartDims, curveKind, curvesFor, intensityText, isUnusual, isValidCurve, leaderboard, limitAt, linePath, linear, logScale, niceTicks, unusualDirection, dayTicks } from "./charts";
+import { tickPct, yTitle, chartDims, curveKind, curvesFor, intensityText, isUnusual, isValidCurve, leaderboard, limitAt, limitGrid, linePath, linear, logScale, niceTicks, unusualDirection, dayTicks } from "./charts";
 import { parseFunnel, parseGroups, parseSurvival, type FunnelLimit, type Group } from "./parse";
 import { statsPath } from "./statsFiles";
 
@@ -212,5 +212,24 @@ describe("survival chart day ticks (UX-58, REQ-WEB-CHARTS.1)", () => {
         for (let i = 1; i < ticks.length; i++) expect((ticks[i] - ticks[i - 1]) * pxPerDay).toBeGreaterThanOrEqual(32 - 1e-9);
       }),
     );
+  });
+});
+
+
+describe("limitGrid (design review 8)", () => {
+  const dense = Array.from({ length: 300 }, (_, i) => limit(i + 1, 0.1 + (i % 2 ? 0.05 : 0), 0.9 - 0.5 * Math.log(i + 1) / Math.log(300)));
+  it("draws the limits on a fixed log grid with the same ends, and never leaves the range of the file's values", () => {
+    const g = limitGrid(dense, 40);
+    expect(g).toHaveLength(40);
+    expect(g[0].n).toBeCloseTo(1, 6);
+    expect(g[39].n).toBeCloseTo(300, 6);
+    for (const l of g) {
+      expect(l.hi998).toBeGreaterThanOrEqual(Math.min(...dense.map((d) => d.hi998)) - 1e-9);
+      expect(l.hi998).toBeLessThanOrEqual(Math.max(...dense.map((d) => d.hi998)) + 1e-9);
+    }
+    expect(g.every((l, i) => i === 0 || l.n > g[i - 1].n)).toBe(true);
+  });
+  it("returns few points as they are", () => {
+    expect(limitGrid([limit(1, 0, 1), limit(2, 0.1, 0.9)])).toHaveLength(2);
   });
 });

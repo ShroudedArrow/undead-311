@@ -24,7 +24,7 @@ function lookup(tree: Tree, key: string): string | undefined {
 }
 
 /** Parameters that hold a count of cases or rows. A number passed under one of these names is shown with thousands separators ("19,077"); years and other numbers are left alone. */
-const COUNT_PARAMS = new Set(["count", "n", "total", "k", "below", "covers", "bursty", "observed", "headline", "all", "source_unknown", "sensitivity"]);
+const COUNT_PARAMS = new Set(["count", "n", "total", "k", "below", "covers", "bursty", "observed", "headline", "all", "source_unknown", "sensitivity", "shown"]);
 const countFormat = new Intl.NumberFormat("en-US");
 
 /**

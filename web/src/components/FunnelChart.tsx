@@ -1,4 +1,5 @@
-import { yTitleAttrs, yTitle, tickPct, chartDims, intensityText, leaderboard, linePath, linear, logScale, niceTicks, unusualDirection } from "../lib/charts";
+import { useState } from "react";
+import { yTitleAttrs, yTitle, tickPct, chartDims, intensityText, leaderboard, limitGrid, linePath, linear, logScale, niceTicks, unusualDirection } from "../lib/charts";
 import { groupLabel, groupTitle } from "../lib/labels";
 import type { FunnelLimit, Group } from "../lib/parse";
 import { pct } from "../lib/rates";
@@ -21,7 +22,9 @@ export function FunnelChart({ groups, limits, citywide }: { groups: readonly Gro
   const yTop = Math.max(maxY, yTicks[yTicks.length - 1]);
   const x = logScale(1, maxN, M.l, W - M.r);
   const y = linear(0, yTop, H - M.b, M.t);
-  const xs = sorted.map((l) => x(l.n));
+  // the limit lines are drawn on a fixed grid of n, so they run smooth; classification still reads the file's own limits
+  const drawn = limitGrid(sorted);
+  const xs = drawn.map((l) => x(l.n));
   const dirs = groups.map((g) => unusualDirection(g, limits));
   const aboveCount = dirs.filter((d) => d === "above").length;
   const belowCount = dirs.filter((d) => d === "below").length;
@@ -48,12 +51,12 @@ export function FunnelChart({ groups, limits, citywide }: { groups: readonly Gro
           <rect x={M.l} y={M.t} width={W - M.l - M.r} height={H - M.t - M.b} />
         </clipPath>
       </defs>
-      {sorted.length > 1 ? (
+      {drawn.length > 1 ? (
         <g clipPath="url(#funnel-clip)">
-          <path className="chart-line chart-line-limit95" d={linePath(xs, sorted.map((l) => y(l.hi95)))} />
-          <path className="chart-line chart-line-limit95" d={linePath(xs, sorted.map((l) => y(l.lo95)))} />
-          <path className="chart-line chart-line-limit998" d={linePath(xs, sorted.map((l) => y(l.hi998)))} />
-          <path className="chart-line chart-line-limit998" d={linePath(xs, sorted.map((l) => y(l.lo998)))} />
+          <path className="chart-line chart-line-limit95" d={linePath(xs, drawn.map((l) => y(l.hi95)))} />
+          <path className="chart-line chart-line-limit95" d={linePath(xs, drawn.map((l) => y(l.lo95)))} />
+          <path className="chart-line chart-line-limit998" d={linePath(xs, drawn.map((l) => y(l.hi998)))} />
+          <path className="chart-line chart-line-limit998" d={linePath(xs, drawn.map((l) => y(l.lo998)))} />
         </g>
       ) : null}
       {citywide !== null ? <line className="chart-line chart-line-base" x1={M.l} x2={W - M.r} y1={y(citywide)} y2={y(citywide)} /> : null}
@@ -95,11 +98,21 @@ export function FunnelLegend() {
   );
 }
 
+/** Groups with fewer closed cases than this start folded away. */
+export const SMALL_GROUP = 30;
+
 /** Leaderboard of shrunk rates with intervals, n and reporting intensity beside every row (REQ-WEB-CHARTS.2). */
 export function Leaderboard({ groups, limits, kind }: { groups: readonly Group[]; limits: readonly FunnelLimit[]; kind: Group["kind"] }) {
-  const rows = leaderboard(groups, kind, limits);
-  if (rows.length === 0) return <p className="table-empty">{t("charts.no_groups")}</p>;
+  const [showSmall, setShowSmall] = useState(false);
+  const all = leaderboard(groups, kind, limits);
+  if (all.length === 0) return <p className="table-empty">{t("charts.no_groups")}</p>;
+  // Groups of fewer than SMALL_GROUP cases sit behind a button (design review 8): they cannot be called unusual and drown the real groups.
+  const small = all.filter((g) => g.n < SMALL_GROUP);
+  const rows = showSmall ? all : all.filter((g) => g.n >= SMALL_GROUP);
+  // The intensity column returns when the data has any value for it; until then every row would say "Not available".
+  const hasIntensity = all.some((g) => intensityText(g) !== null);
   return (
+    <>
     <div className="table-wrap chart-table" tabIndex={0} role="region" aria-label={t("charts.leaderboard_caption")}>
       <table className="zombie-table" data-testid="leaderboard">
         <caption>{t("charts.leaderboard_caption")}</caption>
@@ -110,7 +123,7 @@ export function Leaderboard({ groups, limits, kind }: { groups: readonly Group[]
             <th scope="col">{t("charts.col_interval")}</th>
             <th scope="col">{t("charts.col_raw")}</th>
             <th scope="col">{t("charts.col_n")}</th>
-            <th scope="col">{t("charts.col_intensity")}</th>
+            {hasIntensity ? <th scope="col">{t("charts.col_intensity")}</th> : null}
             <th scope="col">{t("charts.col_flag")}</th>
           </tr>
         </thead>
@@ -128,7 +141,7 @@ export function Leaderboard({ groups, limits, kind }: { groups: readonly Group[]
                 <td>{g.lo === null || g.hi === null ? "" : t("charts.interval_text", { lo: pct(g.lo), hi: pct(g.hi) })}</td>
                 <td>{pct(g.raw)}</td>
                 <td>{g.n}</td>
-                <td>{intensity === null ? t("charts.intensity_missing") : t("charts.intensity_value", { value: intensity })}</td>
+                {hasIntensity ? <td>{intensity === null ? t("charts.intensity_missing") : t("charts.intensity_value", { value: intensity })}</td> : null}
                 <td>{g.direction === null ? t("charts.typical") : t(`charts.unusual_${g.direction}`)}</td>
               </tr>
             );
@@ -136,5 +149,14 @@ export function Leaderboard({ groups, limits, kind }: { groups: readonly Group[]
         </tbody>
       </table>
     </div>
+    <p className="count-note" data-testid="leaderboard-note">{t("charts.leaderboard_columns_note")}</p>
+    {small.length > 0 ? (
+      <p>
+        <button type="button" aria-expanded={showSmall} onClick={() => setShowSmall(!showSmall)}>
+          {showSmall ? t("charts.hide_small", { count: small.length, min: SMALL_GROUP }) : t("charts.show_small", { count: small.length, min: SMALL_GROUP })}
+        </button>
+      </p>
+    ) : null}
+    </>
   );
 }

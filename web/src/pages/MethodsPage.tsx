@@ -1,3 +1,4 @@
+import { PageHeader } from "../components/PageHeader";
 import { useState } from "react";
 import { PageToc } from "../components/PageToc";
 import { OpenData } from "../components/OpenData";
@@ -242,10 +243,10 @@ export default function MethodsPage() {
   const files = [useData("status.json", parseStatus), useData("scorecard.json", parseScorecard), useData("excess.json", parseExcess), useData("validation.json", parseValidation), useData("sensitivity_grid.json", parseSensitivityGrid), useData("temporary_fixes.json", parseTemporaryFixes), useData("exclusions.json", parseExclusions), useData("bulk_closures.json", parseBulkClosures)];
   if (files.some((f) => f.status === "loading")) {
     return (
-      <div className="page methods-page" aria-busy="true">
+      <div className="page methods-page form-sheet" aria-busy="true">
         <div className="methods-layout">
           <div className="methods-main" data-slot="page-loading">
-            <h1>{t("methods.title")}</h1>
+            <PageHeader title={t("methods.title")} />
             <p className="count-note">{t("app.loading_section")}</p>
           </div>
         </div>
@@ -253,10 +254,10 @@ export default function MethodsPage() {
     );
   }
   return (
-    <div className="page methods-page">
+    <div className="page methods-page form-sheet">
       <div className="methods-layout">
         <div className="methods-main" ref={setContent}>
-          <h1>{t("methods.title")}</h1>
+          <PageHeader title={t("methods.title")} />
           <MethodsSampleNotice />
           <PageToc content={content} />
           <p data-testid="methods-intro">{t("methods.intro")}</p>

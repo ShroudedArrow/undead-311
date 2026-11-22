@@ -49,7 +49,7 @@ export function Scorecard({ file, excess }: { file: ScorecardFile; excess?: Exce
           );
         })}
       </ul>
-      <p className="count-note">{t("score.floor")}</p>
+      <p className="count-note">{t("score.floor")} {t("score.raw_words")}</p>
       {excessByFamily.size > 0 ? <p className="count-note">{t("score.excess_note")}</p> : null}
     </div>
   );

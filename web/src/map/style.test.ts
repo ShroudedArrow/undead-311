@@ -18,6 +18,25 @@ describe("map style keeps Crew white free (REQ-WEB-DESIGN.1, UX-3)", () => {
   });
 });
 
+describe("night map style, for the time-lapse page only (design review 11)", () => {
+  const night = buildStyle("pmtiles://x/tiles/boston.pmtiles", "OSM", "night");
+  const day = buildStyle("pmtiles://x/tiles/boston.pmtiles", "OSM");
+  it("puts Asphalt land under Concrete streets and keeps Crew white and pink off the basemap", () => {
+    expect((night.layers.find((l) => l.id === "land") as { paint: Record<string, unknown> }).paint["background-color"]).toBe(PALETTE.asphalt);
+    for (const layer of night.layers) {
+      const paint = JSON.stringify((layer as { paint?: unknown }).paint ?? {});
+      expect(paint, layer.id).not.toContain(PALETTE.crewWhite);
+      expect(paint, layer.id).not.toContain(PALETTE.surveyPink);
+    }
+    expect((night.layers.find((l) => l.id === "roads-major") as { paint: Record<string, unknown> }).paint["line-color"]).toBe(PALETTE.concrete);
+  });
+  it("has the same layer ids as the day style, and the day style is still the default", () => {
+    expect(night.layers.map((l) => l.id)).toEqual(day.layers.map((l) => l.id));
+    expect((day.layers.find((l) => l.id === "land") as { paint: Record<string, unknown> }).paint["background-color"]).toBe(PALETTE.concrete);
+    expect(buildStyle("pmtiles://x/tiles/boston.pmtiles", "OSM", "day")).toEqual(day);
+  });
+});
+
 describe("MapLibre controls are restyled (REQ-WEB-DESIGN.2, UX-2)", () => {
   const css = readFileSync(join(__dirname, "..", "styles", "app.css"), "utf8");
   it("overrides the control group, buttons and attribution with palette tokens and no shadow", () => {

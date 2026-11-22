@@ -17,7 +17,7 @@
     "data_as_of_unknown": "Data date unavailable",
     "data_as_of_stale": "Data as of {date}. The latest refresh failed, so this is the last good data.",
     "sample_notice": "Sample of {count} cases, not all of Boston.",
-    "loading_section": "Loading this section"
+    "loading_section": "Digging up this section"
   },
   "nav": {
     "label": "Main",
@@ -146,7 +146,7 @@
     "away": "{meters} m away",
     "open_card": "Open the autopsy card",
     "map_label": "Map of {street} and the possible zombies near it",
-    "loading": "Loading the street list"
+    "loading": "Digging up the street list"
   },
   "repeat": {
     "title": "Repeat offenders",
@@ -164,7 +164,9 @@
     "col_privacy": "Shown at",
     "col_open": "Open",
     "caption": "Repeat offender chains, most returns first",
-    "map_link": "Show on the map"
+    "map_link": "Show on the map",
+    "chain_open_short": "Open card",
+    "chain_open_label": "Open card: the first autopsy card for the chain in {where}"
   },
   "about": {
     "heading": "Who made this",
@@ -284,13 +286,13 @@
   "errors": {
     "panel_failed": "This panel’s data didn’t load. Reload the page; if it still fails, the file named below is missing or out of date.",
     "panel_detail": "File {file}: {reason}",
-    "not_found": "This page does not exist.",
-    "not_found_heading": "Page not found",
+    "not_found": "Nothing lives at this address. The link may be mistyped, or the page may have moved.",
+    "not_found_heading": "This page stayed buried",
     "not_found_link": "Go back to the map"
   },
   "empty": {
     "no_zombies_block": "No possible zombies on this block in the last 60 days. Try widening the window to 90 days.",
-    "no_matches": "No possible zombies match these filters. Clear a filter to see more."
+    "no_matches": "Nothing has risen under these filters. Clear a filter to see more."
   },
   "judge": {
     "provisional_notice": "These examples haven’t been checked in person yet. Field-checked ones replace them after validation",
@@ -317,7 +319,7 @@
     "region_label": "Map of possible zombies in Boston",
     "attribution": "© OpenStreetMap contributors",
     "unsupported": "The map needs WebGL, which this browser does not provide. Open the table view to see the same possible zombies.",
-    "loading": "Loading the map",
+    "loading": "Digging up the map",
     "marker_hint": "Each pink circle is one possible zombie: a case the city closed, reported again at the same place.",
     "show_table": "Show these as a table",
     "show_map": "Show these on the map",
@@ -325,10 +327,10 @@
     "zoom_in": "Zoom in",
     "zoom_out": "Zoom out",
     "attribution_toggle": "Show map credits",
-    "legend_title": "Marker key",
+    "legend_title": "Map key",
     "legend_outline": "Dashed ring: counted outside the headline",
     "legend_cluster": "Pink dots with a number: that many possible zombies close together. Zoom in to see each one.",
-    "legend_close": "Close marker key"
+    "legend_close": "Close map key"
   },
   "filters": {
     "heading": "Filters",
@@ -349,7 +351,7 @@
     "tier_toggle": "Include cases outside the headline count",
     "tier_toggle_note": "Adds city re-reports (opened by a city worker, so possibly crew work records), cases whose source is unknown, and sensitivity checks. They show as dashed outlines and are labeled on their cards. The headline count above does not change.",
     "count_floor": "Counts are a floor: a possible zombie appears only if someone reported the problem again.",
-    "loading": "Loading possible zombies",
+    "loading": "Digging up possible zombies",
     "bulk_toggle": "Mark closures that were part of a bulk closure",
     "bulk_note": "Rings possible zombies whose closure was part of a bulk closure. Those closures are less certain evidence.",
     "bulk_count": "{count} of the possible zombies shown follow a bulk closure, ringed in orange.",
@@ -395,12 +397,14 @@
     "col_confidence": "Confidence",
     "col_tier": "Counted in",
     "col_open": "Open the autopsy card",
-    "open_card": "Open card {id}",
+    "open_card": "Open card for {type} in {place}, reported again {date}",
     "sort_by": "Sort by {column}",
     "sorted_asc": "sorted ascending",
     "sorted_desc": "sorted descending",
     "col_bulk": "Bulk closure",
-    "bulk_yes": "Part of a bulk closure"
+    "bulk_yes": "Part of a bulk closure",
+    "loading": "Loading time in the grave and confidence for these rows.",
+    "not_available": "Not available"
   },
   "tiers": {
     "headline": "Headline",
@@ -439,7 +443,7 @@
     "confidence": "Confidence",
     "confidence_value": "{percent} of 100",
     "confidence_partial": "Partial: one or more inputs to this score were not available, so the number may move.",
-    "skeptic": "Skeptic's objections",
+    "skeptic": "Second opinion",
     "verdict": "Verdict",
     "verdict_survives": "The objections did not hold up. This stays a possible zombie.",
     "verdict_weakened": "The evidence is weaker than it first looked.",
@@ -466,9 +470,35 @@
     "tier_note_source_unknown": "Outside the headline count: the new 311 system does not record who reported the case, so this may be a planned city visit.",
     "tier_note_city_rereport": "Outside the headline count: a city worker opened this re-report, so it may be a crew work record and not a resident reporting the problem again.",
     "tier_note_sensitivity": "Outside the headline count: this case type is reported as a sensitivity check.",
-    "loading": "Loading the card",
+    "loading": "Pulling the report from the file",
     "not_found": "No card was found for {id}. It may have moved after a data refresh. Go back to the map and pick it again.",
-    "reports_since": "Times reported again"
+    "reports_since": "Times reported again",
+    "report_title": "Undead 311, report of postmortem examination",
+    "case_no": "Case no. {id}",
+    "page_of": "Page 1 of 1",
+    "decedent": "Decedent",
+    "date_of_death": "Date of death (closed as fixed)",
+    "date_of_resurrection": "Date of resurrection (reported again)",
+    "findings": "Findings",
+    "finding_same_type": "Same case type: {type}.",
+    "finding_diff_type": "Different case types: {first} and {second}.",
+    "finding_distance": "The two reports are {distance} apart.",
+    "finding_same_point": "The two reports sit at the same point.",
+    "meters": "{meters} m",
+    "km": "{km} km",
+    "skeptic_label": "Why this might not be a zombie",
+    "skeptic_byline": "Skeptic",
+    "show_more": "Show {count} more",
+    "show_fewer": "Show fewer",
+    "diagram_label": "Sketch of the two reports on {street}: the first report and the report after the closure, {distance} apart.",
+    "diagram_first": "First report",
+    "diagram_again": "Re-report",
+    "diagram_caption": "{street}. Sketch, not to scale.",
+    "diagram_caption_nostreet": "Sketch, not to scale.",
+    "examined_by": "Examined by: the Coroner (automated)",
+    "status_label": "Status:",
+    "stamp_possible": "POSSIBLE",
+    "stamp_record_confirmed": "RECORD-CONFIRMED"
   },
   "score": {
     "title": "Closed on time and stayed fixed",
@@ -488,7 +518,8 @@
     "excess_all": "All spots: excess of {excess} re-reports (95% interval {lo} to {hi}), {observed} seen against {expected} expected, from {n} closed cases.",
     "excess_without": "Without bursty spots: excess of {excess} re-reports (95% interval {lo} to {hi}), {observed} seen against {expected} expected, from {n} closed cases.",
     "excess_without_none": "Without bursty spots: too few closed cases are left to say.",
-    "excess_bursty_share": "{bursty} of the {n} closed cases are at spots flagged bursty: their reports come in bursts or sit in a few months."
+    "excess_bursty_share": "{bursty} of the {n} closed cases are at spots flagged bursty: their reports come in bursts or sit in a few months.",
+    "raw_words": "Raw means the share before any adjustment for re-reports that chance alone would bring."
   },
   "charts": {
     "title": "How long fixes last",
@@ -551,7 +582,12 @@
     "intensity_value": "{value} reports per km of street",
     "intensity_note": "Reporting intensity sits beside every neighborhood rate, because areas that report more show more resurrections. Counts are a floor.",
     "interval_text": "{lo} to {hi}",
-    "no_groups": "No groups in this data."
+    "no_groups": "No groups in this data.",
+    "half_life_same_none": "The half-life column is left out: every group listed is still above 50% at day 90.",
+    "half_life_same_days": "The half-life column is left out: every group listed has a half-life of {days} days.",
+    "leaderboard_columns_note": "Against chance says whether a group's rate lies outside the outer 99.8% limits of the funnel plot, which chance alone rarely does at that size. Reporting intensity is shown when the data has it.",
+    "show_small": "Show {count} groups with fewer than {min} cases",
+    "hide_small": "Hide the {count} groups with fewer than {min} cases"
   },
   "links": {
     "report_error": "Report an error",
@@ -615,5 +651,14 @@
     "en": "English",
     "es": "Español",
     "note_es": "Cards and the scorecard are available in Spanish. The rest of the site stays in English."
+  },
+  "theme": {
+    "night_shift": "Night shift",
+    "filed_after_dark": "Filed after dark",
+    "plaque_label": "Records through"
+  },
+  "paging": {
+    "showing": "Showing {shown} of {total}",
+    "more": "Show {count} more"
   }
 }

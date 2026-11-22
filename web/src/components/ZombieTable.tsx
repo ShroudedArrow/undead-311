@@ -13,15 +13,25 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "confidence", label: "table.col_confidence" },
 ];
 
+/** An empty cell says why: a dash while the records are still arriving, "Not available" once they have and this row has none. */
+function Pending({ loading }: { loading: boolean }) {
+  return loading ? <span aria-hidden="true">{"\u2013"}</span> : <>{t("table.not_available")}</>;
+}
+
 /** Sortable table of the same possible zombies the map shows. Each row opens the autopsy card (REQ-WEB-TABLE.1). */
-export function ZombieTable({ rows, search }: { rows: readonly TableRow[]; search: string }) {
+export function ZombieTable({ rows, search, loading = false }: { rows: readonly TableRow[]; search: string; loading?: boolean }) {
   const [key, setKey] = useState<SortKey>("date");
   const [dir, setDir] = useState<SortDir>("desc");
   const sorted = sortRows(rows, key, dir);
   const showBulk = rows.some((r) => r.bulk !== undefined);
   if (rows.length === 0) return <p className="table-empty">{t("empty.no_matches")}</p>;
   return (
-    <div className="table-wrap">
+    <div className="table-wrap" aria-busy={loading}>
+      {loading ? (
+        <p className="count-note" role="status" data-testid="table-loading">
+          {t("table.loading")}
+        </p>
+      ) : null}
       <table className="zombie-table" data-testid="zombie-table">
         <caption>{t("table.caption")}</caption>
         <thead>
@@ -52,15 +62,15 @@ export function ZombieTable({ rows, search }: { rows: readonly TableRow[]; searc
           {sorted.map((r) => (
             <tr key={r.id} data-id={r.id}>
               <td>{r.date}</td>
-              <td>{r.gap === null ? "" : formatGap(r.gap)}</td>
+              <td>{r.gap === null ? <Pending loading={loading} /> : formatGap(r.gap)}</td>
               <td>{r.neighborhood || t("filters.unknown")}</td>
               <td>{familyLabel(r.family)}</td>
-              <td>{r.confidence === null ? "" : r.confidence.toFixed(2)}</td>
+              <td>{r.confidence === null ? <Pending loading={loading} /> : r.confidence.toFixed(2)}</td>
               <td>{t(`tiers.${r.tier}`)}</td>
               {showBulk ? <td>{r.bulk ? t("table.bulk_yes") : ""}</td> : null}
               <td>
                 <Link to={{ pathname: `/zombie/${encodeURIComponent(r.id)}`, search }}>
-                  {t("table.open_card", { id: r.id })}
+                  {t("table.open_card", { type: familyLabel(r.family), place: r.neighborhood || t("filters.unknown"), date: r.date })}
                 </Link>
               </td>
             </tr>

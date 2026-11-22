@@ -79,7 +79,8 @@ export default function HomePage() {
   return (
     <div className="home">
       <aside className="filters-panel" ref={panelRef}>
-        <h1>{t("app.title")}</h1>
+        {/* The header already names the site, so the page heading is for screen readers; the count leads the sidebar. */}
+        <h1 className="visually-hidden">{t("app.title")}</h1>
         {points.status === "error" && <PanelError file={points.file} error={points.error} />}
         {pointsState.extraError && <PanelError file={pointsState.extraError.file} error={pointsState.extraError.error} />}
         {pointsState.pending && <p role="status">{t("filters.loading")}</p>}
@@ -87,6 +88,9 @@ export default function HomePage() {
         {points.status === "ok" && (
           <>
             <CountLine headlineCount={visible.headlineCount} allCount={state.tierMode === "all" ? visible.allCount : undefined} />
+            <p className="stamp-night" aria-hidden="true">
+              {t("theme.night_shift")}
+            </p>
             <button ref={toggleRef} type="button" className="filters-toggle" aria-expanded={filtersOpen} aria-controls={filtersId} onClick={() => setFiltersOpen(!filtersOpen)}>
               {t(filtersOpen ? "filters.hide" : "filters.show")}
             </button>
@@ -131,13 +135,18 @@ export default function HomePage() {
         </div>
       </aside>
       <section className="stage">
-        <div className="view-switch" role="group" aria-label={t("map.view_switch")}>
+        <div className="view-switch">
+         <div className="view-switch-buttons" role="group" aria-label={t("map.view_switch")}>
           <button type="button" aria-pressed={state.view === "map"} onClick={() => update({ ...state, view: "map" })}>
             {t("nav.map_view")}
           </button>
           <button type="button" aria-pressed={state.view === "table"} onClick={() => update({ ...state, view: "table" })}>
             {t("nav.table")}
           </button>
+         </div>
+          <p className="stamp-filed" aria-hidden="true">
+            {t("theme.filed_after_dark")}
+          </p>
         </div>
         {state.view === "map" ? (
           <div className="map-frame">
@@ -149,7 +158,7 @@ export default function HomePage() {
         ) : (
           <>
             {zombies.status === "error" && <PanelError file={zombies.file} error={zombies.error} />}
-            <ZombieTable rows={buildTableRows(visible.items, zombieById, state.bulk)} search={params.toString()} />
+            <ZombieTable rows={buildTableRows(visible.items, zombieById, state.bulk)} search={params.toString()} loading={zombies.status === "loading"} />
           </>
         )}
       </section>

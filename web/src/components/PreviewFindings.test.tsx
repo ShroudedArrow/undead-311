@@ -76,7 +76,7 @@ describe("not-found page (ops#219)", () => {
     serve(STATUS);
     render(<MemoryRouter initialEntries={["/no-such-page"]}><App /></MemoryRouter>);
     const page = await screen.findByTestId("not-found");
-    expect(within(page).getByRole("heading", { level: 1, name: "Page not found" })).toBeTruthy();
+    expect(within(page).getByRole("heading", { level: 1, name: "This page stayed buried" })).toBeTruthy();
     expect(within(page).getByRole("link", { name: "Go back to the map" }).getAttribute("href")).toBe("/");
   });
 });

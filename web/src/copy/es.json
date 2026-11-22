@@ -57,7 +57,7 @@
     "confidence": "Confianza",
     "confidence_value": "{percent} de 100",
     "confidence_partial": "Parcial: faltaba uno o más datos para este puntaje, así que la cifra puede cambiar.",
-    "skeptic": "Objeciones del escéptico",
+    "skeptic": "Segunda opinión",
     "verdict": "Veredicto",
     "verdict_survives": "Las objeciones no se sostuvieron. Sigue siendo un posible zombi.",
     "verdict_weakened": "La evidencia es más débil de lo que parecía.",
@@ -85,7 +85,33 @@
     "tier_note_sensitivity": "Fuera del conteo principal: este tipo de caso se informa como prueba de sensibilidad.",
     "loading": "Cargando la tarjeta",
     "not_found": "No se encontró una tarjeta para {id}. Puede haberse movido después de una actualización de datos. Vuelva al mapa y elíjala de nuevo.",
-    "reports_since": "Veces reportado de nuevo"
+    "reports_since": "Veces reportado de nuevo",
+    "report_title": "Undead 311, informe del examen post mortem",
+    "case_no": "Caso n.º {id}",
+    "page_of": "Página 1 de 1",
+    "decedent": "Difunto",
+    "date_of_death": "Fecha de la muerte (cerrado como arreglado)",
+    "date_of_resurrection": "Fecha de la resurrección (reportado de nuevo)",
+    "findings": "Hallazgos",
+    "finding_same_type": "Mismo tipo de caso: {type}.",
+    "finding_diff_type": "Tipos de caso distintos: {first} y {second}.",
+    "finding_distance": "Los dos reportes están a {distance} de distancia.",
+    "finding_same_point": "Los dos reportes están en el mismo punto.",
+    "meters": "{meters} m",
+    "km": "{km} km",
+    "skeptic_label": "Por qué esto podría no ser un zombi",
+    "skeptic_byline": "Escéptico",
+    "show_more": "Mostrar {count} más",
+    "show_fewer": "Mostrar menos",
+    "diagram_label": "Esquema de los dos reportes en {street}: el primer reporte y el reporte posterior al cierre, a {distance} de distancia.",
+    "diagram_first": "Primer reporte",
+    "diagram_again": "Nuevo reporte",
+    "diagram_caption": "{street}. Esquema, sin escala.",
+    "diagram_caption_nostreet": "Esquema, sin escala.",
+    "examined_by": "Examinado por: el Forense (automático)",
+    "status_label": "Estado:",
+    "stamp_possible": "POSIBLE",
+    "stamp_record_confirmed": "CONFIRMADO EN LOS REGISTROS"
   },
   "score": {
     "title": "Cerrado a tiempo y arreglo que duró",
@@ -105,7 +131,8 @@
     "excess_all": "Todos los puntos: exceso de {excess} reportes (intervalo del 95 %: de {lo} a {hi}), {observed} vistos frente a {expected} esperados, de {n} casos cerrados.",
     "excess_without": "Sin los puntos con rachas: exceso de {excess} reportes (intervalo del 95 %: de {lo} a {hi}), {observed} vistos frente a {expected} esperados, de {n} casos cerrados.",
     "excess_without_none": "Sin los puntos con rachas: quedan muy pocos casos cerrados para decir algo.",
-    "excess_bursty_share": "{bursty} de los {n} casos cerrados están en puntos marcados con rachas: sus reportes llegan juntos o se concentran en pocos meses."
+    "excess_bursty_share": "{bursty} de los {n} casos cerrados están en puntos marcados con rachas: sus reportes llegan juntos o se concentran en pocos meses.",
+    "raw_words": "Sin ajustar significa la proporción antes de descontar los nuevos reportes que el azar solo traería."
   },
   "labels": {
     "resolved": "Cerrado como resuelto",
@@ -133,8 +160,8 @@
     "sample_notice": "Todas las cifras de esta página vienen de una muestra de {count} casos, no de todos los casos del 311 de Boston. El análisis con todos los datos las reemplazará."
   },
   "errors": {
-    "not_found_heading": "Página no encontrada",
-    "not_found": "Esta página no existe.",
+    "not_found_heading": "Esta página quedó enterrada",
+    "not_found": "No hay nada en esta dirección. El enlace puede estar mal escrito, o la página puede haberse movido.",
     "not_found_link": "Volver al mapa"
   },
   "open": {
