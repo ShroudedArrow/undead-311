@@ -5,11 +5,19 @@ interface Props {
   headlineCount: number;
   /** All-tier count; given only while the sensitivity toggle is on, and always shown beside the headline count. */
   allCount?: number;
+  /** True when any filter is on. With no filter the line is just the count; with a filter it reads "n of N match your filters". */
+  filtered?: boolean;
+  /** The headline count with no filter applied: the N in "n of N". */
+  totalCount?: number;
 }
 
 /** The count of possible zombies that match the filters, in the same set the map and table show (REQ-WEB-MAP.2-3, REQ-WEB-TIER.2). */
-export function CountLine({ headlineCount, allCount }: Props) {
-  const line = headlineCount === 1 ? t("filters.count_headline_one") : t("filters.count_headline", { count: headlineCount });
+export function CountLine({ headlineCount, allCount, filtered = false, totalCount = headlineCount }: Props) {
+  const line = filtered
+    ? t("filters.count_filtered", { count: headlineCount, total: totalCount })
+    : headlineCount === 1
+      ? t("filters.count_headline_one")
+      : t("filters.count_headline", { count: headlineCount });
   // The number leads at display size; the words follow. textContent stays the one sentence the copy file holds.
   const lead = /^(\d[\d,.]*)(\s.*)$/s.exec(line);
   return (
@@ -29,7 +37,6 @@ export function CountLine({ headlineCount, allCount }: Props) {
           {t("filters.count_all_tiers", { count: allCount })}
         </p>
       ) : null}
-      <p className="count-note">{t("filters.count_floor")}</p>
     </div>
   );
 }

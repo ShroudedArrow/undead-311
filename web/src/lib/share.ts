@@ -98,10 +98,9 @@ h1{font-size:76px;line-height:1.05;margin:20px 0 0;max-width:1000px}
 .stamp.closed{text-decoration:line-through}
 .foot{font-size:24px;margin:0}
 .formline{font-family:"Courier Prime",monospace;font-weight:700;font-size:26px;margin:0 0 22px;padding-bottom:10px;border-bottom:5px solid ${PALETTE.asphalt};max-width:1000px}
-.copies{position:absolute;top:0;right:0;bottom:0;width:56px;background:${PALETTE.pink};border-left:5px solid ${PALETTE.asphalt}}
-.copies i{position:absolute;top:0;bottom:0;left:-33px;width:28px;background:${PALETTE.canary};border-left:5px solid ${PALETTE.asphalt}}`;
+.copies{position:absolute;top:0;right:0;bottom:0;width:48px;background:${PALETTE.canary};border-left:5px solid ${PALETTE.asphalt}}`;
 
-const page = (fonts: string, body: string): string => `<!doctype html><html lang="en"><head><meta charset="utf-8"><style>${css(fonts)}</style></head><body><div class="copies" aria-hidden="true"><i></i></div>${body}</body></html>`;
+const page = (fonts: string, body: string): string => `<!doctype html><html lang="en"><head><meta charset="utf-8"><style>${css(fonts)}</style></head><body><div class="copies" aria-hidden="true"></div>${body}</body></html>`;
 
 /** The 1200 by 630 page for one possible zombie. `fonts` is the @font-face CSS (file URLs when rendered at build time). */
 export function zombieShareHtml(d: ZombieShare, text: ShareText, fonts = ""): string {

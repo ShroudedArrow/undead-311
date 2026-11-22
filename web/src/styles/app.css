@@ -747,12 +747,12 @@ select {
 
 /*
  * Form pages (street, repeat, scorecard, durability, methods, judge). The plain pages are drawn as the same triplicate form as the
- * autopsy card: a Crew white sheet with the canary and pink copies behind it, a header band with the date plaque, and field strips in
+ * autopsy card: a Crew white sheet with the canary copy behind it, a header band with the date plaque, and field strips in
  * Canary copy. The typewriter face stays inside the autopsy form; these pages keep Public Sans. Under 640 px only the top copy shows.
  */
 .page.form-sheet {
   position: relative;
-  width: min(64rem, calc(100% - 2 * var(--space-3) - 14px));
+  width: min(64rem, calc(100% - 2 * var(--space-3) - 10px));
   max-width: none;
   margin: var(--space-4) auto var(--space-5);
   padding: var(--space-4);
@@ -761,10 +761,8 @@ select {
   font-size: 1.05rem;
   font-variant-numeric: tabular-nums;
 }
-.page.form-sheet::before,
-.page.form-sheet::after { content: ""; position: absolute; inset: -2px; border: 2px solid var(--asphalt); pointer-events: none; }
-.page.form-sheet::before { background: var(--canary-copy); transform: translate(7px, 7px); z-index: -1; }
-.page.form-sheet::after { background: var(--survey-pink); transform: translate(14px, 14px); z-index: -2; }
+/* One Canary copy behind the sheet. Pink means a zombie, so the plain pages carry none. */
+.page.form-sheet::before { content: ""; position: absolute; inset: -2px; border: 2px solid var(--asphalt); pointer-events: none; background: var(--canary-copy); transform: translate(8px, 8px); z-index: -1; }
 .form-sheet h2 { font-size: 1.4rem; font-weight: 800; }
 .form-sheet h3 { font-size: 1.15rem; font-weight: 700; }
 .form-sheet .count-note, .form-sheet .rate-interval-text, .form-sheet .rate-n { font-size: 0.875rem; }
@@ -801,7 +799,7 @@ select {
 
 @media (max-width: 640px) {
   .page.form-sheet { width: 100%; margin: 0 0 var(--space-4); padding: var(--space-3); border-width: 2px 0; }
-  .page.form-sheet::before, .page.form-sheet::after { display: none; }
+  .page.form-sheet::before { display: none; }
   .form-head h1 { font-size: 1.8rem; }
   .plaque { margin-right: 0; }
 }

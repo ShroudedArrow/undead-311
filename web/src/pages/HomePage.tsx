@@ -6,7 +6,7 @@ import { Filters } from "../components/Filters";
 import { CopyLink, NeighborhoodShareLink } from "../components/ShareLinks";
 import { PanelError } from "../components/PanelError";
 import { ZombieTable } from "../components/ZombieTable";
-import { visibleSet } from "../lib/filter";
+import { EMPTY_FILTERS, visibleSet, type Filters as FilterState } from "../lib/filter";
 import { shardKey } from "../lib/shard";
 import { useZombieShards, usePoints } from "../lib/shards";
 import { pointsToRows } from "../lib/points";
@@ -14,6 +14,9 @@ import { buildTableRows, bulkIds } from "../lib/table";
 import { t } from "../lib/t";
 import { useNarrow } from "../lib/useNarrow";
 import { decodeState, encodeState, type PageState } from "../lib/url";
+
+/** True when any of the four filters has a choice in it. */
+const anyFilter = (f: FilterState): boolean => f.neighborhoods.length + f.departments.length + f.families.length + f.years.length > 0;
 
 const MapView = lazy(() => import("../map/MapView"));
 
@@ -28,6 +31,9 @@ export default function HomePage() {
   const points = pointsState.load;
   const rows = useMemo(() => (points.status === "ok" ? pointsToRows(points.data) : []), [points]);
   const visible = useMemo(() => visibleSet(rows, state.filters, state.tierMode), [rows, state]);
+  // "n of N match your filters": N is the headline count with no filter on (the tier mode never changes the headline count)
+  const total = useMemo(() => visibleSet(rows, EMPTY_FILTERS, state.tierMode).headlineCount, [rows, state.tierMode]);
+  const filtered = anyFilter(state.filters);
   // zombie records load per shard, and only the shards the visible rows fall in (table view, bulk layer)
   const shardKeys = useMemo(
     () => (state.view === "table" || state.bulk ? visible.items.map((r) => shardKey(r.neighborhood, r.year)) : null),
@@ -87,7 +93,7 @@ export default function HomePage() {
         {points.status === "loading" && <p>{t("filters.loading")}</p>}
         {points.status === "ok" && (
           <>
-            <CountLine headlineCount={visible.headlineCount} allCount={state.tierMode === "all" ? visible.allCount : undefined} />
+            <CountLine headlineCount={visible.headlineCount} allCount={state.tierMode === "all" ? visible.allCount : undefined} filtered={filtered} totalCount={total} />
             <p className="stamp-night" aria-hidden="true">
               {t("theme.night_shift")}
             </p>

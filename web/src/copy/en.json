@@ -345,17 +345,17 @@
     "all": "All",
     "unknown": "Unknown",
     "unknown_neighborhood": "Neighborhood not recorded",
-    "count_headline": "{count} possible zombies match these filters",
-    "count_headline_one": "1 possible zombie matches these filters",
+    "count_headline": "{count} possible zombies",
+    "count_headline_one": "1 possible zombie",
     "count_all_tiers": "{count} when cases outside the headline are included",
     "tier_toggle": "Include cases outside the headline count",
     "tier_toggle_note": "Adds city re-reports (opened by a city worker, so possibly crew work records), cases whose source is unknown, and sensitivity checks. They show as dashed outlines and are labeled on their cards. The headline count above does not change.",
-    "count_floor": "Counts are a floor: a possible zombie appears only if someone reported the problem again.",
     "loading": "Digging up possible zombies",
     "bulk_toggle": "Mark closures that were part of a bulk closure",
     "bulk_note": "Rings possible zombies whose closure was part of a bulk closure. Those closures are less certain evidence.",
     "bulk_count": "{count} of the possible zombies shown follow a bulk closure, ringed in orange.",
-    "bulk_none": "None of the possible zombies shown follow a bulk closure, so no rings are drawn."
+    "bulk_none": "None of the possible zombies shown follow a bulk closure, so no rings are drawn.",
+    "count_filtered": "{count} of {total} match your filters"
   },
   "departments": {
     "PWDx": "Public Works Department (PWDx)",

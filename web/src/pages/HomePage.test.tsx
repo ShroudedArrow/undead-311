@@ -48,7 +48,7 @@ describe("HomePage (REQ-WEB-MAP.2-4)", () => {
   it("shows headline zombies only by default, and the count matches the map set", async () => {
     stubFetch();
     render(<MemoryRouter><App /></MemoryRouter>);
-    expect(await screen.findByText(countText("3 possible zombies match these filters"))).toBeTruthy();
+    expect(await screen.findByText(countText("3 possible zombies"))).toBeTruthy();
     await waitFor(() => expect(screen.getByTestId("map").getAttribute("data-marker-count")).toBe("3"));
     expect(mapRows).toHaveBeenLastCalledWith(["a", "b", "c"]);
   });
@@ -57,10 +57,10 @@ describe("HomePage (REQ-WEB-MAP.2-4)", () => {
     stubFetch();
     const user = userEvent.setup();
     render(<MemoryRouter><App /></MemoryRouter>);
-    await screen.findByText(countText("3 possible zombies match these filters"));
+    await screen.findByText(countText("3 possible zombies"));
     await user.click(screen.getByText("Neighborhood"));
     await user.click(within(screen.getByRole("form", { name: "Filters" })).getByLabelText(/Roxbury/));
-    expect(await screen.findByText(countText("2 possible zombies match these filters"))).toBeTruthy();
+    expect(await screen.findByText(countText("2 of 3 match your filters"))).toBeTruthy();
     expect(mapRows).toHaveBeenLastCalledWith(["b", "c"]);
   });
 
@@ -78,7 +78,7 @@ describe("HomePage (REQ-WEB-MAP.2-4)", () => {
     stubFetch();
     const user = userEvent.setup();
     render(<MemoryRouter><App /></MemoryRouter>);
-    await screen.findByText(countText("3 possible zombies match these filters"));
+    await screen.findByText(countText("3 possible zombies"));
     await user.click(screen.getByText("Department"));
     expect(screen.getByText(/Public Works Department \(PWDx\)/)).toBeTruthy();
     expect(screen.getByText(/Boston Transportation Department \(BTDT\)/)).toBeTruthy();
@@ -96,7 +96,7 @@ describe("Sensitivity tier toggle (REQ-WEB-TIER.1-2)", () => {
   it("is off by default: no all-tier count, and the map has only headline rows", async () => {
     stubFetch();
     render(<MemoryRouter><App /></MemoryRouter>);
-    await screen.findByText(countText("3 possible zombies match these filters"));
+    await screen.findByText(countText("3 possible zombies"));
     expect((screen.getByLabelText("Include cases outside the headline count") as HTMLInputElement).checked).toBe(false);
     expect(screen.queryByTestId("count-all")).toBeNull();
     expect(mapRows).toHaveBeenLastCalledWith(["a", "b", "c"]);
@@ -105,10 +105,10 @@ describe("Sensitivity tier toggle (REQ-WEB-TIER.1-2)", () => {
     stubFetch();
     const user = userEvent.setup();
     render(<MemoryRouter><App /></MemoryRouter>);
-    await screen.findByText(countText("3 possible zombies match these filters"));
+    await screen.findByText(countText("3 possible zombies"));
     await user.click(screen.getByLabelText("Include cases outside the headline count"));
     expect(await screen.findByTestId("count-all")).toBeTruthy();
-    expect(screen.getByTestId("count").textContent).toBe("3 possible zombies match these filters");
+    expect(screen.getByTestId("count").textContent).toBe("3 possible zombies");
     expect(screen.getByTestId("count-all").textContent).toBe("4 when cases outside the headline are included");
     const [first, second] = [screen.getByTestId("count"), screen.getByTestId("count-all")];
     expect(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -122,11 +122,42 @@ describe("Sensitivity tier toggle (REQ-WEB-TIER.1-2)", () => {
   });
 });
 
+describe("The count line (REQ-WEB-MAP.2, design review 4)", () => {
+  it("with no filter on, says the count and does not say anything matches", async () => {
+    stubFetch();
+    render(<MemoryRouter><App /></MemoryRouter>);
+    await screen.findByText(countText("3 possible zombies"));
+    expect(screen.getByTestId("count").textContent).toBe("3 possible zombies");
+    expect(screen.getByTestId("count").textContent).not.toMatch(/match|filter/i);
+  });
+  it("with a filter on, says 'n of N match your filters', where N is the count with no filter", async () => {
+    stubFetch();
+    render(<MemoryRouter initialEntries={["/?n=Dorchester"]}><App /></MemoryRouter>);
+    expect(await screen.findByText(countText("1 of 3 match your filters"))).toBeTruthy();
+    expect(mapRows).toHaveBeenLastCalledWith(["a"]);
+  });
+  it("goes back to the plain count when the filter is cleared, and counts a filter that matches nothing as 0 of N", async () => {
+    stubFetch();
+    const user = userEvent.setup();
+    render(<MemoryRouter initialEntries={["/?n=Roxbury&y=2020"]}><App /></MemoryRouter>);
+    expect(await screen.findByText(countText("0 of 3 match your filters"))).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Show filters" }));
+    await user.click(screen.getByRole("button", { name: "Clear all filters" }));
+    expect(await screen.findByText(countText("3 possible zombies"))).toBeTruthy();
+  });
+  it("no longer carries the 'counts are a floor' line on the map page (it stays on the methods page)", async () => {
+    stubFetch();
+    render(<MemoryRouter><App /></MemoryRouter>);
+    await screen.findByText(countText("3 possible zombies"));
+    expect(screen.queryByText(/Counts are a floor/)).toBeNull();
+  });
+});
+
 describe("Bulk-closure layer (REQ-WEB-DEATHS.1)", () => {
   it("is off by default: no zombie file is requested and nothing is ringed", async () => {
     stubFetch();
     render(<MemoryRouter><App /></MemoryRouter>);
-    await screen.findByText(countText("3 possible zombies match these filters"));
+    await screen.findByText(countText("3 possible zombies"));
     expect(screen.getByTestId("map").getAttribute("data-bulk-ids")).toBe("");
     expect((vi.mocked(fetch).mock.calls as unknown[][]).some((c) => String(c[0]).includes("/zombies/"))).toBe(false);
   });
@@ -134,7 +165,7 @@ describe("Bulk-closure layer (REQ-WEB-DEATHS.1)", () => {
     stubFetch();
     const user = userEvent.setup();
     render(<MemoryRouter><App /></MemoryRouter>);
-    await screen.findByText(countText("3 possible zombies match these filters"));
+    await screen.findByText(countText("3 possible zombies"));
     await user.click(screen.getByLabelText("Mark closures that were part of a bulk closure"));
     expect(await screen.findByText("2 of the possible zombies shown follow a bulk closure, ringed in orange.")).toBeTruthy();
     expect(screen.getByTestId("map").getAttribute("data-bulk-ids")).toBe("b,c");
@@ -143,7 +174,7 @@ describe("Bulk-closure layer (REQ-WEB-DEATHS.1)", () => {
     stubFetch([false, false, false, false]);
     const user = userEvent.setup();
     render(<MemoryRouter><App /></MemoryRouter>);
-    await screen.findByText(countText("3 possible zombies match these filters"));
+    await screen.findByText(countText("3 possible zombies"));
     await user.click(screen.getByLabelText("Mark closures that were part of a bulk closure"));
     expect(await screen.findByText("None of the possible zombies shown follow a bulk closure, so no rings are drawn.")).toBeTruthy();
     expect(screen.queryByText(/^0 of the possible zombies/)).toBeNull();
@@ -163,7 +194,7 @@ describe("Table view mirrors the map (REQ-WEB-TABLE.1)", () => {
   it("lists the same zombies the map got, and each row links to its card", async () => {
     stubFetch();
     render(<MemoryRouter initialEntries={["/?view=table&n=Roxbury"]}><App /></MemoryRouter>);
-    await screen.findByText(countText("2 possible zombies match these filters"));
+    await screen.findByText(countText("2 of 3 match your filters"));
     const table = await screen.findByTestId("zombie-table");
     const ids = within(table).getAllByRole("row").slice(1).map((r) => r.getAttribute("data-id"));
     expect(ids.sort()).toEqual(["b", "c"]);

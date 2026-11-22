@@ -23,9 +23,9 @@ describe("contrast floor (REQ-WEB-A11Y.1, design-system.md contrast rules)", () 
     const stamp = rules.find((r) => r.sel === ".stamp") as { body: string };
     expect(stamp.body).toMatch(/font-size:\s*var\(--step-1\)/);
     expect(stamp.body).toMatch(/font-weight:\s*700/);
-    // no other rule puts a pink background behind text. The pink copy behind a form sheet and the short pink line in the sidebar are
-    // empty pseudo-elements (no text sits on them): the same triplicate-form layer as .autopsy::after.
-    expect(rules.filter((r) => /background:\s*var\(--survey-pink\)/.test(r.body)).map((r) => r.sel).sort()).toEqual([".autopsy::after", ".hero-text::before", ".page.form-sheet::after", ".stamp-again"]);
+    // no other rule puts a pink background behind text. Pink means a zombie: the card's pink copy and the short pink line under the
+    // count (an empty pseudo-element, no text on it) are the only pink surfaces besides the stamp.
+    expect(rules.filter((r) => /background:\s*var\(--survey-pink\)/.test(r.body)).map((r) => r.sel).sort()).toEqual([".autopsy::after", ".hero-text::before", ".stamp-again"]);
   });
   it("orange is never a text surface; the bulk warning keeps Asphalt text on Crew white", () => {
     const orangeBg = rules.filter((r) => /background:\s*var\(--cone-orange\)/.test(r.body));
