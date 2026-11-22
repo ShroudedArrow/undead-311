@@ -31,7 +31,7 @@ const local = join(root, "..", ".local-data", "browsers");
 if (!process.env.PLAYWRIGHT_BROWSERS_PATH && existsSync(local)) process.env.PLAYWRIGHT_BROWSERS_PATH = local;
 
 const en = JSON.parse(readFileSync(join(root, "src", "copy", "en.json"), "utf8"));
-const text: ShareText = { ...en.share, stamp_closed: en.card.stamp_closed, stamp_again: en.card.stamp_again };
+const text: ShareText = { ...en.share, report_title: en.card.report_title, stamp_closed: en.card.stamp_closed, stamp_again: en.card.stamp_again };
 const gap: GapText = en.card;
 const families: Record<string, string> = en.families;
 const label = (f: string) => families[f] ?? f;
