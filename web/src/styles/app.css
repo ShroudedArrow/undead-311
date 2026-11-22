@@ -730,3 +730,17 @@ select {
   .district-page .zombie-table { border-collapse: collapse; }
   .district-page .zombie-table th, .district-page .zombie-table td { border: 1px solid var(--asphalt); padding: 4px 8px; }
 }
+
+/*
+ * Design proposals (docs/DESIGN_REVIEW.md, suggestions 2 and 4).
+ * Footer: on every page the credits run together in one paragraph flow, as they already do on the map page, so the bar is two or three
+ * lines on a wide screen instead of five stacked lines.
+ */
+.site-footer { display: block; padding-block: var(--space-2) max(var(--space-2), env(safe-area-inset-bottom)); line-height: 1.35; }
+.site-footer p { display: inline; margin-right: var(--space-2); }
+.site-footer a { display: inline-block; min-height: 2.75rem; padding-block: 0.65rem; margin-block: -0.65rem; line-height: 1.45; vertical-align: baseline; }
+/* The tour is an action, not a destination: on a wide screen it sits at the right end of the nav as a boxed link (the phone menu keeps a plain list). */
+@media (min-width: 641px) {
+  .site-nav a[href="/judge"] { border: 2px solid var(--crew-white); padding-inline: var(--space-3); }
+  .site-nav a[href="/judge"][aria-current="page"] { background: var(--crew-white); color: var(--asphalt); text-decoration: none; }
+}

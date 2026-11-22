@@ -39,7 +39,7 @@ describe("Sensitivity sliders (REQ-WEB-SLIDERS.1)", () => {
     render(<Sliders />);
     await screen.findByTestId("slider-headline");
     expect(screen.getByText(/only applies to cases that could not be placed on a segment/)).toBeTruthy();
-    expect(screen.getByTestId("slider-slo").textContent).toContain("1000 headline possible zombies and 3036 in all tiers");
+    expect(screen.getByTestId("slider-slo").textContent).toContain("1,000 headline possible zombies and 3,036 in all tiers");
     fireEvent.click(screen.getByLabelText("Distance only"));
     expect(screen.queryByText(/only applies to cases that could not be placed/)).toBeNull();
   });

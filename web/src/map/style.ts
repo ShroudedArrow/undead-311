@@ -24,7 +24,8 @@ export function tilesUrl(origin: string, baseUrl: string): string {
 }
 
 export function buildStyle(tiles: string, attribution: string): StyleSpecification {
-  const road = (id: string, kinds: string[], width: [number, number, number, number], minzoom = 0) => ({
+  // Hierarchy by weight and tint, so the pink marks read first: a lighter Asphalt tint on the small streets, full Asphalt on the arterials.
+  const road = (id: string, kinds: string[], width: [number, number, number, number], minzoom = 0, opacity = 1) => ({
     id,
     type: "line" as const,
     source: "boston",
@@ -34,6 +35,7 @@ export function buildStyle(tiles: string, attribution: string): StyleSpecificati
     layout: { "line-cap": "butt" as const, "line-join": "round" as const },
     paint: {
       "line-color": PALETTE.asphalt,
+      "line-opacity": opacity,
       "line-width": ["interpolate", ["exponential", 1.6], ["zoom"], 8, width[0], 12, width[1], 15, width[2], 18, width[3]] as never,
     },
   });
@@ -49,7 +51,7 @@ export function buildStyle(tiles: string, attribution: string): StyleSpecificati
         type: "line",
         source: "boston",
         "source-layer": "water",
-        paint: { "line-color": PALETTE.asphalt, "line-width": 1.2 },
+        paint: { "line-color": PALETTE.asphalt, "line-width": 1.2, "line-opacity": 0.7 },
       },
       {
         id: "buildings",
@@ -59,8 +61,8 @@ export function buildStyle(tiles: string, attribution: string): StyleSpecificati
         minzoom: 14,
         paint: { "fill-color": PALETTE.concrete, "fill-outline-color": PALETTE.asphalt },
       },
-      road("roads-minor", ["minor_road", "other"], [0.1, 0.4, 1, 3], 11),
-      road("roads-medium", ["medium_road"], [0.2, 0.7, 1.8, 5]),
+      road("roads-minor", ["minor_road", "other"], [0.1, 0.4, 1, 3], 12.5, 0.6),
+      road("roads-medium", ["medium_road"], [0.2, 0.7, 1.8, 5], 0, 0.5),
       road("roads-major", ["major_road"], [0.4, 1.1, 2.6, 8]),
       road("roads-highway", ["highway"], [0.8, 1.6, 3.4, 10]),
     ],

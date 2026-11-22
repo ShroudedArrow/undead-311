@@ -89,7 +89,7 @@ describe("Scorecard excess with and without bursty spots (REQ-STAT-BASE.2, REQ-W
     expect(within(row).getByTestId("excess-all").textContent).toContain("excess of 63.4 re-reports (95% interval 41.3 to 86)");
     expect(within(row).getByTestId("excess-without").textContent).toContain("Without bursty spots: excess of -2.9 re-reports (95% interval -12.1 to 6.1)");
     expect(within(row).getByTestId("excess-without").textContent).toContain("from 25 closed cases");
-    expect(within(row).getByTestId("excess-bursty").textContent).toContain("1479 of the 1504");
+    expect(within(row).getByTestId("excess-bursty").textContent).toContain("1,479 of the 1,504");
     expect(screen.getByText(/never the headline|A secondary check, never the headline/)).toBeTruthy();
   });
   it("shows no excess anywhere when the headline placebo interval does not cover 0 (methods.md, owner rule 2026-11-16)", () => {
