@@ -64,25 +64,29 @@ const OBJECTIONS_SHOWN = 2;
  * A small sketch in place of the body diagram on a postmortem form: the street as a band, the first report and the re-report as
  * markers with the distance between them. A sketch, not a map: the marker positions are fixed and the distance is the number.
  */
-function LocationDiagram({ street, distance }: { street: string | null | undefined; distance: string }) {
+function LocationDiagram({ street, distance, samePoint }: { street: string | null | undefined; distance: string; samePoint: boolean }) {
   const label = t("card.diagram_label", { street: street || t("card.place"), distance });
   return (
     <figure className="autopsy-figure" data-testid="location-diagram">
       <svg viewBox="0 0 260 100" role="img" aria-label={label} focusable="false">
         <rect x="4" y="46" width="252" height="22" className="diagram-street" />
         <line x1="10" y1="57" x2="250" y2="57" className="diagram-centerline" />
-        <line x1="60" y1="26" x2="200" y2="26" className="diagram-dimension" />
-        <line x1="60" y1="20" x2="60" y2="32" className="diagram-dimension" />
-        <line x1="200" y1="20" x2="200" y2="32" className="diagram-dimension" />
+        {samePoint ? null : (
+          <>
+            <line x1="60" y1="26" x2="200" y2="26" className="diagram-dimension" />
+            <line x1="60" y1="20" x2="60" y2="32" className="diagram-dimension" />
+            <line x1="200" y1="20" x2="200" y2="32" className="diagram-dimension" />
+          </>
+        )}
         <text x="130" y="15" textAnchor="middle" className="diagram-text">
           {distance}
         </text>
-        <circle cx="60" cy="57" r="9" className="diagram-first" />
-        <circle cx="200" cy="57" r="10" className="diagram-again" />
-        <text x="60" y="88" textAnchor="middle" className="diagram-text">
+        <circle cx={samePoint ? 124 : 60} cy="57" r="9" className="diagram-first" />
+        <circle cx={samePoint ? 136 : 200} cy="57" r="10" className="diagram-again" />
+        <text x={samePoint ? 118 : 60} y="88" textAnchor={samePoint ? "end" : "middle"} className="diagram-text">
           {t("card.diagram_first")}
         </text>
-        <text x="200" y="88" textAnchor="middle" className="diagram-text">
+        <text x={samePoint ? 142 : 200} y="88" textAnchor={samePoint ? "start" : "middle"} className="diagram-text">
           {t("card.diagram_again")}
         </text>
       </svg>
@@ -189,7 +193,7 @@ export function AutopsyCard({ card, recordConfirmed = false }: { card: CardWithP
             <dt>{t("card.cause_of_death")}</dt>
             <dd>{t(`labels.${card.cause_of_death}`)}</dd>
           </div>
-          <div>
+          <div className="field-wide">
             <dt>{t("card.confidence")}</dt>
             <dd>
               {t("card.confidence_value", { percent: Math.round(card.confidence * 100) })}
@@ -217,7 +221,7 @@ export function AutopsyCard({ card, recordConfirmed = false }: { card: CardWithP
           </div>
         </dl>
 
-        {distance === null ? null : <LocationDiagram street={card.original.street} distance={distance} />}
+        {distance === null ? null : <LocationDiagram street={card.original.street} distance={distance} samePoint={meters !== null && meters < 5} />}
 
         <SecondOpinion card={card} />
 

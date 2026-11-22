@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { formatGap } from "../lib/format";
 import { familyLabel } from "../lib/labels";
+import { ScrollHint } from "./ScrollHint";
 import { sortRows, type SortDir, type SortKey, type TableRow } from "../lib/table";
 import { t } from "../lib/t";
 
@@ -32,6 +33,7 @@ export function ZombieTable({ rows, search, loading = false }: { rows: readonly 
           {t("table.loading")}
         </p>
       ) : null}
+      <ScrollHint />
       <table className="zombie-table" data-testid="zombie-table">
         <caption>{t("table.caption")}</caption>
         <thead>

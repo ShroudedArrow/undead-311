@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ScrollHint } from "./ScrollHint";
 import { yTitleAttrs, yTitle, tickPct, chartDims, intensityText, leaderboard, limitGrid, linePath, linear, logScale, niceTicks, unusualDirection } from "../lib/charts";
 import { groupLabel, groupTitle } from "../lib/labels";
 import type { FunnelLimit, Group } from "../lib/parse";
@@ -113,6 +114,7 @@ export function Leaderboard({ groups, limits, kind }: { groups: readonly Group[]
   const hasIntensity = all.some((g) => intensityText(g) !== null);
   return (
     <>
+    <ScrollHint />
     <div className="table-wrap chart-table" tabIndex={0} role="region" aria-label={t("charts.leaderboard_caption")}>
       <table className="zombie-table" data-testid="leaderboard">
         <caption>{t("charts.leaderboard_caption")}</caption>

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { ScrollHint } from "../components/ScrollHint";
 import { ShowMore } from "../components/ShowMore";
 import { decodeShown, PAGE_SIZE, writeShown } from "../lib/paging";
 import { PageHeader } from "../components/PageHeader";
@@ -66,6 +67,7 @@ export default function RepeatPage() {
               <MapView rows={rows} selectedId={picked} onSelect={setPicked} />
             </Suspense>
           </div>
+          <ScrollHint />
           <div className="table-wrap" tabIndex={0} role="region" aria-label={t("repeat.caption")}>
             <table className="zombie-table" data-testid="repeat-table">
               <caption>{t("repeat.caption")}</caption>

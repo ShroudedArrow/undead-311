@@ -22,12 +22,27 @@ test("every page fits the screen width, with no horizontal scroll and no page ta
 });
 
 test("the form pages open with the title and the date plaque", async ({ page }) => {
-  for (const path of ["/street", "/repeat", "/scorecard", "/durability", "/methods", "/judge", "/no-such-page"]) {
+  for (const path of ["/street", "/repeat", "/scorecard", "/durability", "/methods", "/judge"]) {
     await page.goto(path);
     const sheet = page.locator(".page.form-sheet");
     await expect(sheet.locator(".form-head h1")).toBeVisible();
     await expect(sheet.getByTestId("plaque")).toContainText("Records through");
   }
+});
+
+test("the 404 page has a title and a way back, and no plaque", async ({ page }) => {
+  await page.goto("/no-such-page");
+  await expect(page.getByRole("heading", { level: 1, name: "This page stayed buried" })).toBeVisible();
+  await expect(page.getByTestId("plaque")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Go back to the map" })).toBeVisible();
+});
+
+test("tables that scroll sideways on a phone say so", async ({ page, isMobile }) => {
+  await page.goto("/durability");
+  await expect(page.getByTestId("leaderboard")).toBeVisible();
+  const hint = page.locator(".scroll-hint").first();
+  if (isMobile) await expect(hint).toBeVisible();
+  else await expect(hint).toBeHidden();
 });
 
 test("repeat offenders: 25 rows first, 'Show 25 more' adds a page and writes n to the address, and sorting is kept", async ({ page }) => {

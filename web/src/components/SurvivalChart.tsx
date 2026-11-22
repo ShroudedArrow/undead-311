@@ -1,3 +1,4 @@
+import { ScrollHint } from "./ScrollHint";
 import { bandPath, dayTicks, tickPct, yTitle, yTitleAttrs, chartDims, curveKind, linePath, linear, niceTicks } from "../lib/charts";
 import { groupLabel } from "../lib/labels";
 import type { Curve } from "../lib/parse";
@@ -78,6 +79,7 @@ export function SurvivalTable({ curves }: { curves: readonly Curve[] }) {
   const sameHalf = curves.length > 1 && curves.every((c) => c.half_life === curves[0].half_life);
   return (
     <>
+    <ScrollHint />
     <div className="table-wrap chart-table" tabIndex={0} role="region" aria-label={t("charts.survival_table_caption")}>
       <table className="zombie-table" data-testid="survival-table">
         <caption>{t("charts.survival_table_caption")}</caption>

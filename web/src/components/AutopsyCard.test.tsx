@@ -142,6 +142,12 @@ describe("AutopsyCard as a mock postmortem report (REQ-WEB-CARD.1-3, design revi
     expect(svg.getAttribute("aria-label")).toBe("Sketch of the two reports on Dorchester Ave: the first report and the report after the closure, 0 m apart.");
     expect(within(screen.getByTestId("location-diagram")).getByText("Dorchester Ave. Sketch, not to scale.")).toBeTruthy();
   });
+  it("draws overlapping markers and no distance line for a same-point pair, and the full distance line otherwise (review follow-up)", () => {
+    const { container, rerender } = render(<AutopsyCard card={CARD} />);
+    expect(container.querySelectorAll(".diagram-dimension")).toHaveLength(0);
+    rerender(<AutopsyCard card={{ ...CARD, rereport: { ...CARD.rereport, lat: 42.3003, lon: -71.05 } }} />);
+    expect(container.querySelectorAll(".diagram-dimension")).toHaveLength(3);
+  });
   it("shows the top two objections under 'Why this might not be a zombie', the rest behind Show more, with a Skeptic byline", async () => {
     const user = userEvent.setup();
     render(<AutopsyCard card={{ ...CARD, skeptic_notes: MANY }} />);

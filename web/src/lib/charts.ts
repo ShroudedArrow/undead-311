@@ -141,7 +141,7 @@ export interface ChartDims {
 export const NARROW_QUERY = "(max-width: 640px)";
 export function chartDims(narrow: boolean, tall: number): ChartDims {
   return narrow
-    ? { W: 340, H: tall - 10, M: { l: 44, r: 10, t: 32, b: 48 }, narrow }
+    ? { W: 340, H: tall - 10, M: { l: 44, r: 24, t: 32, b: 48 }, narrow }
     : { W: 640, H: tall, M: { l: 64, r: 16, t: 12, b: 44 }, narrow };
 }
 

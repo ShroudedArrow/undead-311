@@ -295,7 +295,7 @@
     "no_matches": "Nothing has risen under these filters. Clear a filter to see more."
   },
   "judge": {
-    "provisional_notice": "These examples haven’t been checked in person yet. Field-checked ones replace them after validation",
+    "provisional_notice": "These examples haven’t been checked in person yet. Field-checked ones replace them after validation.",
     "title": "60-second tour",
     "intro": "Three possible zombies, about 20 seconds each.",
     "start": "Start the tour",
@@ -655,7 +655,8 @@
   "theme": {
     "night_shift": "Night shift",
     "filed_after_dark": "Filed after dark",
-    "plaque_label": "Records through"
+    "plaque_label": "Records through",
+    "scroll_hint": "Scroll sideways to see every column."
   },
   "paging": {
     "showing": "Showing {shown} of {total}",

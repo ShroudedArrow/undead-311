@@ -20,7 +20,7 @@ import StreetPage from "./pages/StreetPage";
 function NotFound() {
   return (
     <div className="page form-sheet not-found" data-testid="not-found">
-      <PageHeader title={t("errors.not_found_heading")} />
+      <PageHeader title={t("errors.not_found_heading")} plaque={false} />
       <p>{t("errors.not_found")}</p>
       <p>
         <Link to="/" className="button-link button-primary">

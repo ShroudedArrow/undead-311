@@ -20,11 +20,12 @@ try {
       report[`${sn}-${name}`] = await page.evaluate(() => ({ h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth, iw: innerWidth }));
     };
     await go("home", "/", 4000);
-    await go("home-table", "/?view=table", 4000);
+    await go("home-table", "/?view=table", 12000);
     await go("scorecard", "/scorecard", 2500, true);
     await go("durability", "/durability", 2500, true);
     await go("methods", "/methods", 2500);
     await go("repeat", "/repeat", 3500);
+    await go("repeat-full", "/repeat", 3500, true);
     await go("street-empty", "/street", 2000);
     await go("judge", "/judge", 2000);
     await go("timelapse", "/timelapse", 4000);
@@ -34,16 +35,19 @@ try {
     await page.getByRole("searchbox").fill("Dorchester Ave"); await page.waitForTimeout(500);
     await page.locator(".street-results button").first().click(); await page.waitForTimeout(3500);
     await page.screenshot({ path: `${out}/${sn}-street-result.png` });
+    await page.screenshot({ path: `${out}/${sn}-street-result-full.png`, fullPage: true });
     report[`${sn}-street-result`] = await page.evaluate(() => ({ h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth, iw: innerWidth, url: location.search }));
     // a card: first point from points.json
     const id = await page.evaluate(async () => { const j = await (await fetch("/data/points.json")).json(); return j.id ? j.id[0] : null; });
     if (id) {
       await go("card", `/zombie/${encodeURIComponent(id)}`, 4500);
-      // the whole form: a tall window, so the panel shows every field
-      const tall = await browser.newContext({ viewport: { width: vp.width, height: sn === "phone" ? 2700 : 2100 }, reducedMotion: "reduce", isMobile: sn === "phone", hasTouch: sn === "phone" });
+      // the whole form: a tall window, so the panel shows every field. A card with four objections: collapsed, then after "Show more"
+      const tall = await browser.newContext({ viewport: { width: vp.width, height: sn === "phone" ? 3600 : 2800 }, reducedMotion: "reduce", isMobile: sn === "phone", hasTouch: sn === "phone" });
       const tp = await tall.newPage();
-      await tp.goto(base + `/zombie/${encodeURIComponent(id)}`); await tp.waitForTimeout(4500);
+      await tp.goto(base + `/zombie/${encodeURIComponent("101002680075:101003312697")}`); await tp.waitForTimeout(4500);
       await tp.locator(".card-host").screenshot({ path: `${out}/${sn}-card-form.png` });
+      await tp.getByRole("button", { name: /^Show \d+ more$/ }).click(); await tp.waitForTimeout(300);
+      await tp.locator(".card-host").screenshot({ path: `${out}/${sn}-card-form-expanded.png` });
       await tall.close();
     }
     // the judge tour's first card, with the stamp

@@ -889,3 +889,16 @@ select {
 }
 
 .street-page [data-testid="street-result"] { margin-top: var(--space-4); }
+
+/* Review follow-up: a hint above tables that scroll sideways on a phone, the title and plaque stacked, no copies behind a card inside the tour. */
+.scroll-hint { display: none; margin: 0 0 var(--space-1); }
+@media (max-width: 640px) {
+  .scroll-hint { display: block; }
+  .form-head { flex-direction: column; align-items: flex-start; }
+}
+.judge .autopsy::before, .judge .autopsy::after { display: none; }
+.judge .autopsy { margin: 0; }
+@media (min-width: 641px) {
+  .filters-panel { gap: var(--space-2); }
+  .hero-text { gap: var(--space-1); }
+}
