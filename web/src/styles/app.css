@@ -887,3 +887,5 @@ select {
   .repeat-page .zombie-table th, .repeat-page .zombie-table td { padding: var(--space-1); font-size: 0.875rem; }
   .repeat-page .zombie-table th button { min-height: 2.75rem; font-size: 0.875rem; }
 }
+
+.street-page [data-testid="street-result"] { margin-top: var(--space-4); }

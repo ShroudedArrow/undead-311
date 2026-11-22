@@ -30,14 +30,14 @@ Effort: S is under half a day, M is one to two days, L is more than two days. "B
 | 2 | Compact credits strip | High | S | Built (CSS part) |
 | 3 | Tour link becomes the one action in the header | Medium | S | Built |
 | 4 | Basemap hierarchy so pink reads first | Medium | S | Built (modest) |
-| 5 | Lead the sidebar with the count, drop the duplicate title | High | S | Mock A |
-| 6 | Cap the street and repeat lists | High | M | Proposed |
+| 5 | Lead the sidebar with the count, drop the duplicate title | High | S | Built (direction A, with the C touches) |
+| 6 | Cap the street and repeat lists | High | M | Built (25 rows, "Show 25 more", state in the address) |
 | 7 | Scorecard draws the gap | High | M | Proposed |
-| 8 | Durability: remove columns that carry nothing | Medium | S | Proposed |
+| 8 | Durability: remove columns that carry nothing | Medium | S | Built |
 | 9 | Street page empty state with examples | Medium | M | Proposed |
-| 10 | Give controls, content, notices and warnings different looks | Medium | S | Proposed |
-| 11 | Stronger type scale and tabular figures | Medium | S | Proposed |
-| 12 | Make the triplicate form read as three copies | Medium | M | Proposed |
+| 10 | Give controls, content, notices and warnings different looks | Medium | S | Built on the form pages |
+| 11 | Stronger type scale and tabular figures | Medium | S | Built on the form pages |
+| 12 | Make the triplicate form read as three copies | Medium | M | Built (copies offset 8 and 16 px, form header row; no slide-aside motion) |
 | 13 | Judge intro page shows what the tour is | Medium | M | Proposed |
 | 14 | Time-lapse final frame and reduced-motion banner | Medium | M | Proposed |
 | 15 | Phone first screen: header, count strip and footer | High | M | Proposed |
@@ -68,7 +68,7 @@ Next step (M): fill water lighter than land, and set five hand-placed labels (Do
 ### 5. Lead the sidebar with the count (S)
 
 Now: the sidebar repeats the site name as an `h1` right under the header, then two paragraphs, then the count in body size (`shots/desktop-home.png`). The number that tells the story is the third thing read.
-Change: drop the duplicate title (keep one `h1` for screen readers), set the count at about 3.2 rem in Public Sans 800, and put a short dashed divider with a pink segment under it, like a crew's line mark. Mock A shows it (`directions/a-home-desktop.png`). Copy stays as is; any new sentence is `TODO-COPY`.
+Change: drop the duplicate title (keep one `h1` for screen readers), set the count at about 3.2 rem in Public Sans 800, and put a short dashed divider with a pink segment under it, like a crew's line mark. Mock A shows it (`directions/a-home-desktop.png`). Copy stays as is; any new sentence is a placeholder for the team to write.
 
 ### 6. Cap the street and repeat lists (M)
 
@@ -88,7 +88,7 @@ Change: hide the half-life column while it is the same for every row, with one s
 ### 9. Street page empty state (M)
 
 Now: one input on a blank grey page (`shots/desktop-street-empty.png`).
-Change: show the city map with the clusters behind the form, and three example streets from the data as buttons that run the search. The input stays the first control. Example street names come from the data; the empty-state sentence is human-written (`TODO-COPY`). Darken the placeholder or drop it, since the label already exists (contrast is unverified).
+Change: show the city map with the clusters behind the form, and three example streets from the data as buttons that run the search. The input stays the first control. Example street names come from the data; the empty-state sentence is human-written, so it stays a placeholder. Darken the placeholder or drop it, since the label already exists (contrast is unverified).
 
 ### 10. Different looks for controls, content, notices and warnings (S)
 
@@ -162,3 +162,19 @@ On the sample data the repo commits: `tsc --noEmit` clean; `vitest` 532 of 532 p
 - Screenshots use reduced motion, so the time-lapse animation and the card's motion were not reviewed.
 - Keyboard focus rings, placeholder contrast and the phone views of `/scorecard`, `/durability`, `/methods`, `/repeat` and `/street` were not checked by the agent. The author took the phone shots but looked at them only for the home page, the card, the time-lapse and the judge page.
 - The footer and header changes were measured against the existing tests, not against a new visual diff.
+
+
+## Follow-up build on `design/proposals` (2026-11-22)
+
+Owner instructions for PR #43 chose direction A with the C touches (not B) and asked for the work below. Numbers are from the snap-1120 exports (screenshots in `docs/design-review/final/`, before shots in `docs/design-review/shots/`).
+
+- **Home (suggestion 5, direction A, C touches).** The count leads the sidebar at 3.2 rem on a toe-tag shape (Canary copy, chamfered corner, punched hole). The page title stays as a screen-reader heading. A "Night shift" stamp sits under the count and a "Filed after dark" stamp sits at the right end of the Map and Table row. Both stamps are `aria-hidden`, carry no data, sit beside the map (never over a marker) and are hidden under 640 px. On a phone the count stays inline and bold so the strip keeps its tested height.
+- **Long pages (suggestion 6).** `/street` and `/repeat` show 25 rows, then "Show 25 more". The rows shown are the `n` parameter in the address; `/repeat` also keeps the sort in `sort` and `dir` (sorting starts again at the first page). Document height at first load on snap-1120: `/street` result 2,251 px (was 19,997), `/repeat` 2,789 px (was 36,535); at 390 px 2,869 px (was 28,133) and 3,493 px (was 64,304). The repeat map still draws every chain.
+- **Table view cells.** The empty "Time in the grave" and "Confidence" cells were not a data bug: the table lists every possible zombie, and those two cells come from the per-neighborhood zombie files, which the page fetches after the points (about 200 requests on snap-1120). Until they arrive the cells were blank. Now they show a dash and a status line says the values are loading, and a row with no value after loading says "Not available". Row links read "Open card for Signs in Roxbury, reported again 2026-11-19" instead of an id.
+- **Durability (suggestion 8).** The half-life column is left out while every row is the same, with one sentence under the table. The reporting-intensity column is left out while no group has a value. The 9 groups under 30 cases sit behind "Show 9 groups with fewer than 30 cases". The funnel limits draw on a fixed grid of 48 sizes on the log axis; which groups are called unusual still reads the file's own limits. A note says what "Against chance" and "raw" mean.
+- **Form look (suggestions 10, 11, 12).** Street, repeat, scorecard, durability, methods, judge and the 404 page are a Crew white sheet with the canary and pink copies behind it, a header band with the date plaque (the time-lapse's rubber stamp, "Records through <date>"), Canary field strips on the scorecard rows, controls on Concrete and one Asphalt primary button. The page title is 2.25 rem at weight 800, body 1.05 rem, with tabular figures. Public Sans only: the typewriter face stays inside the autopsy form.
+- **Night of the Living 311.** A dark basemap on that page only: Asphalt land, Concrete streets at a weight that follows road rank, a lighter wash for water. The main map and every other map keep the day style.
+- **Frame touches.** A 404 page ("This page stayed buried"), loading wording ("Digging up the map"), a spray-stencil favicon drawn from the map's own seeded marker, and share images with the form header line and the canary and pink copy edge. Values, the methods page text and the scorecard figures are unchanged.
+- **Evidence card.** A mock postmortem report: fictional header with the re-report's case number and "Page 1 of 1", boxed fields (Decedent, Date of death, Date of resurrection, Time in the grave, Cause of death, Confidence, Findings), a location sketch with the distance, "Second opinion" with the top two objections and "Show more", the signature line and a stamp (POSSIBLE, or RECORD-CONFIRMED on a tour whose records confirm it). The provisional tour shows POSSIBLE.
+- **Rename.** "Marker key" is "Map key" everywhere, including the close label and the tests.
+- **Not built.** Suggestions 2 (one-line credits, the M version), 7, 9, 13, 14 and 15 are still proposals. Suggestion 12's slide-aside motion is not built.

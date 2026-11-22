@@ -37,7 +37,19 @@ try {
     report[`${sn}-street-result`] = await page.evaluate(() => ({ h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth, iw: innerWidth, url: location.search }));
     // a card: first point from points.json
     const id = await page.evaluate(async () => { const j = await (await fetch("/data/points.json")).json(); return j.id ? j.id[0] : null; });
-    if (id) await go("card", `/zombie/${encodeURIComponent(id)}`, 4500);
+    if (id) {
+      await go("card", `/zombie/${encodeURIComponent(id)}`, 4500);
+      // the whole form: a tall window, so the panel shows every field
+      const tall = await browser.newContext({ viewport: { width: vp.width, height: sn === "phone" ? 2700 : 2100 }, reducedMotion: "reduce", isMobile: sn === "phone", hasTouch: sn === "phone" });
+      const tp = await tall.newPage();
+      await tp.goto(base + `/zombie/${encodeURIComponent(id)}`); await tp.waitForTimeout(4500);
+      await tp.locator(".card-host").screenshot({ path: `${out}/${sn}-card-form.png` });
+      await tall.close();
+    }
+    // the judge tour's first card, with the stamp
+    await page.goto(base + "/judge"); await page.waitForTimeout(1500);
+    await page.getByRole("button", { name: "Start the tour" }).click(); await page.waitForTimeout(1500);
+    await page.screenshot({ path: `${out}/${sn}-judge-step-1.png` });
     await ctx.close();
   }
 } finally { await browser.close(); await server.close(); }

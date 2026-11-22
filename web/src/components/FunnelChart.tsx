@@ -140,7 +140,7 @@ export function Leaderboard({ groups, limits, kind }: { groups: readonly Group[]
                 <td>{pct(g.shrunk)}</td>
                 <td>{g.lo === null || g.hi === null ? "" : t("charts.interval_text", { lo: pct(g.lo), hi: pct(g.hi) })}</td>
                 <td>{pct(g.raw)}</td>
-                <td>{g.n}</td>
+                <td>{g.n.toLocaleString("en-US")}</td>
                 {hasIntensity ? <td>{intensity === null ? t("charts.intensity_missing") : t("charts.intensity_value", { value: intensity })}</td> : null}
                 <td>{g.direction === null ? t("charts.typical") : t(`charts.unusual_${g.direction}`)}</td>
               </tr>
