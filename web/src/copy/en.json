@@ -281,7 +281,8 @@
     "report_heading": "Found a mistake?",
     "report_text": "Open an issue with the case numbers and what is wrong. Confirmed corrections go in the log.",
     "sample_notice": "Every number on this page comes from a sample of {count} cases, not from all Boston 311 cases. The full-data run will replace them.",
-    "toc_heading": "On this page"
+    "toc_heading": "On this page",
+    "limit_skeptic": "The Skeptic reviewed only the highest-ranked candidates, so most cards have no second opinion."
   },
   "errors": {
     "panel_failed": "This panel’s data didn’t load. Reload the page; if it still fails, the file named below is missing or out of date.",
@@ -449,7 +450,6 @@
     "verdict_weakened": "The evidence is weaker than it first looked.",
     "verdict_explained_away": "The Skeptic found a likely innocent explanation.",
     "verdict_not_reviewed": "The Skeptic has not reviewed this one yet.",
-    "no_notes": "No objections recorded.",
     "original": "Original case",
     "rereport": "Reported again",
     "case_id": "Case",

@@ -63,7 +63,6 @@
     "verdict_weakened": "La evidencia es más débil de lo que parecía.",
     "verdict_explained_away": "El escéptico encontró una explicación inocente probable.",
     "verdict_not_reviewed": "El escéptico todavía no ha revisado este caso.",
-    "no_notes": "No hay objeciones registradas.",
     "original": "Caso original",
     "rereport": "Reportado de nuevo",
     "case_id": "Caso",

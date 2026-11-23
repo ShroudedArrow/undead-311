@@ -277,6 +277,7 @@ export default function MethodsPage() {
               <li>{t("methods.limit_floor")}</li>
               <li>{t("methods.limit_intersection")}</li>
               <li>{t("methods.limit_origin")}</li>
+              <li data-testid="limit-skeptic">{t("methods.limit_skeptic")}</li>
             </ul>
           </section>
           <LeavesOut />

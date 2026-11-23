@@ -95,40 +95,35 @@ function LocationDiagram({ street, distance, samePoint }: { street: string | nul
   );
 }
 
+/**
+ * The Skeptic's second opinion. It appears only when the Skeptic recorded at least one objection for this zombie: most cards have
+ * none (the Skeptic reviewed only the highest-ranked candidates), and an empty section or a "not reviewed" line says nothing.
+ */
 function SecondOpinion({ card }: { card: CardWithPartial }) {
   const [all, setAll] = useState(false);
   const listId = useId();
-  // Ops issue 217: an unreviewed card shows only the not-reviewed verdict, so it never reads as cleared.
-  const hideNotes = card.skeptic_verdict === "not_reviewed" && !card.skeptic_notes;
   const objections = splitObjections(card.skeptic_notes);
+  if (objections.length === 0) return null;
   const hidden = Math.max(0, objections.length - OBJECTIONS_SHOWN);
   const shown = all ? objections : objections.slice(0, OBJECTIONS_SHOWN);
   return (
-    <section className="skeptic" aria-label={t("card.skeptic")}>
+    <section className="skeptic" aria-label={t("card.skeptic")} data-testid="second-opinion">
       <h3>{t("card.skeptic")}</h3>
-      {hideNotes ? null : (
-        <>
-          <p className="skeptic-label">{t("card.skeptic_label")}</p>
-          {objections.length === 0 ? (
-            <p>{t("card.no_notes")}</p>
-          ) : (
-            <ul className="skeptic-list" id={listId}>
-              {shown.map((o) => (
-                <li key={o}>{o}</li>
-              ))}
-            </ul>
-          )}
-          {hidden > 0 ? (
-            <button type="button" className="skeptic-more" aria-expanded={all} aria-controls={listId} onClick={() => setAll(!all)}>
-              {all ? t("card.show_fewer") : t("card.show_more", { count: hidden })}
-            </button>
-          ) : null}
-        </>
-      )}
+      <p className="skeptic-label">{t("card.skeptic_label")}</p>
+      <ul className="skeptic-list" id={listId}>
+        {shown.map((o) => (
+          <li key={o}>{o}</li>
+        ))}
+      </ul>
+      {hidden > 0 ? (
+        <button type="button" className="skeptic-more" aria-expanded={all} aria-controls={listId} onClick={() => setAll(!all)}>
+          {all ? t("card.show_fewer") : t("card.show_more", { count: hidden })}
+        </button>
+      ) : null}
       <p>
         <strong>{t("card.verdict")}:</strong> {t(VERDICTS[card.skeptic_verdict])}
       </p>
-      {hideNotes ? null : <p className="skeptic-byline">{t("card.skeptic_byline")}</p>}
+      <p className="skeptic-byline">{t("card.skeptic_byline")}</p>
     </section>
   );
 }
