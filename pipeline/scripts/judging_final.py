@@ -25,6 +25,13 @@ This script:
    files are put back and nothing is written);
 4. replaces the judge-mode files in `data/judging/` (the new tour's three card shards come with it).
 
+`--exports-only --archive-sha256 <hex>` (REQ-OPS-SNAP.5) is for a machine that has no `raw/` or `processed/` folder. Instead of
+re-hashing them it downloads the release `exports-<run-id>` of the data repo through the REST API (needs `DATA_RELEASE_TOKEN`,
+read access is enough; `--transport gh` uses `gh api`, REST only, with gh's own login instead), checks the archive's SHA-256 against the value recorded at the snapshot, unpacks it into a scratch
+folder, and requires every `web/public/data/` row of the judging section to equal the unpacked files (extra, missing or changed
+files stop it). The raw and processed rows and the DuckDB table counts are carried over unchanged, and the section says so in a
+one-line note. Step 3 still applies: anything besides the two files changing a row stops it, and nothing is written.
+
 It never tags, pushes or publishes. It prints the next steps: commit `data/SNAPSHOT.md`, `data/judging/` and
 `docs/VALIDATION.md`, tag, and publish the run's exports again (`exports_release.py publish --run-id <run>`; the run's release
 asset is replaced) so the live site's Methods page shows the same validation numbers.
@@ -35,11 +42,16 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import tempfile
+from contextlib import ExitStack
 from pathlib import Path
 from types import SimpleNamespace
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
+sys.path.insert(0, str(HERE))
+
+import exports_release as er
 
 from undead311 import snapshot as snap
 from undead311.export.writers import canonical_json, validate, write_text_atomic
@@ -107,7 +119,26 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--processed", type=Path, default=None, help="default $DATA_DIR/processed")
     ap.add_argument("--raw", type=Path, default=None, help="default: the raw folder beside --processed")
     ap.add_argument("--dry-run", action="store_true", help="say what would change; write nothing")
+    ap.add_argument("--exports-only", action="store_true",
+                    help="no raw/ or processed/ here: verify the release exports-<run-id> and carry the raw and processed rows over")
+    ap.add_argument("--archive-sha256", default=None, help="with --exports-only: the SHA-256 of the release archive recorded at the snapshot")
+    ap.add_argument("--transport", choices=("rest", "gh"), default="rest",
+                    help="with --exports-only: rest = direct REST calls with DATA_RELEASE_TOKEN (default); gh = `gh api` REST calls with gh's own login")
+    ap.add_argument("--data-repo", default=er.DATA_REPO, help=argparse.SUPPRESS)
+    ap.add_argument("--api-url", default=er.API_URL, help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
+    if a.exports_only and (not a.archive_sha256 or a.public or a.processed or a.raw):
+        raise FinalError("judging-final: --exports-only needs --archive-sha256 and takes no --public, --processed or --raw")
+    if a.archive_sha256 and not a.exports_only:
+        raise FinalError("judging-final: --archive-sha256 is only for --exports-only")
+    with ExitStack() as stack:
+        if a.exports_only:
+            scratch = Path(stack.enter_context(tempfile.TemporaryDirectory(dir=data_dir(), prefix=f"exports-only-{a.run_id}-")))
+            return run(a, scratch)
+        return run(a, None)
+
+
+def run(a: argparse.Namespace, scratch: Path | None) -> int:
     public = a.public or data_dir() / "exports" / a.run_id
     processed = a.processed or data_dir() / "processed"
     raw = a.raw or processed.parent / "raw"
@@ -116,7 +147,23 @@ def main(argv: list[str] | None = None) -> int:
     section = snap.extract_section(text)
     if section is None or f"Run: `{a.run_id}`" not in section:
         raise FinalError(f"judging-final: {a.snapshot} has no judging section for run {a.run_id}; run `make snapshot RUN_ID={a.run_id}` first")
-    snap.check_run(public, processed, a.run_id)
+    note = None
+    if scratch is not None:
+        try:
+            er.fetch_release(a.run_id, scratch, a.archive_sha256, a.data_repo, api_url=a.api_url, transport=a.transport)
+        except er.ExportsError as exc:
+            raise FinalError(f"judging-final: {exc}. Nothing changed") from None
+        public, processed = scratch / "exports", None
+        snap.check_run(public, None, a.run_id)
+        problems = snap.verify_exports(text, public, a.run_id)
+        if problems:
+            raise FinalError("judging-final: the release does not match the judging section: " + "; ".join(problems[:8])
+                             + ". Nothing changed")
+        note = (f"exports checked against release `exports-{a.run_id}` (archive sha256 `{a.archive_sha256}`); the rows under "
+                "`raw/` and `processed/` and the DuckDB table counts are carried over unchanged from the provisional snapshot, "
+                "where they were verified, and were not re-hashed here.")
+    else:
+        snap.check_run(public, processed, a.run_id)
     old_rows = snap.section_rows(text)
     new_val, new_tour, v = plan(public, a.labels_dir, a.source)
 
@@ -125,7 +172,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         for p, body in paths.items():
             write_text_atomic(p, body)
-        new_section = snap.build(public, processed, None, None, raw, run_id=a.run_id, stage="final")
+        if note:
+            new_section = snap.build_exports_only(text, public, a.run_id, "final", note)
+        else:
+            new_section = snap.build(public, processed, None, None, raw, run_id=a.run_id, stage="final")
         new_rows = snap.section_rows(new_section)
         changed = snap.row_changes(old_rows, new_rows)
         stray = sorted(set(changed) - ALLOWED)

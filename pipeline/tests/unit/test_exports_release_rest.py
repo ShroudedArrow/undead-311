@@ -10,6 +10,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import re
+import subprocess
 import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -80,7 +81,10 @@ def make_handler(mock: Mock, role: str):
             m = re.fullmatch(r"/repos/[^/]+/[^/]+/releases/tags/(.+)", path)
             if m:
                 rel = mock.releases.get(m.group(1))
-                return self._json(200, rel) if rel else self._json(404, {"message": "Not Found"})
+                if not rel:
+                    return self._json(404, {"message": "Not Found"})
+                listed = [{"id": i, "name": a["name"], "size": len(a["data"])} for i, a in mock.assets.items() if a["release"] == rel["id"]]
+                return self._json(200, {**rel, "assets": listed})  # like GitHub: the release lists its assets
             m = re.fullmatch(r"/repos/[^/]+/[^/]+/releases/assets/(\d+)", path)
             if m and "octet-stream" in (self.headers.get("Accept") or ""):
                 self.send_response(302)  # like GitHub: a signed URL on another host
@@ -239,3 +243,81 @@ def test_req_ops_publish_1_a_dry_run_lists_the_rest_calls_and_sends_nothing(tmp_
     assert not mock.requests and len(calls) == 5
     assert "uploads?" not in out and "/assets?name=exports-r7.tar.gz" in out and "verify the SHA-256" in out
     assert "gh release" not in out
+
+
+# ---- fetch_release: the exports-only judging-final download (REQ-OPS-SNAP.5) ------------------------------------------------------
+
+def published(tmp_path, mock, run="r9") -> str:
+    """Publish a small export to the mock and return the archive's SHA-256 (what the snapshot would have recorded)."""
+    er.publish(run, make_export(tmp_path / "e"), SLUG, False, tmp_path / "rel", **urls(mock))
+    return er.sha256_file(tmp_path / "rel" / f"exports-{run}.tar.gz")
+
+
+def test_req_ops_snap_5_fetch_release_downloads_over_rest_checks_the_hash_and_unpacks(tmp_path, mock, env):
+    want = published(tmp_path, mock)
+    mock.requests.clear()
+    manifest = er.fetch_release("r9", tmp_path / "got", want, SLUG, api_url=urls(mock)["api_url"])
+    assert manifest["run_id"] == "r9" and (tmp_path / "got" / "exports" / "zombies.json").read_text() == json.dumps({"rows": list(range(500))})
+    assert (tmp_path / "got" / "exports" / "status.json").is_file()
+    api, storage = [r for r in mock.requests if r["host"] == "api"], [r for r in mock.requests if r["host"] == "storage"]
+    assert all(r["method"] == "GET" and r["auth"] == f"Bearer {TOKEN}" for r in api) and storage and all(r["auth"] is None for r in storage)
+    assert not any("graphql" in p for p in mock.paths())
+
+
+def test_req_ops_snap_5_a_different_recorded_hash_refuses_before_anything_is_unpacked(tmp_path, mock, env):
+    published(tmp_path, mock)
+    with pytest.raises(er.ExportsError, match="SHA-256 mismatch for exports-r9.tar.gz: the snapshot recorded 0{12}"):
+        er.fetch_release("r9", tmp_path / "got", "0" * 64, SLUG, api_url=urls(mock)["api_url"])
+    assert not (tmp_path / "got" / "exports").exists() and not (tmp_path / "got" / "exports-r9.tar.gz").exists()
+
+
+def test_req_ops_snap_5_a_release_whose_sha256_file_disagrees_is_not_unpacked(tmp_path, mock, env):
+    want = published(tmp_path, mock)
+    side = next(a for a in mock.assets.values() if a["name"] == "exports-r9.sha256")
+    side["data"] = b"1" * 64 + b"  exports-r9.tar.gz\n"
+    with pytest.raises(er.ExportsError, match="does not say"):
+        er.fetch_release("r9", tmp_path / "got", want, SLUG, api_url=urls(mock)["api_url"])
+    assert not (tmp_path / "got" / "exports").exists()
+
+
+@pytest.mark.parametrize("what", ["no_release", "no_token", "bad_hash_text"])
+def test_req_ops_snap_5_fetch_release_refuses_a_missing_release_token_or_malformed_hash(tmp_path, mock, env, monkeypatch, what):
+    want = published(tmp_path, mock)
+    if what == "no_token":
+        monkeypatch.delenv("DATA_RELEASE_TOKEN")
+    msg = {"no_release": "no release exports-nope", "no_token": "DATA_RELEASE_TOKEN is not set", "bad_hash_text": "64 lowercase hex"}[what]
+    with pytest.raises(er.ExportsError, match=msg):
+        er.fetch_release("nope" if what == "no_release" else "r9", tmp_path / "got", "xyz" if what == "bad_hash_text" else want,
+                         SLUG, api_url=urls(mock)["api_url"])
+
+
+def test_req_ops_snap_5_the_gh_transport_reads_only_rest_endpoints_and_needs_no_token(tmp_path, mock, env, monkeypatch):
+    """`gh api` stands in for the REST calls in a sandbox whose gh has its own login; the fake serves the mock's state."""
+    want = published(tmp_path, mock)
+    monkeypatch.delenv("DATA_RELEASE_TOKEN")
+    calls = []
+
+    def fake_run(cmd, capture_output=False, stdout=None, stderr=None, timeout=None, **kw):
+        calls.append(cmd)
+        assert cmd[:2] == ["gh", "api"] and "graphql" not in " ".join(cmd) and cmd[-1].startswith("repos/")
+        path = "/" + cmd[-1]
+        tag = re.fullmatch(r"/repos/[^/]+/[^/]+/releases/tags/(.+)", path)
+        asset = re.fullmatch(r"/repos/[^/]+/[^/]+/releases/assets/(\d+)", path)
+        if tag and tag.group(1) in mock.releases:
+            rel = mock.releases[tag.group(1)]
+            listed = [{"id": i, "name": a["name"]} for i, a in mock.assets.items() if a["release"] == rel["id"]]
+            return subprocess.CompletedProcess(cmd, 0, json.dumps({**rel, "assets": listed}).encode(), b"")
+        if asset and stdout is not None:
+            stdout.write(mock.assets[int(asset.group(1))]["data"])
+            return subprocess.CompletedProcess(cmd, 0, None, b"")
+        return subprocess.CompletedProcess(cmd, 1, b"", b"gh: Not Found (HTTP 404)")
+
+    monkeypatch.setattr(er.subprocess, "run", fake_run)
+    er.fetch_release("r9", tmp_path / "got", want, SLUG, transport="gh")
+    assert (tmp_path / "got" / "exports" / "zombies.json").is_file() and len(calls) == 3
+    with pytest.raises(er.ExportsError, match="no release exports-nope"):
+        er.fetch_release("nope", tmp_path / "got2", want, SLUG, transport="gh")
+    with pytest.raises(er.ExportsError, match="SHA-256 mismatch"):
+        er.fetch_release("r9", tmp_path / "got3", "0" * 64, SLUG, transport="gh")
+    with pytest.raises(er.ExportsError, match="unknown transport"):
+        er.fetch_release("r9", tmp_path / "got4", want, SLUG, transport="curl")
