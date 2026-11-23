@@ -6,15 +6,17 @@ import { AutopsyCard, type CardWithPartial } from "../components/AutopsyCard";
 import { splitObjections } from "../lib/autopsy";
 
 /**
- * REQ-WEB-JUDGE.1, REQ-WEB-CARD.1 (design review 5): the tour's cards come from the frozen judging snapshot, which is the committed
- * `data/judging/` folder (points.json, stats/judge_tour.json and one card shard per neighborhood and year). Each tour zombie must
- * carry a Skeptic objection there, so the tour shows its second opinion on every card.
+ * REQ-WEB-JUDGE.1, REQ-WEB-CARD.1 (design review 5, 13): the tour's cards come from the frozen judging snapshot, the committed
+ * `data/judging/` folder (points.json, stats/judge_tour.json and one card shard per neighborhood and year). This reads those files
+ * as they are: each tour zombie has a card there, the card shows a Second opinion exactly when the Skeptic recorded an objection,
+ * and a record-confirmed tour stamps RECORD-CONFIRMED on every card.
  */
 const root = join(__dirname, "..", "..", "..", "data", "judging");
 const tourFile = join(root, "stats", "judge_tour.json");
 
 describe.skipIf(!existsSync(tourFile))("the judge tour's cards in data/judging (REQ-WEB-JUDGE.1)", () => {
-  const ids: string[] = existsSync(tourFile) ? JSON.parse(readFileSync(tourFile, "utf8")).zombie_ids : [];
+  const tour = existsSync(tourFile) ? JSON.parse(readFileSync(tourFile, "utf8")) : { zombie_ids: [] };
+  const ids: string[] = tour.zombie_ids;
   const cards = new Map<string, CardWithPartial>();
   if (existsSync(join(root, "cards"))) {
     for (const f of readdirSync(join(root, "cards"))) {
@@ -25,14 +27,22 @@ describe.skipIf(!existsSync(tourFile))("the judge tour's cards in data/judging (
     expect(ids).toHaveLength(3);
     expect([...cards.keys()].sort()).toEqual([...ids].sort());
   });
-  it("gives every tour zombie at least one Skeptic objection, and the card shows it", () => {
+  it("shows the Second opinion on a tour card exactly when the Skeptic recorded an objection", () => {
     for (const id of ids) {
       const card = cards.get(id) as CardWithPartial;
       const objections = splitObjections(card.skeptic_notes);
-      expect(objections.length, id).toBeGreaterThan(0);
       const { unmount } = render(<AutopsyCard card={card} />);
-      const section = within(screen.getByTestId("autopsy-card")).getByTestId("second-opinion");
-      expect(within(section).getByText(objections[0]), id).toBeTruthy();
+      const view = within(screen.getByTestId("autopsy-card"));
+      if (objections.length > 0) expect(within(view.getByTestId("second-opinion")).getByText(objections[0]), id).toBeTruthy();
+      else expect(view.queryByTestId("second-opinion"), id).toBeNull();
+      unmount();
+    }
+  });
+  it("stamps every card RECORD-CONFIRMED when the tour file says it is confirmed by the city's records", () => {
+    const confirmed = tour.provisional === false && tour.confirmation === "records";
+    for (const id of ids) {
+      const { unmount } = render(<AutopsyCard card={cards.get(id) as CardWithPartial} recordConfirmed={confirmed} />);
+      expect(screen.getByTestId("verdict-stamp").textContent, id).toBe(confirmed ? "Status: RECORD-CONFIRMED" : "Status: POSSIBLE");
       unmount();
     }
   });
