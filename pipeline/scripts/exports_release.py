@@ -30,6 +30,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -288,6 +289,89 @@ class GitHubRest:
         except (urllib.error.URLError, OSError) as exc:
             raise ExportsError(f"the verification download of asset {asset_id} failed: {type(exc).__name__}") from None
         return h.hexdigest(), size
+
+
+    def release_by_tag(self, tag: str) -> dict | None:
+        """The release for `tag` with its assets, or None when there is none."""
+        rel = self.call("GET", f"{self.api}/repos/{self.repo}/releases/tags/{urllib.parse.quote(tag)}", ok_missing=True)
+        return rel if isinstance(rel, dict) else None
+
+    def download_to(self, asset_id: int, path: Path) -> tuple[str, int]:
+        """Stream the asset to `path`; returns its SHA-256 and size. The token goes to the API host only (see `_SameHostRedirect`)."""
+        req = self._request("GET", f"{self.api}/repos/{self.repo}/releases/assets/{asset_id}", accept="application/octet-stream")
+        h, size = hashlib.sha256(), 0
+        try:
+            with self.opener.open(req, timeout=self.timeout) as r, Path(path).open("wb") as out:
+                for chunk in iter(lambda: r.read(1 << 20), b""):
+                    h.update(chunk)
+                    size += len(chunk)
+                    out.write(chunk)
+        except urllib.error.HTTPError as exc:
+            raise ExportsError(f"GitHub answered {exc.code} to the download of asset {asset_id}") from None
+        except (urllib.error.URLError, OSError) as exc:
+            raise ExportsError(f"the download of asset {asset_id} failed: {type(exc).__name__}") from None
+        return h.hexdigest(), size
+
+
+class GhApi:
+    """The same two reads over `gh api` (REST endpoints only, never GraphQL). For a sandbox whose `gh` carries its own
+    credentials, so no `DATA_RELEASE_TOKEN` is read or sent. `fetch_release(transport="gh")`."""
+
+    def __init__(self, repo: str, timeout: float = 600):
+        self.repo, self.timeout = repo, timeout
+
+    def release_by_tag(self, tag: str) -> dict | None:
+        r = subprocess.run(["gh", "api", f"repos/{self.repo}/releases/tags/{urllib.parse.quote(tag)}"], check=False, capture_output=True, timeout=self.timeout)
+        if r.returncode != 0:
+            if b"404" in r.stderr:
+                return None
+            raise ExportsError(f"gh api failed for release {tag}: {r.stderr.decode('utf-8', 'replace')[:200]}")
+        rel = json.loads(r.stdout)
+        return rel if isinstance(rel, dict) else None
+
+    def download_to(self, asset_id: int, path: Path) -> tuple[str, int]:
+        with Path(path).open("wb") as out:
+            r = subprocess.run(["gh", "api", "-H", "Accept: application/octet-stream", f"repos/{self.repo}/releases/assets/{asset_id}"],
+                               check=False, stdout=out, stderr=subprocess.PIPE, timeout=self.timeout)
+        if r.returncode != 0:
+            raise ExportsError(f"gh api failed for asset {asset_id}: {r.stderr.decode('utf-8', 'replace')[:200]}")
+        return sha256_file(path), Path(path).stat().st_size
+
+
+def fetch_release(run_id: str, dest: Path, expected_sha256: str, repo: str = DATA_REPO, token: str | None = None,
+                  api_url: str = API_URL, transport: str = "rest") -> dict:
+    """Download the release `exports-<run_id>` through the REST API, check the archive's SHA-256 against `expected_sha256`
+    (the value recorded at the snapshot) and against the release's own `.sha256` file, and unpack it into `dest`
+    (REQ-OPS-SNAP.5). Nothing is unpacked unless both hashes agree. Returns the manifest."""
+    if transport not in {"rest", "gh"}:
+        raise ExportsError(f"unknown transport {transport!r}; use rest or gh")
+    token = token if token is not None else os.environ.get(TOKEN_VAR, "").strip()
+    if transport == "rest" and not token:
+        raise ExportsError(f"{TOKEN_VAR} is not set; the data repo is private, so downloading its release needs a read token (or transport gh)")
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_sha256 or ""):
+        raise ExportsError("the expected SHA-256 must be 64 lowercase hex digits")
+    api = GhApi(repo) if transport == "gh" else GitHubRest(token, repo, api_url, UPLOADS_URL)
+    rel = api.release_by_tag(PREFIX + run_id)
+    if rel is None:
+        raise ExportsError(f"no release {PREFIX}{run_id} in {repo}")
+    assets = {a.get("name"): a for a in rel.get("assets", []) if isinstance(a, dict) and "id" in a}
+    name = f"{PREFIX}{run_id}.tar.gz"
+    for need in (name, name.removesuffix(".tar.gz") + ".sha256"):
+        if need not in assets:
+            raise ExportsError(f"release {PREFIX}{run_id} has no asset {need}")
+    dest = Path(dest)
+    dest.mkdir(parents=True, exist_ok=True)
+    archive, sha_file = dest / name, dest / (name.removesuffix(".tar.gz") + ".sha256")
+    got, _ = api.download_to(assets[name]["id"], archive)
+    if got != expected_sha256:
+        archive.unlink(missing_ok=True)
+        raise ExportsError(f"SHA-256 mismatch for {name}: the snapshot recorded {expected_sha256[:12]}, the release serves {got[:12]}")
+    api.download_to(assets[sha_file.name]["id"], sha_file)
+    published = sha_file.read_text(encoding="utf-8").split()[:1]
+    if published != [expected_sha256]:
+        raise ExportsError(f"the release's {sha_file.name} does not say {expected_sha256[:12]}; refusing to unpack")
+    out = dest / "exports"
+    return unpack(archive, sha_file, out)
 
 
 def verify_asset(gh_rest: GitHubRest, asset: dict, path: Path) -> None:

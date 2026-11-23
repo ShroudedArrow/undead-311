@@ -131,6 +131,22 @@ def recorded_tag_and_stage(snapshot_text: str) -> tuple[str | None, str | None]:
     return (tag.group(1) if tag else None), stage
 
 
+NOTE_PREFIX = "Note (exports-only): "
+
+
+def strip_note(section: str) -> str:
+    """`section` without the exports-only note line (and its blank line), so a full-data `--check` can compare it textually."""
+    lines = section.split("\n")
+    out = []
+    for i, line in enumerate(lines):
+        if line.startswith(NOTE_PREFIX):
+            continue
+        if line == "" and i > 0 and lines[i - 1].startswith(NOTE_PREFIX):
+            continue
+        out.append(line)
+    return "\n".join(out)
+
+
 STAGES = {
     "provisional": "provisional (field labels not scored yet; the judge tour is the provisional ranking)",
     "final": "final (field labels scored; the judge tour uses only confirmed zombies)",
@@ -139,10 +155,11 @@ STAGES = {
 
 def render_section(
     rows: list[tuple[str, int, str]], data_end: str, tag: str, counts: dict[str, int] | None = None,
-    run_id: str | None = None, data_version: str | None = None, stage: str | None = None,
+    run_id: str | None = None, data_version: str | None = None, stage: str | None = None, note: str | None = None,
 ) -> str:
     """The judging section, markers included. `counts` (DuckDB table row counts) is listed under the file table.
-    `run_id`, `data_version` and `stage` (REQ-OPS-SNAP.3) name the run the files came from and whether the judge tour is final."""
+    `run_id`, `data_version` and `stage` (REQ-OPS-SNAP.3) name the run the files came from and whether the judge tour is final.
+    `note` (one line, REQ-OPS-SNAP.5) is how an exports-only `judging-final` says which rows it carried over; `strip_note` removes it."""
     lines = [
         BEGIN,
         "## Judging snapshot",
@@ -163,6 +180,7 @@ def render_section(
         ),
         f"The DuckDB file itself is not hashed: DuckDB does not write identical bytes for identical data. Its table row counts are listed above and hashed as `{COUNTS_LABEL}`. The pipeline writes no Parquet.",
         "",
+        *([f"{NOTE_PREFIX}{note}", ""] if note else []),
         "Owner steps after `make snapshot` (the script never tags or pushes):",
         "",
         f"1. Commit `data/SNAPSHOT.md` and `data/judging/` (the judge-mode files; every other file is a row in the table above, not in git), then run `git tag -a {tag} -m \"Judging snapshot, data through {data_end}\"` and `git push origin {tag}`. Never commit the run's exports into `web/public/data/`.",
@@ -418,3 +436,64 @@ def row_changes(old: list[tuple[str, int, str]], new: list[tuple[str, int, str]]
     out.update({k: "added" for k in b.keys() - a.keys()})
     out.update({k: "removed" for k in a.keys() - b.keys()})
     return dict(sorted(out.items()))
+
+
+# ---- exports-only judging-final (REQ-OPS-SNAP.5) ---------------------------------------------------------------------------------
+
+def section_counts(snapshot_text: str) -> dict[str, int]:
+    """The DuckDB table row counts listed under the judging table; empty when there are none."""
+    lines = (extract_section(snapshot_text) or "").splitlines()
+    out: dict[str, int] = {}
+    try:
+        start = lines.index("| DuckDB table | rows |") + 2
+    except ValueError:
+        return out
+    for line in lines[start:]:
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if not line.startswith("|") or len(cells) != 2 or not cells[1].isdigit():
+            break
+        out[cells[0]] = int(cells[1])
+    return out
+
+
+def section_field(snapshot_text: str, pattern: str) -> str | None:
+    m = re.search(pattern, extract_section(snapshot_text) or "")
+    return m.group(1) if m else None
+
+
+def verify_exports(snapshot_text: str, public_dir: Path, run_id: str) -> list[str]:
+    """Problems when the judging section's export rows (`web/public/data/...`) are checked against `public_dir`, an unpacked
+    release, without raw or processed files. Empty means every export row matches the files and there are no other files.
+    The section's own consistency (row count, combined hash, DuckDB counts against their hashed row) is checked too."""
+    problems = []
+    section = extract_section(snapshot_text)
+    if section is None or f"Run: `{run_id}`" not in section:
+        return [f"the judging section does not name run {run_id}"]
+    rows = section_rows(snapshot_text)
+    m = re.search(r"Files hashed: (\d+)\. Combined sha256: `([0-9a-f]{64})`", section)
+    if m is None or int(m.group(1)) != len(rows) or combined_hash(rows) != m.group(2):
+        problems.append("the judging section is not self-consistent (row count or combined sha256)")
+    counts_row = next((r for r in rows if r[0] == COUNTS_LABEL), None)
+    counts = section_counts(snapshot_text)
+    if counts_row is not None and hashlib.sha256(counts_text(counts).encode()).hexdigest() != counts_row[2]:
+        problems.append("the DuckDB table counts under the table do not match their hashed row")
+    old = [r for r in rows if r[0].startswith(PUBLIC_PREFIX)]
+    new = collect(public_dir, None, None)
+    problems += [f"{k} ({v})" for k, v in row_changes(old, new).items()]
+    end = status_data_end(public_dir)
+    if end != section_field(snapshot_text, r"Data through: (\S+?)\."):
+        problems.append(f"data_end {end} differs from the section's 'Data through'")
+    version = status_field(public_dir, "data_version")
+    if version != section_field(snapshot_text, r"data version `([^`]+)`"):
+        problems.append(f"data_version {version} differs from the section's data version")
+    return problems
+
+
+def build_exports_only(snapshot_text: str, public_dir: Path, run_id: str, stage: str, note: str) -> str:
+    """The judging section for `public_dir`'s export rows, with every row outside `web/public/data/` (raw, processed) and the
+    DuckDB table counts carried over from `snapshot_text` unchanged."""
+    carried = [r for r in section_rows(snapshot_text) if not r[0].startswith(PUBLIC_PREFIX)]
+    rows = sorted(carried + collect(public_dir, None, None))
+    end = data_end_of(public_dir)
+    return render_section(rows, end, default_tag(end, stage), section_counts(snapshot_text), run_id,
+                          status_field(public_dir, "data_version"), stage, note)
