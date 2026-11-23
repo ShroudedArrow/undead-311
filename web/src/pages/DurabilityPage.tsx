@@ -1,5 +1,6 @@
 import { useId, useMemo, useState } from "react";
 import { FunnelChart, FunnelLegend, Leaderboard } from "../components/FunnelChart";
+import { PageHeader } from "../components/PageHeader";
 import { PanelError } from "../components/PanelError";
 import { SurvivalChart, SurvivalLegend, SurvivalTable, curveLabel } from "../components/SurvivalChart";
 import { curveKind, curvesFor, type CurveKind } from "../lib/charts";
@@ -113,8 +114,8 @@ export default function DurabilityPage() {
   const files = [useData("survival.json", parseSurvival), useData("funnel.json", parseFunnel), useData("groups.json", parseGroups)];
   const loading = files.some((f) => f.status === "loading");
   return (
-    <div className="page">
-      <h1>{t("charts.title")}</h1>
+    <div className="page form-sheet">
+      <PageHeader title={t("charts.title")} />
       {loading ? (
         <div data-slot="page-loading" aria-busy="true"><p className="count-note">{t("app.loading_section")}</p></div>
       ) : (

@@ -113,6 +113,11 @@ describe("Methods page (REQ-WEB-METHODS.1)", () => {
     expect(rec.textContent).toContain("not conditions on the street");
     expect(screen.queryByTestId("validation-scored")).toBeNull();
   });
+  it("says in the limits that the Skeptic reviewed only the highest-ranked candidates, so most cards have no second opinion (design review 5)", async () => {
+    stub();
+    open();
+    expect((await screen.findByTestId("limit-skeptic")).textContent).toBe("The Skeptic reviewed only the highest-ranked candidates, so most cards have no second opinion.");
+  });
   it("states the limits: counts are a floor and the intersection note", async () => {
     stub();
     open();

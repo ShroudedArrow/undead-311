@@ -58,3 +58,41 @@ describe("Check my street (REQ-WEB-STREET.1)", () => {
     expect(await screen.findByRole("heading", { name: "Possible zombies within 300 meters of Commonwealth Ave" })).toBeTruthy();
   });
 });
+
+describe("Check my street: long result lists (design review 6)", () => {
+  function openMany(count: number, path: string) {
+    const n = Array.from({ length: count }, (_, i) => i);
+    const points = { data_version: "v", n: count, id: n.map((i) => `z${String(i).padStart(3, "0")}`), lat: n.map((i) => 42.3501 + i * 0.000001), lon: n.map(() => -71.1), tier: n.map(() => "headline"), family: n.map(() => "sign"), department: n.map(() => null), neighborhood: n.map(() => "Back Bay"), year: n.map(() => 2024) };
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      const u = String(url);
+      const body = u.endsWith("points.json") ? points : u.endsWith("sensitivity_grid.json") ? GRID : STATUS;
+      return { ok: true, status: 200, json: async () => body } as Response;
+    }));
+    return render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>);
+  }
+  it("lists 25 results first, adds 25 per press, and keeps the count in the address", async () => {
+    openMany(60, "/street?s=COMMONWEALTH%20AVE");
+    const user = userEvent.setup();
+    const result = await screen.findByTestId("street-result");
+    await waitFor(() => expect(within(result).getAllByRole("link")).toHaveLength(25));
+    expect(within(result).getByTestId("street-count").textContent).toContain("60 found");
+    expect(within(result).getByTestId("show-status").textContent).toBe("Showing 25 of 60");
+    await user.click(within(result).getByRole("button", { name: "Show 25 more" }));
+    expect(within(result).getAllByRole("link")).toHaveLength(50);
+    await user.click(within(result).getByRole("button", { name: "Show 10 more" }));
+    expect(within(result).getAllByRole("link")).toHaveLength(60);
+    expect(within(result).queryByRole("button", { name: /Show .* more/ })).toBeNull();
+  });
+  it("opens at the number of rows the address names, and shows no button for a short list", async () => {
+    openMany(60, "/street?s=COMMONWEALTH%20AVE&n=50");
+    const result = await screen.findByTestId("street-result");
+    await waitFor(() => expect(within(result).getAllByRole("link")).toHaveLength(50));
+    expect(within(result).getByTestId("show-status").textContent).toBe("Showing 50 of 60");
+  });
+  it("shows no paging line when 25 or fewer are found", async () => {
+    openMany(12, "/street?s=COMMONWEALTH%20AVE");
+    const result = await screen.findByTestId("street-result");
+    await waitFor(() => expect(within(result).getAllByRole("link")).toHaveLength(12));
+    expect(within(result).queryByTestId("show-status")).toBeNull();
+  });
+});

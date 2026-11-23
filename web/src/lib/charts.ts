@@ -141,7 +141,7 @@ export interface ChartDims {
 export const NARROW_QUERY = "(max-width: 640px)";
 export function chartDims(narrow: boolean, tall: number): ChartDims {
   return narrow
-    ? { W: 340, H: tall - 10, M: { l: 44, r: 10, t: 32, b: 48 }, narrow }
+    ? { W: 340, H: tall - 10, M: { l: 44, r: 24, t: 32, b: 48 }, narrow }
     : { W: 640, H: tall, M: { l: 64, r: 16, t: 12, b: 44 }, narrow };
 }
 
@@ -171,4 +171,29 @@ export function yTitle(d: ChartDims): YTitle {
 /** SVG attributes for a YTitle. */
 export function yTitleAttrs(t: YTitle): { x?: number; y?: number; transform?: string; textAnchor: "start" | "middle" } {
   return t.transform ? { transform: t.transform, textAnchor: t.anchor } : { x: t.x, y: t.y, textAnchor: t.anchor };
+}
+
+/**
+ * The limit lines of a funnel plot, resampled onto a fixed grid of n spaced evenly on the log axis and joined by straight lines.
+ * The file holds a limit for almost every n (703 in the snap-1120 export), and at small n the exact limits step from one whole
+ * number of cases to the next, so drawing every point gives a jagged, overlapping line. The grid only changes how the lines are
+ * drawn: which groups are called unusual still reads the file's own limits.
+ */
+export function limitGrid(limits: readonly FunnelLimit[], steps = 48): FunnelLimit[] {
+  const pts = [...limits].filter((l) => l.n >= 1).sort((a, b) => a.n - b.n);
+  if (pts.length < 3) return pts;
+  const lo = Math.log(pts[0].n);
+  const hi = Math.log(pts[pts.length - 1].n);
+  const out: FunnelLimit[] = [];
+  let j = 0;
+  for (let i = 0; i < steps; i++) {
+    const n = Math.exp(lo + ((hi - lo) * i) / (steps - 1));
+    while (j < pts.length - 2 && pts[j + 1].n < n) j++;
+    const a = pts[j];
+    const b = pts[j + 1];
+    const f = b.n === a.n ? 0 : Math.min(1, Math.max(0, (Math.log(n) - Math.log(a.n)) / (Math.log(b.n) - Math.log(a.n))));
+    const mix = (u: number, v: number) => u + (v - u) * f;
+    out.push({ n, lo95: mix(a.lo95, b.lo95), hi95: mix(a.hi95, b.hi95), lo998: mix(a.lo998, b.lo998), hi998: mix(a.hi998, b.hi998) });
+  }
+  return out;
 }

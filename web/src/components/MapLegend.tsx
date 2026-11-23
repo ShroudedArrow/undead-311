@@ -28,7 +28,7 @@ interface Props {
 /**
  * Key to the map markers (REQ-WEB-MAP.1): the stencil letter for each case type, the spray-dot cluster and the dashed ring for cases
  * outside the headline. It sits over the map's lower left corner, shut until asked, so the map keeps the room (reviewer-ux finding 6).
- * Open, it has a visible close button, and Escape closes it too; either way focus goes back to the "Marker key" button.
+ * Open, it has a visible close button, and Escape closes it too; either way focus goes back to the "Map key" button.
  */
 export function MapLegend({ showOutline, showCluster = true }: Props) {
   const [open, setOpen] = useState(false);

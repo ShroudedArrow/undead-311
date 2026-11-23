@@ -9,7 +9,7 @@ import { spraySvg } from "../map/sprites.ts";
 export const SHARE_W = 1200;
 export const SHARE_H = 630;
 
-const PALETTE = { concrete: "#CDCBC6", asphalt: "#2E3134", white: "#F4F4EF", pink: "#FF3EA5" } as const;
+const PALETTE = { concrete: "#CDCBC6", asphalt: "#2E3134", white: "#F4F4EF", pink: "#FF3EA5", canary: "#EFE08A" } as const;
 
 /** A file-name-safe slug: lower case letters and digits, single dashes. "101001:101002" gives "101001-101002". */
 export function shareSlug(s: string | null | undefined): string {
@@ -29,6 +29,8 @@ export const esc = (s: string): string => s.replace(/&/g, "&amp;").replace(/</g,
 export const fill = (template: string, params: Record<string, string | number>): string => template.replace(/\{(\w+)\}/g, (m, k: string) => (k in params ? String(params[k]) : m));
 
 export interface ShareText {
+  /** The form header line on a zombie image; optional so older callers still work. */
+  report_title?: string;
   district_kicker: string;
   district_line: string;
   home_kicker: string;
@@ -86,7 +88,7 @@ const css = (fonts: string): string => `
 ${fonts}
 *{box-sizing:border-box}
 html,body{margin:0;width:${SHARE_W}px;height:${SHARE_H}px}
-body{background:${PALETTE.concrete};color:${PALETTE.asphalt};font-family:"Public Sans",system-ui,sans-serif;display:flex;flex-direction:column;justify-content:space-between;padding:56px 64px}
+body{background:${PALETTE.concrete};color:${PALETTE.asphalt};font-family:"Public Sans",system-ui,sans-serif;display:flex;flex-direction:column;justify-content:space-between;padding:56px 64px;position:relative;overflow:hidden}
 .kicker{font-size:32px;font-weight:700;margin:0}
 .circle{display:inline-block;width:64px;height:64px;vertical-align:-14px;margin-right:14px}
 h1{font-size:76px;line-height:1.05;margin:20px 0 0;max-width:1000px}
@@ -94,16 +96,18 @@ h1{font-size:76px;line-height:1.05;margin:20px 0 0;max-width:1000px}
 .stamps{display:flex;gap:24px;margin:0}
 .stamp{font-family:"Courier Prime",monospace;font-weight:700;font-size:34px;border:5px solid ${PALETTE.asphalt};padding:6px 18px;background:${PALETTE.white}}
 .stamp.closed{text-decoration:line-through}
-.foot{font-size:24px;margin:0}`;
+.foot{font-size:24px;margin:0}
+.formline{font-family:"Courier Prime",monospace;font-weight:700;font-size:26px;margin:0 0 22px;padding-bottom:10px;border-bottom:5px solid ${PALETTE.asphalt};max-width:1000px}
+.copies{position:absolute;top:0;right:0;bottom:0;width:48px;background:${PALETTE.canary};border-left:5px solid ${PALETTE.asphalt}}`;
 
-const page = (fonts: string, body: string): string => `<!doctype html><html lang="en"><head><meta charset="utf-8"><style>${css(fonts)}</style></head><body>${body}</body></html>`;
+const page = (fonts: string, body: string): string => `<!doctype html><html lang="en"><head><meta charset="utf-8"><style>${css(fonts)}</style></head><body><div class="copies" aria-hidden="true"></div>${body}</body></html>`;
 
 /** The 1200 by 630 page for one possible zombie. `fonts` is the @font-face CSS (file URLs when rendered at build time). */
 export function zombieShareHtml(d: ZombieShare, text: ShareText, fonts = ""): string {
   const where = fill(text.zombie_where, { family: d.familyLabel, neighborhood: d.neighborhood });
   return page(
     fonts,
-    `<div><p class="kicker">${sprayImg()}${esc(text.zombie_kicker)}</p><h1>${esc(where)}</h1><p class="line">${esc(fill(text.zombie_line, { gap: d.gap }))}</p></div>` +
+    `<div>${text.report_title ? `<p class="formline">${esc(text.report_title)}</p>` : ""}<p class="kicker">${sprayImg()}${esc(text.zombie_kicker)}</p><h1>${esc(where)}</h1><p class="line">${esc(fill(text.zombie_line, { gap: d.gap }))}</p></div>` +
       `<p class="stamps"><span class="stamp closed">${esc(text.stamp_closed)}</span><span class="stamp">${esc(text.stamp_again)}</span></p><p class="foot">${esc(text.footer)}</p>`,
   );
 }

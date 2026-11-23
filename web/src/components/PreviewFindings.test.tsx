@@ -54,16 +54,29 @@ const CARD: CardWithPartial = {
   skeptic_verdict: "not_reviewed", skeptic_notes: "", reports_after: 1, times_risen: 1, bulk_closure: false,
 };
 
-describe("Skeptic section (REQ-WEB-CARD.1, ops#217)", () => {
-  it("an unreviewed card shows only the not-reviewed verdict, never 'No objections recorded.'", () => {
-    render(<AutopsyCard card={CARD} />);
-    const card = screen.getByTestId("autopsy-card");
-    expect(within(card).queryByText(t("card.no_notes"))).toBeNull();
-    expect(within(card).getByText(t("card.verdict_not_reviewed"))).toBeTruthy();
+describe("Skeptic section (REQ-WEB-CARD.1, ops#217, design review 5)", () => {
+  it("leaves the whole Second opinion section out when the Skeptic recorded no objection, whatever the verdict", () => {
+    for (const verdict of ["not_reviewed", "survives", "weakened", "explained_away"] as const) {
+      const { unmount } = render(<AutopsyCard card={{ ...CARD, skeptic_verdict: verdict, skeptic_notes: "" }} />);
+      const card = screen.getByTestId("autopsy-card");
+      expect(within(card).queryByTestId("second-opinion")).toBeNull();
+      expect(within(card).queryByText(t("card.skeptic"))).toBeNull();
+      expect(within(card).queryByText(t("card.skeptic_label"))).toBeNull();
+      expect(within(card).queryByText(/Verdict/)).toBeNull();
+      expect(within(card).queryByText(/has not reviewed this one yet/)).toBeNull();
+      expect(within(card).queryByText(/No objections recorded/)).toBeNull();
+      unmount();
+    }
   });
-  it("a reviewed card with no notes still says 'No objections recorded.'", () => {
-    render(<AutopsyCard card={{ ...CARD, skeptic_verdict: "survives" }} />);
-    expect(within(screen.getByTestId("autopsy-card")).getByText(t("card.no_notes"))).toBeTruthy();
+  it("treats a note of only spaces as no objection", () => {
+    render(<AutopsyCard card={{ ...CARD, skeptic_verdict: "weakened", skeptic_notes: "   " }} />);
+    expect(screen.queryByTestId("second-opinion")).toBeNull();
+  });
+  it("shows the section, with the verdict, when there is an objection", () => {
+    render(<AutopsyCard card={{ ...CARD, skeptic_verdict: "weakened", skeptic_notes: "The two records give different streets." }} />);
+    const section = screen.getByTestId("second-opinion");
+    expect(within(section).getByText("The two records give different streets.")).toBeTruthy();
+    expect(within(section).getByText(t("card.verdict_weakened"))).toBeTruthy();
   });
   it("shows an '&' street name as plain '&' (ops#214)", () => {
     render(<AutopsyCard card={CARD} />);
@@ -76,7 +89,7 @@ describe("not-found page (ops#219)", () => {
     serve(STATUS);
     render(<MemoryRouter initialEntries={["/no-such-page"]}><App /></MemoryRouter>);
     const page = await screen.findByTestId("not-found");
-    expect(within(page).getByRole("heading", { level: 1, name: "Page not found" })).toBeTruthy();
+    expect(within(page).getByRole("heading", { level: 1, name: "This page stayed buried" })).toBeTruthy();
     expect(within(page).getByRole("link", { name: "Go back to the map" }).getAttribute("href")).toBe("/");
   });
 });

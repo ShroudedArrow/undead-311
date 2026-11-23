@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AutopsyCard } from "../components/AutopsyCard";
+import { PageHeader } from "../components/PageHeader";
 import { PanelError } from "../components/PanelError";
 import { useData } from "../lib/data";
 import { usePrefersReducedMotion } from "../lib/motion";
@@ -56,8 +57,8 @@ export default function JudgePage() {
   }, [started, clock.step, clock.done]);
 
   return (
-    <div className="page judge" ref={root}>
-      <h1>{t("judge.title")}</h1>
+    <div className="page judge form-sheet" ref={root}>
+      <PageHeader title={t("judge.title")} />
       {tour.status === "error" && <PanelError file={tour.file} error={tour.error} />}
       {tour.status === "ok" && tour.data.provisional && (
         <p className="provisional-notice" role="note" data-testid="provisional-notice">
@@ -114,7 +115,7 @@ export default function JudgePage() {
               {t("judge.skip")}
             </button>
           </div>
-          <AutopsyCard card={cards.cards[clock.step]} />
+          <AutopsyCard card={cards.cards[clock.step]} recordConfirmed={tour.status === "ok" && !tour.data.provisional && tour.data.confirmation === "records"} />
         </div>
       )}
 

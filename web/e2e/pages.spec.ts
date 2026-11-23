@@ -7,7 +7,7 @@ test.describe("pages for the UX reviewer (REQ-WEB-TEST.2)", () => {
     await expect(page.getByTestId("map")).toHaveAttribute("data-ready", "true");
     const mapCount = Number(await page.getByTestId("map").getAttribute("data-marker-count"));
     expect(mapCount).toBeGreaterThan(0);
-    await expect(page.getByTestId("count")).toContainText(String(mapCount));
+    await expect(page.getByTestId("count")).toContainText(mapCount.toLocaleString("en-US"));
     await shot(page, info, "map");
 
     await page.getByRole("button", { name: "Table" }).click();

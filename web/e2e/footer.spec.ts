@@ -25,7 +25,7 @@ test("closing the bar gives its height to the map, leaves a one-line note, and t
   // still no page scroll on the map page
   const m = await page.evaluate(() => ({ sh: document.documentElement.scrollHeight, ih: innerHeight }));
   expect(m.sh).toBeLessThanOrEqual(m.ih);
-  // the note does not sit on the map credit or the marker key button
+  // the note does not sit on the map credit or the map key button
   const overlaps = (a: { x: number; y: number; width: number; height: number }, b: typeof a) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
   expect(overlaps(n, (await page.locator(".maplibregl-ctrl-attrib").boundingBox())!)).toBe(false);
   expect(overlaps(n, (await page.locator(".map-legend summary").boundingBox())!)).toBe(false);

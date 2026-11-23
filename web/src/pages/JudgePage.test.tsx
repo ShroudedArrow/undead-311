@@ -109,6 +109,23 @@ describe("Judge mode (REQ-WEB-JUDGE.1, .3)", () => {
     expect(note.textContent).toContain("not checked in person");
     expect(screen.queryByTestId("provisional-notice")).toBeNull();
   });
+  it("stamps RECORD-CONFIRMED on all three cards of a record-confirmed tour, and POSSIBLE on a provisional or field-checked tour (design review 13)", async () => {
+    setup({ provisional: false, confirmation: "records" });
+    const user = await start();
+    for (let n = 1; n <= 3; n++) {
+      expect(screen.getByText(`Zombie ${n} of 3`)).toBeTruthy();
+      expect(screen.getByTestId("verdict-stamp").textContent).toBe("Status: RECORD-CONFIRMED");
+      if (n < 3) await user.click(screen.getByRole("button", { name: "Next zombie" }));
+    }
+  });
+  it.each([
+    ["a provisional tour", { provisional: true, confirmation: null }],
+    ["a field-checked tour", { provisional: false, confirmation: "field" }],
+  ])("stamps POSSIBLE, not RECORD-CONFIRMED, on %s", async (_name, opts) => {
+    setup(opts);
+    await start();
+    expect(screen.getByTestId("verdict-stamp").textContent).toBe("Status: POSSIBLE");
+  });
   it("shows no record-confirmed label for a field-checked tour", async () => {
     setup({ provisional: false, confirmation: "field" });
     await screen.findByRole("button", { name: "Start the tour" });

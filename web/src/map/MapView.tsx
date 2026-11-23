@@ -15,7 +15,7 @@ import { t } from "../lib/t";
 import { buildLayers, type MarkerMode } from "./layers";
 import { clusterLevel, DENSITY_ZOOM, groupRows, type Cluster, type Grouped } from "./density";
 import { makeAtlasCanvas } from "./sprites";
-import { BOSTON_BOUNDS, BOSTON_CENTER, BOSTON_ZOOM, buildStyle, MIN_ZOOM, tilesUrl } from "./style";
+import { BOSTON_BOUNDS, BOSTON_CENTER, BOSTON_ZOOM, buildStyle, MIN_ZOOM, tilesUrl, type MapTheme } from "./style";
 
 let protocolAdded = false;
 function ensureProtocol(): void {
@@ -47,9 +47,11 @@ interface Props {
   mode?: MarkerMode;
   /** Zoom to this box, [west, south, east, north] ("Check my street", REQ-WEB-STREET.1). */
   bounds?: [number, number, number, number] | null;
+  /** "night" is the dark basemap of the time-lapse page; every other map keeps "day". Read once, when the map is made. */
+  theme?: MapTheme;
 }
 
-export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bounds = null, mode = "density" }: Props) {
+export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bounds = null, mode = "density", theme = "day" }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const overlayRef = useRef<MapboxOverlay | null>(null);
@@ -83,7 +85,7 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
       atlasRef.current = makeAtlasCanvas();
       map = new maplibregl.Map({
         container: host.current,
-        style: buildStyle(tilesUrl(window.location.origin, import.meta.env.BASE_URL), t("map.attribution")),
+        style: buildStyle(tilesUrl(window.location.origin, import.meta.env.BASE_URL), t("map.attribution"), theme),
         center: BOSTON_CENTER,
         zoom: BOSTON_ZOOM,
         maxBounds: BOSTON_BOUNDS,
@@ -176,6 +178,7 @@ export default function MapView({ rows, selectedId, onSelect, bulkIds = null, bo
       data-zoom={zoom}
       data-cluster-count={grouped.clusters.length}
       data-mode={mode}
+      data-theme={theme}
       data-bulk-count={bulkIds ? bulkIds.size : 0}
     />
   );

@@ -9,17 +9,17 @@ const openKey = () => {
   return details;
 };
 
-describe("marker key (REQ-WEB-MAP.1, REQ-WEB-A11Y.1)", () => {
-  it("has a visible close button that shuts the key and puts focus back on the Marker key button", () => {
+describe("map key (REQ-WEB-MAP.1, REQ-WEB-A11Y.1)", () => {
+  it("has a visible close button that shuts the key and puts focus back on the Map key button", () => {
     render(<MapLegend showOutline={false} />);
     const details = openKey();
-    const close = screen.getByRole("button", { name: "Close marker key" });
+    const close = screen.getByRole("button", { name: "Close map key" });
     expect(close.textContent).toBe("×");
     fireEvent.click(close);
     expect(details.open).toBe(false);
     expect(document.activeElement).toBe(details.querySelector("summary"));
   });
-  it("shuts on Escape too, with focus on the Marker key button", () => {
+  it("shuts on Escape too, with focus on the Map key button", () => {
     render(<MapLegend showOutline={false} />);
     const details = openKey();
     fireEvent.keyDown(document, { key: "Escape" });

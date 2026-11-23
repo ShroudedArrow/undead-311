@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, Route, Routes, useLocation } from "react-router-dom";
+import { PageHeader } from "./components/PageHeader";
 import { Shell } from "./components/Shell";
 import { LangContext } from "./lib/lang";
 import { setLang, spanishAvailable, t, type Lang } from "./lib/t";
@@ -18,10 +19,13 @@ import StreetPage from "./pages/StreetPage";
 
 function NotFound() {
   return (
-    <div className="page" data-testid="not-found">
-      <h1>{t("errors.not_found_heading")}</h1>
+    <div className="page form-sheet not-found" data-testid="not-found">
+      <PageHeader title={t("errors.not_found_heading")} plaque={false} />
+      <p>{t("errors.not_found")}</p>
       <p>
-        {t("errors.not_found")} <Link to="/">{t("errors.not_found_link")}</Link>
+        <Link to="/" className="button-link button-primary">
+          {t("errors.not_found_link")}
+        </Link>
       </p>
     </div>
   );
