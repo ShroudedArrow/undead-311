@@ -737,7 +737,7 @@ Git tag: `judged-2026-11-19-final` (created by the owner, see below). Files hash
 
 The DuckDB file itself is not hashed: DuckDB does not write identical bytes for identical data. Its table row counts are listed above and hashed as `processed/undead311.duckdb#table-row-counts`. The pipeline writes no Parquet.
 
-Note (exports-only): exports checked against release `exports-snap-1120` (archive sha256 `7fcedcd31523ec79604c80a347eb98a4156d7138e68890045b6e321495e16027`); the rows under `raw/` and `processed/` and the DuckDB table counts are carried over unchanged from the provisional snapshot, where they were verified, and were not re-hashed here.
+Note (exports-only): exports checked against release `exports-snap-1120` (archive sha256 `d67dfbf069007806342230ca36c81a5bfbe28340e577387da6c54e13f0fe4106`); the rows under `raw/` and `processed/` and the DuckDB table counts are carried over unchanged from the provisional snapshot, where they were verified, and were not re-hashed here.
 
 Owner steps after `make snapshot` (the script never tags or pushes):
 
