@@ -72,7 +72,13 @@ class Site:
         self.files[f"/data/cards/{name}"] = (200, {}, body.encode())
 
     def fetch(self, path: str):
-        return self.files.get(path, (404, {}, b"not found"))
+        """Like netlify.toml: a missing file under data/, assets/, tiles/ or share/ is a plain 404; any other unknown address is the
+        app shell with status 404."""
+        if path in self.files:
+            return self.files[path]
+        if path.split("/")[1] in ("data", "assets", "tiles", "share"):
+            return 404, {}, b"Not found\n"
+        return 404, {}, self.files["/index.html"][2]
 
     def run(self, **kw):
         kw.setdefault("seed", 1)
@@ -97,6 +103,26 @@ def test_a_good_draft_passes_every_check(site):
                    "excess is hidden", "/methods", "/repeat", "/street", "/judge", f"/neighborhood/{SLUG}", "frozen/points.json", "cards/"):
         assert needle in names, needle
     assert sum(1 for n, _, _ in results if n.startswith("cards/")) == 3
+
+
+def test_unknown_address_must_answer_404_with_the_app_page(site):
+    """REQ-OPS-HOST.5: Netlify's own 404 page, a 200 shell or a redirect all fail."""
+    name = "an unknown address answers 404 with the app's own page"
+    assert name not in failed(site.run())
+    site.files[smoke.UNKNOWN_PAGE] = (404, {}, b"Page not found (Netlify)")
+    assert name in failed(site.run())
+    site.files[smoke.UNKNOWN_PAGE] = (200, {}, site.files["/index.html"][2])
+    assert name in failed(site.run())
+
+
+def test_missing_data_file_must_answer_404_and_not_the_app_shell(site):
+    """REQ-OPS-HOST.5: a catch-all that swallowed /data/ would turn a missing file into HTML."""
+    name = "a missing data file answers a plain 404, not the app shell"
+    assert name not in failed(site.run())
+    site.files[smoke.MISSING_DATA_FILE] = (404, {}, site.files["/index.html"][2])
+    assert name in failed(site.run())
+    site.files[smoke.MISSING_DATA_FILE] = (200, {}, b"{}")
+    assert name in failed(site.run())
 
 
 @pytest.mark.parametrize("status", [404, 500])

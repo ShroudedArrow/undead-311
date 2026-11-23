@@ -147,13 +147,38 @@ def app_routes() -> set[str]:
     return {m.split("/:")[0] for m in re.findall(r'<Route path="([^"*]+)"', text)}
 
 
-def test_every_app_route_falls_back_to_index_html_and_nothing_else_does():
-    """REQ-OPS-HOST.1: BrowserRouter permalinks work on a direct visit; unknown files keep their 404."""
-    rules = config()["redirects"]
-    assert all(r["to"] == "/index.html" and r["status"] == 200 and not r.get("force") for r in rules)
+FILE_FOLDERS = {"data", "assets", "tiles", "share"}
+
+
+def test_every_app_route_falls_back_to_index_html_with_status_200():
+    """REQ-OPS-HOST.1: BrowserRouter permalinks work on a direct visit. The 200 rules are exactly the routes of App.tsx."""
+    rules = [r for r in config()["redirects"] if r["status"] == 200]
+    assert all(r["to"] == "/index.html" and not r.get("force") for r in rules)
     served = {r["from"].removesuffix("/*").lstrip("/") for r in rules}
     assert served == app_routes() and served
-    assert not any(r["from"] in ("/*", "/data/*", "/assets/*") for r in rules)
+
+
+def test_unknown_addresses_get_the_app_not_found_page_with_a_404_status():
+    """REQ-OPS-HOST.5: the last rule is the catch-all, it serves index.html (the app draws its own not-found page) with status 404,
+    and it is not forced, so a real file is always served as itself."""
+    rules = config()["redirects"]
+    last = rules[-1]
+    assert (last["from"], last["to"], last["status"]) == ("/*", "/index.html", 404)
+    assert not last.get("force")
+    assert [r["from"] for r in rules].count("/*") == 1
+
+
+def test_missing_files_under_the_file_folders_stay_a_plain_404():
+    """REQ-OPS-HOST.5: a missing data file, asset, tile or share image answers a plain-text 404, never the app shell, and these
+    rules come before the catch-all (first match wins)."""
+    rules = config()["redirects"]
+    folder_rules = [r for r in rules if r["status"] == 404 and r["from"] != "/*"]
+    assert {r["from"].removesuffix("/*").lstrip("/") for r in folder_rules} == FILE_FOLDERS
+    assert all(r["from"].endswith("/*") and r["to"] == "/not-found.txt" and not r.get("force") for r in folder_rules)
+    assert (REPO / "web" / "public" / "not-found.txt").read_text().strip() == "Not found"
+    catch_all = next(i for i, r in enumerate(rules) if r["from"] == "/*")
+    assert all(rules.index(r) < catch_all for r in folder_rules)
+    assert all(i < catch_all for i, r in enumerate(rules) if r["status"] == 200)
 
 
 def test_make_build_adds_the_cache_rules_after_the_web_build_with_plain_node():

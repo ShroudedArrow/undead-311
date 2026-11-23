@@ -21,6 +21,8 @@ every problem):
      counted in the report and only fails the check with --strict-at, which fails on any "@".
 
   9. The files the nightly job leaves out of the deploy (LEFT_OUT_*; nothing in the app fetches them) answer 404 on the draft.
+ 10. An unknown address answers 404 with the app's own page (the same HTML as index.html), and a missing data file answers 404 with
+     something that is not the app shell (netlify.toml, REQ-OPS-HOST.5).
 
 It does not render the pages in a browser: rule 4 is checked on the files the pages render from.
 """
@@ -45,6 +47,8 @@ Response = tuple[int, dict[str, str], bytes]
 Fetch = Callable[[str], Response]
 
 DEEP_LINKS = ("/methods", "/repeat", "/street", "/judge")
+UNKNOWN_PAGE = "/no-such-page-smoke-test"
+MISSING_DATA_FILE = "/data/no-such-file-smoke-test.json"
 # Files the nightly job deletes from web/dist before the draft deploy, because no page of the app fetches them (checked by
 # test_nightly_template.py and by loading every route in a browser). Paths are under web/dist. The workflow's trim step and the
 # smoke test read the same lists.
@@ -235,6 +239,15 @@ def run_checks(fetch: Fetch, *, manifest: dict, public: Path, judging: Path, see
         for name in random.Random(seed).sample(names, min(SHARDS_TO_CHECK, len(names))):
             r = get(f"/{d}/{name}")
             record(f"{d}/{name} is left out of the deploy", r is not None and r[0] == 404, "" if r is None else f"status {r[0]}")
+
+    # 10: the app's own not-found page for unknown addresses; a plain 404 (not the app shell) for a missing data file
+    shell = index[2] if index is not None and index[0] == 200 else None
+    r = get(UNKNOWN_PAGE)
+    record("an unknown address answers 404 with the app's own page", r is not None and r[0] == 404 and shell is not None and r[2] == shell,
+           "" if r is None else f"status {r[0]}" if r[0] != 404 else "the body is not the app's index.html")
+    r = get(MISSING_DATA_FILE)
+    record("a missing data file answers a plain 404, not the app shell", r is not None and r[0] == 404 and (shell is None or r[2] != shell),
+           "" if r is None else f"status {r[0]}" if r[0] != 404 else "the body is the app shell")
     return results
 
 

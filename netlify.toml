@@ -92,3 +92,32 @@
   from = "/street"
   to = "/index.html"
   status = 200
+
+# REQ-OPS-HOST.5: any other address gets the app's own not-found page (the `*` route in web/src/App.tsx) with a real 404
+# status. Rules run top to bottom and, without `force`, only when no file matches, so this never hides a real file.
+# A missing file under the folders below keeps the plain-text 404 of the comment above (the app shell would look like a JSON
+# parse error to code that fetched a data file), so those four rules come first and the catch-all comes last.
+[[redirects]]
+  from = "/data/*"
+  to = "/not-found.txt"
+  status = 404
+
+[[redirects]]
+  from = "/assets/*"
+  to = "/not-found.txt"
+  status = 404
+
+[[redirects]]
+  from = "/tiles/*"
+  to = "/not-found.txt"
+  status = 404
+
+[[redirects]]
+  from = "/share/*"
+  to = "/not-found.txt"
+  status = 404
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 404
