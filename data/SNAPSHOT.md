@@ -25,8 +25,8 @@ Downloaded: 2026-11-20 (source: Analyze Boston, dataset 311-service-requests)
 
 Data through: 2026-11-19. The site, the video and the README numbers use these files.
 Run: `snap-1120`, data version `2026-11-20+27ceb33+89e078da`.
-Stage: provisional (field labels not scored yet; the judge tour is the provisional ranking).
-Git tag: `judged-2026-11-20` (created by the owner, see below). Files hashed: 685. Combined sha256: `70e814987d3fe2c10dc4b5753e36da84b757e25d95ed16e44eea7ec3e05ce4b1`.
+Stage: final (field labels scored; the judge tour uses only confirmed zombies).
+Git tag: `judged-2026-11-19-final` (created by the owner, see below). Files hashed: 685. Combined sha256: `ff22636c22d9abed898522e2a5c4c23d5d131c80ccf493b7facc285e89800ddd`.
 
 | file | bytes | sha256 |
 |---|---|---|
@@ -490,14 +490,14 @@ Git tag: `judged-2026-11-20` (created by the owner, see below). Files hashed: 68
 | web/public/data/stats/excess.json | 73662 | ef378157d067a5e6ec4680445caaf7c91d548bac9e521d0be137f249643beb12 |
 | web/public/data/stats/funnel.json | 183380 | 75119638ddf34b1781c48eded2ce4bc3aadc82dba95d0309ff3e2ba3a654d6b2 |
 | web/public/data/stats/groups.json | 34814 | 41720313396dc91e3aa051ae7e1181a62dd8e7ea6c1573438415cdd12347eae4 |
-| web/public/data/stats/judge_tour.json | 281 | 9fc85a8591712429b42a25dce8b5d5de8fe47f76c394028144db76f2e29e374e |
+| web/public/data/stats/judge_tour.json | 307 | 94a8322b7651b9539ea40ed3405d0922bf9247c913c239fe83c944507a88297b |
 | web/public/data/stats/scorecard.json | 11849 | 66a42909a0f2faab96b3ede862f6d09f12635075bb910f77c1abaac15f5d7f37 |
 | web/public/data/stats/sensitivity_grid.json | 6248 | 49d99a78dc1ce37829c7d4ee90206f03cab235b6749eb27ff73feaea640a483f |
 | web/public/data/stats/stats_status.json | 205 | 059091fc43406aafa6914b0f7701c91b628aeea89f6b1220f0ccfa90dbd10f80 |
 | web/public/data/stats/survival.json | 532860 | 41776896bb8c67bfd02ee69a31cc7971b6ed732482abed664dc105fd3b3f9b24 |
 | web/public/data/stats/temporary_fixes.json | 11132 | 689e79813cd9bef32037775b07a298b30bf4d21b93adc403b1dbe66ea216c0fd |
 | web/public/data/stats/trends.json | 791458 | c8df37c4dfac90b508ec9ab750b560267beb1cee0a20f33f8832efc982f9cc48 |
-| web/public/data/stats/validation.json | 295 | ddfedd59b7b35abf0b44be60749afffb20034533284c02a99e0067d70f464227 |
+| web/public/data/stats/validation.json | 3673 | 024c1f5b4dca76c84ab40687b614e9e8a64dcebbbfa40c667f24214e4f08db7c |
 | web/public/data/status.json | 935 | 7bfb8fe24d8f6c155382a4a1cf22538dadda07ad1d15e226eacde269152f11b4 |
 | web/public/data/zombies/allston-brighton-2015.json | 263964 | 7fbb27753def20ada9cf2b339e8012f5e48df3660326d6cf29763c7f3ed70692 |
 | web/public/data/zombies/allston-brighton-2016.json | 152422 | f98b4806136e902e19ce008bfaf9a2ebee669d65a45edd6ded885abdf98bfbcb |
@@ -737,9 +737,11 @@ Git tag: `judged-2026-11-20` (created by the owner, see below). Files hashed: 68
 
 The DuckDB file itself is not hashed: DuckDB does not write identical bytes for identical data. Its table row counts are listed above and hashed as `processed/undead311.duckdb#table-row-counts`. The pipeline writes no Parquet.
 
+Note (exports-only): exports checked against release `exports-snap-1120` (archive sha256 `7fcedcd31523ec79604c80a347eb98a4156d7138e68890045b6e321495e16027`); the rows under `raw/` and `processed/` and the DuckDB table counts are carried over unchanged from the provisional snapshot, where they were verified, and were not re-hashed here.
+
 Owner steps after `make snapshot` (the script never tags or pushes):
 
-1. Commit `data/SNAPSHOT.md` and `data/judging/` (the judge-mode files; every other file is a row in the table above, not in git), then run `git tag -a judged-2026-11-20 -m "Judging snapshot, data through 2026-11-19"` and `git push origin judged-2026-11-20`. Never commit the run's exports into `web/public/data/`.
-2. In `ShroudedArrow/undead-311-data`, set the variable `JUDGED_TAG` to `judged-2026-11-20` (see `ops/undead-311-data/README.md`).
+1. Commit `data/SNAPSHOT.md` and `data/judging/` (the judge-mode files; every other file is a row in the table above, not in git), then run `git tag -a judged-2026-11-19-final -m "Judging snapshot, data through 2026-11-19"` and `git push origin judged-2026-11-19-final`. Never commit the run's exports into `web/public/data/`.
+2. In `ShroudedArrow/undead-311-data`, set the variable `JUDGED_TAG` to `judged-2026-11-19-final` (see `ops/undead-311-data/README.md`).
 3. To check a tag from a plain checkout (no data needed), run `make snapshot-verify`. With the run's data, `make snapshot-check RUN_ID=<run>` rehashes every file.
 <!-- END judging snapshot -->
