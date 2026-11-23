@@ -57,3 +57,4 @@ Responsive to mobile, visible keyboard focus, WCAG AA contrast, reduced motion r
 - Survey pink on Concrete is only 2.0:1 and Cone orange on Concrete 1.9:1: **never use pink or orange for text**. On a light background, markers get an Asphalt outline.
 - Pink on Asphalt 4.0:1 and orange on Asphalt 4.3:1: fine for map markers (graphics need 3:1), not for small text.
 - Never rely on color alone: zombies also differ by shape (the spray circle) and in the table view.
+Exceptions: Night of the Living 311 uses a dark "night shift" basemap (that page only). A short pink rule under the headline zombie count is allowed because it marks zombies; no other decorative pink.
